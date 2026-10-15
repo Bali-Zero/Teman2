@@ -64,6 +64,7 @@ SHIPPABLE = ("scripts/localci/tests/test_triage_shippable.py",)   # B23
 PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
+TCH, B33 = "scripts/localci/tick_chain.py", ("scripts/localci/tests/test_tick_chain.py",)   # B33 S1
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
@@ -1070,6 +1071,36 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b28-age-from-the-newest-deferral": (PY, "else min(first, _epoch", "else max(first, _epoch", (PF,)),
     "b28-skip-bound-60": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 60, 43200", (PF,)),
     "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
+    # B33 S1: a tick that bore a verdict starts the next at once — the predicate and the wrapper's chain
+    "b33-drop-error-row-check": (TCH, "        if kind in STOP_KINDS:\n", "        if False:\n", B33),
+    "b33-host-no-verdict-chains": (TCH, '            if row.get("host_no_verdict"):\n', "            if False:\n", B33),
+    "b33-stop-kind-dropped-merge_error": (TCH, '"merge_error", ', "", B33),
+    "b33-stop-kind-dropped-push_unlanded": (TCH, '"push_unlanded", ', "", B33),
+    "b33-stop-kind-dropped-push_refused": (TCH, '"push_refused", ', "", B33),
+    "b33-stop-kind-dropped-storage_diverged": (TCH, ', "storage_diverged")', ")", B33),
+    "b33-decision-error-ignored": (TCH, '            if row.get("error") is not None:\n', "            if False:\n", B33),
+    "b33-seal-not-required": (TCH, '            if not (isinstance(row.get("seal"), str) and SEAL.fullmatch(row["seal"])):\n', "            if False:\n", B33),
+    "b33-seal-prefix-match": (TCH, 'SEAL.fullmatch(row["seal"])', 'SEAL.match(row["seal"])', B33),
+    "b33-skipped-is-work": (TCH, 'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed")',
+                            'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed", "skipped")', B33),
+    "b33-refresh-failed-not-work": (TCH, 'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed")',
+                                    'CHAIN_KINDS = ("decision", "ready_refreshed", "pushed")', B33),
+    "b33-whole-journal-read": (TCH, "            fh.seek(offset)\n", "            fh.seek(0)\n", B33),
+    "b33-shrunk-journal-chains": (TCH, "            if offset > size:\n", "            if False:\n", B33),
+    "b33-chain-on-rc-nonzero": (TCH, "    if rc != 0:\n", "    if False:\n", B33),
+    "b33-torn-line-skipped": (TCH, '        except ValueError:\n            return False, "an appended line is not JSON"\n', "        except ValueError:\n            continue\n", B33),
+    "b33-cap-13": (SH, 'CHAIN_MAX="${MERGER_CHAIN_MAX:-12}"', 'CHAIN_MAX="${MERGER_CHAIN_MAX:-13}"', B33),
+    "b33-cap-ignored": (SH, 'elif [ "$DEPTH" -ge "$CHAIN_MAX" ]; then', "elif false; then", B33),
+    "b33-ignore-chain-off-file": (SH, 'elif [ -e "$STATE/chain_off" ]; then', "elif false; then", B33),
+    "b33-ignore-chain-env-switch": (SH, 'elif [ "${LOCALCI_MERGER_CHAIN:-1}" = "0" ]; then', "elif false; then", B33),
+    "b33-chain-on-rc-nonzero-sh": (SH, '"$STATE/decisions.jsonl" "$OFFSET" "$TICK_RC" 2>/dev/null', '"$STATE/decisions.jsonl" "$OFFSET" 0 2>/dev/null', B33),
+    "b33-warned-tick-chains": (SH, 'elif [ -n "$WARN" ]; then chain_why=', "elif false; then chain_why=", B33),
+    "b33-absent-predicate-chains": (SH, 'elif [ ! -f "$CODE/tick_chain.py" ]; then chain_why=', "elif false; then chain_why=", B33),
+    "b33-no-heartbeat-before-exec": (SH, '  finish_with "$TICK_RC"\n  trap - EXIT', "  :\n  trap - EXIT", B33),
+    "b33-depth-not-carried": (SH, "  export MERGER_CHAIN_DEPTH=$((DEPTH + 1))\n", "  :\n", B33),
+    "b33-prediction-from-stale-offset": (SH, 'OFFSET="$(wc -c 2>/dev/null < "$STATE/decisions.jsonl" | tr -d \'[:space:]\' || true)"', 'OFFSET=0', B33),
+    "b33-garbage-depth-chains": (SH, "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0; CHAIN_OK=0 ;; esac", "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0 ;; esac", B33),
+    "b33-sibling-instead-of-exec": (SH, '  exec "$BASH" "$0" ||', '  "$BASH" "$0" ||', B33),
 }
 
 
