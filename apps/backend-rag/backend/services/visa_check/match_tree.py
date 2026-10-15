@@ -293,14 +293,15 @@ def _reason(meta: VisaMeta, purpose: Purpose, months: int, band: BudgetBand) -> 
     """Short user-facing sentence explaining why this visa is ranked here."""
     del purpose, band  # reserved for future per-branch phrasing
     budget_note = ""
-    if meta.min_budget_idr is not None:
+    if meta.min_budget_idr is not None and not meta.budget_gate_is_ranking_only:
         budget_note = f" (requires ≥ IDR {meta.min_budget_idr // 1_000_000}M)"
     total_days = meta.duration_days + meta.extensions[0] * meta.extensions[1]
     if _duration_fits(meta, months):
         duration_note = f" Covers {total_days} days total."
     else:
         duration_note = f" Max stay {total_days} days — less than your {months}-month plan."
-    return f"{meta.name_en} — {meta.notes}{budget_note}.{duration_note}".strip()
+    stop = "" if (not budget_note and meta.notes.endswith(".")) else "."
+    return f"{meta.name_en} — {meta.notes}{budget_note}{stop}{duration_note}".strip()
 
 
 # ── Branch dispatch ──────────────────────────────────────────────

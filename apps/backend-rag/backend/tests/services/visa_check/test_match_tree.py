@@ -155,13 +155,9 @@ class TestWorkRemote:
 
 
 class TestInvestor:
-    def test_high_budget_offers_E28A_at_the_top_score(self):
-        # E28A no longer carries the invented IDR 500M gate (audit F50, 2026-10-15), so it
-        # ties with D12 at the top instead of beating it on a high-budget bonus.
+    def test_high_budget_is_E28A(self):
         r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.OVER_500M)
-        scores = {rv.visa: rv.score for rv in r.ranking}
-        assert VisaType.E28A in scores
-        assert scores[VisaType.E28A] == max(scores.values())
+        assert r.recommended_visa is VisaType.E28A
 
     def test_mid_budget_ranking_excludes_e33g(self):
         r = _call(purpose=Purpose.INVESTOR, budget_band=BudgetBand.MID_50_500M)

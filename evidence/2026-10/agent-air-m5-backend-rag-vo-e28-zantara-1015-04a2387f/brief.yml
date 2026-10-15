@@ -18,12 +18,12 @@ constraints:
 acceptance:
   - text: "No golden route, prompt or KG docstring names E28G, calls E28A a worker permit, or states IDR 10 billion as minimum or paid-up capital; every visa_golden figure equals the saved page of its code."
     probe: "python3 scripts/ci/observe_zantara_e28_1015.py"
-  - text: "The legacy E28A row follows the pack (730 days, 365 per extension) with the page's notes and document list, and no invented budget gate."
+  - text: "The legacy E28A row follows the pack (730 days, 365 per extension) with the page's notes and document list, and no budget figure presented as a requirement."
     probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider"
 consumer_map:
   - "Zantara RAG: KGEnhancedRetrieval golden routes handed to the model; v3/v4 worked examples and the few-shot / WhatsApp persona examples in the prompt."
   - "Legacy /api/visa/match: catalogue.VISA_META and match_tree pre-arrival steps."
 risks:
-  - "Removing the invented IDR 500M gate lets E28A tie with D12 at the top score in the OVER_500M band and appear in the 50M-500M band; recorded in the PR body for the owner of the matcher."
+  - "E28A keeps min_budget_idr=500_000_000 as an internal ranking-only band boundary (orchestrator decision 2026-10-15); the reason text no longer prints it, so ranking is unchanged and nothing presents it as a requirement."
 grader: "Fresh Opus 5.5 final gate commissioned by the team lead."
 brief_ref: evidence/brief.yml

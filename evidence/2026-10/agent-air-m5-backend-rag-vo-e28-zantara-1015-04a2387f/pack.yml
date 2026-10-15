@@ -26,7 +26,7 @@ grounding:
 
 verification:
   red_first: "the three new test files were written before the fixes: 7 failed on the prompts+catalogue files, 16 failed on the routes file; green after the fixes"
-  green: "observe_zantara_e28_1015.py: 27 passed; wider run of the touched suites (kg, prompts, visa_check, zantara_core_v3): 1147 passed"
+  green: "observe_zantara_e28_1015.py: 28 passed; wider run of the touched suites (kg, prompts, visa_check, zantara_core_v3): 1147 passed"
   mutation: "see receipts: E28G back in a route (2 failed), E28D USD 50,000,000 to 5,000,000 (2 failed), E28A extensions back to 365*2 (1 failed); files restored by cp"
   load_note: "M5 loadavg was 9-13 during the work, above the quiet-window limit of 8, so only the touched suites were run, not the whole backend file"
 
@@ -44,9 +44,9 @@ bites:
   expect: exit0
 
 receipts:
-  - claim: "Observer green at its floor of 27"
+  - claim: "Observer green at its floor of 28"
     cmd: "python3 scripts/ci/observe_zantara_e28_1015.py"
-    result: "observe_zantara_e28_1015: 27 passed"
+    result: "observe_zantara_e28_1015: 28 passed"
     exit: 0
     ts: "2026-10-15T22:44Z"
     seat: claude-sonnet-5-5
@@ -67,6 +67,12 @@ receipts:
     result: "1 failed, 3 passed (test_stay_and_extension_follow_the_pack: assert 730 == 365)"
     exit: 1
     ts: "2026-10-15T22:44Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation: E28A reason prints the budget gate again (ranking-only flag ignored) is convicted"
+    cmd: "edit match_tree._reason, pytest test_catalogue_e28a_1015.py, restore by cp"
+    result: "1 failed, 4 passed (test_reason_text_never_presents_the_budget_gate_as_a_requirement)"
+    exit: 1
+    ts: "2026-10-15T22:50Z"
     seat: claude-sonnet-5-5
   - claim: "Legacy matcher suite green with the E28A changes"
     cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider"
