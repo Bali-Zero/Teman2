@@ -883,8 +883,8 @@ class AbortJudge(HostedReads):
         for k, w in enumerate(wf[:i]):   # a `run:` step before the first checkout ran with an empty workspace: it judged no repository code
             if self.is_setup(w):
                 checked_out = checked_out or ("/".join(w["uses"].split("@")[0].split("/")[:2]).lower() == "actions/checkout" and main[k].get("conclusion") == "success")
-            elif checked_out or "run" not in w or "uses" in w:
-                return None, f"the step before the cancelled one ({main[k].get('name')!r}) is neither a setup action nor a `run:` step before the first checkout"
+            elif checked_out or "run" not in w or "uses" in w or main[k].get("conclusion") != "success":
+                return None, f"the step before the cancelled one ({main[k].get('name')!r}) is neither a setup action nor a `run:` step that succeeded before the first checkout"
         if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):
             return None, "a step before the cancelled one did not succeed"
         for k in range(i + 1, n):   # after the hang only the steps the author declared `if: always()` (reporting, upload) may have run, and only to success
@@ -2423,6 +2423,19 @@ def recorded_gate(a, gate: GateJudge, head: str, r: dict, statuses: list) -> dic
     return hc.gate_reading(gate, name, {"verdict": "RED", "completed_at": at, "red": red}, statuses)
 
 
+def b17_history(a, reads: HostedReads, head: str, name: str, app_id, statuses: list) -> list[int]:
+    """B17b: the cancelled check runs of ``name`` on ``head`` that a later run of the same name answered, read over EVERY attempt
+    (``filter=all``: a re-run inside the same check suite hides attempt 1 from the default ``filter=latest`` listing). [] unless the verdict
+    over all attempts is GREEN (red-dominant: a failed attempt followed by a green re-run stays red), and [] when any dropped run carries the
+    job-timeout annotation: a timeout is no concurrency cancel, whatever re-run follows (it can leave FALSE_GREEN only through HOSTED_ABORTED)."""
+    runs = gh_pages(f"repos/{a.repo}/commits/{head}/check-runs?check_name={quote(name, safe='')}&filter=all", "check_runs")
+    h = hc.hosted_verdict(hc.hosted_entries(runs, statuses).get(name, []), app_id)
+    ids = h["superseded_cancelled"]
+    if h["verdict"] != "GREEN" or not ids or any(type(i) is not int for i in ids):
+        return []
+    return [] if any(ABORT_TIMEOUT in m for i in ids for m in reads.failures(i)) else list(ids)
+
+
 def recorded_abort(a, abort: AbortJudge, head: str, r: dict) -> dict:
     """B27, the past: a recorded FALSE_GREEN row whose reds were all check runs cancelled (``hosted_red``), each found again by its id among
     EVERY attempt of the head's runs of that name (a manual re-run replaced it in the latest), judged by ``abort`` as the live row would be.
@@ -2480,7 +2493,8 @@ def reclassify_by_reread(a, d: dict, lives: dict, raw: int) -> list[dict]:
             lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(Path(str(a.state_dir)).expanduser().resolve() / "repo.git", d.get("base_sha")))
         live = lives[lkey]
         by = hc.hosted_entries(live["check_runs"], live["statuses"])
-        flipped, stuck = [], 0
+        reads = HostedReads(a.repo)
+        flipped, stuck, green = [], 0, []
         for chk in live["required_checks"]:
             if local.get(chk["context"]) != "OK":
                 continue
@@ -2488,8 +2502,18 @@ def reclassify_by_reread(a, d: dict, lives: dict, raw: int) -> list[dict]:
             if h["verdict"] == "RED":
                 stuck += 1
             elif h["verdict"] == "GREEN" and h["superseded_cancelled"]:
+                if any(ABORT_TIMEOUT in m for i in h["superseded_cancelled"] for m in reads.failures(i)):   # B17b: a timeout is no concurrency cancel
+                    return []
                 flipped.append({"pr": d.get("pr"), "context": chk["context"], "head_sha": d.get("head_sha"), "stale_why": "cancelled_superseded",
                                 "superseded_cancelled": h["superseded_cancelled"]})
+            elif h["verdict"] == "GREEN":
+                green.append(chk)
+        if not stuck and len(flipped) < raw:   # B17b: a re-run in the same check suite hid the cancelled attempt from this listing: ask each green context's full history
+            for chk in green:
+                got = b17_history(a, reads, sha, chk["context"], chk.get("app_id"), live["statuses"])
+                if got:
+                    flipped.append({"pr": d.get("pr"), "context": chk["context"], "head_sha": d.get("head_sha"), "stale_why": "cancelled_superseded",
+                                    "superseded_cancelled": got})
         return flipped if not stuck and len(flipped) == raw else []
     except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
         return []
@@ -2523,10 +2547,16 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None, abort:
                 continue
         gk = {"gate": g["gate_check"]} if g else {}
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
-        if superseded_cleared(r, h):   # B17: only cancelled runs, each answered by a later one on the head
-            out.append({"pr": pr, "context": r["context"], "head_sha": head, "stale_why": "cancelled_superseded",
-                        "superseded_cancelled": [e["id"] for e in r["hosted_red"]]})
-            continue
+        red = r.get("hosted_red")
+        if isinstance(red, list) and red and all(isinstance(e, dict) and e.get("conclusion") == "cancelled" and type(e.get("id")) is int for e in red):
+            try:   # B17b: only concurrency cancels, each answered by a later run of the context's FULL history on the head
+                answered = b17_history(a, abort or HostedReads(a.repo), str(head), r["context"], r.get("app_id"), live["statuses"])
+            except Exception:  # noqa: BLE001 — an unreadable history keeps the row
+                answered = []
+            if {e["id"] for e in red} <= set(answered):
+                out.append({"pr": pr, "context": r["context"], "head_sha": head, "stale_why": "cancelled_superseded",
+                            "superseded_cancelled": [e["id"] for e in red]})
+                continue
         if h["verdict"] != "RED":
             kept.append({"pr": pr, "context": r["context"], "head_sha": head, **gk, "why": f"the hosted verdict is now {h['verdict']}, not the red the tick recorded"})
             continue

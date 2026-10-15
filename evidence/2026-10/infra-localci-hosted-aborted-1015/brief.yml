@@ -18,6 +18,11 @@ objective: >-
   phase E READY line format. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
   - >-
+    B17b is folded in: reclassify_recorded and reclassify_by_reread read the context's full history (filter=all) and never
+    drop a timeout-annotated cancel; one more GET per recorded cancelled row, and per unexplained green context on
+    rows that journal no per-entry data. A pre-checkout run: step must have concluded success. The PR-level PENDING (A6)
+    lives only in the report path; hosted_side, hosted_required_green and GATE are unchanged.
+  - >-
     Rule 4's "every later step skipped" was also wrong for #8514: its `if: always()` reporting steps (Report shard balance,
     Upload test results) ran to success after the hang. A step after the cancelled one may now have run only when its
     `if` is exactly always() and it succeeded; any other step that ran, or an always() step that failed, blocks ABORTED.

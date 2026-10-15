@@ -320,3 +320,16 @@ def test_one_red_context_that_is_not_an_abort_keeps_the_pr_level_false_green(tmp
     gh.checks = {d["head_sha"]: {CTX[0]: "cancelled", CTX[1]: "failure"}}
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
     assert rc == 1 and rep["counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["HOSTED_ABORTED"] == 1 and rep["context_counts"]["FALSE_GREEN"] == 1
+
+
+@pytest.mark.parametrize("pre", [("failure", "cancelled", "skipped"), ("cancelled", "skipped", "skipped"), ("skipped", "cancelled", "skipped")])
+def test_a_pre_checkout_run_step_must_have_succeeded_and_the_hang_must_be_in_the_setup_action(tmp_path, monkeypatch, pre):
+    assert_c, checkout_c, setup_c = pre
+    steps = [HUNG[0], ("Assert every upstream job succeeded", assert_c), ("Checkout code", checkout_c), ("Set up Python", setup_c), ("Run unit tests", "skipped"), *POST]
+    assert judge(tmp_path, monkeypatch, workflow=WITH_ASSERT, steps=steps)(NAME, RED)["aborted"] is False   # failed + later hang; hang in the run step; run step skipped
+
+
+def test_the_tick_path_reads_the_same_live_data_as_not_green_so_hosted_required_green_stays_false():
+    live = {"required_checks": [{"context": NAME, "app_id": APP}], "check_runs": [check_run(11, NAME, "cancelled")], "statuses": []}
+    assert "RED" in mg.hosted_side(live) and mg.required_verdicts(live) == {NAME: "RED"}
+    assert "hosted_required_green" in mg.GATE and mg.enqueue_step is not None

@@ -7,6 +7,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 _MODULE = Path(__file__).resolve().parent.parent / "merger.py"
 _spec = importlib.util.spec_from_file_location("merger_b17_under_test", _MODULE)
 mg = importlib.util.module_from_spec(_spec)
@@ -128,3 +130,76 @@ def test_the_b10_reread_reads_at_the_decisions_own_base_so_another_ref_cannot_cl
     monkeypatch.setattr(mg.hc, "fetch_live", _by_ref(seen))
     out, kept = mg.reclassify_recorded(_AS, {**_d(tmp_path, RED1), "base_sha": BASEX}, lambda name, at: {"stale": False})
     assert out == [] and len(kept) == 1 and seen == [BASEX]
+
+
+# ------------------------------------------------------------------ B17b: the context's FULL history (filter=all), and a timeout is no concurrency cancel
+TIMEOUT = "The job has exceeded the maximum execution time of 15m0s"
+
+
+class _H:
+    """GET fake: the failure annotations of a check run, and the context's every attempt (``filter=all``)."""
+    def __init__(self, attempts=(), notes=None):
+        self.attempts, self.notes, self.paths = list(attempts), notes or {}, []
+
+    def __call__(self, path):
+        self.paths.append(path)
+        if "/annotations" in path:
+            rid = int(path.split("/check-runs/")[1].split("/")[0])
+            return [{"annotation_level": "failure", "message": m} for m in self.notes.get(rid, [])]
+        if "filter=all" in path:
+            return {"check_runs": self.attempts}
+        raise AssertionError(path)
+
+
+@pytest.fixture(autouse=True)
+def _no_live_github(monkeypatch):
+    """Nothing here may reach GitHub: an unmocked read is a failure, and a bare annotation read answers none."""
+    monkeypatch.setattr(mg.hc, "gh_get", _H())
+
+
+def _recorded(tmp_path, monkeypatch, attempts, notes=None, red=None):
+    hub = _H(attempts, notes)
+    monkeypatch.setattr(mg.hc, "gh_get", hub)
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda *a, **k: _live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK))
+    out, kept = mg.reclassify_recorded(_AS, _d(tmp_path, RED1 if red is None else red), lambda name, at: {"stale": False})
+    return out, kept, hub
+
+
+def test_a_concurrency_cancel_answered_by_a_rerun_in_the_same_check_suite_is_reclassified(tmp_path, monkeypatch):
+    out, kept, hub = _recorded(tmp_path, monkeypatch, [_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "success", "2026-10-10T15:31:00Z")],
+                               {1: ["Canceling since a higher priority waiting request exists"]})
+    assert [(x["stale_why"], x["superseded_cancelled"]) for x in out] == [("cancelled_superseded", [1])] and kept == []
+    assert any("filter=all" in p for p in hub.paths)
+
+
+def test_a_job_timeout_cancel_is_never_droppable_whatever_re_run_follows(tmp_path, monkeypatch):
+    out, kept, _ = _recorded(tmp_path, monkeypatch, [_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "success", "2026-10-10T15:31:00Z")], {1: [TIMEOUT]})
+    assert out == [] and "now GREEN" in kept[0]["why"]
+
+
+def test_a_failed_attempt_followed_by_a_green_re_run_stays_red_and_kept(tmp_path, monkeypatch):
+    attempts = [_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(3, "failure", "2026-10-10T15:30:00Z"), _run(2, "success", "2026-10-10T15:31:00Z")]
+    out, kept, _ = _recorded(tmp_path, monkeypatch, attempts)
+    assert out == [] and len(kept) == 1
+    out, kept, _ = _recorded(tmp_path, monkeypatch, attempts[1:], red=[{"id": 3, "conclusion": "failure", "completed_at": "2026-10-10T15:30:00Z"}])
+    assert out == [] and len(kept) == 1
+
+
+def test_an_unreadable_history_keeps_the_row(tmp_path, monkeypatch):
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda *a, **k: _live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK))
+    monkeypatch.setattr(mg.hc, "gh_get", lambda path: (_ for _ in ()).throw(OSError("gh down")))
+    out, kept = mg.reclassify_recorded(_AS, _d(tmp_path, RED1), lambda name, at: {"stale": False})
+    assert out == [] and len(kept) == 1
+
+
+def test_a_row_without_entry_data_whose_cancelled_attempt_was_a_timeout_stays_a_false_green(monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H(notes={1: [TIMEOUT]}))
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
+    assert mg.reclassify_by_reread(_A, _row(), lives, 1) == []
+
+
+def test_a_row_without_entry_data_is_cleared_by_the_full_history_when_the_listing_hid_attempt_one(monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H([_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "success", "2026-10-10T15:31:00Z")]))
+    lives = {(SHA, None): _live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK)}   # the default listing shows only the re-run
+    (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
+    assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
