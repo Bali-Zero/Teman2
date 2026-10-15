@@ -1,0 +1,48 @@
+{
+  "block_id": "B03",
+  "status": "OPEN_CORRECTION_PREPARED",
+  "block_closed": false,
+  "proofs": [
+    {
+      "artifact": "research/operations/udb-wave8/B03/dux-requests/RECEIPTS.json",
+      "description": "Dux-executed Stage-1 receipts DUX-REQ-B03-01..04 (exit 0) and pre-correction diagnostic receipts DUX-REQ-B03-10 (FAILED, exit 1, PinVerificationError), DUX-REQ-B03-11 (FAILED, exit 1, PinVerificationError), and DUX-REQ-B03-12 (OK, exit 0, matched_index_nodes: 10292 of 10299)."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/DEFINITIVE-SYNTHESIS.md",
+      "description": "Definitive synthesis updated with Dux-observed on-disk sha256 values and pre-correction diagnostic observations from DUX-NOTE-CORRECTION.md."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/b03_census_adapter.py",
+      "description": "Prepared stdlib-only census adapter candidate updated with Dux-observed input and supplementary prior pins, manifest 'files' key parsing, non-tautological job pre-image check, 2026-10-15T07:06:22Z static timestamp, and unknown:unknown:unknown store_id on LEAD-DELTA; awaiting post-correction Dux execution."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+      "description": "Prepared unittest candidate suite updated for the single permitted correction; awaiting post-correction Dux execution."
+    }
+  ],
+  "missing": [
+    "Post-correction Dux execution of DUX-REQ-B03-10 (unittest suite did not run tests in pre-correction pass due to PinVerificationError in setUpClass).",
+    "Post-correction Dux execution of DUX-REQ-B03-11 (no census output artifact was produced in pre-correction pass due to PinVerificationError).",
+    "DUX-REQ-B03-13 (cross-host LaunchAgents/crontab hashing) was not admitted and is deferred.",
+    "Deployed-execution evidence and B04/B05 store/operation bindings for unresolved leads in consumer-matrix.csv and LEAD-DELTA.json.",
+    "Host-wide proof that legacy copies of .github/workflows/restore-drill.yml (src_307bea3dfb94ec31) are retired (legacy_copies_elsewhere_proved_retired is false in LEAD-DELTA.json)."
+  ],
+  "tests": [
+    {
+      "id": "DUX-REQ-B03-10",
+      "command": "python3 -I -B -m unittest discover -s research/operations/udb-wave8/B03 -p \"test_*.py\" -v",
+      "result": "PENDING_DUX_EXECUTION"
+    },
+    {
+      "id": "DUX-REQ-B03-11",
+      "command": "python3 -I -B research/operations/udb-wave8/B03/b03_census_adapter.py --output-dir research/operations/udb-wave8/B03/artifacts",
+      "result": "PENDING_DUX_EXECUTION"
+    },
+    {
+      "id": "DUX-REQ-B03-12",
+      "command": "python3 -I -B -c 'import hashlib, json, subprocess; files = subprocess.check_output([\"git\", \"ls-files\"], text=True).splitlines(); idx = json.load(open(\".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json\")); idx_set = {n[\"source_id\"] for n in idx[\"nodes\"]}; m = {hashlib.sha256(f.encode()).hexdigest()[:24]: f for f in files}; matched = sorted((sid, m[sid]) for sid in idx_set if sid in m); print(\"matched_index_nodes:\", len(matched), \"of\", len(idx_set)); print(\"pg_sh_match:\", [x for x in matched if \"pg\" in x[1] or \"restore\" in x[1] or \"migrate\" in x[1]][:30])'",
+      "result": "PENDING_DUX_EXECUTION"
+    }
+  ],
+  "head_sha": "PENDING_DUX_COMMIT"
+}
