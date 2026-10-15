@@ -68,6 +68,10 @@ HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
 CS = "scripts/localci/tests/test_cancelled_superseded.py"
+B29_UNIT = ("scripts/localci/tests/test_review_gate.py",)   # B29
+B29_GATE = (f"{TICK}::test_the_guilt_table_breaks_every_sub_criterion", f"{TICK}::test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it",
+            f"{TICK}::test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head")
+B29_MOMENT = (f"{PHASEF}::test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it",)
 DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
@@ -442,6 +446,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "r5-b17-requires-a-later-green": (HC, "            and bool(greens)}", "            and any((g.get(\"completed_at\") or \"\") > (e.get(\"completed_at\") or \"\") for g in greens)}", (*HA, CS)),
     "r5-reread-lists-nothing-it-dropped": (PY, "            superseded.append(rid)", "            pass", (CS,)),
     "r5-cli-overwrites-a-run-dirs-evidence": (HC, 'if (out_dir / "state" / "plan.json").exists():', "if False:", ("scripts/localci/tests/test_hosted_compare.py",)),
+    "b29-term-out-of-the-gate": (PY, 'GATE = ("local_checks_clean", "review_independent", "review_not_blocking", "executed_contexts_ok",', 'GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok",', B29_GATE),
+    "b29-decision-alone-is-ignored": (PY, 'if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:', 'if "CHANGES_REQUESTED" in states:', B29_UNIT),
+    "b29-reviewer-list-ignored": (PY, 'if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:', 'if decision == "CHANGES_REQUESTED":', B29_UNIT + B29_GATE),
+    "b29-incomplete-list-trusted": (PY, 'type(latest.get("totalCount")) is not int or latest["totalCount"] != len(nodes)', "False", B29_UNIT),
+    "b29-unknown-state-trusted": (PY, "if any(st not in REVIEW_STATES for st in states):", "if False:", B29_UNIT),
+    "b29-nonstring-decision-trusted": (PY, "if decision is not None and not isinstance(decision, str):", "if False:", B29_UNIT),
+    "b29-absent-decision-reads-clear": (PY, 'if not isinstance(p, dict) or "reviewDecision" not in p:\n        return "the review decision is unreadable"\n    decision, latest = p["reviewDecision"], p.get("latestOpinionatedReviews")', 'if not isinstance(p, dict):\n        return "the review decision is unreadable"\n    decision, latest = p.get("reviewDecision"), p.get("latestOpinionatedReviews")', B29_UNIT + B29_MOMENT),
+    "b29-pr-side-term-never-set": (PY, "review_not_blocking=review_block(p),", "review_not_blocking=None,", B29_GATE),
+    "b29-merge-time-reread-unchecked": (PY, "if reason := review_block(pull):", "if False and review_block(pull):", B29_MOMENT),
+    "b29-liveness-excludes-the-term": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")', 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue", "review_not_blocking")', B29_UNIT),
+    "b29-old-row-without-the-term-counts": (PY, "all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)", "all(c.get(k) is not False for k in CRITERION if k not in LIVENESS_EXCLUDED)", B29_UNIT),
+    "b29-query-drops-the-reviewer-list": (PY, "latestOpinionatedReviews(first: 100)", "latestOpinionatedReviews(first: 99)", B29_UNIT),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
