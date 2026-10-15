@@ -211,20 +211,9 @@ held_slugs() { local g; for g in $HELD; do print -rn -- "${g:t} "; done; }
 report_held() {
   [ ${#HELD} -gt 0 ] || return 0
   log "held back by content guards: $(held_slugs)"
-  # a slug held for days must not add a ledger row every hour: skip when the last hold row,
-  # from the past 24 h, names the same slug set
   python3 -c 'import json,sys,time,socket
-path,slugs=sys.argv[1],sorted(sys.argv[2:])
-last=None
-try:
-    for line in open(path):
-        try: r=json.loads(line)
-        except ValueError: continue
-        if isinstance(r,dict) and r.get("type")=="mouth_content_guard_hold": last=r
-except OSError: pass
-if last and time.time()-float(last.get("ts",0))<86400 and sorted(last.get("slugs",[]))==slugs: sys.exit(0)
-row={"ts":time.time(),"type":"mouth_content_guard_hold","job":"translate-hourly","priority":"NORMAL","status":"pending","machine":socket.gethostname(),"slugs":slugs,"error_summary":"mouth hourly translation held back by content guards: "+" ".join(slugs)}
-open(path,"a").write(json.dumps(row)+"\n")' "$ESCALATIONS" ${HELD:t} >>"$LOG" 2>&1 || log "WARN: could not append the escalation row"
+row={"ts":time.time(),"type":"mouth_content_guard_hold","job":"translate-hourly","priority":"NORMAL","status":"pending","machine":socket.gethostname(),"slugs":sys.argv[2:],"error_summary":"mouth hourly translation held back by content guards: "+" ".join(sys.argv[2:])}
+open(sys.argv[1],"a").write(json.dumps(row)+"\n")' "$ESCALATIONS" ${HELD:t} >>"$LOG" 2>&1 || log "WARN: could not append the escalation row"
 }
 
 abort_unpromotable() {  # abort_unpromotable <rc> <why>

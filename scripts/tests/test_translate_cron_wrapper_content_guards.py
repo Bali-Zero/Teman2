@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import os
-import time
 from pathlib import Path
 import shutil
 import subprocess
@@ -210,37 +209,12 @@ def test_a_final_set_that_is_red_though_each_group_is_green_promotes_nothing(hom
     assert _heartbeat(home).startswith("degraded")
 
 
-def _escalate(home: Path, slugs: list[str], age_s: float) -> None:
-    row = {"ts": time.time() - age_s, "type": "mouth_content_guard_hold", "slugs": slugs}
-    path = home / "nuzantara" / "shared" / "escalations_pro.jsonl"
-    path.write_text(path.read_text() + json.dumps(row) + "\n")
-
-
 def test_the_generated_vitest_config_disables_the_results_cache(home: Path) -> None:
     # vitest's results cache lands in apps/mouth/node_modules, the SHARED symlink in a Pro worktree
     _run(home, ALPHA)
 
     seen = (home / "vitest-config.seen").read_text()
     assert "cache: false" in seen and "testTimeout" in seen
-
-
-def test_a_slug_set_already_escalated_within_24h_adds_no_row(home: Path) -> None:
-    _escalate(home, ["badslug"], age_s=3600)
-
-    result = _run(home, ALPHA + BAD)
-
-    assert result.returncode == 0
-    assert len(_escalations(home)) == 1
-    assert "badslug" in _pr_body(home)  # the PR body and heartbeat still say it
-
-
-@pytest.mark.parametrize(("slugs", "age_s"), [(["other"], 3600), (["badslug"], 90000)])
-def test_a_different_slug_set_or_a_stale_row_gets_a_new_row(home: Path, slugs: list[str], age_s: float) -> None:
-    _escalate(home, slugs, age_s=age_s)
-
-    _run(home, ALPHA + BAD)
-
-    assert [r["slugs"] for r in _escalations(home)] == [slugs, ["badslug"]]
 
 
 def _stub_guard(home: Path, rc: int) -> None:
