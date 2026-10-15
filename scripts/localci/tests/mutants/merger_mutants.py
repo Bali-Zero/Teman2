@@ -1236,13 +1236,18 @@ def _check_row(origin: str, name: object, row: object) -> None:
         raise SystemExit(f"{origin}: malformed mutant row {name!r}: want name -> (target, old, new, (test, ...)) with non-empty strings")
 
 
+_MERGED: dict[str, tuple[str, tuple]] = {}   # rows name -> (file, row) already merged, so a second merge_rows() is a no-op
+
+
 def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
-    """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run."""
+    """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run.
+    Runs at import (below) and again from main(): a row already merged from the same file, identical, is skipped."""
     import importlib.util
     rows_dir = ROWS_DIR if rows_dir is None else rows_dir
     into = MUTANTS if into is None else into
-    sys.modules.setdefault("merger_mutants", sys.modules[__name__])   # a rows file's `from merger_mutants import PY` shares this table
-    owner = {n: "the inline MUTANTS dict" for n in into}
+    if __name__ in sys.modules:
+        sys.modules.setdefault("merger_mutants", sys.modules[__name__])   # a rows file's `from merger_mutants import PY` shares this table
+    owner = {n: _MERGED[n][0] if n in _MERGED else "the inline MUTANTS dict" for n in into}
     for f in sorted(rows_dir.glob("*.py")) if rows_dir.is_dir() else []:
         if f.name.startswith("_"):
             continue
@@ -1254,10 +1259,14 @@ def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
             raise SystemExit(f"{f.name}: must define ROWS as a dict")
         for n, row in rows.items():
             _check_row(f.name, n, row)
+            if n in owner and _MERGED.get(n) == (f.name, row) and into.get(n) == row:
+                continue
             if n in owner:
                 raise SystemExit(f"{f.name}: duplicate mutant name {n!r}, already in {owner[n]}")
             owner[n] = f.name
             into[n] = row
+            if into is MUTANTS:
+                _MERGED[n] = (f.name, row)
     return into
 
 
@@ -1301,6 +1310,9 @@ def main(argv: list[str] | None = None) -> int:
     killed = len(names) - len(survived) - len(stale) - len(errors)
     print(f"{killed}/{len(names)} killed; survivors: {survived or 'none'}; errors: {errors or 'none'}; stale: {stale or 'none'}")
     return 1 if survived or stale or errors else 0
+
+
+merge_rows()   # B36: at import, so a harness that iterates MUTANTS sees the rows too
 
 
 if __name__ == "__main__":

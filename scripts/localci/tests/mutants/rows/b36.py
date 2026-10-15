@@ -6,5 +6,8 @@ MR, MR_T = "scripts/localci/tests/mutants/merger_mutants.py", ("scripts/localci/
 ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b36-duplicate-check-dropped": (MR, "            if n in owner:\n", "            if False:\n", MR_T),
     "b36-malformed-check-dropped": (MR, "            _check_row(f.name, n, row)\n", "            pass\n", MR_T),
-    "b36-loader-not-called": (MR, "    merge_rows()\n    names = a.only", "    names = a.only", MR_T),
+    "b36-loader-not-called-at-import": (MR, "\n\nmerge_rows()   # B36: at import", "\n\npass   # B36: at import", MR_T),
+    "b36-rows-dir-typo": (MR, 'parent / "rows"   # B36', 'parent / "row"   # B36', MR_T),
+    "b36-second-merge-raises": (MR, "if n in owner and _MERGED.get(n) == (f.name, row) and into.get(n) == row:", "if False:", MR_T),
+    "b36-underscore-file-loaded": (MR, '        if f.name.startswith("_"):\n            continue\n', "", MR_T),
 }

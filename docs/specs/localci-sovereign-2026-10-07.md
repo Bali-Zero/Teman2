@@ -512,11 +512,14 @@ Pro, P1-P4 are live, and every open labelled Gear >= 2 PR has a ledger entry for
 
 `merger_mutants.py` kept one dict, and every LocalCI PR appended at its tail, so each merge made the others DIRTY and an
 armed branch is frozen. New mutants now go in `scripts/localci/tests/mutants/rows/<feature>.py`, one file per change,
-defining `ROWS` with the SAME tuple shape as `MUTANTS`. A rows file may `from merger_mutants import PY, RD, MERGER_T, cq`:
-`merge_rows()` runs inside `main()` (never at import) and registers the running module under that name first, so there is
-no circular import. Files merge in sorted filename order (`_`-prefixed files are skipped); a duplicate name (across files or
-against the inline dict), a missing or non-dict `ROWS`, or a malformed row stops the run (exit message, not a skip).
-`--list` and `--only` see rows exactly like inline ones. Inline rows stay where they are. Bites: the next LocalCI PR adds
+defining `ROWS` with the SAME tuple shape as `MUTANTS`. A rows file may `from merger_mutants import` any module-level name the table defines
+on main (e.g. `PY`, `SH`, `MERGER_T`, `RD`, `cq`; check the file, a name that exists only in another PR's head is not there yet).
+`merge_rows()` runs at import, after every helper and the dict are defined, so a harness that only imports `merger_mutants`
+and iterates `MUTANTS` sees the rows too, and again from `main()`: it is idempotent (a row already merged from the same file,
+identical, is skipped) and the module registers itself as `merger_mutants` first, so there is no circular import. Files merge
+in sorted filename order (`_`-prefixed files are skipped); a duplicate name (across files or against the inline dict), a
+missing or non-dict `ROWS`, or a malformed row stops the run (exit message, not a skip). A rows file never writes `MUTANTS`
+itself (an AST test over `rows/*.py`). `--list` and `--only` see rows exactly like inline ones. Inline rows stay where they are. Bites: the next LocalCI PR adds
 its mutants as a rows file and merges without touching the dict.
 
 ## 3. What is lost, and what covers it
