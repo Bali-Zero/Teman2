@@ -4,8 +4,30 @@ import type { components, operations } from "@/lib/api/schema";
 export type VisaOracleEvaluateOperation = operations["evaluateVisaOracleV2"];
 export type VisaOracleEvaluateRequest =
   VisaOracleEvaluateOperation["requestBody"]["content"]["application/json"];
-export type VisaOracleEvaluateResponse =
+type RawEvaluateResponse =
   VisaOracleEvaluateOperation["responses"][200]["content"]["application/json"];
+type RawCandidateDisplay = components["schemas"]["CandidateDisplayDTO"];
+type RawStayPolicy = components["schemas"]["StayPolicy"];
+
+export type VisaOracleStayPolicy = Omit<RawStayPolicy, "kind"> & {
+  kind: RawStayPolicy["kind"] | (string & {});
+};
+export type VisaOracleCandidateDisplay = Omit<
+  RawCandidateDisplay,
+  "stay_policy"
+> & {
+  stay_policy: Omit<RawCandidateDisplay["stay_policy"], "stay"> & {
+    stay: VisaOracleStayPolicy;
+  };
+};
+export type VisaOracleEvaluateResponse = Omit<
+  RawEvaluateResponse,
+  "display"
+> & {
+  display: Omit<RawEvaluateResponse["display"], "candidates"> & {
+    candidates: VisaOracleCandidateDisplay[];
+  };
+};
 export type VisaOracleErrorResponse =
   VisaOracleEvaluateOperation["responses"][400]["content"]["application/json"];
 export type VisaOracleValidationErrorResponse =
@@ -24,6 +46,4 @@ export type VisaOracleDisclosedReviewFlag =
   VisaOracleEvaluateRequest["disclosed_review_flags"][number];
 export type VisaOracleUnknownReason = components["schemas"]["UnknownReason"];
 export type VisaOracleDecisionState = components["schemas"]["DecisionState"];
-export type VisaOracleCandidateDisplay =
-  components["schemas"]["CandidateDisplayDTO"];
 export type VisaOracleSourceRecord = components["schemas"]["SourceRecordDTO"];

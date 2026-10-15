@@ -384,46 +384,6 @@ describe("Visa Oracle engine response runtime guard", () => {
         },
       ],
       [
-        "minimum_days greater than maximum_days",
-        (c) => {
-          const stay = (c.stay_policy as Record<string, unknown>)
-            .stay as Record<string, unknown>;
-          stay.minimum_days = 730;
-          stay.maximum_days = 365;
-        },
-      ],
-      [
-        "FIXED_DAYS with null maximum_days",
-        (c) => {
-          const stay = (c.stay_policy as Record<string, unknown>)
-            .stay as Record<string, unknown>;
-          stay.kind = "FIXED_DAYS";
-          stay.minimum_days = null;
-          stay.maximum_days = null;
-        },
-      ],
-      [
-        "NOT_APPLICABLE with non-null days",
-        (c) => {
-          const stay = (c.stay_policy as Record<string, unknown>)
-            .stay as Record<string, unknown>;
-          stay.kind = "NOT_APPLICABLE";
-          stay.minimum_days = 60;
-          stay.maximum_days = 60;
-        },
-      ],
-      [
-        "unknown stay.kind",
-        (c) => {
-          (
-            (c.stay_policy as Record<string, unknown>).stay as Record<
-              string,
-              unknown
-            >
-          ).kind = "OPEN_ENDED";
-        },
-      ],
-      [
         "stay missing",
         (c) => {
           delete (c.stay_policy as Record<string, unknown>).stay;
@@ -479,6 +439,64 @@ describe("Visa Oracle engine response runtime guard", () => {
         () => parseVisaOracleEvaluateResponse(response),
         label,
       ).toThrowError(expect.objectContaining({ code: "MALFORMED_RESPONSE" }));
+    }
+  });
+
+  it("accepts a stay policy that breaks a stay-kind invariant instead of failing the page", () => {
+    const invariantBreaks: Array<
+      [string, (candidate: Record<string, unknown>) => void]
+    > = [
+      [
+        "minimum_days greater than maximum_days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.minimum_days = 730;
+          stay.maximum_days = 365;
+        },
+      ],
+      [
+        "FIXED_DAYS with null maximum_days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.kind = "FIXED_DAYS";
+          stay.minimum_days = null;
+          stay.maximum_days = null;
+        },
+      ],
+      [
+        "NOT_APPLICABLE with non-null days",
+        (c) => {
+          const stay = (c.stay_policy as Record<string, unknown>)
+            .stay as Record<string, unknown>;
+          stay.kind = "NOT_APPLICABLE";
+          stay.minimum_days = 60;
+          stay.maximum_days = 60;
+        },
+      ],
+      [
+        "unknown stay.kind",
+        (c) => {
+          (
+            (c.stay_policy as Record<string, unknown>).stay as Record<
+              string,
+              unknown
+            >
+          ).kind = "OPEN_ENDED";
+        },
+      ],
+    ];
+
+    for (const [label, mutate] of invariantBreaks) {
+      const response = makeVisaOracleResponse();
+      mutate(
+        response.display.candidates[0] as unknown as Record<string, unknown>,
+      );
+      expect(
+        () => parseVisaOracleEvaluateResponse(response),
+        label,
+      ).not.toThrow();
     }
   });
 });
