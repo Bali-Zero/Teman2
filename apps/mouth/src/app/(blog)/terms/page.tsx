@@ -68,16 +68,18 @@ export default function TermsOfServicePage() {
         <Section title="3. Fees and Payments">
           <ul className="list-disc ml-6 space-y-2 text-sm">
             <li>
-              All fees are listed on our service pages in USD. Government fees
-              are passed through at cost.
+              Visa and stay-permit prices are all-inclusive: government fees and
+              the Bali Zero service are included in the price shown. For other
+              services, the service page or your written quote states whether
+              government fees are included.
             </li>
             <li>
               Payment is due before filing unless otherwise agreed in writing.
             </li>
             <li>
               <strong>Refund policy:</strong> if we cannot deliver the service
-              due to our error, we refund the service fee in full. Government
-              fees paid on your behalf are non-refundable.
+              due to our error, we refund what you paid, except government fees
+              already paid on your behalf, which are non-refundable.
             </li>
           </ul>
         </Section>
