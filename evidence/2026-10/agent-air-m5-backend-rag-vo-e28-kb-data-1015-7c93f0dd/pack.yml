@@ -1,0 +1,71 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "Lane VO-E28-KB-DATA-1015 (PR C2 of the E28 audit). Gear 2. Single implementer seat (Claude Sonnet 5.5) on a brief from
+  the orchestrator; local commits only, no push; production writes are run by the orchestrator after merge."
+lanes:
+  - lane: e28-kb-data
+    role: build
+    seat: "claude-sonnet-5-5 implementer, single round, TDD with one mutation proven red"
+
+seat_override: "R8 ground_truth: the ground truth is the six saved official Imigrasi page texts (research/visa/2026-10-15-e28-pages/, receipts e28-pages.receipts.jsonl) read and grepped on disk; no NotebookLM query was run, so no nb or query_hash exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4: code and public official page text only; no client data reached any seat."
+pii_scan_note: "Diff holds public immigration page text, catalogue wording and synthetic test strings only."
+
+grounding:
+  origin_main: "c68ae57f15 (branch base)"
+  head: "9da04589ff (tests commit; the evidence commit follows it)"
+  saved_pages: "research/visa/2026-10-15-e28-pages/text/ (E28A df3ba889, E28B 4ba3c1a3, E28C 2cdb5b81, E28D dd5e2a06, E28E 5b9dd676 (no content), E28F 74e25e50), copied byte-identical from the audit worktree"
+  truth_table: "scratchpad e28-truth-table.md (signed pack seq-29 + pages)"
+  prod_before:
+    E28A: "cost_visa '17.000.000 - 19.000.000 IDR'; requirements carry 'Passport photo 4x6 red background' and 'Return/onward ticket'; allowed_activities carry document lines; processing '7-10 days'"
+    E28B: "name 'E28B - Investor KITAS (Golden Visa 5Y)'; allowed 'Investasi minimal Rp 2.5 miliar'; restrictions 'Wajib maintain investasi'"
+    E28C: "restrictions 'Dilarang bekerja'; allowed 'Tidak perlu mendirikan PT PMA', USD 350.000 only"
+    E28G: "name 'E28G - Investor KITAS (Golden Visa 10Y)'; allowed 'Golden Visa 10 tahun', 'Investasi Rp 5 miliar+'"
+    qdrant: "E28A stay_extension_days 730 + 'KITAP threshold INCREASED to Rp 15 billion'; E28B 'Direct KITAP-INV after 5y ... prior Indonesia entry'; E28D 'Branch/Representative Office'; E28F 'Real Estate ... Rp 5 billion+'; E28G point 225aed53 'Golden 10Y Real Estate'; concept b50440ec 'E28B/E28G Golden Visa' and 'Exemption: Golden Visa investors (E28B, E28G)'"
+  retire_mechanism: "none: knowledge_visa.py runs SELECT * FROM visa_types with no status/hidden/active filter and the MCP tools call it verbatim; E28G is rewritten as 'not a current visa (see E28B or E28C)' with no threshold"
+  cost_visa_choice: "E28A 'IDR 17.000.000 (offshore) / IDR 19.000.000 (onshore), all-inclusive': two labelled prices for the two catalogue products, not a 17-19 range; offshore-only would under-quote an onshore client"
+  field_placement: "the API exposes requirements/restrictions/allowed_activities, not description; thresholds and the page's special requirements sit once in requirements (the page's own 'Persyaratan khusus'), allowed_activities holds only what the page allows"
+  workflow_auto_run: "fly-deploy.yml run-python-migrations runs named apply_migration_NNN.py files only; migration_128 does not run on merge, the orchestrator runs it by hand"
+
+verification:
+  red_on_main: "mutation in the migration (E28B tiers replaced by 'Rp 2.5 miliar') fails 4 tests (figures not on page, tier missing, forbidden claim, seed drift); file restored by cp"
+  green: "test_e28_kb_data_follows_the_official_pages.py + test_visa_types_seed_vs_migration_tripwire.py: 55 passed; neighbours test_visa_types_seed_e23_pricing, test_visa_engine_compile_claims, visa_check/test_catalogue: 93 passed"
+  local_floor: "evidence_pack_lint --print-floor on the origin/main diff = 1; declared gear 2 by the orchestrator"
+
+dissent: []
+
+out_of_scope_reported:
+  - "E28A process_steps still contains 'Bayar biaya PNBP' (a step, not an amount); not rewritten because the six live steps were not re-read here."
+  - "The two E28A lines 'Visa valid 90 days from issuance' and 'ITAS and Re-entry Permit issued automatically upon entry' leave allowed_activities and are not re-homed (tips/process_steps content unknown)."
+  - "The concept note still carries the 'KITAP E28A requires Rp 15 billion (Pasal 176(2)(c))' section: a KITAP rule not on the E28 pages, not in the audit's cure list for the concept note (F40 LOW)."
+  - "Seed E28A name 'Investor Visa' and E28F name differ from the live names; a seed re-run would rename them (pre-existing, not widened)."
+  - "A router-level retire flag for visa_types is missing."
+
+bites:
+  consumer: "MCP get_visa_details / list_visa_types (PROD visa_types via GET /api/knowledge/visa) and Zantara's visa_oracle Qdrant retrieval of the E28 points"
+  observation: "after the orchestrator's authorized post-merge run (migration 128, then fix_visa_oracle_e28_points.py --backup then --apply): get_visa_details E28B shows the USD 2.500.000 / 5.000.000 tiers and no 'Rp 2.5 miliar', get_visa_details E28G reads 'Not a current visa', and a Qdrant scroll shows no E28G point and the corrected E28F note"
+
+receipts:
+  - claim: "New tests plus the seed/migration tripwire green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/kb/test_e28_kb_data_follows_the_official_pages.py backend/tests/test_visa_types_seed_vs_migration_tripwire.py -p no:cacheprovider"
+    result: "55 passed"
+    exit: 0
+    ts: "2026-10-15T23:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Neighbouring visa-type and catalogue tests green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py backend/tests/scripts/test_visa_engine_compile_claims.py backend/tests/services/visa_check/test_catalogue.py -p no:cacheprovider"
+    result: "93 passed"
+    exit: 0
+    ts: "2026-10-15T23:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation of the E28B tiers in migration_128 is convicted; file restored by cp"
+    cmd: "sed on migration_128 (tiers -> 'Rp 2.5 miliar'), pytest the new test file, cp restore"
+    result: "4 failed, 46 passed; after restore 50 passed"
+    exit: 1
+    ts: "2026-10-15T22:55Z"
+    seat: claude-sonnet-5-5
+
+spend:
+  adversarial_rounds: 0
