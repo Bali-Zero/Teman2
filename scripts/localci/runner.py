@@ -2749,7 +2749,7 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     if probes is not None:
         probes.append(probe)
     rc, err = execute_contained(f"{name}.{slug}.egress", spec, run_dir, plan, inner, {}, extra, env, log, junit, st.get("timeout_s") or job["timeout_s"],
-                                "/w", network="bridge", image_id=job["image_id"], memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]), probe=probe)
+                                "/w", network="bridge", image_id=job["image_id"], probe=probe, memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))
     got = parse_expr_junit(junit) if not err else None
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
