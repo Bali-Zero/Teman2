@@ -1331,10 +1331,12 @@ function visitStayLimitReason(facts: OracleFacts): OutcomeReason | undefined {
   if (category === "business" && facts.business_activity === "exploring") {
     return undefined;
   }
-  const raw = facts.stay_days;
-  if (raw === undefined || raw.trim() === "") return undefined;
-  const days = Number(raw);
-  if (!Number.isFinite(days) || days <= max) return undefined;
+  // The same reading the engine was sent: a stay the visitor did not declare
+  // as a plain whole number ("181.5", " 181 ", "2e2") reaches the pack as
+  // unknown, so it must not be quoted back as something they told us.
+  const stay = mapStayDays(facts);
+  if (stay.status !== "KNOWN" || stay.value <= max) return undefined;
+  const days = stay.value;
   return {
     code: VISIT_STAY_EXCEEDS_LIMIT_CODE,
     message: text(

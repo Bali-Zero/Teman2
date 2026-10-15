@@ -4813,7 +4813,13 @@ describe("V07: a visit stay past 180 days names the limit", () => {
         "VISIT_STAY_EXCEEDS_180_DAYS",
         code,
       ]);
-      expect(reasons[0].message.en).not.toMatch(/guarantee|will be approved/i);
+      // Advisor offered, never promised: no promise verb in either language.
+      expect(reasons[0].message.en).not.toMatch(
+        /guarantee|will be approved|will confirm|advisor/i,
+      );
+      expect(reasons[0].message.id).not.toMatch(
+        /pasti|dijamin|akan memastikan|konsultan/i,
+      );
     },
   );
 
@@ -4847,6 +4853,18 @@ describe("V07: a visit stay past 180 days names the limit", () => {
     expect(
       noPath({ category: "tourism", stay_days: "" }, [code]).map((r) => r.code),
     ).toEqual([code]);
+    for (const stay_days of [
+      "181.5",
+      " 181 ",
+      "2e2",
+      "0181",
+      "-200",
+      "unsure",
+    ]) {
+      expect(
+        noPath({ category: "tourism", stay_days }, [code]).map((r) => r.code),
+      ).toEqual([code]);
+    }
   });
 
   it("the bound is the pack's 180 (el.c1.tourism-family / el.c2.business / el.c6.social)", () => {
