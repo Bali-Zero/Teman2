@@ -31,7 +31,8 @@ interactive aesthetics ("immediatezza estetica"), (b) simple, impeccable content
 answers, (c) authoritative enough to demo to Ditjen Imigrasi Jakarta, (d) a true expat guide.
 Mandate: Zero, 2026-07-17. Working mode: multi-LLM deep-research ↔ brainstorm loop (unlimited
 rounds), all work in worktree `mouth-visa-oracle` until final draft for operator analysis. This is
-Subhi's surface (`apps/mouth`) — verification per CLAUDE.md §13 (CI + AI review, generator≠grader).
+Subhi's surface (`apps/mouth`) — his own PRs ship on the required checks alone (RULED 2026-10-15,
+no review); a session's PRs here keep generator≠grader.
 
 ## ENFORCE-GATE (canonical ruling as of 2026-08-08 — NO-GO / SHADOW)
 
