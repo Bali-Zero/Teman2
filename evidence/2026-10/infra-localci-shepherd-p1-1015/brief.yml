@@ -21,8 +21,8 @@ objective: >-
   borrows the merger's objects (clone --shared).
 acceptance:
   - text: >-
-      Classifier per class, budget floors exact (1499 observe, 1500 act, 799
-      skip), call cap 60/61, lease, fork and off-limits guilt and innocence, no
+      The shepherd SHALL classify per class, hold the budget floors exact (1499 observe, 1500 act, 799
+      skip), make no more than 60 REST calls counting rate_limit (the 61st never made), hold the lease, fork and off-limits guilt and innocence, no
       write verb in shepherd.py, plist and registry pinned.
     probe: python3 -m pytest -q scripts/localci/tests/test_shepherd.py
 assumptions:
