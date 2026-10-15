@@ -1,5 +1,6 @@
 gear: 3
 brief_ref: evidence/brief.yml
+council_run: "council-journal.jsonl"
 plan_ref: "Owner mandate 2026-10-15 (Zero): add D2 Business 5 years at 13.000.000 IDR on every surface; this PR is the CRM catalogue follow-up of #8540."
 mission: "practice_types.visa_d2_business_5yr active at 13000000 in production after the Fly release_command applies migration 326."
 lanes:
@@ -63,3 +64,21 @@ receipts:
     exit: 0
     ts: "2026-10-15T10:53:43Z"
     seat: codex-gpt-5.6-sol
+  - claim: "council round 2 on migration 326 (after renumber and full-row postcondition), codex, env-scrubbed, read-only, high effort."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < council_r2_326_prompt.md'
+    result: "SEAT-VERDICT: ok"
+    exit: 0
+    ts: "2026-10-15T11:00:20Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "council round 2 on migration 326, agy (self-reported Gemini 4 Argon), env-scrubbed, same prompt."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" agy -p "$(cat council_r2_326_prompt.md)"'
+    result: "SEAT-VERDICT: ok"
+    exit: 0
+    ts: "2026-10-15T11:02:37Z"
+    seat: agy-gemini-4-argon
+  - claim: "Probe receipts for the brief acceptance: docker postgres:17 scratch, psql -v ON_ERROR_STOP=1 < forward section twice; scratch: UPDATE the row, run the DO block alone (guilt x4 raise, innocence passes). Production probe scripts/pg.sh SELECT base_price,is_active FROM practice_types WHERE code='visa_d2_business_5yr' is run after deploy and reported on the PR."
+    cmd: "see the two scratch receipts above (2026-10-15T10:55:26Z)"
+    result: "apply 0/0; guilt exit 3 x4; innocence 0"
+    exit: 0
+    ts: "2026-10-15T10:55:26Z"
+    seat: claude-opus-5-5
