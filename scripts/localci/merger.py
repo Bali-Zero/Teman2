@@ -825,7 +825,7 @@ class AbortJudge(HostedReads):
     "The operation was canceled."; (3) its job, matched to ONE workflow job AT THE JOB'S ``head_sha`` (mirror, ``git show``), maps step for
     step onto that job's steps ("Set up job", the workflow steps by name, then only ``Post`` steps and "Complete job"), and the one cancelled
     step is a setup step by its ``uses:`` repository (``SETUP_ACTIONS``), never by its name; (4) every step before it did not fail and is a setup step
-    or a ``run:`` step before the first checkout (an empty workspace: it judged no repository code), every step after it is skipped, or ran to success under an exact ``if: always()``. Anything it cannot read or match raises ``MergerError``: ``hc.abort_reading`` keeps the class."""
+    or a ``run:`` step before the first checkout (an empty workspace: it judged no repository code), every step after it is skipped, or ran to success under an ``if:`` that calls a status function. Anything it cannot read or match raises ``MergerError``: ``hc.abort_reading`` keeps the class."""
     def __init__(self, repo: str, mirror: Path, cache: dict | None = None):
         super().__init__(repo, cache)
         self.mirror = mirror
@@ -857,9 +857,13 @@ class AbortJudge(HostedReads):
             return False
         return "/".join(uses.split("@")[0].split("/")[:2]).lower() in SETUP_ACTIONS
 
-    @staticmethod
-    def always(step: dict) -> bool:
-        return str(step.get("if")).strip() in ("always()", "${{ always() }}")
+    STATUS_FUNCTION = re.compile(r"(?<![\w.$-])(always|cancelled|failure)\s*\(\s*\)")
+
+    @classmethod
+    def always(cls, step: dict) -> bool:
+        """The step's ``if:`` calls a status function (``always()``, ``cancelled()``, ``failure()``): GitHub then runs it after a failure or a
+        cancel. Read by entity, not by substring: a quoted string (``github.ref == 'always()'``) is not a call."""
+        return cls.STATUS_FUNCTION.search(re.sub(r"'(?:[^']|'')*'", "''", str(step.get("if")))) is not None
 
     def setup_step(self, steps: list[dict], wf: list[dict]) -> tuple[str | None, str]:
         """``(the cancelled setup step's name, "")`` or ``(None, why not)``; an unmappable job raises."""
@@ -887,7 +891,7 @@ class AbortJudge(HostedReads):
                 return None, f"the step before the cancelled one ({main[k].get('name')!r}) is neither a setup action nor a `run:` step that succeeded before the first checkout"
         if any(x.get("conclusion") not in ("success", "skipped") for x in main[:i]):
             return None, "a step before the cancelled one did not succeed"
-        for k in range(i + 1, n):   # after the hang only the steps the author declared `if: always()` (reporting, upload) may have run, and only to success
+        for k in range(i + 1, n):   # after the hang only the steps the author gated with a status function (reporting, upload) may have run, and only to success
             if main[k].get("conclusion") != "skipped" and not (main[k].get("conclusion") == "success" and self.always(wf[k])):
                 return None, f"a step after the cancelled one ran ({main[k].get('name')!r})"
         return str(main[i].get("name")), ""

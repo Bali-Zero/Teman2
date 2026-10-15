@@ -18,6 +18,11 @@ objective: >-
   phase E READY line format. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
   - >-
+    After the hung setup step a step may have run only with conclusion success under an if: that calls a status function
+    (always, cancelled, failure; parsed as a call outside quoted strings). Such a step could in principle run tests; none
+    of the verdict-carrying steps of #8514 did. B20's memo projection already holds every field B27 reads; the extra reads
+    (history, job, annotations, workflow) are not memoised and repeat on each refresh for each cancelled red row.
+  - >-
     B17b is folded in: reclassify_recorded and reclassify_by_reread read the context's full history (filter=all) and never
     drop a timeout-annotated cancel; one more GET per recorded cancelled row, and per unexplained green context on
     rows that journal no per-entry data. A pre-checkout run: step must have concluded success. The PR-level PENDING (A6)

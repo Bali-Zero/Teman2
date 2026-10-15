@@ -100,11 +100,18 @@ def test_reporting_steps_declared_always_that_ran_after_the_hang_do_not_stop_the
     assert judge(tmp_path, monkeypatch, workflow=WITH_ALWAYS, steps=ALWAYS_HUNG)(NAME, RED)["aborted"] is True
 
 
-def test_a_step_after_the_hang_that_ran_without_an_exact_always_or_failed_stays_a_false_green(tmp_path, monkeypatch):
-    for wf, steps in ((WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        if: always() && github.event_name == 'push'\n        run: echo balance"), ALWAYS_HUNG),
-                      (WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        run: echo balance"), ALWAYS_HUNG),
-                      (WITH_ALWAYS, [*HUNG[:4], ("Report", "failure"), ("Upload test results", "success"), *POST])):
+def test_a_step_after_the_hang_that_ran_without_a_status_function_or_failed_or_hides_the_call_in_a_string_stays_a_false_green(tmp_path, monkeypatch):
+    plain = WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        run: echo balance")
+    quoted = WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        if: github.ref == 'always()'\n        run: echo balance")
+    for wf, steps in ((plain, ALWAYS_HUNG), (quoted, ALWAYS_HUNG), (WITH_ALWAYS, [*HUNG[:4], ("Report", "failure"), ("Upload test results", "success"), *POST]),
+                      (WITH_ALWAYS, [*HUNG[:4], ("Report", "success"), ("Upload test results", "cancelled"), *POST])):
         assert judge(tmp_path, monkeypatch, workflow=wf, steps=steps)(NAME, RED)["aborted"] is False
+
+
+@pytest.mark.parametrize("cond", ["always()", "${{ always() }}", "cancelled()", "${{ !cancelled() }}", "failure()", "always() && github.event_name == 'push'"])
+def test_each_status_function_in_the_if_lets_a_reporting_step_run_after_the_hang(tmp_path, monkeypatch, cond):
+    wf = WITH_ALWAYS.replace("        if: always()\n        run: echo balance", f"        if: {cond}\n        run: echo balance")
+    assert judge(tmp_path, monkeypatch, workflow=wf, steps=ALWAYS_HUNG)(NAME, RED)["aborted"] is True
 
 
 def test_a_run_step_before_the_cancelled_one_that_ran_after_a_checkout_stays_a_false_green(tmp_path, monkeypatch):
@@ -333,3 +340,27 @@ def test_the_tick_path_reads_the_same_live_data_as_not_green_so_hosted_required_
     live = {"required_checks": [{"context": NAME, "app_id": APP}], "check_runs": [check_run(11, NAME, "cancelled")], "statuses": []}
     assert "RED" in mg.hosted_side(live) and mg.required_verdicts(live) == {NAME: "RED"}
     assert "hosted_required_green" in mg.GATE and mg.enqueue_step is not None
+
+
+def test_a_memo_served_row_classifies_exactly_like_the_live_one(tmp_path, monkeypatch):
+    """B20's hosted_memo.json keeps a projection of the hosted reads: everything B27 reads of it (the run's id and conclusion) survives it, and
+    the reads B27 adds (history, job, annotations, workflow) are made outside the memo."""
+    import argparse
+    tail = [*ASSERT_HUNG[:5], ("Report", "success"), ("Upload test results", "success"), *POST]
+    d, gh = incident(tmp_path, monkeypatch, (WITH_ASSERT + ALWAYS).replace("Backend Tests (Python)", CTX[0]), steps=tail)
+    gh.pulls = {1: pull(d["head_sha"], state="closed")}   # closed and old: final, so the memo keeps its reads
+    d = {**d, "ts": "2026-10-01T00:00:00Z"}
+    state = tmp_path / "state"
+    (state / "decisions.jsonl").write_text(json.dumps(d) + "\n")
+    monkeypatch.setattr(hc, "gh_get", gh)
+    args = argparse.Namespace(repo=REPO, base="main", state_dir=str(state), since=None)
+    live_memo = mg.ReadMemo(state / mg.MEMO_FILE)
+    _, live = mg.report(args, emit=False, memo=live_memo)
+    live_memo.save()
+    assert live_memo.misses > 0 and live["hosted_aborted"]["count"] == 1
+    gh.paths.clear()
+    served_memo = mg.ReadMemo(state / mg.MEMO_FILE)
+    _, served = mg.report(args, emit=False, memo=served_memo)
+    assert served_memo.hits > 0 and not [p for p in gh.paths if "/pulls/" in p]   # the pull came from the memo
+    for key in ("counts", "context_counts", "hosted_aborted", "false_green_breakdown", "recorded_context_false_green", "phase_e_ready"):
+        assert served[key] == live[key], key
