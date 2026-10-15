@@ -1123,7 +1123,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-write-verb-assembled": ('scripts/localci/shepherd.py', '\n\ndef main(argv', '\n\n_Q = "mut" + "ation{addLabelsToLabelable(input:{}){clientMutationId}}"\n\n\ndef main(argv', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-journal-armed-true": ('scripts/localci/shepherd.py', '"armed": False', '"armed": True', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-brief-truncation-ignored": ('scripts/localci/shepherd.py', '        return None   # a truncated file list', '        pass   # a truncated file list', ('scripts/localci/tests/test_shepherd.py',)),
-    "b34-files-truncation-ignored": ('scripts/localci/shepherd.py', 'if (files.get("totalCount") or 0) > len(files.get("nodes") or []):\n        return {**row, "action": "never_auto"', 'if False:\n        return {**row, "action": "never_auto"', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-files-truncation-ignored": ('scripts/localci/shepherd.py', 'if (files.get("totalCount") or 0) > len(files.get("nodes") or []):\n        return {**row, "actions": ["never_auto"]', 'if False:\n        return {**row, "actions": ["never_auto"]', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-role-failure-retried": ('scripts/localci/shepherd.py', '            roles[login] = None\n            continue\n', '            continue\n', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-rate-limit-uncounted": ('scripts/localci/shepherd.py', 'rest("rate_limit").get', 'get("rate_limit").get', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-labels-total-ignored": ('scripts/localci/shepherd.py', '(labels.get("totalCount") or 0) > len(nodes)', 'False', ("scripts/localci/tests/test_shepherd.py",)),
