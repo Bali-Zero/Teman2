@@ -9,8 +9,9 @@ objective: >-
   queue of heads stuck on transient no-verdicts is a permanent stall. Rule: a
   key whose newest non-replay decision is transient (no FAIL anywhere in
   overall, contexts or checks; no policy-BLOCKED context; no gate_pending; no
-  context ERROR the host did not name; host_no_verdict, overall ERROR from
-  the merger's own driver, or INTERRUPTED with no ERROR check) is decided
+  context ERROR the host did not name; host_no_verdict, or overall ERROR whose
+  error text is the merger driver's own plan, no-seal, status or unreadable
+  status failure; never INTERRUPTED, a seal mismatch or a TickTimeout) is decided
   again at the same base, at most REDECIDE_CAP (3) transient decisions,
   REDECIDE_BACKOFF_S (600) times the count apart (counted from the newest
   decision or eviction), EVICT_CAP applying, host_disk only while the tick's
@@ -44,10 +45,10 @@ residual:
       Context ERRORs from the runner or driver (BrokenPipe on copy-in, driver
       rc=2) are no longer re-decided: the row carries no per-check
       attribution that separates them from a candidate's crash, hang or
-      collection error. A journalled per-check attribution is the follow-up
-      that re-admits them. A run-budget INTERRUPTED cannot be told from a
-      candidate that overran the budget as a whole either; any ERROR check
-      disqualifies it.
+      collection error. A run-budget INTERRUPTED is not re-decided either:
+      a hang in a late check exhausts the 5400 s budget and becomes
+      INTERRUPTED (#8523), so re-rolling it is retry-until-green. A
+      journalled per-check attribution is the follow-up that re-admits both.
   - text: >-
       The deps-image build failure (1 of the 32) is journalled as a context
       BLOCKED with free text, which the row cannot tell from a policy BLOCKED;
