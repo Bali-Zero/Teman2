@@ -55,6 +55,9 @@ if [ -n "${IMM:-}" ]; then
   # language: 56306, 56102 and 38110 en; 56306, 56102 and 70201 id) and the three of the #8492 gate (87202 id, 77520 en, 56101 en).
   for spec in "56306 en" "56102 en" "38110 en" "56306 id" "56102 id" "70201 id" "87202 id" "77520 en" "56101 en"; do for h in 648 700 752; do
     shot root-sheet --theme day --lang ${spec#* } --code ${spec% *} --width 1040 --height $h "$OUT/live/root-collapsed-${spec% *}-day-${spec#* }-$h.png"; done; done
+  # Night is night (N1): the same window at night, at the minimum height. png_census N1 reads the chrome and the sheet title against the night anthracite.
+  for spec in "55203 en" "56101 en" "56306 en"; do
+    shot root-sheet --theme night --lang ${spec#* } --code ${spec% *} --width 1040 --height 648 "$OUT/live/root-collapsed-${spec% *}-night-${spec#* }-648.png"; done
   # The longest titles of the dataset (87202 in Indonesian, 199 characters, no scale rows; 77520 and 47192 in English, with a matrix): the head's
   # title wraps to 2-5 lines and never squashes the plate (C26). The two with a matrix are `sheet-open` renders, so C24 judges them too, on a canvas
   # tall enough for the detail (77520's reaches y 3618 pt in Indonesian: a 3600 pt canvas cut it, and C24 could not see it).
