@@ -32,14 +32,11 @@ verification:
 
 dissent:
   - seat: codex-gpt-5.6-sol
-    round: 1
-    target: 1ffab91751
-    verdict: FIX-FIRST
-    items: "D12 shown the E28A checklist; invented 'Covers 1095 days total'; passive shareholder excluded in a golden route; 'no price is published'; TKA/IMTA on the investor-director and E23/E28 for work; E28A checklist not the page list; weak guilt detectors"
-    disposition: "all 7 cured in 59d51750cc; fresh Opus 5.5 gate PASS on 59d51750cc"
+    objection: "FIX-FIRST on 1ffab91751, 7 items: D12 got the E28A checklist; invented 'Covers 1095 days total'; passive shareholder excluded in a golden route; 'no price is published'; TKA/IMTA on the investor-director and E23/E28 for work; E28A checklist not the page list; weak guilt detectors. All 7 cured in 59d51750cc (fresh Opus 5.5 gate PASS)."
+    status: CONFIRMED
 
 out_of_scope_reported:
-  - "match_tree/catalogue E28A extensions=(1, 365): /api/visa/clock returns extensions_possible 1 for E28A (pre-existing count; the page states no count, the pack 365x100 is unsourced); not rendered by mouth; backlog."
+  - "match_tree/catalogue E28A extensions=(1, 365): /api/visa/clock returns extensions_possible 1 for E28A (pre-existing count; the page states no count of extensions); not rendered by mouth; backlog."
   - "Visa Oracle pack seq-29 still gates E28A on a director/commissioner role and company paid-up + total investment; Zantara now follows the 2026-10-15 ruling (passive shareholder, own shareholding >= 10 bn): routed to the conductor's seq-30 (SEQ29-A2)."
   - "kg_enhanced_retrieval.py:544 worker 'converts to the Working KITAS (E23) at the immigration office' (not an E28 claim); D12 legacy row 'Covers 730 days total' vs pack 180 + 1x180; seed_visa_types_complete_2026.py E28G row (PR C2 lane): backlog."
 bites:
@@ -49,7 +46,7 @@ bites:
   expect: exit0
 
 receipts:
-  - claim: "Observer green at its floor of 60"
+  - claim: "Observer green at its floor of 60 (re-run by the final gate on 59d51750cc: 60 passed)"
     cmd: "python3 scripts/ci/observe_zantara_e28_1015.py"
     result: "observe_zantara_e28_1015: 60 passed"
     exit: 0
@@ -85,13 +82,7 @@ receipts:
     exit: 1
     ts: "2026-10-15T15:30Z"
     seat: claude-sonnet-5
-  - claim: "Legacy matcher suite green with the E28A changes"
-    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider"
-    result: "492 passed"
-    exit: 0
-    ts: "2026-10-15T14:46Z"
-    seat: claude-sonnet-5
-  - claim: "Touched suites green"
+  - claim: "Touched suites green (incl. services/visa_check) on the builder tree before the cure commit 59d51750cc; CI re-runs them on the PR head"
     cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/rag/test_kg_*.py backend/tests/unit/services/rag/test_kg_*.py backend/tests/unit/prompts backend/tests/unit/llm/test_prompt_manager.py backend/tests/unit/routers/test_whatsapp_router_formats_llm_answers.py backend/tests/services/visa_check backend/tests/unit/test_zantara_core_v3.py -p no:cacheprovider"
     result: "1147 passed"
     exit: 0
