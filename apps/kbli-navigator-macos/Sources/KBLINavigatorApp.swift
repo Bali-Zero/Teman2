@@ -44,6 +44,14 @@ struct KBLINavigatorApp: App {
         // Off-screen QA snapshot mode (no GUI session needed). Must run before the scene.
         // `--snapshot-band` (design-baseline renderer, 2026-09-17) is checked FIRST and is a
         // distinct flag from legacy `--snapshot`, so both keep working independently.
+        if CommandLine.arguments.contains("--fold-census") {
+            guard NSFont(name: Theme.FontName.display, size: 12) != nil else {
+                FileHandle.standardError.write("font not registered: \(Theme.FontName.display)\n".data(using: .utf8)!)
+                exit(4)
+            }
+            MainActor.assumeIsolated { FoldCensus.run() }
+            exit(0)
+        }
         if CommandLine.arguments.contains("--snapshot-band") {
             // A band must never fall back to a system face silently: no bundled serif, no render.
             guard NSFont(name: Theme.FontName.display, size: 12) != nil else {
