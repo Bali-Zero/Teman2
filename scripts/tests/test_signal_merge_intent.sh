@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # test_signal_merge_intent.sh — proof for scripts/signal_merge_intent.sh and the
-# label-as-armed selectors in scripts/ci/queue_rearm_population.sh. gh is faked.
+# label-as-armed selectors in scripts/ci/queue_rearm_population.sh. gh and the label read-back are faked.
 #
-#   guilt     — label failure => exit 2 and no `pr merge`; arm failure with the
-#               queue present => exit 3; a labelled PR is NOT a re-arm candidate.
-#   innocence — queue present => label then arm; queue absent => label, no arm,
-#               exit 0; probe failure => arm attempted; an unlabelled PR stays a candidate.
+#   guilt     — B31: a label write that keeps failing, or a read-back that never shows a valid label, is
+#               exit 2 and loud WHATEVER the queue state; an arm failure with the queue present => exit 3;
+#               a labelled PR is NOT a re-arm candidate.
+#   innocence — a valid label is left alone (no remove, no write); an absent one is added; a stale one is
+#               removed then added; a failing add that recovers inside the bound is exit 0; queue present =>
+#               label then arm; queue absent => label, no arm; probe failure => arm attempted.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,34 +28,63 @@ cat > "$SANDBOX/bin/gh" <<'FAKEGH'
 printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 case "$1 $2" in
   "pr view") [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "localci:merge-shadow-ok"; exit 0 ;;
-  "pr edit") [ "${FAKE_EDIT_RC:-0}" = 0 ] || { echo "label not found" >&2; exit "$FAKE_EDIT_RC"; }; exit 0 ;;
+  "pr edit")
+    case "$*" in
+      *--add-label*)
+        n="$(cat "$FAKE_COUNT" 2>/dev/null || echo 0)"
+        if [ "$n" -lt "${FAKE_ADD_FAILS:-0}" ]; then echo $((n + 1)) > "$FAKE_COUNT"; echo "502 bad gateway" >&2; exit 1; fi ;;
+    esac
+    [ "${FAKE_EDIT_RC:-0}" = 0 ] || { echo "label not found" >&2; exit "$FAKE_EDIT_RC"; }; exit 0 ;;
   "pr merge") [ "${FAKE_MERGE_RC:-0}" = 0 ] || { echo "boom" >&2; exit "$FAKE_MERGE_RC"; }; echo "Auto-merge enabled"; exit 0 ;;
   "api repos/"*) [ "${FAKE_RULES_RC:-0}" = 0 ] || exit "$FAKE_RULES_RC"; echo "${FAKE_RULES_COUNT:-1}"; exit 0 ;;
 esac
 echo "FAKE_GH: unhandled: $*" >&2; exit 99
 FAKEGH
-chmod +x "$SANDBOX/bin/gh"
+# the read-back: FAKE_VERIFY=valid always valid, never always invalid, default (after-write) valid once an add-label happened
+cat > "$SANDBOX/bin/verify" <<'FAKEVERIFY'
+#!/usr/bin/env bash
+printf 'VERIFY %s\n' "$*" >> "$FAKE_GH_LOG"
+case "${FAKE_VERIFY:-after-write}" in
+  valid) exit 0 ;;
+  never) echo "LABEL_INVALID pr=$2: label predates head"; exit 1 ;;
+  *) grep -q -e '--add-label' "$FAKE_GH_LOG" && exit 0; echo "LABEL_INVALID pr=$2: label absent"; exit 1 ;;
+esac
+FAKEVERIFY
+chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify"
 
 run() {  # run <PR> [ENV=VAL...]
   local pr="$1"; shift
-  LOG="$SANDBOX/log"; : > "$LOG"
-  OUT="$(env FAKE_GH_LOG="$LOG" PATH="$SANDBOX/bin:$PATH" "$@" bash "$HELPER" "$pr" 2>"$SANDBOX/err")"
+  LOG="$SANDBOX/log"; : > "$LOG"; rm -f "$SANDBOX/count"
+  OUT="$(env FAKE_GH_LOG="$LOG" FAKE_COUNT="$SANDBOX/count" SIGNAL_INTENT_VERIFY="$SANDBOX/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 PATH="$SANDBOX/bin:$PATH" "$@" bash "$HELPER" "$pr" 2>"$SANDBOX/err")"
   RC=$?
   CALLS="$(cat "$LOG")"
+  ERR="$(cat "$SANDBOX/err")"
 }
 
 run 7 FAKE_RULES_COUNT=1
-check "queue present: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
+check "queue present, label absent: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
 check "queue present: label then arm" "$([ "$(has 'pr edit 7' "$CALLS")" = 1 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 check "queue present: report arm=armed" "$(has 'arm=armed' "$OUT")"
-first="$(printf '%s\n' "$CALLS" | grep -v -e '^api ' -e '^pr view' | head -1)"
+first="$(printf '%s\n' "$CALLS" | grep -v -e '^api ' -e '^pr view' -e '^VERIFY' | head -1)"
 check "label is the first mutating call (before the arm)" "$(has 'pr edit' "$first")"
+check "the label is read back after the write" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" -ge 2 ] && echo 1 || echo 0)"
 
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY=valid
+check "label present and valid: no remove, no add, exit 0" "$([ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && [ $RC = 0 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1
 rm_line="$(printf '%s\n' "$CALLS" | grep -n -e '--remove-label' | head -1 | cut -d: -f1)"; add_line="$(printf '%s\n' "$CALLS" | grep -n -e '--add-label' | head -1 | cut -d: -f1)"
-check "label already present: refreshed (remove, then add) so a new LabeledEvent exists" "$([ -n "$rm_line" ] && [ -n "$add_line" ] && [ "$rm_line" -lt "$add_line" ] && [ $RC = 0 ] && echo 1 || echo 0)"
+check "label present but stale: refreshed (remove, then add) so a new LabeledEvent exists" "$([ -n "$rm_line" ] && [ -n "$add_line" ] && [ "$rm_line" -lt "$add_line" ] && [ $RC = 0 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0
 check "label absent: added without a remove" "$([ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=2
+check "add fails twice then succeeds (retry inside the bound): exit 0, three adds" "$([ $RC = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 3 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9
+check "add keeps failing: exit 2, loud, exactly the bounded number of adds" "$([ $RC = 2 ] && [ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 4 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_TRIES=2
+check "the bound is SIGNAL_INTENT_TRIES" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 2 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
+check "write ok but the read-back never shows a valid label: exit 2, loud, no arm" "$([ $RC = 2 ] && [ "$(has 'read-back' "$ERR")" = 1 ] && [ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_EDIT_RC=1
 check "label refresh failing: no add, exit 2 (queue absent)" "$([ $RC = 2 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && echo 1 || echo 0)"
 
@@ -62,32 +93,35 @@ check "queue absent: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
 check "queue absent: label applied, no merge call" "$([ "$(has 'pr edit 7' "$CALLS")" = 1 ] && [ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
 check "queue absent: report arm=skipped" "$(has 'arm=skipped' "$OUT")"
 
-run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=0
-check "label failure, queue absent: exit 2" "$([ $RC = 2 ] && echo 1 || echo 0)"
-check "label failure, queue absent: no arm" "$([ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
-
 for q in 1 probefail; do
   if [ $q = probefail ]; then run 7 FAKE_EDIT_RC=1 FAKE_RULES_RC=1; else run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1; fi
-  check "label failure, queue $q: still armed, exit 0 (ARM result)" "$([ $RC = 0 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
-  check "label failure, queue $q: WARN printed, label=failed reported" "$([ "$(has 'WARN' "$(cat "$SANDBOX/err")")" = 1 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && echo 1 || echo 0)"
+  check "label failure, queue $q: the arm is still attempted but the exit is 2 (fatal)" "$([ $RC = 2 ] && [ "$(has 'pr merge 7' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+  check "label failure, queue $q: SIGNAL_INTENT_FAIL on stderr, label=failed reported" "$([ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && echo 1 || echo 0)"
 done
 run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
-check "label ko + arm ko, queue present: exit 3 (ARM result)" "$([ $RC = 3 ] && echo 1 || echo 0)"
+check "label ko + arm ko, queue present: exit 3 (the arm result)" "$([ $RC = 3 ] && echo 1 || echo 0)"
 
-# Mutant: make a label failure always fatal again (the pre-fix behaviour). The queue-present
-# label-failure scenario must now go red, or the test above would not notice the regression.
+# Mutant: the old behaviour, a label failure only warns (exit 0 while the queue exists). The scenario above must go red.
 mkdir -p "$SANDBOX/mut"; cp "$HELPER" "$PROBE_SRC" "$SANDBOX/mut/" 2>/dev/null
-sed 's/if \[ "\$queue" = absent \]; then\(.*\)$/if true; then\1/;' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
+sed 's/^\[ "\$label" = applied \] && exit 0$/exit 0/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
 HELPER_REAL="$HELPER"; HELPER="$SANDBOX/mut/signal_merge_intent.sh"
 run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1
-check "mutant (label failure always fatal) is caught" "$([ $RC = 0 ] && echo 0 || echo 1)"
+check "mutant (label failure no longer fatal) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
 HELPER="$HELPER_REAL"
 
-# Mutant: never refresh (adding an existing label creates no LabeledEvent). The refresh scenario must go red.
-sed 's/grep -qxF "\$LABEL"/grep -qxF "no-such-label"/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
+# Mutant: always remove before add (never trust a valid label). The valid-label scenario must go red.
+sed 's/^  if gh pr view .*$/  if true; then has=1; fi/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
+sed -i.bak 's/^if ! verify_label >\/dev\/null; then$/if true; then/' "$SANDBOX/mut/signal_merge_intent.sh"
 HELPER="$SANDBOX/mut/signal_merge_intent.sh"
-run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1
-check "mutant (no refresh of an existing label) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY=valid
+check "mutant (valid label still removed) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+HELPER="$HELPER_REAL"
+
+# Mutant: the read-back skipped. A write whose read-back would fail must go red.
+sed 's/^    out="\$(verify_label)" \&\& return 0$/    return 0/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
+HELPER="$SANDBOX/mut/signal_merge_intent.sh"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
+check "mutant (no read-back after the write) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
 HELPER="$HELPER_REAL"
 
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1

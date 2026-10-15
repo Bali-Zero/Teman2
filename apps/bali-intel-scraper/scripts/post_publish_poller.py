@@ -718,6 +718,12 @@ def _arm_pr(pr_url: str, kind: str) -> bool:
                 ["gh", "pr", "merge", number, "--auto", "--repo", repo],
                 capture_output=True, text=True, timeout=30,
             )
+        if result.returncode == 2:   # B31: the helper's exit for "the merge label is not shown valid" — the PR is armed or not, the label is what merges it after the flip
+            log(f"  ❌ #{number} merge label NOT applied: {(result.stderr or '').strip()[-200:]}")
+            send_telegram_alert(
+                f"⚠️ Post-publish poller\nBot PR {pr_url} ({kind}) has no valid merge label — it will not merge after the flip",
+                dedup_key=f"post-publish:bot-pr-unlabelled:{kind}",
+            )
         if result.returncode != 0:
             _log_gh_failure(f"pr merge --auto #{number}", result)
     except Exception as e:

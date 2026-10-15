@@ -1,0 +1,22 @@
+task_id: infra-localci-label-readback-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  After the phase F flip only PRs carrying localci:merge-shadow-ok, applied by an admin or maintain user after the
+  head's push, are merged (B23, B2a), and main has one writer. An audit of 400 PRs over 6.17 days found 31 of 49
+  session PRs merged after #8455 without the label. B31: signal_merge_intent.sh reads the label back through the
+  merger's own label_arm (new scripts/localci/label_census.py verify), writes nothing when it is valid, adds when absent,
+  removes then adds when stale, retries the add with bounded backoff, reads back again, and exits 2 with
+  SIGNAL_INTENT_FAIL when the label is not shown valid, queue or no queue; docs_guardian.sh no longer swallows it
+  (|| true, now stderr, notification and exit 1) and a test refuses that spelling in any caller; the poller alerts on
+  exit 2. label_census.py census lists, read-only, every open armed PR without a valid label (live on 2026-10-15: 7,
+  incl. #8530 and #8540). label_privileged is untouched. The auto-publish PRs (#8530-#8532) never reached the helper:
+  backend-rag's GitHubPublisher creates the PR and calls enablePullRequestAutoMerge only.
+residuals:
+  - >-
+    GitHubPublisher (apps/backend-rag/backend/services/integrations/github_publisher.py) must POST
+    /repos/{o}/{r}/issues/{n}/labels after the PR exists, with its own token (actor Balizero1987, admin) and read the B2a
+    condition back. Not in this PR, because a backend-rag merge is a Fly deploy. Until then the census names those PRs.
+  - queue_shepherd.py deliberately never labels after the flip (an admin's label removal must stay a stop); not changed.
+  - The live census and the helper are exercised by fakes in tests; the live read was one census call.

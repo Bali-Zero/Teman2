@@ -1230,6 +1230,13 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-trap-out-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$OUT" || true', 'rm -f "$OUT"', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
+    # B31: the label read-back and the pre-flip census
+    "lc-census-lists-valid": ("scripts/localci/label_census.py", "        if reason:\n            rows.append", "        if True:\n            rows.append", ("scripts/localci/tests/test_label_census.py",)),
+    "lc-census-includes-unarmed": ("scripts/localci/label_census.py", 'not (p.get("autoMergeRequest") or p.get("isInMergeQueue") or has_label)', "False", ("scripts/localci/tests/test_label_census.py",)),
+    "lc-census-lists-drafts": ("scripts/localci/label_census.py", 'if p.get("isDraft") or not (', "if not (", ("scripts/localci/tests/test_label_census.py",)),
+    "lc-verify-invalid-exits-zero": ("scripts/localci/label_census.py", 'if a.quiet else sys.stdout)\n                return 1', 'if a.quiet else sys.stdout)\n                return 0', ("scripts/localci/tests/test_label_census.py",)),
+    "lc-unreadable-exits-zero": ("scripts/localci/label_census.py", 'file=sys.stderr)\n        return 2', 'file=sys.stderr)\n        return 0', ("scripts/localci/tests/test_label_census.py",)),
+    "lc-census-first-page-only": ("scripts/localci/label_census.py", 'if not info.get("hasNextPage"):', "if True:", ("scripts/localci/tests/test_label_census.py",)),
 }
 
 
