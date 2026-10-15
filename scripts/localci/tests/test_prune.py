@@ -1472,8 +1472,9 @@ def test_b26_u5_a_crash_before_the_rename_leaves_the_original_whole_and_the_next
     src = run / RES / "taint-output.json"
     src.write_text("verdict " * 1000)
     with monkeypatch.context() as m:
-        m.setattr(pm.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError("crash")))
+        m.setattr(pm.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError(pm.errno.EIO, "crash")))
         out = pm.trim_runs(runs, NOW, dry=False)
+    assert out["errors"] == [f"{RES}/taint-output.json: EIO"]   # path relative to the run dir + the errno name
     assert src.read_text() == "verdict " * 1000 and not (run / RES / "taint-output.json.gz").exists() and out["compressed"] == []
     (run / RES / "taint-output.json.gz.part").write_bytes(b"torn")
     pm.trim_runs(runs, NOW, dry=False)
@@ -1543,7 +1544,8 @@ def test_b26_u5_the_part_is_fsynced_before_the_rename_the_directory_after_it_and
     events, real_fsync, real_replace, real_unlink = [], pm.os.fsync, pm.os.replace, Path.unlink
 
     def fsync(fd):
-        events.append("fsync-dir" if "replace" in events else "fsync-part")
+        import stat
+        events.append("fsync-dir" if stat.S_ISDIR(pm.os.fstat(fd).st_mode) else "fsync-part" if "replace" not in events else "fsync-file-after-rename")
         return real_fsync(fd)
 
     def replace(a, b):
@@ -1586,3 +1588,15 @@ def test_b26_u5_a_linked_receipts_or_pysa_directory_is_neither_trimmed_nor_compr
     out = pm.trim_runs(runs, NOW, dry=False)
     assert (target / "taint-output.json").read_text() == "not ours" and (target / "call-graph.json").read_text() == "not ours"
     assert not list(outside.rglob("*.gz")) and out["compressed"] == []
+
+
+def test_b26_a_prune_whose_trim_reports_errors_is_not_green_the_organ_reads_failed_runs(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
+    run = run_dir(state / "runs", 2)
+    (run / RES / "x.gz.part").mkdir()
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+    line = journal(state)[-1]
+    assert line["failed"] == ["runs"] and line["runs"]["errors"] and line["runs"]["errors"][0].startswith(f"{RES}/x.gz.part: ")
+    clean = run_dir(tmp_path / "s2" / "runs", 2)
+    state2, docker2 = world(tmp_path / "s2", [image("a" * 16, 10, "backend-tests")])
+    assert mg.main(["prune", "--state-dir", str(state2), "--docker", docker2]) == 0 and journal(state2)[-1]["failed"] == []
