@@ -229,3 +229,15 @@ def test_a_host_outage_retries_at_a_bounded_rate_and_never_stalls_for_good():
 def test_a_verdict_after_transient_decisions_stands_whatever_the_window():
     recs = [dec(ts=at(mg.REDECIDE_WINDOW_S + 1)), dec(ts=at(7200), overall="FAIL")]
     assert run(recs)[0] == []
+
+
+def test_the_window_is_six_hours():
+    assert mg.REDECIDE_WINDOW_S == 6 * 3600
+    assert run([dec(ts=at(h * 3600)) for h in (5.5, 5, 4.5)])[1] != []
+    todo, capped = run([dec(ts=at(h * 3600)) for h in (7, 6.5, 6.2)])
+    assert capped == [] and [p["_redecide"]["attempt"] for p in todo] == [1]
+
+
+def test_a_replay_row_is_never_transient_on_its_own():
+    assert mg.transient_reasons(host_row(replay=True)) == []
+    assert mg.transient_reasons(driver_row(replay=True)) == []
