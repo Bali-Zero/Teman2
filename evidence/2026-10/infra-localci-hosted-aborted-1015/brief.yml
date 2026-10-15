@@ -18,6 +18,11 @@ objective: >-
   phase E READY line format. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
   - >-
+    Rule 4's "every later step skipped" was also wrong for #8514: its `if: always()` reporting steps (Report shard balance,
+    Upload test results) ran to success after the hang. A step after the cancelled one may now have run only when its
+    `if` is exactly always() and it succeeded; any other step that ran, or an always() step that failed, blocks ABORTED.
+    An always() step could in principle run tests; none of the verdict-carrying steps did here.
+  - >-
     Rule 4 as first written (every earlier step a setup step) would NOT have classified #8514: its job ran a run step,
     "Assert every upstream job succeeded", before the hung checkout. The rule now also allows a run step that came before
     the first successful checkout (empty workspace, no repository code judged); a run step after a checkout still blocks it.

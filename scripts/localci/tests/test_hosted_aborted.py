@@ -91,6 +91,22 @@ def test_a_run_step_before_the_first_checkout_judged_no_repository_code_the_real
     assert got == {"aborted": True, "runs": [{"check_run_id": 11, "step": "Checkout code"}]}
 
 
+ALWAYS = "      - name: Report\n        if: always()\n        run: echo balance\n      - name: Upload test results\n        uses: actions/upload-artifact@v4\n        if: ${{ always() }}\n"
+WITH_ALWAYS = WORKFLOW + ALWAYS
+ALWAYS_HUNG = [*HUNG[:4], ("Report", "success"), ("Upload test results", "success"), *POST]
+
+
+def test_reporting_steps_declared_always_that_ran_after_the_hang_do_not_stop_the_abort_the_real_8514_tail(tmp_path, monkeypatch):
+    assert judge(tmp_path, monkeypatch, workflow=WITH_ALWAYS, steps=ALWAYS_HUNG)(NAME, RED)["aborted"] is True
+
+
+def test_a_step_after_the_hang_that_ran_without_an_exact_always_or_failed_stays_a_false_green(tmp_path, monkeypatch):
+    for wf, steps in ((WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        if: always() && github.event_name == 'push'\n        run: echo balance"), ALWAYS_HUNG),
+                      (WITH_ALWAYS.replace("        if: always()\n        run: echo balance", "        run: echo balance"), ALWAYS_HUNG),
+                      (WITH_ALWAYS, [*HUNG[:4], ("Report", "failure"), ("Upload test results", "success"), *POST])):
+        assert judge(tmp_path, monkeypatch, workflow=wf, steps=steps)(NAME, RED)["aborted"] is False
+
+
 def test_a_run_step_before_the_cancelled_one_that_ran_after_a_checkout_stays_a_false_green(tmp_path, monkeypatch):
     wf = WORKFLOW.replace("      - name: Set up Python\n", "      - name: Probe\n        run: pytest --collect-only\n      - name: Set up Python\n")
     steps = [("Set up job", "success"), ("Checkout code", "success"), ("Probe", "success"), ("Set up Python", "cancelled"), ("Run unit tests", "skipped"), *POST]
@@ -262,7 +278,8 @@ def incident(tmp_path, monkeypatch, workflow=WORKFLOW, **hub):
 
 
 def test_the_incident_counted_twice_is_zero_false_greens_and_one_listed_abort(tmp_path, monkeypatch, capsys):
-    d, gh = incident(tmp_path, monkeypatch, WITH_ASSERT.replace("Backend Tests (Python)", CTX[0]), steps=ASSERT_HUNG)
+    tail = [*ASSERT_HUNG[:5], ("Report", "success"), ("Upload test results", "success"), *POST]
+    d, gh = incident(tmp_path, monkeypatch, (WITH_ASSERT + ALWAYS).replace("Backend Tests (Python)", CTX[0]), steps=tail)
     rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
     assert rc == 0 and rep["context_counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["HOSTED_ABORTED"] == 1 and rep["counts"]["FALSE_GREEN"] == 0
     assert rep["recorded_context_false_green"] == 0 and rep["recorded_false_green_as_journalled"] == 1 and rep["recorded_reclassified_hosted_stale"] == []
