@@ -152,6 +152,11 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
     "offshore/work/sponsor_government/trade_office_only/employer_no": EMPLOYMENT_SPONSOR_REASON,
 }
 
+#: T06 (2026-10-14): the explorer who stays 361 days leaves D12's bound, so seq-20
+#: (no investor route question) ends on the generic sentence and seq-21 names the
+#: E28 products. Its no-path reason code therefore moves too.
+_T06_EXPLORER_361 = "offshore/business/exploring/offshore_application/stay_361"
+
 #: PR-12 (2026-10-13): the work-tile walks whose no-path reason codes MOVE from
 #: seq-20 to seq-21 beyond `NAMED_CAUSE_WALKS`. Four swap the generic sentence
 #: for a named cause; `offshore/work/sponsor_individual/employer_no` instead
@@ -162,6 +167,7 @@ _PR12_REASON_MOVED_WALKS = (
     "offshore/work/sponsor_employer/employer_no",
     "offshore/work/sponsor_employer/sponsor_confirmed_no",
     "offshore/work/sponsor_individual/employer_no",
+    _T06_EXPLORER_361,
 )
 #: The one PR-12 walk whose STATE moves seq-20 -> seq-21 other than a question
 #: becoming an answer: a dead end that gains E23U.
@@ -187,6 +193,8 @@ EXPECTED_SEQ21_GAINS: dict[str, tuple[str, ...]] = {
     # W-VO-Q item 7: the business explorer's default walk (INVESTMENT purpose,
     # conversion "yes", so the investor route questions are asked).
     "offshore/business/exploring": ("E28B", "E28D", "E28F"),
+    # T06: the explorer past D12's 360-day bound asks the investor route questions.
+    _T06_EXPLORER_361: ("E28B", "E28D", "E28F"),
     "offshore/invest/capital_market": ("E28B", "E28D", "E28F"),
     "offshore/invest/capital_market/capital_market_only": ("E28C",),
     "offshore/invest/family": ("E28B", "E28D", "E28F"),
@@ -1188,7 +1196,7 @@ class TestCensusReplay:
             assert after[label]["state"] == after_state, label
             assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_110_answers_21_no_paths_8_questions(
+    def test_without_the_answers_the_census_is_131_answers_25_no_paths_8_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],
@@ -1243,11 +1251,17 @@ class TestCensusReplay:
         unasked corpus: four SUPPORTED on this pack plus the six whose
         stripped answers stay decided, and the two allowlisted drifts above
         become questions here (a dead end whose qualification answer is
-        withdrawn): 110 / 21 / 8 / 1."""
+        withdrawn): 110 / 21 / 8 / 1.
+
+        T06 (2026-10-14) adds 25 visit walks to the unasked corpus (the two explorer
+        walks are left out with the rest of that family): 21 answer
+        SUPPORTED_CANDIDATES and the four past a stay bound (tourism 181 with and
+        without MULTIPLE, business 181, other 181) end NO_SUPPORTED_PATH, none of
+        them reading a qualification fact: 131 / 25 / 8 / 1."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 110
-        assert census["NO_SUPPORTED_PATH"] == 21
+        assert census["SUPPORTED_CANDIDATES"] == 131
+        assert census["NO_SUPPORTED_PATH"] == 25
         assert census["NEEDS_INPUT"] == 8
         assert census["HUMAN_REVIEW_REQUIRED"] == 1
         held = [
@@ -1294,7 +1308,9 @@ class TestCensusReplay:
                 gains[label] = gained
             if before[label]["state"] != after[label]["state"]:
                 assert (before[label]["state"], after[label]["state"]) == (
-                    "NO_SUPPORTED_PATH" if label in _PR12_NO_PATH_TO_SUPPORTED else "NEEDS_INPUT",
+                    "NO_SUPPORTED_PATH"
+                    if label in (*_PR12_NO_PATH_TO_SUPPORTED, _T06_EXPLORER_361)
+                    else "NEEDS_INPUT",
                     "SUPPORTED_CANDIDATES",
                 ), label
         assert gains == EXPECTED_SEQ21_GAINS

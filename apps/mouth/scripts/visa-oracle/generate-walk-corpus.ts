@@ -1285,6 +1285,125 @@ export function enumerateScenarios(): Scenario[] {
     },
   });
 
+  // T06 (visa-night visit family, 2026-10-14): the stay bounds and entry
+  // patterns of the visit rules, one walk per side of each bound the pack
+  // draws, plus the answers of `business_activity` / `other_purpose` that no
+  // walk gave. Every row changes ONLY the listed answers of the default
+  // offshore walk of its tile; each is reachable through the real tree
+  // (`stay_days` accepts 1..36,500; the other answers are option keys). The
+  // `other` rows answer `other_paid_activity = no`: its first option (`yes`)
+  // turns the walk into EMPLOYMENT, where the purpose and the stay bound of
+  // an OTHER visit are no longer what the walk exercises.
+  // Bounds (rulepack-prod-029 source): A1 SG tourism/transit <= 30 days; B1
+  // tourism <= 60 (the default IT is on its list); C1 tourism/family <= 180;
+  // D2 business meetings <= 180; C2/C6 <= 180 with a confirmed sponsor; D12
+  // investment <= 360 (needs `wants_onshore_conversion = no`); D1 MULTIPLE
+  // entry <= 180 on tourism/transit/business. Global-filter walks
+  // (nationality, calling visa, overstay, minor, criminal record) are NOT
+  // here: they wait for the backend no-path-cause change.
+  const visitWalks: Array<[string, Record<string, string>]> = [
+    ["offshore/tourism/sg/stay_30", { nationalities: "SG", stay_days: "30" }],
+    ["offshore/tourism/sg/stay_31", { nationalities: "SG", stay_days: "31" }],
+    ["offshore/tourism/stay_60", { stay_days: "60" }],
+    ["offshore/tourism/stay_61", { stay_days: "61" }],
+    ["offshore/tourism/stay_180", { stay_days: "180" }],
+    ["offshore/tourism/stay_181", { stay_days: "181" }],
+    [
+      "offshore/tourism/voa_60d/multiple",
+      { stay_days: "45", entry_pattern: "MULTIPLE" },
+    ],
+    [
+      "offshore/tourism/stay_180/multiple",
+      { stay_days: "180", entry_pattern: "MULTIPLE" },
+    ],
+    [
+      "offshore/tourism/stay_181/multiple",
+      { stay_days: "181", entry_pattern: "MULTIPLE" },
+    ],
+    ...(["180", "181"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/business/no_local_compensation/stay_${days}`,
+        {
+          category: "business",
+          work_indonesia_compensation: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    [
+      "offshore/business/no_local_compensation/multiple",
+      {
+        category: "business",
+        work_indonesia_compensation: "no",
+        entry_pattern: "MULTIPLE",
+      },
+    ],
+    ...(["negotiation", "conference", "training", "other"] as const).map(
+      (activity): [string, Record<string, string>] => [
+        `offshore/business/${activity}/no_local_compensation`,
+        {
+          category: "business",
+          business_activity: activity,
+          work_indonesia_compensation: "no",
+        },
+      ],
+    ),
+    ...(["360", "361"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/business/exploring/offshore_application/stay_${days}`,
+        {
+          category: "business",
+          business_activity: "exploring",
+          wants_onshore_conversion: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    [
+      "offshore/other/transit/multiple",
+      {
+        category: "other",
+        other_paid_activity: "no",
+        entry_pattern: "MULTIPLE",
+      },
+    ],
+    ...(["180", "181"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/other/medical/stay_${days}`,
+        {
+          category: "other",
+          other_purpose: "medical",
+          other_paid_activity: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    ...(
+      [
+        "volunteer",
+        "religious",
+        "arts_sport",
+        "journalism",
+        "crew",
+        "other",
+      ] as const
+    ).map((purpose): [string, Record<string, string>] => [
+      `offshore/other/${purpose}`,
+      { category: "other", other_purpose: purpose, other_paid_activity: "no" },
+    ]),
+  ];
+  for (const [label, answers] of visitWalks) {
+    scenarios.push({
+      label,
+      overrides: {
+        in_indonesia: "no",
+        holds_stay_permit: "no",
+        category: "tourism",
+        ...answers,
+      },
+    });
+  }
+
   return scenarios;
 }
 
