@@ -271,9 +271,17 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             category="KITAS/Limited Stay",
             purposes=frozenset({Purpose.INVESTOR}),
             duration_days=365 * 2,
-            extensions=(1, 365 * 2),
-            min_budget_idr=500_000_000,  # 500M IDR = high-budget threshold
-            notes="Requires PT PMA + formal investment plan (~IDR 10bn capital).",
+            # Signed pack seq-29: stay 730 days, extension allowed 365 days each (VERIFIED).
+            extensions=(1, 365),
+            # No budget gate: the only IDR figure on the official E28A page is the applicant's OWN
+            # shareholding of at least Rp10.000.000.000 in the sponsoring company, a legal
+            # requirement that a spend-budget band cannot express (the top band ceiling is
+            # itself IDR 10bn, so a strict `>` gate would exclude E28A for everyone).
+            min_budget_idr=None,
+            notes=(
+                "Requires a PT PMA sponsor and your own shareholding of at least IDR 10 billion "
+                "in it (official E28A page)."
+            ),
             seed_source=SEED,
             duration_source=NB2,
         ),

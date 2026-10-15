@@ -122,11 +122,10 @@ _STEPS_FREELANCE: list[str] = [
 ]
 
 _STEPS_INVESTOR: list[str] = [
-    "PT PMA incorporated (or plan ready to incorporate on arrival)",
-    "Investment plan document (IDR equivalent ≥ 10bn for E28A)",
-    "Share capital confirmation",
-    "Proposed business address in Indonesia",
-    "Passport valid ≥ 24 months",
+    "Passport valid \u2265 6 months",
+    "Company established with the Kemenkumham deed, acting as your sponsor",
+    "Proof of your own shareholding of at least IDR 10 billion in the sponsoring company",
+    "Company current-account statement for the last 2 months",
 ]
 
 _STEPS_EMPLOYEE: list[str] = [
