@@ -1,0 +1,35 @@
+task_id: infra-localci-bulk-receipts-24h-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B26, disk headroom on Pro before the phase F flip. Measured on Pro
+  2026-10-15: host free 94.6 GB against a start floor of 100 and an eviction
+  line of 91.5, a run's transient use about 12 GB, so runs keep being
+  evicted. The BULK receipts of a finished run (Pysa call graphs, about
+  640 MB a run, read by nothing outside prune.py and its tests) go after
+  BULK_KEEP_H = TREE_PACK_STALE_H hours instead of 7 days, for a run with or
+  without status.json (U1'); the kept Pysa receipts (taint-output.json,
+  dependency-graph.json) of a stale run are gzipped in place atomically
+  (.gz.part, fsync of the file and of the directory, rename) (U5). The prune
+  row lists trimmed_bulk, compressed and errors; any error makes the prune
+  not green.
+acceptance:
+  - text: >-
+      BULK goes after 24 h for runs with and without status.json; the kept
+      receipts are gzipped atomically; a linked .gz is not trusted and linked
+      receipts are not followed; a stale .gz.part that cannot be removed is
+      reported and never aborts the prune; any runs error makes the prune
+      exit 1.
+    probe: python3 -m pytest -q scripts/localci/tests/test_prune.py
+assumptions:
+  - text: >-
+      Every prune.py mutant of the sweep table is killed except the stale
+      b6-undated-run-trimmed (re-anchored by B32).
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '$3 ~ /prune/ {print $1}')
+residual:
+  - text: >-
+      Measured dry on Pro before the change: bulk 4.18 GB and gzip 3.05 GB
+      reclaimable, 7.22 GB together. The live figure is read from the first
+      prune row after the deploy (trimmed_bulk, compressed, freed_gb).
