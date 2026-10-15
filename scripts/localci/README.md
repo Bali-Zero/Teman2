@@ -672,6 +672,8 @@ again at a new base until `gate_ready` says its gate verdict is posted and its p
 defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
 Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence (2026-10-14: 5 of 56 open PRs armed but unlabelled, 23 labelled).
 
+**B28: a waiting labelled PR is decided before a replay** (spec B28). After `triage()`, when the first PR of the order carries the arm label and `LOCALCI_MERGER_PHASE_F` is not `1`, the tick decides it instead of taking a replay turn, and journals `replay_deferred {reason, skipped_n, pr}` when it forfeits one. The replays deferred since the newest replay decision are counted from the journal; at `REPLAY_MAX_SKIP` (6) of them, or when the first is `REPLAY_MAX_SKIP_S` (12 h) old, one replay turn runs anyway, and one that finds nothing to replay journals `skipped replay_none` to reset the count. Unlabelled PRs and the phase F schedule are as before.
+
 ### Report (phase D's instrument)
 
     python scripts/localci/merger.py report [--repo Bali-Zero/Teman2] [--base main] [--state-dir ...] [--since 2026-10-07]

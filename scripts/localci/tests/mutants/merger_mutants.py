@@ -134,6 +134,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+PF = "scripts/localci/tests/test_pr_first.py"   # B28
 RC = "scripts/localci/tests/test_ready_cache.py"   # B20
 RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
@@ -1034,6 +1035,23 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pi-history-failure-is-error": (RUNNER, '            hist = None\n', '            return {"status": "ERROR", "reason": hist, "rc": None, "counts": None}\n', ("scripts/localci/tests/test_pytest_indexed.py",)),
     "pi-missing-311-silent": (RUNNER, '        if py == "python":\n            notes.append(', '        if False:\n            notes.append(', ("scripts/localci/tests/test_pytest_indexed.py",)),
     "pi-history-dropped": (RUNNER, '"history": hist, "argv": argv', '"history": None, "argv": argv', ("scripts/localci/tests/test_pytest_indexed.py",)),
+    # B28: a waiting labelled PR is decided before a replay
+    "b28-always-replay-first": (PY, "if (reason and todo and has_arm_label(todo[0]) and os.environ", "if (False and todo and has_arm_label(todo[0]) and os.environ", (PF,)),
+    "b28-ignore-label": (PY, 'if (reason and todo and has_arm_label(todo[0]) and os.environ', 'if (reason and todo and True and os.environ', (PF,)),
+    "b28-ignore-gate-pending": (PY, "if (reason and todo and has_arm_label(todo[0]) and os.environ", "if (reason and (todo or deferred) and has_arm_label((todo or deferred)[0]) and os.environ", (PF,)),
+    "b28-no-starvation-bound": (PY, "if skipped >= REPLAY_MAX_SKIP or (first is not None and time.time() - first >= REPLAY_MAX_SKIP_S):", "if False:", (PF,)),
+    "b28-no-skip-count-bound": (PY, "if skipped >= REPLAY_MAX_SKIP or (first", "if (first", (PF,)),
+    "b28-no-skip-age-bound": (PY, "or (first is not None and time.time() - first >= REPLAY_MAX_SKIP_S):", ":", (PF,)),
+    "b28-skip-count-off-by-one": (PY, "if skipped >= REPLAY_MAX_SKIP or", "if skipped > REPLAY_MAX_SKIP or", (PF,)),
+    "b28-phase-f-defers": (PY, 'and os.environ.get(PHASE_F_ENV) != "1"\n            and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', 'and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', (PF,)),
+    "b28-defers-before-a-first-decision": (PY, 'and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', '):   # B28', (PF, *PENDING)),
+    "b28-forced-none-no-reset": (PY, "if forced and pick is None:", "if False:", (PF,)),
+    "b28-count-never-resets-on-replay": (PY, '''(r.get("kind") == "decision" and r.get("replay")) or (r.get("kind") == "skipped" and r.get("why") == "replay_none"):''', '(r.get("kind") == "skipped" and r.get("why") == "replay_none"):', (PF,)),
+    "b28-any-decision-resets-the-count": (PY, '(r.get("kind") == "decision" and r.get("replay")) or', '(r.get("kind") == "decision") or', (PF,)),
+    "b28-replay-none-every-turn": (PY, "if forced and pick is None:", "if pick is None:", (PF,)),
+    "b28-age-from-the-newest-deferral": (PY, "else min(first, _epoch", "else max(first, _epoch", (PF,)),
+    "b28-skip-bound-60": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 60, 43200", (PF,)),
+    "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
 }
 
 
