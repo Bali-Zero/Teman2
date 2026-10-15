@@ -1,0 +1,80 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling:
+  "Zero's decision of 2026-10-15 ('entrambi si'): the brochure prints the E33F Altus/Onshore row;
+  under Zero's 2026-10-14 ruling 'E33F everywhere'. Closes PENDING-ARMS row (b) of the wave-4
+  ledger (#8519, merge 010e71031f)."
+mission:
+  The client brochure prints the E33F Onshore row at its catalogue price beside the Offshore row,
+  and the committed PDF carries it.
+lanes:
+  - lane: brochure-altus-build
+    role: build
+    seat: gemini-4-argon-high via agy (external seat, edits files, never runs git) with the Claude driver, who regenerated the PDF on Pro and committed
+  - lane: brochure-altus-redteam-claude
+    role: review
+    seat: claude-opus-5-5 adversarial red team (read-only), head 5da2d65ff648d88caed1edd495f1cef9c671fc38
+  - lane: brochure-altus-redteam-codex
+    role: review
+    seat: codex gpt-5.6-sol, session file rollout-2026-10-15T00-48-49-01a13b51-05e8-7a72-84f6-6936e5fb0046.jsonl
+  - lane: brochure-altus-ground-truth
+    role: ground_truth
+    seat:
+      The product catalogue (kitas_permits, E33F Second Home Senior (1 Year, Altus/Onshore)); the
+      brochure prints whatever the catalogue holds, and the parity tests read it from there.
+    nb: apps/backend-rag/backend/data/pricing
+    query_hash: "26185b41341de17f" # sha256 prefix of the committed PDF, not a secret # pragma: allowlist secret
+    note: no signed-pack rule is asserted; the copy rules are unchanged and no price literal is added.
+pii_scan: clean
+bites:
+  consumer: the welcome email, which fetches https://kita.balizero.com/static/brochure_balizero_en.pdf, and the observer scripts/ci/observe_brochure_price_parity.py
+  where: ci
+  observe: python3 scripts/ci/observe_brochure_price_parity.py
+  expect: contains:brochure prices match the canonical catalogue
+receipts:
+  - claim: The no-argument observer runs the 18 brochure parity tests, including the new Onshore row, the swap guilt test and the committed-PDF anchored rows.
+    cmd: python3 scripts/ci/observe_brochure_price_parity.py
+    result: 18 passed in 4.04s; brochure prices match the canonical catalogue
+    exit: 0
+    ts: "2026-10-15T00:03:40Z"
+    seat: this session
+  - claim: The observer's own fixtures hold at the moved floor of 18 (17 rejected, 18 accepted).
+    cmd: apps/backend-rag/.venv/bin/python -m pytest tests/scripts/test_observe_brochure_price_parity.py -p no:cacheprovider
+    result: 11 passed in 0.05s
+    exit: 0
+    ts: "2026-10-15T00:03:33Z"
+    seat: this session
+  - claim: The committed PDF prints both E33F rows from the catalogue and no generic Retirement Offshore row.
+    cmd: pdftotext -layout apps/mouth/public/static/brochure_balizero_en.pdf - | grep -n 'E33F\|Retirement'
+    result: line 151 Offshore, 1 year Rp 14.000.000; line 153 Onshore, 1 year Rp 16.000.000; line 167 Retirement KITAP Rp 45.000.000
+    exit: 0
+    ts: "2026-10-15T00:03:33Z"
+    seat: this session
+  - claim: The committed PDF is the one regenerated on Pro (9 pages, 5 Montserrat faces embedded).
+    cmd: shasum -a 256 apps/mouth/public/static/brochure_balizero_en.pdf
+    result: sha256 prefix 26185b41341de17f
+    exit: 0
+    ts: "2026-10-15T00:03:33Z"
+    seat: this session
+dissent:
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] test_brochure_price_parity.py:691: the assert that the Offshore and Onshore prices differ was not in the spec and would fail if the catalogue ever priced both routes the same. Disposition: accepted, cured. Cure: commit 6d21776a0f deletes that assert; each row stays bound to its own catalogue entry."
+    status: CONFIRMED
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] test_brochure_price_parity.py module docstring: the innocence list did not mention the new Onshore row. Disposition: accepted, cured. Cure: commit 6d21776a0f names Onshore in the docstring."
+    status: CONFIRMED
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] tests/scripts/test_observe_brochure_price_parity.py:17-32: file outside the allowed-files list; the 17 to 18 change is forced by the observer floor and both sides of the boundary stay tested. Disposition: accepted, declared. Cure: no code change; the file is declared in the brief scope, in this pack and in the PR body as the observer's companion test."
+    status: CONFIRMED
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] tests/scripts/test_catalogue_decisions_1014.py:135-144: red on origin/main before this lane, because #8512 (f411374c98) gave the book-data.ts call a fourth argument; this lane touches neither file. Disposition: deferred, out of scope. Cure: none here; a separate lane must match the call prefix or parse the arguments. Not folded into this PR."
+    status: CONFIRMED
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] test_brochure_price_parity.py (E33E guilt and cure-message tests): two tests expect PRICE_E33E to be the first failing anchored row, so a stale PDF fails them on PRICE_RET_ALT with an unhelpful message; they stay red either way. Disposition: deferred, pre-existing fragility. Cure: none here; optional follow-up to collect every missing row before raising."
+    status: CONFIRMED
+  - seat: "claude-opus-5-5 red team"
+    objection: "[LOW] .claude/skills/modus/PENDING-ARMS.md:2707 and .agents/skills/visaoracle/references/live-state-log.md:13: both records go stale once this ships, and Mouth production deploys land STAGED. Disposition: accepted, post-merge duty. Cure: after merge run vercel promote, confirm the live PDF has sha256 prefix 26185b41341de17f with the Onshore Rp 16.000.000 row, then a docs follow-up closes the PENDING-ARMS row and the live-state log."
+    status: CONFIRMED
+  - seat: "codex gpt-5.6-sol"
+    objection: "[MEDIUM] tests/scripts/test_observe_brochure_price_parity.py:17: the file is outside the lane's allowed-files list (6 lines moved from 17 to 18 tests); technically necessary and correct, only the perimeter is off. Disposition: accepted, declared. Cure: the file is named in the brief scope, this pack, and the commit and PR body as a declared mechanical touch."
+    status: CONFIRMED

@@ -9,7 +9,7 @@ Guilt: a stale hardcoded Rupiah figure, a drifted rendered price, or a mapping
 pointed at an internal row must fail immediately.
 Innocence: every rendered price cell in the brochure matches an independent
 oracle over its canonical JSON row, and public rows like E33E (Rp 45.000.000),
-E33F Offshore, and Retirement KITAP + MERP render accurately.
+E33F Offshore and Onshore, and Retirement KITAP + MERP render accurately.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ TEMPLATE_SCAN_EXEMPTIONS: tuple[str, ...] = ("+62 821 3454 721", "80361")
 
 ExpectedRow = tuple[str, tuple[str, ...], int, tuple[str, ...], str]
 
-# Committed oracle table binding every placeholder (all 50) to its printed row cells
+# Committed oracle table binding every placeholder (all 51) to its printed row cells
 # (label_cell, qualifier_cells, price_col_index, canonical_path, canonical_row_name).
 EXPECTED_ROWS: dict[str, ExpectedRow] = {
     "PRICE_VOA": (
@@ -154,6 +154,13 @@ EXPECTED_ROWS: dict[str, ExpectedRow] = {
         2,
         ("kitas_permits", "E33F Second Home Senior (1 Year, Offshore)"),
         "E33F Second Home Senior (1 Year, Offshore)",
+    ),
+    "PRICE_RET_ALT": (
+        "Retirement 55+ (Second Home senior, E33F)",
+        ("Onshore, 1 year",),
+        2,
+        ("kitas_permits", "E33F Second Home Senior (1 Year, Altus/Onshore)"),
+        "E33F Second Home Senior (1 Year, Altus/Onshore)",
     ),
     "PRICE_SPOUSE_OFF": (
         "Spouse or dependent, 1 year",
@@ -522,7 +529,7 @@ def _assert_parity(
     filled_html: str, raw_template: str, pricing: dict
 ) -> list[tuple[str, str]]:
     """Verify every printed price cell and its row label/qualifiers match EXPECTED_ROWS."""
-    assert len(EXPECTED_ROWS) == 50
+    assert len(EXPECTED_ROWS) == 51
     template_placeholders = set(GEN.PLACEHOLDER_RE.findall(raw_template))
     assert template_placeholders == set(EXPECTED_ROWS.keys()) == set(GEN.PRICE_MAP.keys())
 
@@ -671,10 +678,16 @@ def test_e33e_prints_45_million_and_not_the_old_14_million() -> None:
     assert e33e_rows[0][-1] == e33e_expected
     assert "Rp 14.000.000" not in " ".join(e33e_rows[0])
 
-    e33f_expected = _oracle_price(kitas["E33F Second Home Senior (1 Year, Offshore)"])
+    e33f_off_expected = _oracle_price(kitas["E33F Second Home Senior (1 Year, Offshore)"])
+    e33f_alt_expected = _oracle_price(kitas["E33F Second Home Senior (1 Year, Altus/Onshore)"])
     e33f_rows = [r for r in rows if "E33F" in r[0]]
-    assert len(e33f_rows) == 1
-    assert e33f_rows[0][-1] == e33f_expected
+    assert len(e33f_rows) == 2
+    e33f_off_rows = [r for r in e33f_rows if "Offshore" in r[1]]
+    e33f_on_rows = [r for r in e33f_rows if "Onshore" in r[1]]
+    assert len(e33f_off_rows) == 1
+    assert len(e33f_on_rows) == 1
+    assert e33f_off_rows[0][-1] == e33f_off_expected
+    assert e33f_on_rows[0][-1] == e33f_alt_expected
 
 
 def test_no_internal_row_is_printed() -> None:
@@ -779,6 +792,23 @@ def test_guilt_b_swap_e33g_offshore_and_onshore_fails_parity() -> None:
         raw_template.replace("{{PRICE_E33G_OFF}}", "__TMP_SWAP__")
         .replace("{{PRICE_E33G_ALT}}", "{{PRICE_E33G_OFF}}")
         .replace("__TMP_SWAP__", "{{PRICE_E33G_ALT}}")
+    )
+    resolved = {k: GEN.get_price(pricing, p, n) for k, (p, n) in GEN.PRICE_MAP.items()}
+    hand_filled = GEN.PLACEHOLDER_RE.sub(lambda m: resolved[m.group(1)], mutated_template)
+    with pytest.raises(AssertionError):
+        _assert_parity(hand_filled, mutated_template, pricing)
+    with pytest.raises(AssertionError):
+        _assert_parity(hand_filled, raw_template, pricing)
+
+
+def test_guilt_b2_swap_e33f_offshore_and_onshore_fails_parity() -> None:
+    """GUILT (b2): swapping {{PRICE_RET_OFF}} and {{PRICE_RET_ALT}} fails row parity."""
+    raw_template = GEN.TEMPLATE_PATH.read_text(encoding="utf-8")
+    pricing = GEN.load_pricing()
+    mutated_template = (
+        raw_template.replace("{{PRICE_RET_OFF}}", "__TMP_SWAP__")
+        .replace("{{PRICE_RET_ALT}}", "{{PRICE_RET_OFF}}")
+        .replace("__TMP_SWAP__", "{{PRICE_RET_ALT}}")
     )
     resolved = {k: GEN.get_price(pricing, p, n) for k, (p, n) in GEN.PRICE_MAP.items()}
     hand_filled = GEN.PLACEHOLDER_RE.sub(lambda m: resolved[m.group(1)], mutated_template)

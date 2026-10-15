@@ -10,7 +10,7 @@ which proves: every printed brochure row equals its canonical row (label, qualif
 column), E33E prints 45.000.000 and not the old 14.000.000, no internal Retirement row is printed,
 no IDR literal sits in the template, the committed PDF text carries the same anchored rows, and
 the guilt mutants (stale literal, swapped placeholders, relabelled row, drifted price, stale PDF)
-all fail. Exit 0 only on a full pass of at least 17 tests.
+all fail. Exit 0 only on a full pass of at least 18 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -26,7 +26,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = REPO_ROOT / "apps" / "backend-rag"
 TEST_FILE = "backend/tests/services/crm/test_brochure_price_parity.py"
-MIN_TESTS = 17
+MIN_TESTS = 18
 TIMEOUT_SECONDS = 240
 BROCHURE_CURE = (
     "Cure: cd apps/backend-rag && .venv/bin/python scripts/generate_brochure.py "
@@ -43,7 +43,7 @@ _PDF_FAILED = re.compile(
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 17."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 18."""
     if line is None:
         return False
     match = _SUMMARY.match(_ANSI.sub("", line).strip())
