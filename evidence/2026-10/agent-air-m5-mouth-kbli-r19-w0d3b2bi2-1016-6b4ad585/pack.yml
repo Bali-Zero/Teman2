@@ -1,0 +1,73 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i' (BLUE), the
+  tooling half of the 3b-2b split. The Dux (site-dux, a successor window) built and ran every
+  command. It does not self-sign; the imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md; the #8488 gate bindings
+  B1-B5; the #8249 gate bindings 2, 3 and 4; the #8560 gate (comment 6195761173); the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4, 8.8 and 9.
+lanes:
+  - lane: kbli-r19-w0d3b2bi2-1016
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat. No PNG in this pack."
+provenance: >-
+  Successor of #8560 (gate BLOCK, depth 1): its cures cherry-picked onto a fresh origin/main, plus the cure of
+  its binding 3. Nothing of 3b-2b-ii is in the diff.
+diff:
+  behaviour_change: >-
+    The #8560 cures (one new_context(), drop-shadow reaches nothing, ground-resolver-disagree INCOMPLETE on a
+    capture not read through, bring() keeps the occluder, 75 minutes for the full job, the declared line in the
+    exit step, the fixture regenerated) plus the cure of its gate's binding 3: hides() tests the scrim ITSELF for
+    a stacking context (fixed or sticky position, filter, backdrop-filter, transform, opacity below 1; its ancestors
+    do not count), carries the cause of an exemption (scrim or surface) out of the page, and the walk line counts
+    each cause apart. On the real tree one line moves against #8560: explorer-answer-inspector mobile/system-dark,
+    23 occluded, was "23 of them behind the walk's own scrim", is now "6 of them behind the walk's own scrim, 17 of
+    them under another opened surface". G 577, O 18, K 188, M 741, state 51, drift 0 are unchanged. The fixture
+    moved from the 3b-2a one by the tree, not by the cures: #8126 (cccb950372, the code chip text-[#dc2626] to
+    text-[#fca5a5]), #8127 (17de9c0294, text-[10px] to text-[11px]) and #8303 (e0f47d5fb8, PT PMA 20.000.000 to
+    25.000.000 on the /kbli/55203 keys).
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "154 passed, 87 deselected"
+    exit: 0
+    ts: "2026-10-16T00:45:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The browser rows pass on M5, the new rows (A1, fixed and blurred scrim children, drop-shadow-only, the two walk-line causes) included."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+    result: "87 passed, 154 deselected in 255.04s"
+    exit: 0
+    ts: "2026-10-16T00:00:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (242.78s)"
+    exit: 0
+    ts: "2026-10-15T23:41:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Every cure undone fails a row, the #8560 gate's G1, G2, G3, G7 and G9 and the head's A1 included."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bi2-1016-6b4ad585/instrument_mutants.py (instrument-mutants.txt)"
+    result: "12 of 12 killed"
+    exit: 0
+    ts: "2026-10-16T00:10:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "M5, the full census at load 5 to 24: the fixture is its dump, and the fixture's replay is its live verdict byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --port 3531 --diff-base origin/main --json <fixture>; --replay <fixture>; cmp"
+    result: "492 lines, identical (sha256 8b1e0f56a01a82f5). captures 54 ok, opened 50 ok 0 failed, declared-not-judgeable 1, G 577, O 18, K 188, D 0, drift 0, M 741. phase-seconds: full capture 1347, walk 145, opened 1109, shared 497."
+    exit: 0
+    ts: "2026-10-16T00:41:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-16T00:50:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "B3, the composer card: is the occlusion of the 'KBLI 2025 (Peraturan BPS 7/2025)' paragraph an artefact of the census state?"
+    status: RETRACTED
+    resolution: "No. A plain user load and the census state read the same on /kbli-explorer at 1440x900 after 2.5 s (card at y 1, input at y 40 covering the paragraph at y 62, opacity 1, transform none, scroll 185/185). The gate reproduced it. A product finding outside this lot; the census reports it correctly."
