@@ -17,6 +17,8 @@ OPTIONAL_COLUMNS = (
     "benefits",
     "process_steps",
     "tips",
+    "renewable",
+    "cost_extension",
 )
 
 VISA_TYPES = [
@@ -989,6 +991,7 @@ VISA_TYPES = [
         "duration": "2 years",
         "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
+        "cost_extension": "IDR 18.000.000, all-inclusive",
         "processing_time_normal": "7-10 working days",
         "requirements": [
             "Sponsor required (the investment company)",
@@ -1202,20 +1205,21 @@ VISA_TYPES = [
         "duration": "Not applicable",
         "cost_visa": "Not applicable",
         "requirements": [
-            "E28G is not a current Indonesian investor visa: it has no official Imigrasi page. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)",
+            "E28G is not a current visa (Bali Zero ruling 2026-10-15): see E28A, E28B or E28C. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)",
         ],
         "restrictions": [],
         "allowed_activities": [],
         "benefits": [],
         "process_steps": [],
         "tips": [],
-        "description": "E28G is not a current Indonesian investor visa (no official Imigrasi page). See E28A, E28B or E28C.",
+        "renewable": False,
+        "description": "E28G is not a current visa (Bali Zero ruling 2026-10-15). See E28A, E28B or E28C.",
         "metadata": {
             "source": "zantara_curated_2026",
             "is_agency_product": False,
-            "name_id": "Bukan visa yang berlaku saat ini",
+            "name_id": "Bukan visa yang berlaku (lihat E28A, E28B atau E28C)",
             "retired": True,
-            "retired_reason": "not a current visa: no official Imigrasi page, not in the signed rulepack",
+            "retired_reason": "not a current visa (Bali Zero ruling 2026-10-15; not in the signed rulepack)",
             "replaced_by": [
                 "E28A",
                 "E28B",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Migration 128: the live `visa_types` E28 rows say only what the official Imigrasi
-pages say (audit `research/visa/2026-10-15-e28-family-audit.md` F70-F74; PR C2).
+pages say (audit F70-F74 (audit matrix, ships in the E28 ledger PR); PR C2).
 
 Served today by `get_visa_details` (MCP) / `GET /api/knowledge/visa/code/{code}`:
   - E28B "Investasi minimal Rp 2.5 miliar" (the page says USD 2.5M / 5M), name "Golden Visa 5Y"
@@ -10,8 +10,8 @@ Served today by `get_visa_details` (MCP) / `GET /api/knowledge/visa/code/{code}`
     "Return/onward ticket" that the page does not list, the page's bank statement / CV /
     itinerary / application letter missing, document lines filed under `allowed_activities`
   - E28A `cost_visa` "17.000.000 - 19.000.000 IDR" (a range spanning two products)
-  - E28G "Golden Visa 10Y / Investasi Rp 5 miliar+" - not a current visa (no official page,
-    not in the signed rulepack).
+  - E28G "Golden Visa 10Y / Investasi Rp 5 miliar+" - not a current visa (owner ruling
+    2026-10-15; not in the signed rulepack).
 
 Sources (saved page texts, fetched 2026-10-15): `research/visa/2026-10-15-e28-pages/text/`.
 Owner rulings 2026-10-15: E28A is sold as 2 years only; Investor KITAS 17.000.000 (offshore)
@@ -35,7 +35,11 @@ E28G: the row is KEPT but marked `metadata.retired = true` (replaced_by E28A/E28
 its text says it is not a current visa. `GET /api/knowledge/visa/` skips retired rows; the
 detail lookup by code still answers with the "not a current visa" text. No schema change.
 
-`name` is written for all six codes and the seed script carries the same names, as
+`cost_extension` (E28A, the 18.000.000 Investor KITAS extension price) and `renewable`
+(E28G false; E28A-F stay true, the pages say "dapat diperpanjang") are written too. `extensions` /
+`total_stay` counts are NOT invented.
+
+`name` is written for E28B, E28C, E28D, E28F and E28G (E28A keeps its live name) and the seed script carries the same names, as
 `test_visa_types_seed_vs_migration_tripwire.py` requires (E28D / E28F names equal the ones
 migration_126 / migration_125 already wrote, so those two are no-ops on the live rows).
 
@@ -80,6 +84,7 @@ VISA_FIXES = {
         "duration": "2 years",
         "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
+        "cost_extension": "IDR 18.000.000, all-inclusive",
         "processing_time_normal": "7-10 working days",
         "requirements": [
             "Sponsor required (the investment company)",
@@ -243,16 +248,18 @@ VISA_FIXES = {
         "total_stay": None,
         "processing_time_express": None,
         "requirements": [
-            "E28G is not a current Indonesian investor visa: it has no official Imigrasi page. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)"
+            "E28G is not a current visa (Bali Zero ruling 2026-10-15): see E28A, E28B or E28C. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)"
         ],
         "restrictions": [],
         "allowed_activities": [],
         "benefits": [],
         "process_steps": [],
         "tips": [],
+        "renewable": False,
         "metadata": {
+            "name_id": "Bukan visa yang berlaku (lihat E28A, E28B atau E28C)",
             "retired": True,
-            "retired_reason": "not a current visa: no official Imigrasi page, not in the signed rulepack",
+            "retired_reason": "not a current visa (Bali Zero ruling 2026-10-15; not in the signed rulepack)",
             "replaced_by": [
                 "E28A",
                 "E28B",

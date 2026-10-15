@@ -141,6 +141,12 @@ def plan_changes(src: Any, current: dict[str, dict[str, Any] | None]) -> list[Ch
             )
         meta = payload.get("metadata") or {}
         new_text = src.replace_stay_block(text, rule)
+        if OLD_ANCHORS[code] in new_text:
+            # The old claim survives OUTSIDE the stay block this fixer replaces: writing would
+            # leave it served, and the post-apply verify would still say "0 pending". Refuse.
+            raise RefusedError(
+                f"point {pid} ({code}): the old sentence {OLD_ANCHORS[code]!r} survives outside the stay block"
+            )
         new_meta = src.build_metadata(meta, rule)
         if new_text != text or new_meta != meta:
             changes.append(

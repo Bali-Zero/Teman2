@@ -868,3 +868,52 @@ def test_no_e28_row_promises_a_path_to_kitap(code):
     assert FIXES[code]["benefits"] == ["Legal stay in Indonesia", "Multiple entry/exit"]
     assert not any("kitap" in t.lower() for t in row_strings(FIXES[code]))
 
+
+
+def test_an_old_anchor_surviving_outside_the_stay_block_refuses_before_any_write(fx, src, capsys, tmp_path):
+    """GUILT: the old sentence also sits in a second section the fixer does not replace."""
+    fake = FakeQdrant(fx, src)
+    pid = fx.CODE_POINTS["E28F"]
+    p = fake.points[pid]["payload"]
+    p["text"] = p["text"].replace("keep me\n", f"keep me\n\n## Extra\n{fx.OLD_ANCHORS['E28F']} again\n")
+    code, _, err = _run(fx, fake, ["--apply", "--backup", str(tmp_path / "b.json")], capsys)
+    assert code == 3 and fake.writes() == [] and "survives outside the stay block" in err
+
+
+def test_the_anchor_check_spares_a_text_whose_anchor_is_only_inside_the_block(fx, src, capsys, tmp_path):
+    """INNOCENCE: the standard old text (anchor only in the stay block) is still cured, and the
+    post-apply state (new notes, no anchor anywhere) re-plans to zero."""
+    fake = FakeQdrant(fx, src)
+    assert _run(fx, fake, ["--apply", "--backup", str(tmp_path / "b.json")], capsys)[0] == 0
+    for code in LIVE_CODES:
+        assert fx.OLD_ANCHORS[code] not in fake.points[fx.CODE_POINTS[code]]["payload"]["text"]
+
+
+def test_a_surviving_anchor_is_caught_by_the_post_apply_verify_too(fx, src):
+    """The verify path IS plan_changes on the re-read payloads: a surviving anchor there refuses."""
+    cur = {fx.CODE_POINTS[c]: _old_point(fx, c)["payload"] for c in LIVE_CODES}
+    cur[fx.CONCEPT_POINT_ID] = _old_concept(fx, src)["payload"]
+    cur[fx.E28G_POINT_ID] = None
+    changes = fx.plan_changes(src, cur)
+    after = {c.point_id: c.payload for c in changes}
+    done = {pid: ({**cur[pid], **after[pid]} if pid in after else cur[pid]) for pid in cur if cur[pid]}
+    done[fx.E28G_POINT_ID] = None
+    assert fx.plan_changes(src, done) == []
+    done[fx.CODE_POINTS["E28D"]] = {**done[fx.CODE_POINTS["E28D"]], "text": done[fx.CODE_POINTS["E28D"]]["text"] + "\n" + fx.OLD_ANCHORS["E28D"]}
+    with pytest.raises(fx.RefusedError):
+        fx.plan_changes(src, done)
+
+
+def test_migration_128_writes_the_remaining_false_or_missing_columns():
+    assert FIXES["E28A"]["cost_extension"] == "IDR 18.000.000, all-inclusive"
+    assert FIXES["E28G"]["renewable"] is False
+    assert FIXES["E28G"]["metadata"]["name_id"] == "Bukan visa yang berlaku (lihat E28A, E28B atau E28C)"
+    for code in LIVE_CODES:  # renewable stays true on E28A-F: not written; extensions/total_stay never invented
+        assert "renewable" not in FIXES[code] and "extensions" not in FIXES[code] and "total_stay" not in FIXES[code]
+    assert "extensions" in FIXES["E28G"] and FIXES["E28G"]["extensions"] is None
+
+
+def test_no_surface_claims_e28g_has_no_official_page_because_no_page_was_fetched():
+    for path in (MIG_PATH, SEED_PATH):
+        text = path.read_text()
+        assert not re.search(r"no official Imigrasi page|has no official|no official page", text), path.name

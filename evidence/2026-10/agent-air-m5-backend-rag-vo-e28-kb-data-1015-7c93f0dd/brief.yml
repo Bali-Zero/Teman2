@@ -1,17 +1,17 @@
 task_id: vo-e28-kb-data-1015
-gear: 2
+gear: 3
 l_level: L1
 gate_class: opus
 mission_colour: BLUE
 objective: |
-  PR C2 of the E28 audit (research/visa/2026-10-15-e28-family-audit.md F40-F44, F70-F74): the E28 rows
+  PR C2 of the E28 audit (F40-F44, F70-F74 of the audit matrix, which ships in the E28 ledger PR): the E28 rows
   Zantara and the MCP read from the knowledge stores say only what the official Imigrasi pages say.
   Surfaces: the Postgres visa_types rows served by get_visa_details (new migration 128 + aligned seed)
   and the Qdrant visa_oracle E28 points (corrected enrichment source + a payload-only fixer that is
   dry-run by default). Owner rulings 2026-10-15 (Zero): E28A sold as 2 years only; Investor KITAS
   17.000.000 offshore / 19.000.000 onshore all-inclusive; E28B-F at a price on consultation; the
   "7-10 working days" window kept; E28G is not a current visa. The production writes themselves are
-  run by the orchestrator after merge, with the owner's recorded authorization and a backup first.
+  run by the orchestrator after merge, with the owner's recorded authorization and a backup first. Gear 3: a migration and a Qdrant write on production data, and the diff churns past the size floor.
 constraints:
   - "No production access from this PR: no fly ssh, no Qdrant or DB write, no network to Qdrant in tests."
   - "No embedding or LLM call: the fixer sets payload fields and deletes one point, never touches a vector."
@@ -22,9 +22,9 @@ acceptance:
   - text: "The fixer against a fake Qdrant: dry-run writes nothing, apply is refused without a backup, apply issues 6 set_payload + 1 delete and no vector, second run is a no-op, no embeddings endpoint."
     probe: "same command as above"
 consumer_map:
-  - "MCP get_visa_details / list_visa_types -> GET /api/knowledge/visa/code/{code} -> SELECT * FROM visa_types (no status filter)."
+  - "MCP get_visa_details / list_visa_types -> GET /api/knowledge/visa/code/{code} -> SELECT * FROM visa_types, skipping rows whose metadata.retired is true in the list endpoint only."
   - "Zantara retrieval over the Qdrant visa_oracle collection (payload text + metadata of the E28 points)."
 risks:
-  - "visa_types has no retire/hidden mechanism: E28G is rewritten as 'not a current visa' rather than hidden; a router flag is a separate change."
-  - "Direct SQL does not invalidate the zantara:knowledge_visa:* cache: the orchestrator must invalidate it after the migration."
+  - "E28G is kept as a row marked metadata.retired=true (list endpoint skips it, detail lookup still answers 'not a current visa'); no schema change."
+  - "Nothing reads visa_types through a cache (zantara:knowledge_visa:* has no reader), so no invalidation is needed after the migration."
 grader: "Fresh Opus 5.5 final gate commissioned by the orchestrator, on-disk."
