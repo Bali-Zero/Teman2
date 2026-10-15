@@ -1038,11 +1038,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B26: the bulk receipts of a finished run go after 24 hours
     "bulk-status-required-again": (PRUNE, "bulk_now = age_h >= BULK_KEEP_H\n", 'bulk_now = age_h >= BULK_KEEP_H and (run / "status.json").is_file()\n', B26_T),
     "bulk-24h-ignored": (PRUNE, "bulk_now = age_h >= BULK_KEEP_H\n", "bulk_now = age_h >= FULL_DAYS * 24\n", B26_T),
-    "gzip-original-unlinked-before-the-rename": (PRUNE, "                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n                if not dry:\n                    src.unlink()\n",
-                                                 "                    src.unlink()\n                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n", B26_T),
+    "gzip-original-unlinked-before-the-rename": (PRUNE, "                    os.replace(part, gz)\n", "                    src.unlink()\n                    os.replace(part, gz)\n", B26_T),
     "gzip-file-symlink-followed": (PRUNE, "if src in skip or src.is_symlink() or not src.is_file() or gz.is_symlink():", "if src in skip or not src.is_file() or gz.is_symlink():", B26_T),
     "gzip-dir-symlink-followed": (PRUNE, "if side.is_symlink() or res.is_symlink() or not res.is_dir():", "if not res.is_dir():", B26_T),
-    "taint-output-deleted-not-compressed": (PRUNE, "                    os.replace(part, gz)\n                    after = gz.lstat().st_size\n", "                    part.unlink()\n                    after = 0\n", B26_T),
+    "taint-output-deleted-not-compressed": (PRUNE, "                    os.replace(part, gz)\n", "                    part.unlink()\n                    gz.write_bytes(b\"\")\n", B26_T),
     "gzip-stray-part-kept": (PRUNE, "                size = stale.lstat().st_size\n                if not dry:\n                    stale.unlink()\n", "                size = stale.lstat().st_size\n                if False:\n                    stale.unlink()\n", B26_T),
     "gzip-ignores-existing-gz": (PRUNE, "                if gz.is_file():", "                if False:", B26_T),
     "gzip-part-oserror-raises": (PRUNE, "            except OSError as exc:\n                if errors is not None:\n                    errors.append(f\"{stale.relative_to(run).as_posix()}", "            except ZeroDivisionError as exc:\n                if errors is not None:\n                    errors.append(f\"{stale.relative_to(run).as_posix()}", B26_T),
