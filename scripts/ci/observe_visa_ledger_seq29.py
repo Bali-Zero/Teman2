@@ -24,7 +24,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_visa_ledger_seq29.py"
-MIN_TESTS = 43
+MIN_TESTS = 46
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [0-9.]+s(?: \([0-9:]+\))?\s*=*$")
 
 

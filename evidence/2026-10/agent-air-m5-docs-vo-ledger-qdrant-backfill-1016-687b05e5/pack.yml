@@ -1,0 +1,65 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15 -
+  ADD-ONLY writes to bali_zero_pricing_hybrid authorized after a clean dry run, any update or delete needs a new go.
+mission: >-
+  Record the Qdrant pricing backfill (#8568, b93adf342d; 66 points created ADD-ONLY, re-plan 0 catalog rows without a
+  point), close its wave-5 PENDING-ARMS row and open one operator-gated row for the stale contact trailer and the 17
+  orphan points.
+lanes:
+  - lane: vo-ledger-qdrant-backfill
+    role: build
+    seat: claude-sonnet-5 (subagent), verified by the claude-opus-5-5 session
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '46 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: The four ledger test files pass with the new pins (closed row once with PR 8568 and b93adf342d, the old open needle gone, the log entry first with CREATED 66 / in_sync=116 / 6321afd152, one SKILL bullet says newest).
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py
+    result: "81 passed in 1.42s"
+    exit: 0
+    ts: "2026-10-15T16:27:58Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 43 to 46, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "46 passed in 1.09s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-15T16:27:58Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (one row closed, one opened, the open count unchanged).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 605 -> head 605 (delta 0)"
+    exit: 0
+    ts: "2026-10-15T16:27:58Z"
+    seat: this session
+  - claim: A mutant of the closed row (b93adf342d -> b93adf342e) turns the seq-29 file red, and the file is restored byte-identical.
+    cmd: sed one site; python3 -m pytest -q tests/scripts/test_visa_ledger_seq29.py; cp back; cmp
+    result: "1 failed, 45 passed; restored"
+    exit: 0
+    ts: "2026-10-15T16:27:58Z"
+    seat: subagent, re-read by this session
+  - claim: Every fact written was measured this session (PR state and merge sha, deploy ancestry, backup sha256, dry run, apply log, re-plan, /api/search before and after).
+    cmd: "gh pr view 8568 --json state,mergedAt,mergeCommit; scripts/post-deploy-verify.sh 8568; Pro: backup_collection.py, run_sync.py dry run/apply/re-plan, verify_untouched.py; curl POST /api/search collection=bali_zero_pricing_hybrid"
+    result: "MERGED b93adf342d 15:52:22Z; build_sha 6321afd152 contains it; CREATED 66; in_sync=116 catalog_rows_without_point=0; 67 untouched"
+    exit: 0
+    ts: "2026-10-15T16:20:00Z"
+    seat: this session
+decisions:
+  - id: D-one-operator-row
+    text: >-
+      The contact trailer and the 17 orphans share one operator-gated row: both are writes the ADD-ONLY authorization
+      did not cover, both are Zero's call, and one row keeps the open count unchanged.
+dissent:
+  - seat: fresh Opus 5.5 gate (subagent), on 400a96315d
+    status: CONFIRMED
+    objection: >-
+      The log and the commit message credited D2 Business (5 Years) joining the JSON catalog to PR 8551; it was PR
+      8540 (412f485975); 8551 only added the row to the CRM practice_types table.
+    repro: >-
+      Fixed in the same commit before any push (log line and commit message); the pensiun/retirement proof wording
+      was also made exact (limit 5 returns two of the three E33F rows per query) and its test pin tightened.
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
