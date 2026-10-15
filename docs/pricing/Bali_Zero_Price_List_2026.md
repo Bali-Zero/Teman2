@@ -2,7 +2,7 @@
 
 **Effective:** 2026-01-01
 **Version:** 2026.1
-**Last updated:** 2026-05-06
+**Last updated:** 2026-10-15
 
 > zero@balizero.com · +62 821 3454 721 · balizero.com · Kerobokan, Bali, Indonesia
 
@@ -63,6 +63,7 @@ _Multi-entry visas for repeat travel._
 | **D1 Tourism (5 Years)**                 | Multiple-entry tourist visa valid 5 years, allowing repeated visits with a maximum stay per entry as set by immigration.                   | 12.900.000 IDR |
 | **D2 Business (1 Year)**                 | Multiple-entry business visa valid 1 year for business meetings and non-employment activities.                                             | 6.500.000 IDR  |
 | **D2 Business (2 Years)**                | Multiple-entry business visa valid 2 years for business meetings and non-employment activities.                                            | 9.000.000 IDR  |
+| **D2 Business (5 Years)**                | Multiple-entry business visa valid 5 years for business meetings and non-employment activities.                                            | 13.000.000 IDR |
 | **D12 Business Investigation (1 Year)**  | Multiple-entry business investigation visa valid 1 year, for investors and business representatives exploring opportunities in Indonesia.  | 7.500.000 IDR  |
 | **D12 Business Investigation (2 Years)** | Multiple-entry business investigation visa valid 2 years, for investors and business representatives exploring opportunities in Indonesia. | 10.000.000 IDR |
 
