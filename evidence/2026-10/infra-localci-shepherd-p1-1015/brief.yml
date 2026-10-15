@@ -1,0 +1,33 @@
+task_id: infra-localci-shepherd-p1-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B34 P1, the PR shepherd observe core. Three classes of stranded PR
+  have no owner after the phase F flip: a gear >= 2 head with no
+  harness/fable-gate (4), a PR whose author cannot label (7), a required hosted
+  context cancelled (10). P1 lists the open PRs with one bounded GraphQL query,
+  classifies classes 4 and 7, and journals would_* rows; it has NO write verb. Budget:
+  core < 1500 observe-only, < 800 skip, 60 REST calls per tick (the 61st never
+  made), a second live tick exits on the lease. NEVER predicates are entities:
+  fork, off-limits (zantara_core.py, fly.toml at any depth, .env*, the
+  bali-intel-scraper env.py), changes requested, a truncated file list. Wrapper, plist (StartInterval
+  600, no KeepAlive) and registry entry pro.localci_shepherd mirror the merger.
+  Class 10 (hosted setup-abort) and every write move to P2-P5. The mirror
+  borrows the merger's objects (clone --shared).
+acceptance:
+  - text: >-
+      Classifier per class, budget floors exact (1499 observe, 1500 act, 799
+      skip), call cap 60/61, lease, fork and off-limits guilt and innocence, no
+      write verb in shepherd.py, plist and registry pinned.
+    probe: python3 -m pytest -q scripts/localci/tests/test_shepherd.py
+assumptions:
+  - text: >-
+      Every b34-* mutant is killed.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(python3 scripts/localci/tests/mutants/merger_mutants.py --list | awk '$1 ~ /^b34-/ {print $1}')
+residual:
+  - text: >-
+      The arm label that predates the head (B2a) is not evaluated in P1: a
+      label_candidate is a PR with no arm label at all. P5 adds the check-suite
+      time comparison.
