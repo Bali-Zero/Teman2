@@ -999,8 +999,10 @@ def _pin_lines(blob: bytes) -> tuple[list, list]:
     return keep, dropped
 
 
-def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run_dir: Path, slug: str) -> tuple[str | None, str]:
-    """(image id, note) or (None, why). Cached by recipe digest: the same lock on the same candidate image reuses its image."""
+def deps_recipe(wt: Path, cand: str, iso: dict, deps: dict, prefix: str) -> tuple[dict | None, str]:
+    """The pure part of `plan_deps_image`: (info, "") or (None, why). `info` holds the recipe, its digest (the image tag is
+    `localci-deps:{digest[:16]}`), the Dockerfile text and the inputs the build needs. It reads the tree at `cand` as data and calls
+    no docker; B22's prune recomputes main's tag with it."""
     reqs, dropped = [], []
     for rel in deps.get("requirements") or []:
         blob = _extract_base_file(wt, cand, safe_tree_path(str(rel)))   # the CANDIDATE's requirement file, read as data
@@ -1050,6 +1052,16 @@ def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run
     if cq:   # the pin is part of the recipe: a bump is a new digest, hence a new image, and the prune keeps the newest per recipe as it does
         recipe["codeql"] = cq
     digest = sha256_json(recipe)
+    return {"recipe": recipe, "digest": digest, "dockerfile": dockerfile, "reqs": reqs, "pkgs": pkgs, "fetch": fetch, "npm_files": npm_files,
+            "py": py, "dropped": dropped}, ""
+
+
+def plan_deps_image(wt: Path, cand: str, iso: dict, deps: dict, prefix: str, run_dir: Path, slug: str) -> tuple[str | None, str]:
+    """(image id, note) or (None, why). Cached by recipe digest: the same lock on the same candidate image reuses its image."""
+    info, why = deps_recipe(wt, cand, iso, deps, prefix)
+    if info is None:
+        return None, why
+    recipe, digest, dockerfile, pkgs, fetch, npm_files, py, dropped = (info[k] for k in ("recipe", "digest", "dockerfile", "pkgs", "fetch", "npm_files", "py", "dropped"))
     tag, docker = f"localci-deps:{digest[:16]}", iso["docker"]
     note = f"deps {tag} ({len(recipe['requirements'])} pins + {pkgs}, {len(fetch)} fetched file(s)); not reaching the network stage: {dropped}"
     have = (_try([docker, "image", "inspect", "--format", "{{.Id}} {{index .Config.Labels \"" + DEPS_LABEL + "\"}}", tag]) or "").split()
@@ -1764,6 +1776,11 @@ def isolation_spec(mode: str, image: str) -> dict:
     lines = r.stdout.strip().splitlines()
     if r.returncode != 0 or not lines or not lines[0].startswith("sha256:"):
         return {"mode": "container", "image": image, "error": f"image {image!r} not inspectable (rc={r.returncode}): {r.stderr.strip()[:200]}"}
+    return isolation_of_inspect(image, lines, docker)
+
+
+def isolation_of_inspect(image: str, lines: list, docker: str) -> dict:
+    """The sandbox spec from `docker image inspect --format '{{.Id}}\\n{{range .Config.Env}}{{println .}}{{end}}'` lines (B22's prune reads the same)."""
     env = dict(ln.split("=", 1) for ln in lines[1:] if "=" in ln)
     pyv = env.get("PYTHON_VERSION")   # set by the official python images; LOCALCI_PYTHONS="<major.minor>=<bin dir> ..." by candidate.Dockerfile
     extra = dict(x.split("=", 1) for x in env.get("LOCALCI_PYTHONS", "").split() if "=" in x)

@@ -40,6 +40,12 @@ LV = ("scripts/localci/tests/test_liveness.py",)   # B24
 B15_PRUNE = tuple(f"{PRUNE_T}::{t}" for t in ("test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never",
                                               "test_b15_host_pressure_never_removes_the_image_of_the_run_in_progress_or_the_never_list"))
 HEADROOM = tuple(f"{PRUNE_T}::{t}" for t in ("test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_shed_order", "test_headroom_at_120_nothing_is_shed", "test_headroom_leaves_the_start_floor_where_it_was", "test_headroom_a_non_default_flag_moves_the_line"))
+K = lambda *names: tuple(f"{PRUNE_T}::test_b22_{n}" for n in names)  # noqa: E731
+B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "the_cap_rule_does_not_shed_main_without_pressure",
+        "main_is_judged_at_base_not_at_a_pr_head", "a_new_candidate_image_id_moves_the_tag_and_the_old_image_is_no_longer_main",
+        "no_candidate_image_means_unknown_and_todays_rule", "an_exception_in_the_keeper_is_unknown_never_a_crash",
+        "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones",
+        "a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown", "the_python_prefix_of_the_job_is_part_of_the_recomputed_tag")
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -240,7 +246,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B6-1: deps images by explicit tag, 48 h unreferenced, never the newest of a recipe, never the candidate or base images
     "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
     "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
-    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"]:', 'elif top is None or im["created"] is None:', (PRUNE_T,)),
+    "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"] or im["tag"] in main:', 'elif top is None or im["created"] is None or im["tag"] in main:', (PRUNE_T,)),
     "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
     # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
     "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
@@ -390,6 +396,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "prune-headroom-default-zero": (PY, "RUN_HEADROOM_GB = 15.0 ", "RUN_HEADROOM_GB = 0.0 ", HEADROOM),
     "prune-headroom-flag-ignored": (PY, "pressure_gb=a.min_host_free_gb + a.run_headroom_gb,", "pressure_gb=a.min_host_free_gb + RUN_HEADROOM_GB,", HEADROOM),
     "prune-pressure-not-journalled": (PRUNE, '    rec["pressure_gb"] = pressure_gb\n', "", HEADROOM),
+    "b22-wrong-cand-pr-head": (PRUNE, "runner.deps_recipe(Path(repo), base,", 'runner.deps_recipe(Path(repo), "HEAD",', B22),
+    "b22-stale-image-id-ignored": (PRUNE, "iso = runner.isolation_of_inspect(CANDIDATE_IMAGE, lines, docker)", 'iso = {**runner.isolation_of_inspect(CANDIDATE_IMAGE, lines, docker), "image_id": "sha256:" + "c1" * 32}', B22),
+    "b22-keeper-exception-propagates": (PRUNE, "except Exception as exc:  # noqa: BLE001 — the keeper never", "except ZeroDivisionError as exc:  # noqa: BLE001 — the keeper never", B22),
+    "b22-candidate-image-unchecked": (PRUNE, 'if insp.returncode != 0 or not lines or not lines[0].startswith("sha256:"):', "if False:", B22),
+    "b22-digest-field-dropped-fetch": (RUN_PY, '"packages": pkgs, "fetch": fetch, "node": node,', '"packages": pkgs, "node": node,', B22),
+    "b22-digest-field-dropped-python": (RUN_PY, 'recipe = {"base": iso["image_id"], "python": py, "requirements"', 'recipe = {"base": iso["image_id"], "requirements"', B22),
+    "b22-recipe-error-escalates": (PRUNE, "except Exception as exc:  # noqa: BLE001 — one recipe", "except KeyError as exc:  # noqa: BLE001 — one recipe", B22),
+    "b22-python-prefix-lost": (PRUNE, "runner.select_python(job, iso.get(\"python_version\"), iso.get(\"pythons\") or {})", "runner.select_python(job, None, {})", B22),
+    "b22-main-shed-under-pressure": (PRUNE, "named, main)", "named, frozenset())", B22),
+    "b22-cap-rule-sheds-main": (PRUNE, "        if mains:\n            top = max(", "        if False:\n            top = max(", B22),
+    "b22-vm-floor-spares-main": (PRUNE, 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]',
+                                 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and d["tag"] not in main and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]', B22),
     "prune-host-pressure-ignored": (PRUNE, 'rec["host_pressure"] = pressure_gb is not None and free_before < pressure_gb',
                                     'rec["host_pressure"] = False', B15_PRUNE),
     "b7-fstrim-only-after-removal": (PRUNE, "    if fstrim and not dry:   # every real prune", "    if fstrim and removed and not dry:   # every real prune", (PRUNE_T,)),

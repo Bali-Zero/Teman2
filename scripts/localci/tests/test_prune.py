@@ -73,6 +73,8 @@ elif a[:2] == ["buildx", "du"]:   # `du` is the summary text; `du_fails` makes i
     print(world.get("du", ""))
 elif a[:2] == ["image", "ls"]:
     print("\n".join([im["tag"] for im in world["images"]] + world.get("others", [])))
+elif a[:2] == ["image", "inspect"] and a[-1] == "localci-candidate:1" and world.get("candidate_id"):   # B22: the sandbox spec the keeper reads
+    print(world["candidate_id"] + "\nPYTHON_VERSION=3.11.9\nLOCALCI_PYTHONS=3.12.1=/opt/py312/bin")
 elif a[:2] == ["image", "inspect"]:
     im = next((i for i in world["images"] if i["tag"] == a[-1]), None)
     if im is None:
@@ -1137,3 +1139,204 @@ def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--run-headroom-gb", "20"]) == 0
     line = journal(state)[-1]
     assert line["pressure_gb"] == 120 and line["host_pressure"] is True and len(line["images"]["removed"]) == 2
+
+
+# ------------------------------------------------------------------ B22 K1 v3: main's tag is recomputed from main's tree
+WORKFLOW = "jobs:\n  e2e: {steps: []}\n  mouth: {steps: [{uses: actions/setup-python@v5, with: {python-version: '3.12'}}]}\n"   # mouth's interpreter is the image's extra
+PREFIX = {"frontend-tests-mouth": "/opt/py312/bin"}   # select_python: 3.12 is not the default 3.11.9, it is LOCALCI_PYTHONS' 3.12.1
+MATRIX_YAML = """
+contexts:
+  - workflow_file: .github/workflows/t.yml
+    job_id: e2e
+    local: {check: ctx.e2e-tests, deps: {requirements: [req-e2e.txt], packages: [pytest]}}
+  - workflow_file: .github/workflows/t.yml
+    job_id: mouth
+    local: {check: ctx.frontend-tests-mouth, deps: {requirements: [req-mouth.txt]}}
+"""
+BASE_FILES = {"scripts/localci/contexts_matrix.yaml": MATRIX_YAML, ".github/workflows/t.yml": WORKFLOW, "req-e2e.txt": "a==1\n", "req-mouth.txt": "b==1\n"}
+E2E, MOUTH = "e2e-tests", "frontend-tests-mouth"
+CAND_ID = "sha256:" + "c1" * 32
+DEPS = {E2E: {"requirements": ["req-e2e.txt"], "packages": ["pytest"]}, MOUTH: {"requirements": ["req-mouth.txt"]}}
+
+
+class Mirror:
+    """state/repo.git: a repository whose refs/merger/base is the tip of a linear history of BASE_FILES commits."""
+
+    def __init__(self, root: Path):
+        self.dir = root / "repo.git"
+        self.dir.mkdir(parents=True)
+        self.git("init", "-q")
+        self.commit(BASE_FILES, "c0")
+
+    def git(self, *a):
+        return subprocess.run(["git", "-C", str(self.dir), "-c", "user.name=t", "-c", "user.email=t@t", *a], capture_output=True, text=True, check=True).stdout.strip()
+
+    def commit(self, files: dict, msg: str, base: bool = True) -> str:
+        for rel, body in files.items():
+            (self.dir / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.dir / rel).write_text(body)
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", msg)
+        sha = self.git("rev-parse", "HEAD")
+        if base:
+            self.git("update-ref", "refs/merger/base", sha)
+        return sha
+
+    def tag(self, recipe: str, ref: str = "refs/merger/base", image_id: str = CAND_ID, prefix: str | None = None) -> str:   # what the runner would build for `ref`
+        info, why = runner.deps_recipe(self.dir, self.git("rev-parse", ref), {"image_id": image_id}, DEPS[recipe], PREFIX.get(recipe, "") if prefix is None else prefix)
+        assert info, why
+        return "localci-deps:" + info["digest"][:16]
+
+
+def _tag16(tag: str) -> str:
+    return tag.split(":")[1]
+
+
+def _keeper_world(tmp_path: Path, monkeypatch, free: float = 105, mirror: bool = True, vm: float = 30, candidate: bool = True, pr_newer: bool = True, cand_id: str = CAND_ID, **kw):
+    """Per recipe: main's image (older) and, when pr_newer, a PR's newer one. main's tags are the ones the mirror recomputes."""
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
+    m = Mirror(tmp_path / "mirror")
+    imgs = {}
+    for n, recipe in enumerate((E2E, MOUTH)):
+        imgs[recipe] = [image(_tag16(m.tag(recipe)), 50, recipe, gb=1.0), image(f"{n}" * 16, 1, recipe, gb=1.0)][:2 if pr_newer else 1]   # [0] main's, [1] a PR's
+    flat = [i for ims in imgs.values() for i in ims]
+    plans = {f"run{n}": (5, {f"ctx.{r}": ims[0]["tag"]}) for n, (r, ims) in enumerate(imgs.items())}
+    state, docker = world(tmp_path, flat, plans, vm_avail_kb=kb(vm), **({"candidate_id": cand_id} if candidate else {}), **kw)
+    if mirror:
+        (state / "repo.git").symlink_to(m.dir)
+    return state, docker, imgs, m
+
+
+def _removed(line) -> list:
+    return [r["tag"] for r in line["images"]["removed"]]
+
+
+def test_b22_main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go(tmp_path, monkeypatch):   # the 08:00Z case, both recipes
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    line = prune_line(state, docker)
+    assert line["host_pressure"] is True and line["main_tags"] == {E2E: imgs[E2E][0]["tag"], MOUTH: imgs[MOUTH][0]["tag"]}
+    assert line["main_evidence"][E2E] == {"recomputed_at": m.git("rev-parse", "refs/merger/base"), "digest": line["main_evidence"][E2E]["digest"]}
+    assert sorted(_removed(line)) == sorted([imgs[E2E][1]["tag"], imgs[MOUTH][1]["tag"]])
+
+
+def test_b22_the_cap_rule_does_not_shed_main_without_pressure(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 500)
+    m = Mirror(tmp_path / "mirror")
+    imgs = [image(_tag16(m.tag(E2E)), 50, E2E), image("b" * 16, 20, E2E), image("c" * 16, 1, E2E)]   # [0] main, 1 ref; [1] 16 refs; [2] newest, 1 ref
+    plans = {f"pr{n}": (6 + n * 0.1, {"ctx.e2e-tests": imgs[1]["tag"]}) for n in range(1, 17)}
+    plans.update(main=(7, {"ctx.e2e-tests": imgs[0]["tag"]}), newest=(1, {"ctx.e2e-tests": imgs[2]["tag"]}))
+    state, docker = world(tmp_path, imgs, plans, vm_avail_kb=kb(30), candidate_id=CAND_ID)
+    (state / "repo.git").symlink_to(m.dir)
+    line = prune_line(state, docker)
+    assert imgs[0]["tag"] in {k["tag"] for k in line["images"]["kept"]} and _removed(line) == [imgs[2]["tag"]]
+
+
+def test_b22_main_is_judged_at_base_not_at_a_pr_head(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"req-e2e.txt": "a==2\n"}, "a PR head", base=False)   # HEAD moved, refs/merger/base did not
+    assert prune_line(state, docker)["main_tags"][E2E] == imgs[E2E][0]["tag"]
+
+
+def test_b22_a_new_candidate_image_id_moves_the_tag_and_the_old_image_is_no_longer_main(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch, cand_id="sha256:" + "d2" * 32)   # the digest holds the candidate image id
+    line = prune_line(state, docker)
+    assert line["main_tags"][E2E] != imgs[E2E][0]["tag"] and line["main_tags"][E2E] == m.tag(E2E, image_id="sha256:" + "d2" * 32)
+    assert sorted(_removed(line)) == sorted([imgs[E2E][0]["tag"], imgs[MOUTH][0]["tag"]])   # main's new image is not built yet: the newest holds slot 1
+
+
+def test_b22_a_lock_bump_on_main_moves_the_tag_with_no_staleness_state(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch, pr_newer=False)
+    m.commit({"req-e2e.txt": "a==2\n"}, "lock bump")   # main's tree now builds another e2e image, mouth's is unchanged
+    line = prune_line(state, docker)
+    assert line["main_tags"][E2E] == m.tag(E2E) != imgs[E2E][0]["tag"] and line["main_tags"][MOUTH] == imgs[MOUTH][0]["tag"]
+
+
+def test_b22_no_candidate_image_means_unknown_and_todays_rule(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch, candidate=False)
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and "not inspectable" in line["main_reason"] and sorted(_removed(line)) == sorted([imgs[E2E][0]["tag"], imgs[MOUTH][0]["tag"]])
+
+
+def test_b22_a_matrix_without_deps_blocks_is_unknown(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"scripts/localci/contexts_matrix.yaml": "contexts: []\n"}, "no deps")
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and "no deps block" in line["main_reason"]
+
+
+def test_b22_a_missing_mirror_is_unknown_and_the_prune_still_runs(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch, mirror=False)
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and line["main_reason"] and line["images"]["removed"]
+
+
+def test_b22_an_exception_in_the_keeper_is_unknown_never_a_crash(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"scripts/localci/contexts_matrix.yaml": "contexts: [unclosed\n  - : :\n"}, "garbage")   # a YAMLError
+    line = prune_line(state, docker)
+    assert line["main_tags"] is None and "keeper failed" in line["main_reason"] and "ParserError" in line["main_reason"] and line["images"]["removed"]
+
+
+def test_b22_one_recipe_that_cannot_be_recomputed_is_unknown_and_the_other_stands(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"req-mouth.txt": ""}, "x")
+    (m.dir / "req-mouth.txt").unlink()
+    m.commit({}, "mouth requirement file gone")
+    line = prune_line(state, docker)
+    assert line["main_tags"][MOUTH] is None and "absent" in line["main_evidence"][MOUTH]["reason"] and line["main_tags"][E2E] == imgs[E2E][0]["tag"]
+
+
+def test_b22_the_vm_floor_can_still_remove_main(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch, free=500, vm=5, pr_newer=False)   # the VM is under its 15 GB floor and stays there
+    line = prune_line(state, docker)
+    assert line["main_tags"][E2E] == imgs[E2E][0]["tag"] and imgs[E2E][0]["tag"] in _removed(line)
+    assert [r["rule"] for r in line["images"]["removed"] if r["tag"] == imgs[E2E][0]["tag"]][0].startswith("vm floor")
+
+
+# R1: the extraction is byte-identical. Digests recorded from the pre-extraction `plan_deps_image` on this input; a deliberate change of
+# a Dockerfile template or of the recipe moves them, and moving them is the point: every image of the fleet is rebuilt.
+GOLDEN = {"": "localci-deps:0d7cd830689e9997", "/opt/py311/bin": "localci-deps:2f5d75f8da30aee8"}
+
+
+@pytest.mark.parametrize("prefix", sorted(GOLDEN))
+def test_b22_deps_recipe_digests_equal_the_recorded_ones(tmp_path, prefix):
+    repo = tmp_path / "g"
+    repo.mkdir()
+    git = lambda *a: subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", *a], capture_output=True, text=True, check=True).stdout.strip()  # noqa: E731
+    git("init", "-q")
+    (repo / "req.txt").write_text("alpha==1.0\nbeta==2.0 ; python_version > '3'\n-e ./x\n")
+    git("add", "-A")
+    git("commit", "-q", "-m", "x")
+    deps = {"requirements": ["req.txt"], "packages": ["pytest", "pytest-cov"], "node": "24", "apt": ["postgresql-client"],
+            "fetch": [{"url": "https://example.org/x.tgz", "sha256": "a" * 64, "path": "/opt/x.tgz", "install": True}]}
+    info, why = runner.deps_recipe(repo, git("rev-parse", "HEAD"), {"image_id": "sha256:" + "ab" * 32}, deps, prefix)
+    assert info and "localci-deps:" + info["digest"][:16] == GOLDEN[prefix]
+
+
+def test_b22_the_tag_the_build_produces_is_the_tag_the_keeper_recomputes(tmp_path):
+    m = Mirror(tmp_path / "m")
+    log = tmp_path / "docker.log"
+    fake = tmp_path / "docker"
+    fake.write_text(f"#!{sys.executable}\nimport sys\nopen({str(log)!r}, 'a').write(' '.join(sys.argv[1:]) + '\\n')\nsys.exit(1 if sys.argv[1:3] == ['image', 'inspect'] else 0)\n")
+    fake.chmod(0o755)
+    run = tmp_path / "run"
+    (run / "logs").mkdir(parents=True)
+    for recipe in (E2E, MOUTH):
+        runner.plan_deps_image(m.dir, m.git("rev-parse", "HEAD"), {"image_id": CAND_ID, "docker": str(fake)}, DEPS[recipe], PREFIX.get(recipe, ""), run, recipe)   # the verdict is not the point: the build's -t is
+        built = [ln.split("-t ")[1].split()[0] for ln in log.read_text().splitlines() if ln.startswith("build ")]
+        assert built[-1] == m.tag(recipe)
+
+
+# ------------------------------------------------------------------ B22 gap tests (own block)
+def test_b22_a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"scripts/localci/contexts_matrix.yaml": MATRIX_YAML.replace("workflow_file: .github/workflows/t.yml\n    job_id: mouth", "workflow_file: .github/workflows/gone.yml\n    job_id: mouth")}, "mouth's workflow gone")
+    line = prune_line(state, docker)
+    assert line["main_tags"][MOUTH] is None and "TypeError" in line["main_evidence"][MOUTH]["reason"]
+    assert line["main_tags"][E2E] == imgs[E2E][0]["tag"] and imgs[E2E][0]["tag"] not in _removed(line)
+
+
+def test_b22_the_python_prefix_of_the_job_is_part_of_the_recomputed_tag(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    assert m.tag(MOUTH, prefix="/opt/py312/bin") != m.tag(MOUTH, prefix="")   # the digest depends on it
+    assert prune_line(state, docker)["main_tags"][MOUTH] == imgs[MOUTH][0]["tag"]
