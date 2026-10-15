@@ -1133,11 +1133,47 @@ def verdict(rc: int) -> str:
     return {0: "SURVIVED", 1: "KILLED"}.get(rc, f"ERROR (pytest exit {rc})")
 
 
+ROWS_DIR = Path(__file__).resolve().parent / "rows"   # B36: one file per change, each defining ROWS with MUTANTS' row shape
+
+
+def _check_row(origin: str, name: object, row: object) -> None:
+    ok = (isinstance(name, str) and name and isinstance(row, tuple) and len(row) == 4 and all(isinstance(x, str) for x in row[:3])
+          and row[0] and row[1] and isinstance(row[3], tuple) and row[3] and all(isinstance(t, str) and t for t in row[3]))
+    if not ok:
+        raise SystemExit(f"{origin}: malformed mutant row {name!r}: want name -> (target, old, new, (test, ...)) with non-empty strings")
+
+
+def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
+    """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run."""
+    import importlib.util
+    rows_dir = ROWS_DIR if rows_dir is None else rows_dir
+    into = MUTANTS if into is None else into
+    sys.modules.setdefault("merger_mutants", sys.modules[__name__])   # a rows file's `from merger_mutants import PY` shares this table
+    owner = {n: "the inline MUTANTS dict" for n in into}
+    for f in sorted(rows_dir.glob("*.py")) if rows_dir.is_dir() else []:
+        if f.name.startswith("_"):
+            continue
+        spec = importlib.util.spec_from_file_location(f"_mutant_rows_{f.stem}", f)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rows = getattr(mod, "ROWS", None)
+        if not isinstance(rows, dict):
+            raise SystemExit(f"{f.name}: must define ROWS as a dict")
+        for n, row in rows.items():
+            _check_row(f.name, n, row)
+            if n in owner:
+                raise SystemExit(f"{f.name}: duplicate mutant name {n!r}, already in {owner[n]}")
+            owner[n] = f.name
+            into[n] = row
+    return into
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--only", nargs="+", metavar="NAME", help="run only these mutants")
     ap.add_argument("--list", action="store_true", help="print the table and exit")
     a = ap.parse_args(argv)
+    merge_rows()
     names = a.only or list(MUTANTS)
     if unknown := [n for n in names if n not in MUTANTS]:
         print(f"unknown mutant(s): {unknown}", file=sys.stderr)
