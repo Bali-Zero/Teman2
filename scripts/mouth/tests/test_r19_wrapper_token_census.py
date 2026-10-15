@@ -1158,6 +1158,13 @@ CASES = [
      appended(SCRIM.format("rgba(29,44,59,.45)") + '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
               f'height:64px;background:#FFFCF7;z-index:20">{p(INK, "Menu")}</div>'), ["#s", "#d"],
      (2, 0, 0, "ok", None)),
+    # W0d-3b-2b (the #8249 gate's binding 3): a child of a FLAT scrim (absolute, no z-index, so no stacking context)
+    # can sit above the surface and hide a run; it is counted, where a child of a fixed scrim cannot rise.
+    ("G-flat-scrim-child", surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+                                   p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B">'
+              '</div></div>'), ["#s"], (0, 1, None, "ok", "  occluded 'Villa' at ")),
     # W0d-3b-2: a surface that fades in and holds its end state is read at its end state, not at opacity 0.
     ("I-surface-entrance-held", surface("background:#FFFCF7;padding:16px", p(INK)),
      "#s{opacity:0;animation:fade .3s forwards}@keyframes fade{to{opacity:1}}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
@@ -1190,6 +1197,11 @@ CASES = [
     ("G-blur-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
      appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
               'filter:blur(8px);z-index:30"></div>'), ["#s", "#s ~ p"], (0, 1, 0, "ok", "  occluded 'Villa' at ")),
+    # W0d-3b-2b (the #8488 gate's B2): a drop-shadow() in `filter` reaches nothing (contract 8.4), where the same
+    # element with a blur() is counted just above; the shadow is cast down, past the bar, so nothing paints above it.
+    ("I-drop-shadow-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
+              'filter:drop-shadow(0 12px 2px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
     # A transparent shadow paints nothing, so it reaches nothing.
     ("I-transparent-shadow", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "",
      appended('<div style="position:fixed;left:0;bottom:0;width:10px;height:10px;'
@@ -1648,3 +1660,42 @@ def test_guilt_the_exit_step_fails_a_missing_scenario_and_a_red_part(tmp_path, c
     assert "  missing: shared MobileNav non-R19 /v2 mobile/light" in r.stdout
     r = run_exit_step(tmp_path, replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE))), "failure")
     assert r.returncode == 1 and "::error::wrapper-census-part concluded 'failure'" in r.stdout, r.stdout
+
+
+def test_every_census_context_asks_for_reduced_motion_from_one_place():
+    """The #8488 gate's B1: a context opened anywhere else in the module could drop reduced motion for one pass
+    (the capture pass or the state walk) with no browser row noticing."""
+    src = census_mod.__file__
+    text = open(src).read()
+    assert text.count("browser.new_context(") == 1 and text.count("= new_context(browser,") == 3
+    body = text.split("def new_context(", 1)[1].split("\n\n\n", 1)[0]
+    assert 'reduced_motion="reduce"' in body
+
+
+def test_the_drop_shadow_statement_is_in_the_contract_and_the_code_reads_only_blur():
+    """The #8488 gate's B2: 8.4 says a `drop-shadow()` in `filter` reaches nothing, and reachOf reads blur() only."""
+    flat = " ".join(CONTRACT.split())
+    assert "A `drop-shadow()` in `filter` reaches nothing" in flat
+    reach = census_mod.RESOLVE_JS.split("const reachOf", 1)[1].split("return side;", 1)[0]
+    assert "blur\\(" in reach and "drop-shadow" not in reach
+
+
+def test_the_bring_fallback_keeps_the_occluder_and_whether_it_hides():
+    """The #8249 gate's binding 4: a run still pending after it was brought keeps occludedBy and hides."""
+    fallback = census_mod.RESOLVE_JS.split("bring() {", 1)[1].split("return true;", 1)[0]
+    assert "r.occludedBy = occ.occluded" in fallback and "r.hides = occ.hides" in fallback
+
+
+def test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree_incomplete(census):
+    """The #8249 gate's binding 2: it also counts the disagreements read at rest, as G does."""
+    short = copy.deepcopy(census)
+    short["captures"][0]["page_incomplete"] = True
+    out = verdict_of(short, PIN, [])
+    assert "INCOMPLETE" in lines_of(out, "ground-resolver-disagree:")
+    assert "INCOMPLETE" not in lines_of(verdict_of(census, PIN, []), "ground-resolver-disagree:")
+
+
+def test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_declared_line():
+    """The #8488 gate's B4 and B5: `full` ran 39m06s against a 40-minute timeout; a declared walk is printed."""
+    assert "timeout-minutes: ${{ matrix.part == 'full' && 75 || 40 }}" in WORKFLOW
+    assert "|declared-|opened-|" in WORKFLOW
