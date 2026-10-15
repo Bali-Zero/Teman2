@@ -1,0 +1,97 @@
+{
+  "run_at": "2026-10-16T07:09:03+08:00",
+  "today": "2026-10-16",
+  "yesterday_seen_count": 9,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    {
+      "url": "https://ortax.org/news",
+      "reason": "http_404",
+      "note": "confirmed, recurring 404 same as prior runs"
+    },
+    {
+      "url": "https://muc.co.id/article",
+      "reason": "http_403",
+      "note": "Cloudflare/WAF block, same as prior runs"
+    },
+    {
+      "url": "https://ikpi.or.id/berita/",
+      "reason": "empty_shell",
+      "note": "301 to /articles, static HTML shows 'Memuat artikel...' loading state, zero static article entries, same as prior runs"
+    },
+    {
+      "url": "https://peraturan.go.id/rss",
+      "reason": "http_404",
+      "note": "confirmed, same as prior runs"
+    },
+    {
+      "url": "https://jdih.kemenkeu.go.id/peraturan",
+      "reason": "timeout",
+      "note": "HTTP_CODE:000 on initial fetch and the one mechanical retry, 30s each, same as prior runs"
+    }
+  ],
+  "sources_checked_no_delta": [
+    {
+      "url": "https://www.hukumonline.com/berita/",
+      "reason": "checked_no_new",
+      "note": "newest dated items 15 Okt 2026, generic legal-news (criminal cases, BPD risk governance, RDTR gambut, academic conferences); one piece 'Outsourcing Pasca Permenaker 7/2026' is commentary on an already-standing rule (title says 'Pasca' = post-enactment), not a fresh act announcement - not corroborated on kemnaker JDIH (no dated entry found, only nav-menu mentions of the word Permenaker), so dropped per no-speculation rule"
+    },
+    {
+      "url": "https://news.ddtc.co.id/",
+      "reason": "checked_no_new",
+      "note": "beyond the PMK 68/2026 delta (filed below), also resurfaced KEP-239/PJ/2026 and PER-12/PJ/2026, both already in seen_citations since prior runs"
+    },
+    {
+      "url": "https://peraturan.bpk.go.id/Search?type=PerundangUndangan&jenis=PMK&tahun=2026",
+      "reason": "checked_no_new",
+      "note": "JS-rendered search results not in static HTML; static content only shows filter chips (Tahun: 2026) and pagination shell, no PMK result entries, same as prior runs"
+    },
+    {
+      "url": "https://www.imigrasi.go.id",
+      "reason": "checked_no_new",
+      "note": "newest dated item still 12 Oktober 2026, operational Siaran Pers (PNBP revenue), not a regulatory act - no Permenkumham/Permenimigrasi/Perpres citation, unchanged from prior run"
+    },
+    {
+      "url": "https://www.pajak.go.id/peraturan",
+      "reason": "checked_no_new",
+      "note": "newest listed entries are weekly KMK fiscal exchange rates (46-49/MK/EF.2/2026, routine administrative, out of scope) and PMK 71/2026 (already in seen_citations since prior runs)"
+    },
+    {
+      "url": "https://jdih.kemnaker.go.id/peraturan",
+      "reason": "outside_window",
+      "note": "newest visible entry dated 30 April 2026, unchanged from prior runs"
+    }
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PMK 68/2026",
+      "title_id": "Harga Bahan Baku Melonjak, Pemerintah Hapus Bea Masuk Plastik",
+      "title_en": "Raw Material Prices Spike, Government Removes Import Duty on Plastics",
+      "service_line": [
+        "tax"
+      ],
+      "severity": "medium",
+      "impact_note": "Bea masuk 0% sementara (6 bulan) su bahan baku plastik tertentu - rilevante per clienti PT PMA import/manifattura plastica; verificare kode HS coperti nel testo completo PMK prima di advisory specifico.",
+      "summary": "Pemerintah menetapkan tarif bea masuk 0% untuk bahan baku plastik tertentu selama 6 bulan melalui PMK 68/2026, di tengah lonjakan harga bahan baku domestik.",
+      "source": "DDTC News | https://news.ddtc.co.id/berita/nasional/1823286/harga-bahan-baku-melonjak-pemerintah-hapus-bea-masuk-plastik",
+      "verbatim_excerpt": "Bea masuk sebesar 0% untuk bahan baku plastik tertentu selama 6 bulan diberikan melalui PMK 68/2026.",
+      "first_seen_at": "2026-10-16T07:09:03+08:00",
+      "confidence": "medium"
+    }
+  ],
+  "seen_citations": [
+    "PMK 55/2026",
+    "PER-6/PJ/2026",
+    "PMK 49/2026",
+    "PER-12/PJ/2026",
+    "PMK 37/2025",
+    "PMK 71/2026",
+    "RUU Pelindungan Ketenagakerjaan",
+    "PER-11/PJ/2026",
+    "KEP-239/PJ/2026",
+    "PMK 68/2026"
+  ],
+  "note": "4/4 NB-INTEL queried successfully (nb_query_errors=[]): Regulation/Press/Immigration all = nessuna novita; Tax NB surfaced KMK 49/MK/EF.2/2026 (weekly fiscal exchange rate, 13 Oct 2026) but explicitly flagged it as not a primary regulatory/legislative source - dropped per hard rule 'no speculation'. Web primary (1-5) found 1 new in-scope delta: PMK 68/2026 (0% import duty on certain plastic raw materials, 6 months, via DDTC, single-source so confidence=medium - not corroborated in hukumonline or ikpi). Primary returned <3 deltas so backup web (6-11) also checked: peraturan.go.id/rss 404, bpk.go.id JS-rendered with no static PMK matches, imigrasi.go.id newest item still 12 Oct (operational PNBP press release), pajak.go.id shows only routine weekly KMK rates + already-seen PMK 71/2026, kemnaker.go.id outside the 48h window (unchanged, 30 April 2026), jdih.kemenkeu.go.id timeout x2 (initial + 1 mechanical retry). A hukumonline piece on 'Permenaker 7/2026' (outsourcing commentary) was considered and dropped: framed as post-enactment analysis ('Pasca'), not a fresh announcement, and not corroborated by any dated entry on kemnaker's own JDIH. Net result: 1 new in-scope delta today (PMK 68/2026, medium confidence)."
+}
