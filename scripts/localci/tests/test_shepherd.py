@@ -24,11 +24,11 @@ CHECKS = "scripts/localci/shepherd.py"
 
 
 def pr(n=1, *, author=("alice", "User"), branch="agent/x/y", draft=False, fork=False, base="main", labels=(), files=("a.py",),
-       contexts=(), review=None, total=None, files_total=None):
+       contexts=(), review=None, total=None, files_total=None, labels_total=None):
     nodes = [{"__typename": "StatusContext", "context": c, "state": "SUCCESS"} if isinstance(c, str) else c for c in contexts]
     return {"number": n, "isDraft": draft, "isCrossRepository": fork, "baseRefName": base, "headRefName": branch, "headRefOid": HEAD,
             "reviewDecision": review, "author": {"login": author[0], "__typename": author[1]},
-            "labels": {"nodes": [{"name": x} for x in labels]},
+            "labels": {"totalCount": labels_total if labels_total is not None else len(labels), "nodes": [{"name": x} for x in labels]},
             "files": {"totalCount": files_total if files_total is not None else len(files), "nodes": [{"path": f} for f in files]},
             "commits": {"nodes": [{"commit": {"statusCheckRollup": {"contexts": {"totalCount": total if total is not None else len(nodes), "nodes": nodes}}}}]}}
 
@@ -89,9 +89,9 @@ def test_the_off_limits_entities_are_the_line_in_rulings():
 # ------------------------------------------------------------------ the classifier, per class
 def test_class4_gate_missing_guilt_and_innocence():
     assert "gate_missing" in row(pr(), brief())["classes"]
-    assert row(pr(), brief())["action"] == "would_gate"
-    assert row(pr(), brief(gate_class=None))["action"] == "would_gate"
-    assert row(pr(), brief(gate_class="fable"))["action"] == "would_gate_manual"
+    assert row(pr(), brief())["actions"][0] == "would_gate"
+    assert row(pr(), brief(gate_class=None))["actions"][0] == "would_gate"
+    assert row(pr(), brief(gate_class="fable"))["actions"][0] == "would_gate_manual"
     assert "gate_missing" not in row(pr(contexts=[sh.GATE_CONTEXT]), brief())["classes"]
     assert "gate_missing" not in row(pr(), brief(gear=1))["classes"]
     assert "gate_missing" not in row(pr(), brief(gear=True))["classes"]   # bool is not an int gear
@@ -106,20 +106,20 @@ def test_class7_label_candidates_by_author_class():
     assert row(pr(author=("alice", "User"), branch="codex/x"), role="admin")["author_class"] == "codex"
     assert row(pr(author=("bob", "User")), role="write")["author_class"] == "collaborator"
     assert row(pr(author=("bob", "User")), role=None)["author_class"] == "unknown_role"
-    assert row(pr(author=("bob", "User")), role="write")["action"] == "would_label"
+    assert row(pr(author=("bob", "User")), role="write")["actions"] == ["would_label"]
     admin = row(pr(), role="admin")
-    assert admin["classes"] == ["own_lane"] and admin["action"] == "none"
+    assert admin["classes"] == ["own_lane"] and admin["actions"] == []
     assert "label_candidate" not in row(pr(author=("dependabot", "Bot"), labels=[sh.mg.ARM_LABEL]))["classes"]
-    assert row(pr(author=("dependabot", "Bot"), labels=["other"]))["action"] == "would_label"
+    assert row(pr(author=("dependabot", "Bot"), labels=["other"]))["actions"] == ["would_label"]
 
 
 def test_never_predicates_win_over_every_would_action():
     r = row(pr(fork=True, author=("dependabot", "Bot")), brief())
-    assert (r["action"], r["reason"], r["classes"]) == ("never_auto", "fork", [])
+    assert (r["actions"], r["reason"], r["classes"]) == (["never_auto"], "fork", [])
     r = row(pr(files=["apps/x/fly.toml"], author=("dependabot", "Bot")), brief())
-    assert (r["action"], r["reason"]) == ("never_auto", "off_limits")
+    assert (r["actions"], r["reason"]) == (["never_auto"], "off_limits")
     assert row(pr(files=[".env.example"]), brief())["reason"] == "off_limits"
-    assert row(pr(files=["docs/environment.md"]), brief())["action"] == "would_gate"
+    assert row(pr(files=["docs/environment.md"]), brief())["actions"][0] == "would_gate"
     assert row(pr(review="CHANGES_REQUESTED", author=("dependabot", "Bot")))["reason"] == "changes_requested"
     assert row(pr(draft=True), brief())["reason"] == "draft"
     assert row(pr(base="release"), brief())["reason"] == "base_not_main"
@@ -130,8 +130,10 @@ class World:
     def __init__(self, core=5000, gql=5000, prs=(), briefs=None, roles=None):
         self.core, self.gql, self.prs, self.briefs, self.roles = core, gql, list(prs), briefs or {}, roles or {}
         self.rest_paths: list[str] = []
+        self.all_calls: list[str] = []   # every GET, rate_limit included: the account's real REST spend of the tick
 
     def get(self, path):
+        self.all_calls.append(path)
         if path == "rate_limit":
             return {"resources": {"core": {"remaining": self.core, "reset": 1}, "graphql": {"remaining": self.gql}}}
         self.rest_paths.append(path)
@@ -165,7 +167,7 @@ def test_below_1500_the_tick_only_observes_and_makes_no_rest_call(tmp_path, monk
     out = run_tick(tmp_path, w, monkeypatch)
     assert out["status"] == "ok" and w.rest_paths == []
     assert [r["event"] for r in rows(tmp_path)] == ["observe"]
-    assert rows(tmp_path)[0]["mode"] == "observe" and rows(tmp_path)[0]["rest_calls"] == 0
+    assert rows(tmp_path)[0]["mode"] == "observe" and rows(tmp_path)[0]["rest_calls"] == 1   # the rate_limit read, counted
 
 
 def test_at_1500_the_tick_is_act_eligible_and_journals_would_rows_without_writing(tmp_path, monkeypatch):
@@ -175,7 +177,7 @@ def test_at_1500_the_tick_is_act_eligible_and_journals_would_rows_without_writin
     assert "would_gate" in ev and "would_label" in ev and "never_auto" in ev and ev[-1] == "observe"
     last = rows(tmp_path)[-1]
     assert last["mode"] == "act" and last["classes"]["gate_missing"] == 2 and last["classes"]["never:fork"] == 1 and last["classes"]["never:off_limits"] == 1
-    assert last["fork"] == 1 and last["rest_calls"] == len(w.rest_paths) == 2   # alice and bob, one counted call each; the real count
+    assert last["fork"] == 1 and last["rest_calls"] == len(w.all_calls) == len(w.rest_paths) + 1 == 3   # rate_limit, alice and bob, one counted call each; the real count
     assert all(p.startswith("repos/") and "collaborators" in p for p in w.rest_paths)
     assert (tmp_path / "state/journal.jsonl").stat().st_mode & 0o777 == 0o600
 
@@ -209,7 +211,7 @@ def test_a_host_that_is_not_the_node_is_disabled_and_touches_nothing(tmp_path, m
 
 
 def test_the_cap_ends_the_role_reads_cleanly(tmp_path, monkeypatch):
-    monkeypatch.setattr(sh, "REST_CAP", 1)
+    monkeypatch.setattr(sh, "REST_CAP", 2)   # rate_limit and one role read
     run_tick(tmp_path, World(prs=[pr(1, author=("a1", "User")), pr(2, author=("a2", "User"))], briefs={}), monkeypatch)
     ev = [r["event"] for r in rows(tmp_path)]
     assert "budget_cap" in ev and ev[-1] == "observe"
@@ -298,7 +300,7 @@ def test_the_organ_is_registered_like_the_merger():
 def test_the_real_rest_calls_equal_the_counted_ones_for_every_author_mix(tmp_path, monkeypatch):
     w = World(prs=[pr(i, author=(f"u{i % 4}", "User")) for i in range(1, 9)], roles={f"u{i}": "write" for i in range(4)})
     run_tick(tmp_path, w, monkeypatch)
-    assert rows(tmp_path)[-1]["rest_calls"] == len(w.rest_paths) == 4   # one per distinct login, cached across the eight PRs
+    assert rows(tmp_path)[-1]["rest_calls"] == len(w.all_calls) == len(w.rest_paths) + 1 == 5   # rate_limit and one per distinct login, cached across the eight PRs
 
 
 def test_a_failed_role_read_is_remembered_and_not_retried_for_the_logins_other_prs(tmp_path, monkeypatch):
@@ -317,8 +319,8 @@ def test_labelled_codex_and_draft_prs_cost_no_role_read(tmp_path, monkeypatch):
 
 def test_more_than_a_hundred_files_is_never_auto_whatever_the_first_hundred_say():
     guilt = row(pr(files=["a.py"] * 100, files_total=150, author=("dependabot", "Bot")), brief())
-    assert (guilt["action"], guilt["reason"], guilt["classes"]) == ("never_auto", "files_truncated", [])
-    assert row(pr(files=["a.py"] * 100, files_total=100, author=("dependabot", "Bot")))["action"] == "would_label"   # exactly 100: complete
+    assert (guilt["actions"], guilt["reason"], guilt["classes"]) == (["never_auto"], "files_truncated", [])
+    assert row(pr(files=["a.py"] * 100, files_total=100, author=("dependabot", "Bot")))["actions"] == ["would_label"]   # exactly 100: complete
     assert row(pr(files=["a.py"] * 100, files_total=101), brief())["reason"] == "files_truncated"
 
 
@@ -424,3 +426,60 @@ def test_the_kill_switch_writes_a_disabled_heartbeat_and_runs_nothing(wrap):
 def test_a_failing_tick_is_an_error_heartbeat_and_a_failing_exit(wrap):
     res, hb = wrap(FAKE_RC="1", FAKE_OUT="status=error boom")
     assert res.returncode != 0 and len(hb) == 1 and hb[0].startswith("pro.localci_shepherd|error|tick rc=")
+
+
+# ------------------------------------------------------------------ gate round 1 (codex gpt-5.6-sol, 2026-10-15): the cures
+def test_the_rate_limit_read_is_counted_so_a_tick_never_makes_a_61st_rest_call(tmp_path, monkeypatch):
+    w = World(prs=[pr(i, author=(f"u{i}", "User")) for i in range(1, 71)], roles={})
+    run_tick(tmp_path, w, monkeypatch)
+    last = rows(tmp_path)[-1]
+    assert len(w.all_calls) == 60 and w.all_calls[0] == "rate_limit" and len(w.rest_paths) == 59
+    assert last["rest_calls"] == 60 and "budget_cap" in [r["event"] for r in rows(tmp_path)]
+
+
+def test_an_arm_label_beyond_the_first_thirty_is_never_missed_and_never_a_would_label():
+    thirty = [f"l{i}" for i in range(30)]
+    cut = row(pr(labels=thirty, labels_total=31, author=("dependabot", "Bot")))
+    assert "label_candidate" not in cut["classes"] and "labels_truncated" in cut["classes"] and "would_label" not in cut["actions"]
+    seen = row(pr(labels=thirty[:29] + [sh.mg.ARM_LABEL], labels_total=31, author=("dependabot", "Bot")))
+    assert seen["classes"] == [] and seen["actions"] == []   # the arm label is in the page: decided, nothing truncated that matters
+    whole = row(pr(labels=thirty, labels_total=30, author=("dependabot", "Bot")))
+    assert "label_candidate" in whole["classes"] and whole["actions"] == ["would_label"]
+
+
+def test_a_truncated_label_set_costs_no_role_read(tmp_path, monkeypatch):
+    w = World(prs=[pr(1, labels=[f"l{i}" for i in range(30)], labels_total=45, author=("bob", "User"))])
+    run_tick(tmp_path, w, monkeypatch)
+    assert w.rest_paths == [] and rows(tmp_path)[-1]["classes"]["labels_truncated"] == 1
+
+
+def test_a_pr_in_both_classes_carries_and_journals_both_would_actions(tmp_path, monkeypatch):
+    both = row(pr(author=("dependabot", "Bot")), brief())
+    assert both["classes"] == ["gate_missing", "label_candidate"] and both["actions"] == ["would_gate", "would_label"]
+    assert row(pr(author=("dependabot", "Bot")), brief(gate_class="fable"))["actions"] == ["would_gate_manual", "would_label"]
+    assert row(pr(fork=True), brief())["actions"] == ["never_auto"] and row(pr(), role="admin")["actions"] == []
+    w = World(prs=[pr(7, author=("dependabot", "Bot"), files=["evidence/2026-10/t/brief.yml"])], briefs={7: brief()})
+    run_tick(tmp_path, w, monkeypatch)
+    ev = [(r["event"], r.get("pr")) for r in rows(tmp_path)]
+    assert ("would_gate", 7) in ev and ("would_label", 7) in ev
+
+
+def test_the_wrapper_cleanup_failing_never_suppresses_the_heartbeat(wrap, tmp_path):
+    fake = tmp_path / "fakebin"
+    fake.mkdir()
+    (fake / "rm").write_text("#!/bin/sh\nexit 1\n")
+    (fake / "rm").chmod(0o755)
+    res, hb = wrap(PATH=f"{fake}:{os.environ['PATH']}")
+    assert res.returncode == 0 and len(hb) == 1 and hb[0].startswith("pro.localci_shepherd|ok|tick rc=0")
+
+
+def test_a_wrapper_killed_while_extracting_its_heartbeat_library_leaves_no_temp_file(wrap, tmp_path):
+    import shutil
+    fake = tmp_path / "fakebin"
+    fake.mkdir()
+    real = shutil.which("git")
+    (fake / "git").write_text(f'#!/bin/bash\nfor a in "$@"; do case "$a" in *:scripts/lib/heartbeat.sh) echo partial; kill -TERM $PPID; sleep 5; exit 1;; esac; done\nexec {real} "$@"\n')
+    (fake / "git").chmod(0o755)
+    res, hb = wrap(PATH=f"{fake}:{os.environ['PATH']}")
+    state = wrap.home / ".nuzantara-pilots/local-ci/shepherd"
+    assert res.returncode != 0 and not list(state.glob(".heartbeat.sh.*"))
