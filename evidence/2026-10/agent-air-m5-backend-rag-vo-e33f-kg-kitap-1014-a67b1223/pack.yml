@@ -1,0 +1,166 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "Lane E33F-KG-KITAP-1014 (Zero's ruling 2026-10-14 'E33F everywhere'; fresh Opus gate C4 of #8515).
+  Gear 2 by the local floor. Build by gemini-4-argon-high via agy (edits files, never runs git),
+  verified and committed by the Claude driver; two red-team seats then a cure commit."
+lanes:
+  - lane: e33f-kg-kitap
+    role: build
+    seat: "gemini-4-argon-high via agy (one round, AGY_EXIT=0, ~15 min; edits only) with Claude Opus 5.5 driver (verify, mechanical syncs, commits)"
+  - lane: e33f-kg-kitap-redteam-opus
+    role: review
+    seat: "claude-opus-5-5 adversarial red team, read-only, on 6f84feb2c9 (1 HIGH-equivalent coverage finding folded into 2 MEDIUM, 5 LOW)"
+  - lane: e33f-kg-kitap-redteam-codex
+    role: review
+    seat: "codex gpt-5.6-sol, session rollout-2026-10-15T04-30-54-01a13c1c-5e02-7d22-8bf6-d6239b62e16e.jsonl (model gpt-5.6-sol verified): 1 HIGH, 3 MEDIUM, 2 LOW"
+  - lane: e33f-kg-kitap-cure
+    role: build
+    seat: "gemini-4-argon-high via agy / Claude driver: commit 99acb76438 cures the findings below"
+
+seat_override: "R8 ground_truth: the ground truth of this lane is the signed pack seq-29 and the saved official pages under research/visa, read and grepped on disk by the build seat and by both red-team seats; no NotebookLM query was run, so no nb or query_hash exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4 / SYMBIOSIS Law 2: code-only lane over repository text, saved public official pages and the signed rulepack. No client data reached any seat."
+pii_scan_note: "Diff holds catalogue wording, public immigration page citations and synthetic test strings only."
+
+grounding:
+  origin_main: "44b72bc860 (fetched 2026-10-15; branch merge-base equals it)"
+  head: "99acb76438c430b0177a7e23e6777434db57af1a on top of build commit 7df4d7ec33 (red-teamed head was 6f84feb2c9, the pre-rebase id of the same build)"
+  signed_pack: "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json (seq-29), payload only"
+  saved_pages: "research/visa/2026-10-13-organ-reattest-seq29/text/ and research/visa/2026-10-14-e33-documents/text/ (E33F page 429f10c0-20261013T231106Z.txt; no saved E28A page exists, so the E28A half rests on the pack: stay 730 days, committed PT PMA, shareholder-director or shareholder-commissioner)"
+  decisions_file: "scratchpad gemini-kg-kitap-decisions.md: per-step source file:line, used for the PR body, with the corrected rationale for the removed convert-at-immigration step (ITK-to-ITAS change of status exists per dcf08e19:67-80; only the old offshore e-visa-then-convert order is contradicted by 429f10c0:96)"
+  brochure: "generate_brochure.py reads only name and price of the row, never description_en; no brochure regeneration; observe_brochure_price_parity.py green"
+  match_tree_comment: "match_tree.py:185-191 describes catalogue names: updated; marked as history for the #5357-era wording, the quoted USD 50,000 text is repointed to the E33E price-row note"
+
+verification:
+  red_on_main: "mutation in place of a main checkout: restoring 'Investor KITAS or Retirement KITAS' in kg_enhanced_retrieval.py fails test_kg_golden_route_e33f_1014.py (2 failed, 1 passed); the old KITAP row text fails the catalogue test"
+  green: "observe_zantara_e33f_everywhere_1014.py: root 23 passed, backend 111 passed; observe_catalogue_decisions_1014.py: 17 passed; kg tests 10 passed"
+  mutation: "USD 3,000 to 13,000 (1 failed, 2 passed), 'Retirement KITAS' name (2 failed, 1 passed), USD 130,000 to 500,000 (1 failed, 2 passed); file restored by cp, git status clean"
+  mouth: "build-time: bali-zero-prices, pricing-snapshot and services_data.tax-pricing vitest 29 passed; npx tsc --noEmit -p . exit 0 (run by the driver on 7df4d7ec33; the snapshot is one description line)"
+  wider_backend: "build-time wider run incl. visa_engine: 4368 passed, 2 failed, 39 errors, all asyncpg 'policy_scope does not exist' / live-schema checks (no local Postgres schema on M5), unrelated"
+  local_floor: "evidence_pack_lint --print-floor on the origin/main diff = 2; declared gear 2, so no council_run journal is required"
+
+dissent:
+  - seat: claude-opus-5-5
+    objection: "MEDIUM test (c) took every number of the payload and substring-searched all page text; 13,000 / 500,000 mutants passed (scar #3)"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: figures bound per claim to el.e33f / el.e33 pack thresholds and parsed US$ page figures; the 13,000, 2,000 and 500,000 mutants are convicted (re-run this turn)."
+  - seat: claude-opus-5-5
+    objection: "MEDIUM activities text said 'allows business'; the page says activities RELATED TO business and keeps the selling exception"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: the page wording and the 'unless required for that work' exception are used."
+  - seat: claude-opus-5-5
+    objection: "MEDIUM docs/pricing/Bali_Zero_Price_List_2026.md:122 still named the Retirement KITAS"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: the row names E33F (table re-aligned by one column width, 5+/5-); test extended."
+  - seat: claude-opus-5-5
+    objection: "LOW automatic issuance applied to E28A with no saved E28A page"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438 (steps scoped per product; automatic issuance on E33F only, with the officer-admits condition); PR body states that no saved E28A page exists."
+  - seat: claude-opus-5-5
+    objection: "LOW match_tree comment pointed two quotes at two artifacts"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: history marked, quote repointed to the E33E price-row note."
+  - seat: claude-opus-5-5
+    objection: "LOW observe_catalogue_decisions_1014 MIN_TESTS left at 16 after a 17th test"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: floor measured at 17 (observer prints 17 passed)."
+  - seat: claude-opus-5-5
+    objection: "LOW decisions-file rationale for removing the convert-at-immigration step is false"
+    status: CONFIRMED
+    resolution: "Corrected in the PR body and in grounding.decisions_file; the route keeps no onshore conversion step because no claim is added."
+  - seat: claude-opus-5-5
+    objection: "LOW sibling golden routes (restaurant_foreigner, import_export_business, tech_company_digital) still say E28G; visa_retirement_e33e carries unsupported claims; Visa Oracle i18n.ts:508 and 1568 say 'retirement KITAS'"
+    status: CONFIRMED
+    resolution: "Not widened (one PR, one concern); recorded as the next lane mandate in the PR body and out_of_scope_reported."
+  - seat: claude-opus-5-5
+    objection: "LOW 'Apply online' reads as if the applicant files; the E33F sponsor files"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: 'a sponsor (penjamin) is required; the sponsor applies online via evisa.imigrasi.go.id'."
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH tests did not prove each claim: income 3,000 to 2,000, passport 6 to 60 months and activities mutants survived"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438 for the USD figures (per-claim binding, mutants re-run red this turn) and the name; exact-list assertions of path and conditions in the test file. Residual: wording claims such as passport months are pinned by the exact text assertions, not by a pack rule, because no pack rule carries them."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM E33F-only details presented as common to E28A, E33E and E33F"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: path and conditions split per product (E28A / E33F / E33 Second Home)."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM KITAP test did not prove no fee split or nothing else changed"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: full description_en and price 45.000.000 IDR pinned in canonical and mirror, separate mutants."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM observer never ran test_catalogue_decisions_1014.py"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: added to ROOT_TESTS, ROOT_FLOOR 23 (observer prints 23 passed)."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW loosened test_book_retirement_card_points_to_e33f_offshore_with_same_price"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438: the full current call including undefined and the sponsor sentence is asserted again."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW git diff --check not clean (trailing blank line)"
+    status: CONFIRMED
+    resolution: "Cured in 99acb76438; git diff --check origin/main exits 0 (re-run this turn)."
+
+out_of_scope_reported:
+  - "Next lane: restaurant_foreigner (kg_enhanced_retrieval.py:447), import_export_business (:473), tech_company_digital (:498) say 'KITAS E28G (Investor)'; the pack names E28A."
+  - "Next lane: visa_retirement_e33e (kg_enhanced_retrieval.py ~841-866) carries health-insurance, SKTT 90-day, biometrics and '1 year' claims on the 5-year E33E that no saved source supports."
+  - "Next lane: Visa Oracle i18n.ts:508 and :1568 still say 'sponsor your retirement KITAS' / 'KITAS pensiun'."
+  - "Pre-existing on origin/main, not caused here: asyncpg live-schema tests (test_shadow_match.py, test_visa_engine_retention_fk_registry.py) need a Postgres schema absent on M5."
+
+bites:
+  consumer: "Zantara RAG golden-route context (format_golden_route) and the public price list / mouth price snapshot"
+  observation: "python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py (no arguments) runs the new route test (3 tests) and the catalogue decisions at floors root 23 / backend 111, exit 0; mutants of name, income and deposit turn it red"
+
+receipts:
+  - claim: "Observer green at floors, including the new route tests and the catalogue test"
+    cmd: "python3 scripts/ci/observe_zantara_e33f_everywhere_1014.py"
+    result: "root: 23 passed; backend: 111 passed; exit 0"
+    exit: 0
+    ts: "2026-10-14T22:42Z"
+    seat: claude-opus-5-5
+  - claim: "Catalogue decisions observer green with the 17th test counted"
+    cmd: "python3 scripts/ci/observe_catalogue_decisions_1014.py"
+    result: "17 passed"
+    exit: 0
+    ts: "2026-10-14T22:42Z"
+    seat: claude-opus-5-5
+  - claim: "Mouth snapshot in sync with the canonical catalogue"
+    cmd: "python3 scripts/sync_frontend_prices.py --check"
+    result: "OK in sync"
+    exit: 0
+    ts: "2026-10-14T22:42Z"
+    seat: claude-opus-5-5
+  - claim: "Whitespace clean"
+    cmd: "git diff --check origin/main"
+    result: "no output"
+    exit: 0
+    ts: "2026-10-14T22:42Z"
+    seat: claude-opus-5-5
+  - claim: "Route tests and existing KG tests green"
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/rag/test_kg_golden_route_e33f_1014.py backend/tests/services/rag/test_kg_enhanced_retrieval.py -p no:cacheprovider"
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-14T22:43Z"
+    seat: claude-opus-5-5
+  - claim: "Mutation income 3,000 to 13,000 in the route is convicted"
+    cmd: "sed on kg_enhanced_retrieval.py, pytest test_kg_golden_route_e33f_1014.py, restore by cp"
+    result: "1 failed, 2 passed"
+    exit: 1
+    ts: "2026-10-14T22:43Z"
+    seat: claude-opus-5-5
+  - claim: "Mutation route name back to 'Retirement KITAS' is convicted"
+    cmd: "sed on kg_enhanced_retrieval.py, pytest test_kg_golden_route_e33f_1014.py, restore by cp"
+    result: "2 failed, 1 passed"
+    exit: 1
+    ts: "2026-10-14T22:43Z"
+    seat: claude-opus-5-5
+  - claim: "Mutation deposit 130,000 to 500,000 is convicted; file restored, git status clean"
+    cmd: "sed on kg_enhanced_retrieval.py, pytest test_kg_golden_route_e33f_1014.py, restore by cp; git status --short"
+    result: "1 failed, 2 passed; status empty"
+    exit: 1
+    ts: "2026-10-14T22:43Z"
+    seat: claude-opus-5-5
+
+spend:
+  adversarial_rounds: 2

@@ -11,7 +11,7 @@ consumers keep resolving them), the /book retirement card points to the E33F Off
 same price, every E33F row names the sponsor once at the end, and the sync script skips internal
 rows. It does NOT assert the printable price list, the brochure template or the route 404; those
 are covered by scripts/pricelist_2026/tests and test_public_pricing_lookup.py respectively.
-Exit 0 only on a full pass of at least 16 tests.
+Exit 0 only on a full pass of at least 17 tests.
 """
 
 # bites-observable — no arguments; one literal program, one literal test file.
@@ -25,14 +25,14 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_catalogue_decisions_1014.py"
-MIN_TESTS = 16
+MIN_TESTS = 17
 TIMEOUT_SECONDS = 240
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 16."""
+    """True only for a pytest line that is a pure pass (no failed/skipped/error), N >= 17."""
     if line is None:
         return False
     match = _SUMMARY.match(line.strip())

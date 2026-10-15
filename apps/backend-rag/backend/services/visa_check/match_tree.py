@@ -182,12 +182,14 @@ _STEPS_BY_PURPOSE: dict[Purpose, list[str]] = {
 #: client to place a USD 50,000 deposit they do not need, and would show an
 #: E33E client "no deposit required" immediately above a deposit.
 #:
-#: The two senior routes (the official catalogue names them "Retirement KITAS
-#: (55+)" and "Retirement KITAS (Variant)") DO share the USD 3,000/month income
-#: requirement; only E33E adds a deposit on top. Both figures map to
-#: `confirmed` entries in research/secondhome/e33-fact-registry.json
-#: (e33e_requirements, e33f_requirements) and to the official catalogue's own
-#: wording ("Proof of USD 50,000 deposit in state bank (within 90 days)").
+#: The two senior routes (when #5357 landed, the visa catalogue of that time
+#: named them with the generic retirement name; the price rows are now
+#: "E33E Second Home Senior (5 Years)" and "E33F Second Home Senior (1 Year,
+#: Offshore)" / "(1 Year, Altus/Onshore)") DO share the USD 3,000/month income
+#: requirement; only E33E adds a deposit on top. Both figures map to `confirmed`
+#: entries in research/secondhome/e33-fact-registry.json (e33e_requirements,
+#: e33f_requirements) and to the E33E price-row note text ("USD 50,000 deposit
+#: at a state-owned Indonesian bank").
 _STEPS_BY_VISA: dict[VisaType, list[str]] = {
     VisaType.E33E: [
         "USD 50,000 deposit at a state-owned (BUMN) Indonesian bank, placed "
