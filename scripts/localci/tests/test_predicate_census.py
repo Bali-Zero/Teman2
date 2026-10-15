@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 def _mutants() -> dict:
     spec = importlib.util.spec_from_file_location("b31_mm", ROOT / "scripts/localci/tests/mutants/merger_mutants.py")
     mm = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mm
     spec.loader.exec_module(mm)
     return mm.MUTANTS
 
