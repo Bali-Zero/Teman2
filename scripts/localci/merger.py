@@ -258,6 +258,53 @@ PENDING_TTL_S = 86400      # B19: a pending merge older than this (from its deci
 MERGE_ATTEMPT = ("merged", "merge_error")   # B19: the rows phase_f_merge always leaves
 LOCAL_TERMS = ("local_checks_clean", "review_independent", "executed_contexts_ok", "same_repo")
 GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
+REDECIDE_CAP = 3          # B30: transient local no-verdicts of one (pr, head, base) before it stays decided
+REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times its transient decisions (of the window) so far after the last decision
+REDECIDE_WINDOW_S = 6 * 3600   # B30: a transient decision older than this stops counting toward the cap and the backoff: the cap is a RATE, so an outage cannot cap every head for good
+# B30 D1: the allow-list. Every status of a re-decidable row must be named here; the runner's STATUSES and the contexts' verdicts are open-ended
+REDECIDE_OVERALL = ("BLOCKED", "ERROR")
+REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")   # a context the host did not name
+REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")       # a context named in host_no_verdict (the pair local_side maps it from)
+REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")   # plus ERROR when the row's host_checks names that check
+# B30 D1: the host classes the runner MEASURES before a leg starts; host_disk_full is read from the sandbox's own output (a red test that
+# quotes or raises ENOSPC becomes it), so it is not a host attribution to re-decide on
+REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")
+
+
+def host_measured(reason) -> bool:
+    return isinstance(reason, str) and reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS
+
+
+def host_checks(status: dict) -> list:
+    """B30 D1 term 5: the checks of the runner's vouched ``status`` the host no-verdict pre-empted (ERROR or BLOCKED with a measured host reason), from
+    trusted runner state only. A check that ran candidate code and crashed carries a candidate reason here, never a measured host one."""
+    checks = status.get("checks") if isinstance(status.get("checks"), dict) else {}
+    return sorted(k for k, v in checks.items() if isinstance(v, dict) and v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))
+
+
+# B30: the texts of the merger's OWN driver failing (gate_run); the seal/binding mismatch (tamper evidence) and a TickTimeout also write overall ERROR and are not here
+DRIVER_ERRORS = ("runner plan failed", "the runner printed no seal", "runner status failed", "status.json unreadable")
+
+
+def transient_reasons(r: dict) -> list:
+    """B30 D1, an ALLOW-LIST: why a non-replay decision is a TRANSIENT local no-verdict (the host or the driver, never the candidate), else [].
+    A row is re-decidable only when EVERY term is in an enumerated set (REDECIDE_*): anything not listed, a status the runner adds later
+    included, is NOT re-decidable. A deny-list failed three rounds running, each time on a status nobody had listed (INTERRUPTED, RUNNING,
+    STALE beside a host no-verdict): a candidate's own hang or crash decided again is retry-until-green. The runner maps a candidate's
+    crash, hang and collection error to ERROR and the run budget leaves INTERRUPTED, and the row carries no per-check attribution."""
+    ctx, host, checks = (r.get(k) if r.get(k) is not None else {} for k in ("contexts", "host_no_verdict", "checks"))
+    if not (isinstance(ctx, dict) and isinstance(host, dict) and isinstance(checks, dict)):
+        return []
+    err = r.get("error")
+    driver = isinstance(err, str) and err.startswith(DRIVER_ERRORS)
+    named = r.get("host_checks") if isinstance(r.get("host_checks"), list) else []   # per-check attribution; absent on older rows: no ERROR admitted
+    if (r.get("replay") or r.get("gate_pending") is True or r.get("non_executed") or r.get("overall") not in REDECIDE_OVERALL
+            or (r.get("overall") == "ERROR" and not driver)
+            or any(v not in (REDECIDE_HOST_CTX if k in host else REDECIDE_CTX) for k, v in ctx.items())
+            or not all(host_measured(v) for v in host.values())
+            or any(v not in REDECIDE_CHECK and not (v == "ERROR" and host and k in named) for k, v in checks.items())):
+        return []
+    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR")) if hit]
 
 
 def gh_pages(path: str, key: str | None = None) -> list:
@@ -312,7 +359,8 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
 
 
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
-           evict_capped: list | None = None, now_s: float | None = None, deferred: list | None = None) -> tuple[list[dict], list[dict]]:
+           evict_capped: list | None = None, now_s: float | None = None, deferred: list | None = None, redecide_capped: list | None = None,
+           host_free_gb: float | None = None, start_floor_gb: float = 0.0) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -330,7 +378,12 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
 
     B23: PRs carrying ARM_LABEL are ordered before the unlabelled ones, and with LOCALCI_MERGER_PHASE_F=1 an unlabelled PR is not selected
     at all. A (pr, head) whose NEWEST non-replay decision, at any base, was gate_pending is not decided at a NEW base until
-    ``gate_ready`` says its verdict is posted (a failed read, or no callable, defers it); it is appended to ``deferred``."""
+    ``gate_ready`` says its verdict is posted (a failed read, or no callable, defers it); it is appended to ``deferred``.
+
+    B30: a key whose NEWEST non-replay decision is a transient local no-verdict (``transient_reasons``) is decided again at the same
+    base: at most ``REDECIDE_CAP`` transient decisions per key within ``REDECIDE_WINDOW_S`` (past it: appended to ``redecide_capped``), not before
+    ``REDECIDE_BACKOFF_S`` times the count since the last decision, and a ``host_disk`` one only when ``host_free_gb`` is measured and at
+    least ``start_floor_gb``. The PR comes back as a copy carrying ``_redecide = {reason, attempt}`` and sorts as an attempted head."""
     now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
@@ -343,13 +396,25 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             names = r.get("gate_pending_contexts")
             ok = mark and isinstance(names, list) and bool(names) and all(isinstance(x, str) for x in names)
             pending[k] = [pending.get(k, [0, None])[0] + mark, names if ok else None]
+    redec: dict = {}   # B30: key -> [transient decisions, the newest decision's reasons, its ts]
+    for r in recs:
+        if r.get("kind") == "decision" and not r.get("replay"):
+            k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+            why = transient_reasons(r)
+            ts = r.get("ts")
+            counts = bool(why) and (not is_ts(ts) or now - _epoch(ts) <= REDECIDE_WINDOW_S)   # an unreadable ts counts: it fails closed toward the cap
+            redec[k] = [redec.get(k, [0])[0] + counts, why, ts]
     last: dict = {}
     evictions: Counter = Counter()
+    evicted_ts: dict = {}   # B30: key -> its newest readable eviction ts (the backoff counts from it too)
     for r in recs:
         if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":
             last[(r.get("pr"), r.get("head_sha"))] = max(last.get((r.get("pr"), r.get("head_sha")), ""), str(r.get("ts")))
         if r.get("kind") == "evicted":
             ts = r.get("ts")
+            if is_ts(ts):
+                k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+                evicted_ts[k] = max(evicted_ts.get(k, ts), ts)
             if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:
                 evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
     newest: dict = {}   # B23: (pr, head) -> the newest non-replay decision's pending contexts, None when it was not gate_pending
@@ -395,6 +460,21 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
                     todo.append(pr)
             except (hc.CompareError, OSError) as exc:
                 print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+        elif (st := redec.get((n, head, base_sha), [0, [], None]))[1]:
+            if evictions[(n, head, base_sha)] >= EVICT_CAP:   # B30/B15: an eviction is no decision, so neither cap below would ever advance on it
+                if evict_capped is not None:
+                    evict_capped.append(pr)
+                continue
+            if st[0] >= REDECIDE_CAP:
+                if redecide_capped is not None:
+                    redecide_capped.append(pr)
+                continue
+            anchor = max([_epoch(t) for t in (st[2], evicted_ts.get((n, head, base_sha))) if is_ts(t)], default=None)   # the newest decision OR eviction
+            if not is_ts(st[2]) or anchor is None or now - anchor < REDECIDE_BACKOFF_S * st[0]:
+                continue
+            if "host_disk" in st[1] and not (host_free_gb is not None and host_free_gb >= start_floor_gb):
+                continue
+            todo.append({**pr, "_redecide": {"reason": "+".join(st[1]), "attempt": st[0] + 1}})
     todo.sort(key=lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
     return todo, forks
 
@@ -1652,7 +1732,7 @@ def fetch_base(a, state: Path, repo_dir: Path, recs: list[dict]) -> bool:
     return False
 
 
-def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str, replay: dict | None = None) -> int:
+def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str, replay: dict | None = None, redecide: dict | None = None) -> int:
     """One decision. ``replay`` (B11) judges the commit GitHub already merged instead of a candidate this tick builds: ``head`` is the
     PR head GitHub merged (recorded only), ``base_sha`` the merge commit's FIRST PARENT, ``replay`` carries ``merge_commit`` and the
     ``schedule`` reason. The candidate IS the merge commit; the BASE stays the commit that was on main before it, so the candidate
@@ -1661,6 +1741,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
     rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
     if replay:
         rec.update(replay=True, merge_commit=replay["merge_commit"], schedule=replay["schedule"])
+    if redecide:
+        rec["redecide"] = redecide   # B30: this key had a transient local no-verdict before
     if not replay and git(repo_dir, "merge-base", "--is-ancestor", head, base_sha, check=False).returncode == 0:
         journal(state, {**rec, "kind": "skipped", "why": "head_in_base"})
         return 0
@@ -1712,6 +1794,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "seal": gate["seal"], "runner_rc": {k: v for k, v in gate.items() if k.endswith("_rc")},
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
                                "non_executed": loc["non_executed"], "partial": loc["partial"], "host_no_verdict": loc["host_no_verdict"],
+                               "host_checks": [] if gate.get("error") else host_checks(status),
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
@@ -1891,14 +1974,15 @@ def tick(a, state: Path, lease_id: str) -> int:
     base_sha = git(repo_dir, "rev-parse", "refs/merger/base^{commit}").stdout.strip()
     capped: list = []
     evict_capped: list = []
+    redecide_capped: list = []
     deferred: list = []
     prs = open_prs(a.repo, a.base)
     if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
         return 0
     check_watchdog()
     todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped,
-                         deferred=deferred)
-    for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped)):   # B12, B15: journalled once per key, however many ticks pass
+                         deferred=deferred, redecide_capped=redecide_capped, host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)
+    for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped), ("redecide_cap", redecide_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
             key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}
             if not any(r.get("kind") == "skipped" and r.get("why") == why and all(r.get(k) == v for k, v in key.items()) for r in recs):
@@ -1937,7 +2021,7 @@ def tick(a, state: Path, lease_id: str) -> int:
     if fetched != head:
         journal(state, {"kind": "skipped", "why": "head_moved", "pr": n, "head_sha": head, "fetched_sha": fetched, "base_sha": base_sha, "lease_id": lease_id})
         return 0
-    return decide(a, state, repo_dir, lease_id, n, head, base_sha)
+    return decide(a, state, repo_dir, lease_id, n, head, base_sha, redecide=todo[0].get("_redecide"))
 
 
 _WATCHDOG = {"fired": False}   # B19-W: set by the alarm handler BEFORE it raises, reset only where a tick arms the alarm
