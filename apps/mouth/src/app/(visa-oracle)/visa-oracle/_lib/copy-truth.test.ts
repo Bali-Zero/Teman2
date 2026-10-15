@@ -1051,7 +1051,7 @@ describe("Golden Visa reasons say what was declared and what the official page a
       /audited proof of shareholding .* outside Indonesia .* turnover/,
     );
     expect(b.id).toMatch(
-      /bukti audit kepemilikan saham .* di luar Indonesia dan omzet/,
+      /bukti kepemilikan saham .* di luar Indonesia dan bukti omzet\/penjualan .* laporan keuangan yang telah diaudit/,
     );
   });
 
@@ -1149,13 +1149,11 @@ describe("investor interview questions say what the official pages ask, and anch
     );
   });
 
-  it("the threshold question asks about a commitment within 90 days, with no turnover clause and no 'route you chose'", () => {
+  it("the threshold question is neutral across routes: no commitment, no 90-day clause, no turnover, no 'route you chose'; the hint carries the route difference", () => {
     const en = dict.en["q.investment_meets_threshold"];
     const id = dict.id["q.investment_meets_threshold"];
-    expect(en).toContain("Can you commit");
-    expect(en).toContain("within 90 days of entering Indonesia");
-    expect(id).toContain("Dapatkah Anda berkomitmen");
-    expect(id).toContain("dalam 90 hari sejak masuk ke Indonesia");
+    expect(en).toContain("Can you meet the minimum amount");
+    expect(id).toContain("Dapatkah Anda memenuhi batas minimum");
     for (const text of [
       en,
       id,
@@ -1165,6 +1163,34 @@ describe("investor interview questions say what the official pages ask, and anch
       expect(text).not.toMatch(
         /turnover|omzet|route you chose|jalur yang Anda pilih/i,
       );
+    }
+    for (const text of [en, id]) expect(text).not.toMatch(/90|commit|komit/i);
+    const hintEn = dict.en["q.investment_meets_threshold.hint"];
+    const hintId = dict.id["q.investment_meets_threshold.hint"];
+    expect(hintEn).toContain("within 90 days of entering Indonesia");
+    expect(hintEn).toContain("proof that you already hold them");
+    expect(hintId).toContain("dalam 90 hari sejak masuk ke Indonesia");
+    expect(hintId).toContain("bukti bahwa Anda sudah memilikinya");
+  });
+
+  it("E28C asks for proof of ownership, never a commitment or a 90-day clause (its page's 90 days is the visa's validity)", () => {
+    const c = SUPPORT_REASON_COPY.E28C_CAPITAL_MARKET_ELIGIBLE;
+    expect(c.en).toContain("told us your investment meets the minimum");
+    expect(c.en).toContain("proof that you own");
+    expect(c.id).toContain(
+      "menyatakan bahwa investasi Anda memenuhi batas minimum",
+    );
+    expect(c.id).toContain("bukti kepemilikan");
+    for (const text of [c.en, c.id]) {
+      expect(text).not.toMatch(/90|commit|komit/i);
+    }
+    // Innocence: E28B/D/F, whose pages do carry the commitment, keep the 90 days.
+    for (const key of [
+      "E28B_COMPANY_ESTABLISHMENT_ELIGIBLE",
+      "E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE",
+      "E28F_IKN_SUBSIDIARY_ELIGIBLE",
+    ]) {
+      expect(SUPPORT_REASON_COPY[key].en).toMatch(/can commit/);
     }
   });
 });

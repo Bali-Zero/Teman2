@@ -5394,8 +5394,8 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     },
   );
 
-  it("guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and no renewal; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
-    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> the 2-year length (owner ruling 2026-10-15), never the unsourced 365x100 renewal
+  it("guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and the continue-by-renewal line, because the page states the permit is extendable; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
+    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> the 2-year length (owner ruling 2026-10-15) plus the longer-stay renewal line (page: extendable)
     const e28a = makePricedResponse("E28A", 20_000_000);
     e28a.display.candidates[0].stay_policy = {
       stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
@@ -5413,15 +5413,17 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     if (e28aOutcome.state !== "SUPPORTED_CANDIDATES") {
       throw new Error("expected SUPPORTED_CANDIDATES");
     }
-    // Innocence: the length IS shown (E28A is sold as 2 years only) ...
+    // Innocence: the length IS shown (E28A is sold as 2 years only) and a plan
+    // beyond it gets "your stay can continue by renewal", TRUE per the E28A page
+    // (df3ba889: "Izin Tinggal ini dapat diperpanjang", extension online by the sponsor) ...
     expect(e28aOutcome.candidates[0].duration).toEqual({
       selectedDays: 730,
       options: [],
       extensionRequired: false,
       longerStay: STAY_PERMIT_LONGER_STAY_COPY.verified,
     });
-    // Guilt: no renewal sentence (STAY_PERMIT_RENEWAL_COPY has no 365:100 key). The
-    // pre-existing longerStay line for a 1000-day plan is NOT cured here (reported).
+    // No per-extension sentence is invented: STAY_PERMIT_RENEWAL_COPY has no
+    // 365:100 key, so only the longer-stay line (above) surfaces the renewal.
     expect(e28aOutcome.candidates[0].duration?.renewal).toBeUndefined();
 
     // E30A signed-pack shape: FIXED_DAYS 365..730, extension UNKNOWN -> duration undefined

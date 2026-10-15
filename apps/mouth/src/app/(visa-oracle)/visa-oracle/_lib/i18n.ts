@@ -418,9 +418,9 @@ const en = {
   "why.investment_capital_market_only":
     "Only your yes or no about a capital-market-only investment is used here.",
   "q.investment_meets_threshold":
-    "Can you commit at least the minimum amount the official immigration page sets for the visa you are considering, to be met within 90 days of entering Indonesia?",
+    "Can you meet the minimum amount the official immigration page sets for the visa you are considering?",
   "q.investment_meets_threshold.hint":
-    "If you do not know that minimum, answer no: the Oracle never assumes it is met.",
+    "For a company, branch or subsidiary route the official page asks for a commitment within 90 days of entering Indonesia; for capital-market investments it asks for proof that you already hold them. If you do not know that minimum, answer no: the Oracle never assumes it is met.",
   "why.investment_meets_threshold":
     "Only your yes or no is used here. No amount is shown or assumed here.",
   "q.unit.idr": "IDR",
@@ -812,7 +812,7 @@ const en = {
   "confirmation.group.location": "Current situation",
   "confirmation.group.identity": "About you",
   "confirmation.group.intent": "Your intent",
-  "confirmation.group.details": "Branch details",
+  "confirmation.group.details": "Your plan details",
   "confirmation.group.review": "Review signals",
   "confirmation.assumptions_title": "Assumptions we made",
   "confirmation.edit": "Edit",
@@ -1472,13 +1472,13 @@ const id: Record<Keys, string> = {
   "q.investment_capital_market_only":
     "Apakah investasi Anda hanya ditempatkan pada obligasi pemerintah Indonesia, saham perusahaan terbuka di Indonesia, atau reksa dana, tanpa mendirikan perusahaan?",
   "q.investment_capital_market_only.hint":
-    "Jawab tidak jika ada bagian investasi pada hal lain.",
+    "Jawab tidak jika sebagian investasi ditempatkan pada instrumen lain.",
   "why.investment_capital_market_only":
     "Hanya jawaban ya atau tidak Anda tentang investasi yang hanya di pasar modal yang dipakai di sini.",
   "q.investment_meets_threshold":
-    "Dapatkah Anda berkomitmen memenuhi batas minimum yang ditetapkan halaman resmi keimigrasian untuk visa yang Anda pertimbangkan, dalam 90 hari sejak masuk ke Indonesia?",
+    "Dapatkah Anda memenuhi batas minimum yang ditetapkan halaman resmi keimigrasian untuk visa yang Anda pertimbangkan?",
   "q.investment_meets_threshold.hint":
-    "Jika Anda tidak mengetahui batas minimum tersebut, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
+    "Untuk jalur perusahaan, cabang, atau anak perusahaan, halaman resmi meminta komitmen dalam 90 hari sejak masuk ke Indonesia; untuk investasi pasar modal, halaman resmi meminta bukti bahwa Anda sudah memilikinya. Jika Anda tidak mengetahui batas minimum tersebut, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
   "why.investment_meets_threshold":
     "Hanya jawaban ya atau tidak Anda yang dipakai di sini. Tidak ada jumlah yang ditampilkan atau diasumsikan di sini.",
   "q.unit.idr": "Rp",

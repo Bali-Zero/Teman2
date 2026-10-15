@@ -14,7 +14,7 @@ Vitest files from `apps/mouth` and requires every test in each to pass:
 * engine-adapter.test.ts — a permit length (1-year / 5-year) appears only beside the
   candidate's own AVAILABLE price, the renewal line only for a VERIFIED and allowed
   extension, the longer-stay sentence only inside the pack's renewal coverage, and the
-  signed-pack E28A (730) renders its 2-year length and no renewal line; E30A, BRIDGING and A1
+  signed-pack E28A (730) renders its 2-year length and the longer-stay renewal line (page: extendable); E30A, BRIDGING and A1
   render no length, renewal or raw code;
 * OutcomeSheet.test.tsx — the sheet and the share summary carry the same wording, EN and ID.
 
@@ -60,7 +60,7 @@ FILES = (
             "shows 5-year length for E33 and E33E with no extension sentence",
             "omits permit length for unquoted candidates (E33A, E33B, E33C)",
             "keeps E31 duration-option candidates unchanged",
-            "guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and no renewal; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1",
+            "guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and the continue-by-renewal line, because the page states the permit is extendable; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1",
             "maintains non-empty distinct EN/ID parity across all PR-7 stay-permit copy tables",
         ),
     ),
@@ -68,8 +68,8 @@ FILES = (
         COMPONENTS + "OutcomeSheet.duration.test.tsx",
         1,
         (
-            "EN: '2-year stay permit', no renewal sentence",
-            "ID: 'Izin tinggal 2 tahun', no renewal sentence",
+            "EN: '2-year stay permit', and a 1000-day plan shows the continue-by-renewal line",
+            "ID: 'Izin tinggal 2 tahun', and a 1000-day plan shows the continue-by-renewal line",
         ),
     ),
     (

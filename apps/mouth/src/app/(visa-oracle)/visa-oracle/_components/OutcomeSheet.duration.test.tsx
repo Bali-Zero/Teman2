@@ -17,7 +17,11 @@ const option = (days: number, amount: number | null, selected: boolean) => ({
   },
 });
 
-function outcomeWith(extra: Record<string, unknown>, quoted = true) {
+function outcomeWith(
+  extra: Record<string, unknown>,
+  quoted = true,
+  facts: Record<string, string> = {},
+) {
   const response = makeVisaOracleResponse("SUPPORTED_CANDIDATES");
   const candidate = response.display.candidates[0];
   Object.assign(candidate, extra);
@@ -50,17 +54,18 @@ function outcomeWith(extra: Record<string, unknown>, quoted = true) {
     },
   ];
   if (!quoted) response.decision.quotes = [];
-  return buildEngineOutcome(response);
+  return buildEngineOutcome(response, { facts });
 }
 
 function priceText(
   extra: Record<string, unknown>,
   language: Language = "en",
+  facts: Record<string, string> = {},
 ): string {
   const { container } = render(
     <OutcomeSheet
       language={language}
-      outcome={outcomeWith(extra)}
+      outcome={outcomeWith(extra, true, facts)}
       facts={{}}
     />,
   );
@@ -207,7 +212,7 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
   // duration options; its card names the 2-year permit (sold as 2 years only)
   // and, because the pack's 365x100 extension is unsourced, says nothing of
   // renewal.
-  describe("E28A: a fixed 730-day stay_policy names the 2-year permit and no renewal", () => {
+  describe("E28A: a fixed 730-day stay_policy names the 2-year permit, with the renewal line for a longer plan", () => {
     const e28a = {
       stay_policy: {
         stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
@@ -221,16 +226,26 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
       },
     };
 
-    it("EN: '2-year stay permit', no renewal sentence", () => {
-      const text = priceText(e28a);
+    // stay_days > 730 exercises the longer-stay branch: the E28A page states the
+    // permit is extendable ("dapat diperpanjang"), so the renewal line is TRUE.
+    it("EN: '2-year stay permit', and a 1000-day plan shows the continue-by-renewal line", () => {
+      const text = priceText(e28a, "en", { stay_days: "1000" });
       expect(text).toContain("2-year stay permit");
-      expect(text).not.toMatch(/renewable|renewal|Also available/);
+      expect(text).toContain("your stay can continue by renewal");
+      expect(text).not.toMatch(/Also available/);
     });
 
-    it("ID: 'Izin tinggal 2 tahun', no renewal sentence", () => {
-      const text = priceText(e28a, "id");
+    it("ID: 'Izin tinggal 2 tahun', and a 1000-day plan shows the continue-by-renewal line", () => {
+      const text = priceText(e28a, "id", { stay_days: "1000" });
       expect(text).toContain("Izin tinggal 2 tahun");
-      expect(text).not.toMatch(/diperpanjang|perpanjangan|Pilihan lain/);
+      expect(text).toContain("dapat dilanjutkan dengan perpanjangan");
+      expect(text).not.toMatch(/Pilihan lain/);
+    });
+
+    it("a plan within the 2 years shows the length and no renewal line", () => {
+      const text = priceText(e28a, "en", { stay_days: "700" });
+      expect(text).toContain("2-year stay permit");
+      expect(text).not.toMatch(/renewal/);
     });
 
     it("innocence: a 1095-day fixed stay (no mapped length) still shows no permit line", () => {
