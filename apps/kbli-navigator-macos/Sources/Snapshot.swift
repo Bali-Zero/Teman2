@@ -200,6 +200,7 @@ enum Snapshot {
             // Defaults unchanged, so every existing QA call site still captures 1180x800.
             w = args.count > idx + 3 ? CGFloat(Double(args[idx + 3]) ?? 1180) : 1180
             h = args.count > idx + 4 ? CGFloat(Double(args[idx + 4]) ?? 800) : 800
+            UserDefaults.pinThemeOverride(Theme.mode)   // RootView re-syncs its theme from the stored override: pin the one KBLI_THEME names
             view = AnyView(RootView()
                 .environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
                 .frame(width: w, height: h))
@@ -332,6 +333,7 @@ extension Snapshot {
                 if args.contains("--sheet-open") { setenv("KBLI_SHEET_EXPANDED", "1", 1) }
                 state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
                 state.selected = k
+                UserDefaults.pinThemeOverride(Theme.mode)
                 content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
@@ -488,5 +490,16 @@ private struct SearchResultsBand: View {
             SearchFieldBar(focusedField: $focus) { }
             SearchListView(focusedField: $focus)
         }
+    }
+}
+
+extension UserDefaults {
+    /// What a user's tap on the theme toggle sets, for THIS process only: `themeOverride` in the argument domain (the `-themeOverride dark` of a command line),
+    /// which wins over what the app's own domain holds and over the system appearance. RootView syncs its theme from them on its first render, so a render that
+    /// only sets `Theme.mode` is drawn in whatever this machine's override or appearance says (Pro's was `light`: `--theme night` drew a day window).
+    static func pinThemeOverride(_ mode: Theme.Mode) {
+        var d = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)
+        d["themeOverride"] = mode == .dark ? "dark" : "light"
+        UserDefaults.standard.setVolatileDomain(d, forName: UserDefaults.argumentDomain)
     }
 }

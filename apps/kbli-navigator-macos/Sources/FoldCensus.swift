@@ -25,6 +25,7 @@ enum FoldCensus {
         }
         let theme = (flag("--theme") ?? "day").lowercased()
         Theme.mode = theme == "day" ? .light : .dark
+        UserDefaults.pinThemeOverride(Theme.mode)   // RootView syncs its theme from the override and the system: pin the one the census names
         CensusFrame.collecting = true
         Motion.frozenMs = Motion.total * 1000   // every motion at its end: the frames are the final ones
 

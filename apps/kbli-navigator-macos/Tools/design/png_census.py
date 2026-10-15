@@ -336,12 +336,42 @@ def c25(im, fr, arg):
     if abs(flat - imm) < 10: raise Miss("the flat and the immersive twins' path nodes are %.0f and %.0f pt: the witness cannot tell them apart" % (flat, imm))
     return abs(live - imm) <= 2 and abs(live - flat) > 10, "live mount's path nodes %.0f pt; immersive twin %.0f pt, flat twin %.0f pt" % (live, imm, flat)
 
+def lum(c):
+    f = lambda v: (v / 255 / 12.92) if v / 255 <= .03928 else ((v / 255 + .055) / 1.055) ** 2.4
+    return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2])
+
+def contrast(a, b):
+    hi, lo = sorted((lum(a), lum(b)), reverse=True); return (hi + .05) / (lo + .05)
+
+def n1(im, fr, arg):
+    """night is night (N1, the lead's finding 2026-10-15; the #8571 gate's B1): a root render named day or night is not the OTHER theme. The harness
+    set `Theme.mode` and RootView then set it again from the stored override on its first render (light on Pro), so `--theme night` drew a day
+    window with night list chips and a cream title on light paper. Two reads, on what is drawn. (1) The share of the whole window's pixels within 40 (summed RGB)
+    of the OPPOSITE theme's surface tokens (antracite, ink, inkLift) is at most 5%: a window the theme names holds 0.3-1.3% (the gate measured 14 renders), a
+    sidebar alone in the other theme 22%, day chrome under a night sheet 42%, a whole-window flip 88-94%. It is a share and not the dominant colour: a sheet that covers
+    most of the window, or a main pane that outvotes the sidebar, decides a dominant colour and hides a mixed window. (2) The sheet title's ink holds 4.5:1 against its
+    ground. NOT checked: the surfaces' own theme in full (a token neither theme's surface list holds, a placeholder or system-drawn text that follows the process
+    appearance: the search placeholder reads 1.39:1 at night, tracked for CX), and any render that is not a root-sheet (its canvas must be the window)."""
+    record, s, band = arg; night = "-night-" in band; i = 1 if night else 0; opp = [tok(t)[1 - i] for t in ("antracite", "ink", "inkLift")]; px = im.load(); W, H = im.size
+    pts = [px[x, y] for y in range(0, H, 4) for x in range(0, W, 4)]; bad = []
+    share = sum(min(sum(abs(a - b) for a, b in zip(p, t)) for t in opp) <= 40 for p in pts) / len(pts); dom = Counter(pts).most_common(1)[0][0]
+    if share > .05:
+        bad.append("%.1f%% of the window is %s surface (limit 5%%): the chrome is not %s" % (share * 100, "day" if night else "night", "night" if night else "day"))
+    b = fr["title"][0][1]; g = ground(im, b); x0, y0, x1, y1 = b
+    far = sorted(((sum(abs(p - q) for p, q in zip(px[x, y], g)), px[x, y]) for y in range(max(y0, 0), min(y1, H)) for x in range(max(x0, 0), min(x1, W))), key=lambda t: t[0])
+    far = [c for d, c in far if d > 6]
+    if not far: bad.append("the title is drawn in its ground's own colour %s: it cannot be read" % (g,))
+    else:
+        ink = far[int(len(far) * .95)]; cr = contrast(ink, g)
+        if cr < 4.5: bad.append("the title's ink %s on %s is %.2f:1, under 4.5:1" % (ink, g, cr))
+    return not bad, "%.1f%% opposite surface, title read against %s: %s" % (share * 100, g, "; ".join(bad) or "none")
+
 CHECKS = {"C%d" % n: f for n, f in zip(range(11, 28), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",), "C26": ("title", "plate", "chip.national", "source"), "C27": ("band", "head.compact", "sheet")}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",), "C26": ("title", "plate", "chip.national", "source"), "C27": ("band", "head.compact", "sheet"), "N1": ("title",)}
 OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",), "C26": ("cap", "glyph", "rule", "band", "head.compact")}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
@@ -446,6 +476,7 @@ def judge(im, fr, s, c, arg, band="", record=None):
         return False, "the verdict band runs off the canvas: it is below the fold, the reader must scroll for the verdict"
     missing = [n for n in names if not fr.get(n)]
     if missing: raise Miss("missing frame %s: the View must mark it" % ", ".join(missing))
+    if c == "N1": return n1(im, fr, (record, s, band))   # reads the title by its own rule: the ink test below would call an invisible title "an empty area"
     extra = OPTIONAL.get(c, ()) + (tuple(n for n in fr if n.startswith("chip.") or n == "headsup") if c == "C23" else ())
     for n in dict.fromkeys(names + extra):
         for _, b in fr.get(n, []):
@@ -460,7 +491,7 @@ OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-ope
 TONES = ("chip.national", "chip.bali")
 ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
          (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
-         (OPEN, "C24", None), (OPEN, "C26", None), (r"live/min-collapsed-\d+-day-(?:en|id)\.png|live/root-collapsed-\d+-day-(?:en|id)-\d+\.png", "C27", None), (r"imm/sheet-head-\d+-(?:day|night)-(?:en|id)\.png", "C26", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
+         (OPEN, "C24", None), (OPEN, "C26", None), (r"live/min-collapsed-\d+-day-(?:en|id)\.png|live/root-collapsed-\d+-day-(?:en|id)-\d+\.png", "C27", None), (r"imm/sheet-head-\d+-(?:day|night)-(?:en|id)\.png", "C26", None), (r"live/root-collapsed-\d+-(?:day|night)-(?:en|id)-\d+\.png", "N1", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -762,6 +793,24 @@ def c_selftest():
             except Miss as e: ok, detail = False, str(e)
             n += 1
             if ok != bool(want): out.append("C25-SELFTEST twins %s, live %d pt: %s" % ({1: "15/51", 2: "15/15"}[code], h, detail))
+    NIGHT = tok("antracite")[1]; SHEETN = tok("ink")[1]; INKN = tok("white")[1]; INKD = tok("white")[0]
+    for case in (("night innocent", NIGHT, INKN, "root-collapsed-1-night-en-648.png", 1),
+                                                 ("day innocent", PAPER, INKD, "root-collapsed-1-day-en-648.png", 1),
+                                                 ("a day window named night", PAPER, INKD, "root-collapsed-1-night-en-648.png", 0),
+                                                 ("a night window named day", NIGHT, INKN, "root-collapsed-1-day-en-648.png", 0),
+                                                 ("night chrome, a title as dark as its ground", NIGHT, SHEETN, "root-collapsed-1-night-en-648.png", 0),
+                                                 ("G1: the sidebar alone day (22% of the window)", NIGHT, INKN, "root-collapsed-1-night-en-648.png", 0, [(0, 0, 88, 400, PAPER)]),
+                                                 ("G4: day chrome over a night sheet (45%)", NIGHT, INKN, "root-collapsed-1-night-en-648.png", 0, [(0, 0, 400, 180, PAPER)]),
+                                                 ("a small day patch (a light chip, 1%)", NIGHT, INKN, "root-collapsed-1-night-en-648.png", 1, [(300, 300, 340, 340, PAPER)])):
+        name, canvas, title_fill, band, want = case[:5]
+        im = Image.new("RGB", (400, 400), canvas); d = ImageDraw.Draw(im)
+        for x0, y0, x1, y1, col in (case[5] if len(case) > 5 else []): d.rectangle([x0, y0, x1 - 1, y1 - 1], fill=col)
+        d.rectangle([40, 120, 239, 169], fill=(NIGHT if canvas == NIGHT and title_fill == SHEETN else canvas))
+        d.rectangle([60, 130, 219, 159], fill=title_fill)
+        try: ok, detail = judge(im, {"title": [("", (40, 120, 240, 170))]}, 1, "N1", None, band)
+        except Miss as e: ok, detail = False, str(e)
+        n += 1
+        if ok != bool(want): out.append("N1-SELFTEST %s: %s" % (name, detail))
     n += 3   # an armed row that matches no PNG FAILs (#8492 gate binding 7)
     if len(unmatched([])) != len(ARMED): out.append("ARMED-SELFTEST an empty set leaves %d of %d rows unmatched" % (len(unmatched([])), len(ARMED)))
     if unmatched(["live/root-collapsed-87202-day-id-648.png"], {"C27"}): out.append("ARMED-SELFTEST a matching PNG leaves C27 unmatched")
