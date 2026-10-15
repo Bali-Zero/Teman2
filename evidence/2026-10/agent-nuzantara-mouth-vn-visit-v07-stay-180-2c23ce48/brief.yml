@@ -1,0 +1,15 @@
+gear: 2
+gear_reason: >-
+  Public client copy on the Visa Oracle dead end; touches no rule, no pack, no pricing and no backend.
+mission: >-
+  When a tourism, business or other visitor declares a stay past 180 days, the Visa Oracle dead end leads with one
+  sentence naming the 60-day start and the 180-day maximum of a visit visa.
+objective: >-
+  Visit plan V07. On seq-29 the stay-181 walks end NO_SUPPORTED_PATH with BVK_NATIONALITY_ONLY (tourism),
+  OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES (business) and BRIDGING_ONSHORE_ONLY (other): none names the stay.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
