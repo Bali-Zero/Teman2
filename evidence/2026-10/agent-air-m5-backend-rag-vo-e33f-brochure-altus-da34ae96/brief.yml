@@ -1,0 +1,23 @@
+gear: 1
+gear_reason:
+  Six files, about 47 net lines, no hot zone; the deterministic floor from the diff is 1
+  (print-floor), so no council journal is required. Two red-team seats reviewed it anyway.
+ruling:
+  "Zero's decision of 2026-10-15 ('entrambi si'): the client brochure prints the E33F Altus/Onshore
+  row beside the Offshore row, under Zero's 2026-10-14 ruling 'E33F everywhere'."
+mission:
+  The client brochure prints the E33F Onshore row at its catalogue price (read from the catalogue,
+  never hardcoded) beside the Offshore row, and the committed PDF carries it.
+objective:
+  pdftotext of apps/mouth/public/static/brochure_balizero_en.pdf shows an E33F Offshore row and an
+  E33F Onshore row; scripts/ci/observe_brochure_price_parity.py exits 0 with 18 passed.
+scope:
+  - apps/backend-rag/scripts/generate_brochure.py
+  - apps/backend-rag/scripts/brochure/brochure_en.html
+  - apps/backend-rag/backend/tests/services/crm/test_brochure_price_parity.py
+  - apps/mouth/public/static/brochure_balizero_en.pdf
+  - scripts/ci/observe_brochure_price_parity.py
+  - tests/scripts/test_observe_brochure_price_parity.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
