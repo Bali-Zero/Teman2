@@ -590,6 +590,8 @@ a conflict needs a tree and no error, a moved base needs a readable `remote_main
      "remote_main": "<same 40 hex>", "base_current": true, "head_unchanged": true, "merge_tree": "<40 hex>", "clean": true, "conflicts": [], "bites": true,
      "armed_env": false, "ok": false, "criterion": {"review_independent": false, "...": "..."}}
 
+B29: `review_not_blocking` is a criterion term (read by `pr_side`, re-read by `phase_f_arming` at the moment of merging): `reviewDecision` is not `CHANGES_REQUESTED` and no write-access reviewer's latest opinionated review is (`writersOnly: true`; a non-writer's review does not block, a dismissed one is not listed); anything unreadable is false. It replaces the one thing the classic protection did for reviews, which the flip deletes (spec B29 V5 lists the rest).
+
 Limits, stated: the runner plans `review.independent` and leaves it QUEUED (blocking) until a review is imported, so
 `overall` is never PASS in shadow today — the per-context columns are the comparison that carries information, and the report below sums them. A `kill -9`
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under

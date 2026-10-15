@@ -1027,6 +1027,7 @@ ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
             " id number state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
+            " reviewDecision latestOpinionatedReviews(first: 100, writersOnly: true) { totalCount nodes { state } }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
@@ -1095,6 +1096,30 @@ def label_postdates_head(repo: str, head, labelled_at, number=None) -> str | Non
     return None
 
 
+REVIEW_STATES = ("APPROVED", "CHANGES_REQUESTED", "DISMISSED", "COMMENTED", "PENDING")
+
+
+def review_block(p: dict) -> str | None:
+    """B29: None when GitHub's view of the PR holds no changes-requested review, else the reason. ``reviewDecision`` can read null once no
+    review is required (the flip deletes the requirement), so the latest opinionated reviews of reviewers with write access are read as
+    well (``writersOnly``: the repo is public, and a review from any other account must not be able to stall a PR). GitHub lists no
+    dismissed review: a later APPROVED review of the same reviewer replaces the earlier one, a COMMENTED one does not. Anything unreadable blocks."""
+    if not isinstance(p, dict) or "reviewDecision" not in p:
+        return "the review decision is unreadable"
+    decision, latest = p["reviewDecision"], p.get("latestOpinionatedReviews")
+    nodes = latest.get("nodes") if isinstance(latest, dict) else None
+    if decision is not None and not isinstance(decision, str):
+        return f"the review decision is unreadable ({decision!r})"
+    if not isinstance(nodes, list) or type(latest.get("totalCount")) is not int or latest["totalCount"] != len(nodes):
+        return "the reviewers' latest reviews are unreadable or incomplete"
+    states = [x.get("state") if isinstance(x, dict) else None for x in nodes]
+    if any(st not in REVIEW_STATES for st in states):
+        return f"a review state is unreadable: {sorted({str(st) for st in states if st not in REVIEW_STATES})}"
+    if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:
+        return f"a review requests changes (reviewDecision {decision}, {states.count('CHANGES_REQUESTED')} reviewer(s) with changes requested)"
+    return None
+
+
 def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
     """The PR as GraphQL sees it now (the REST view has no queue state): fills the PR-side sub-criteria and the label in ``why``."""
     owner, name = a.repo.split("/")
@@ -1108,6 +1133,7 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
                not_draft=None if p.get("isDraft") is False else "a draft",
                base_main=None if p.get("baseRefName") == a.base == ENQUEUE_BASE else f"base {p.get('baseRefName')!r}, not {ENQUEUE_BASE}",
                open=None if p.get("state") == "OPEN" else f"state {p.get('state')}",
+               review_not_blocking=review_block(p),
                not_in_queue=None if p.get("isInMergeQueue") is False and entry is None else f"already in the merge queue ({entry})",
                first_enqueue="this head was enqueued by an earlier tick" if again else None)
     facts = {"pull_request_id": p.get("id"), "live_head_oid": live_head, "label_actor": None,
@@ -1120,7 +1146,7 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
 CHECK_OK = ("PASS", "NOT_APPLICABLE", "BLOCKED")   # a BLOCKED check backs no executed context here: the contexts below judge those
 NON_EXECUTED = ("blocked", "not_implemented")
 HOST_NO_VERDICT = ("host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")   # the host, not the candidate (B3)
-GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
+GATE = ("local_checks_clean", "review_independent", "review_not_blocking", "executed_contexts_ok", "hosted_required_green", "head_unchanged", "same_repo",
         "not_draft", "base_main", "open", "not_in_queue", "first_enqueue")
 CRITERION = (*GATE, "label_privileged")   # the env flag, the arm's other half, is journalled apart
 REMOTE_TIMEOUT_S = 30   # the shadow's one network read
@@ -1450,6 +1476,8 @@ def phase_f_arming(a, state: Path, repo_dir: Path, enq: dict, line: dict, base: 
                 why.append("the PR is a draft now")
             if pull.get("baseRefName") != a.base:
                 why.append(f"PR base {pull.get('baseRefName')!r}, not {a.base!r}")
+            if reason := review_block(pull):   # B29: a review that landed after the decision, read with the same predicate
+                why.append(f"review_not_blocking false at the moment of merging: {reason}")
             if reason := label_arm(a.repo, pull)[0]:   # B2b: the label AND its actor, as of now: the slow READY read left a window to remove and re-add it
                 why.append(f"{reason} at the moment of merging")
         except Stopped:
