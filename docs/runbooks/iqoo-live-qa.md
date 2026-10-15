@@ -1,6 +1,6 @@
 # iQOO physical client QA
 
-Status: **Cabled to Pro by USB since 2026-10-15 (wireless remains verified); display-off QA verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
+Status: **Cabled to Pro by USB since 2026-10-15 (wireless ADB verified 2026-09-26, not used again on 2026-10-15); display-off QA verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
 Owner mandates: `IQOO-LIVE-QA-20260926`, `IQOO-WIRELESS-20260926`,
 `IQOO-SHARED-CAPABILITY-20260927` (BLUE). This runbook is a shared capability
 for Claude, Codex, Gemini and Qwen; it does not grant release authority.
@@ -19,13 +19,17 @@ peer alone does not mean ADB or browser control is available.
 
 The vivo iQOO I2508 has an authenticated **wireless ADB TLS connection through
 Tailscale**, driven by **Pro**. Since 2026-10-15 the phone is also **cabled to Pro
-by USB** (reported AC powered); wireless remains verified. The full wireless test passed
+by USB** (reported AC powered); wireless ADB was verified on 2026-09-26 and was not used
+again on 2026-10-15. The full wireless test passed
 with the phone on an AC wall charger, USB absent, and the physical display off
 while Chrome remained interactive. Android platform-tools 37.0.1 and scrcpy 4.1
 are installed on Pro. Wireless availability requires connectivity, authorization,
 AC power and an unlocked screen, obtained through `iqoo-unlock` (see "One device,
 one session"). It is a supervised, bounded session; host crash and SIGKILL recovery
-are not proved; the 2026-10-15 reboot test is recorded at the end of this runbook.
+are not proved. Also not proved: a post-reboot unlock without the owner, and wireless
+ADB returning after a reboot (on 2026-10-15 the owner unlocked after the reboot and
+wireless debugging stayed off until re-enabled over USB); the reboot test is recorded
+at the end of this runbook.
 
 M5/Mini agents use `ssh pro`; they do not assume the phone is attached locally.
 Keep heavy browser builds/test runners on Pro. The
@@ -76,14 +80,16 @@ runner hashes, and apply the verified lifecycle to the approved product flow.
   select this phone for every ADB and scrcpy invocation. Never kill the shared
   ADB server to solve a routine connection issue.
 - If absent: check the recorded wireless endpoint and Pro/Tailscale connectivity;
-  USB remains an optional recovery path. If `unauthorized`: the owner checks the
+  USB to Pro is now the primary link (since 2026-10-15) and wireless the fallback. If `unauthorized`: the owner checks the
   driver host's ADB key fingerprint and accepts the phone's RSA prompt locally.
   If genuinely locked or freshly rebooted (Zero's rule, 2026-10-15): any LLM seat
   unlocks the phone ONLY by running `~/.local/bin/iqoo-unlock` on Pro (from M5/Mini:
   `ssh pro '~/.local/bin/iqoo-unlock'`). The helper selects the phone (`adb -d` over
   USB, else the recorded wireless serial), sends the PIN through adb's stdin (never
   as an argument), makes ONE attempt per call and prints only `IQOO-UNLOCK: unlocked`,
-  `already unlocked` or `STILL LOCKED`. The PIN lives only on Pro in
+  `already unlocked` or `STILL LOCKED` after an attempt, or, before any attempt is
+  made, `IQOO-UNLOCK: no PIN file` (exit 2) or `IQOO-UNLOCK: phone not reachable over
+adb` (exit 3); those two are not a lockout, fix the cause and do not retry in a loop. The PIN lives only on Pro in
   `~/.config/nuzantara/iqoo/unlock-pin` (0600; never in env files, repo or memory).
   Never read, cat, print, copy or type the PIN; never loop the helper (Android
   lockout timers). Lease, restore and sleep+lock-on-exit duties are unchanged.

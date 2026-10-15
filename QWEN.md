@@ -115,8 +115,8 @@ Nuzantara products, not only the portal.** Include a device check when available
 otherwise record the concrete availability blocker. Read the
 [iQOO runbook](docs/runbooks/iqoo-live-qa.md) before taking the device lease.
 Wireless ADB TLS through **Pro/Tailscale** and interactive **display-off** browser
-QA were verified; since 2026-10-15 the phone is **cabled to Pro by USB** (AC
-charger). Any LLM seat may unlock it, but ONLY by running `~/.local/bin/iqoo-unlock`
+QA were verified; since 2026-10-15 the phone is **cabled to Pro by USB** (reported
+AC powered). Any LLM seat may unlock it, but ONLY by running `~/.local/bin/iqoo-unlock`
 on Pro (`ssh pro '~/.local/bin/iqoo-unlock'` from M5/Mini): one attempt per call,
 never looped (Android lockout); never read, print or type the PIN (Pro-only secret).
 Recheck readiness each session; preserve owner tabs, restore settings and sleep+lock

@@ -9,14 +9,12 @@ mission: >-
 lanes:
   - lane: docs-iqoo-pin-rule-1015
     role: build
-    seat: claude-sonnet-5-5 (Claude Code workflow subagent)
+    seat: claude-sonnet-5 (Claude Code workflow subagent)
 pii_scan: clean
-bites:
-  consumer: >-
-    every LLM seat that opens a door file (CLAUDE.md, AGENTS.md, GEMINI.md, QWEN.md) before an iQOO mobile QA session.
-  where: ci
-  observe: grep -c -F 'iqoo-unlock' CLAUDE.md AGENTS.md GEMINI.md QWEN.md docs/runbooks/iqoo-live-qa.md
-  expect: "contains:CLAUDE.md:1"
+bites: >-
+  Consumer: every LLM seat that opens a door file (CLAUDE.md, AGENTS.md, GEMINI.md, QWEN.md) before an iQOO mobile
+  QA session. Observation: grep -c -F 'iqoo-unlock' over the four doors and docs/runbooks/iqoo-live-qa.md reports 2
+  hits per door and 4 in the runbook.
 receipts:
   - claim: No 'automate the PIN' or 'Never save or automate' wording remains in the four doors and the runbook.
     cmd: grep -n -i -e 'automate the PIN' -e 'Never save or automate' CLAUDE.md AGENTS.md GEMINI.md QWEN.md docs/runbooks/iqoo-live-qa.md
