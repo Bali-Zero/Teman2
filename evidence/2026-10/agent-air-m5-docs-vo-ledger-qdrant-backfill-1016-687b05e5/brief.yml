@@ -1,0 +1,22 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, two test files and the observer floor
+  constant. No code path, no data, no runtime change.
+mission: >-
+  The /visaoracle ledger records the Qdrant pricing backfill (#8568 and its ADD-ONLY apply of 66 points), closes the
+  wave-5 row "the Qdrant pricing collection has no point for 65 catalog rows", and opens one operator-gated row for
+  the two stale-data items the ADD-ONLY authorization did not cover.
+objective: >-
+  live-state-log.md carries a dated 2026-10-15 Qdrant backfill entry as newest, SKILL.md leads its LIVE STATE with it
+  (only one bullet says newest), PENDING-ARMS.md closes the 65-rows row and opens one operator[business] row (open
+  count unchanged), and the seq-29 ledger observer floor equals the file's test count.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
