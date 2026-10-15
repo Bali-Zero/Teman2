@@ -20,10 +20,14 @@ case "$1" in
   cp) if [ "$2" = "-a" ]; then cat >/dev/null; else COPYFILE_DISABLE=1 tar -cf - -C "$FAKE_DIR" junit.xml; fi;;
   start) sleep "$FAKE_RUN_S"; echo "run output"; exit 0;;
   stats) [ "$FAKE_STATS" = fail ] && exit 1
+         [ "$FAKE_STATS" = hang ] && exec sleep 3
+         [ "$FAKE_STATS" = zero ] && { echo "0B / 0B"; exit 0; }
          [ -n "$FAKE_STATS_SLOW" ] && sleep 0.6
          n=$(cat "$FAKE_DIR/n" 2>/dev/null || echo 0); echo $((n+1)) > "$FAKE_DIR/n"
          case "$n" in 0) echo "50MiB / 4GiB";; 1) echo "90MiB / 4GiB";; *) echo "20MiB / 4GiB";; esac;;
-  ps) [ -e "$FAKE_DIR/removed" ] && exit 0; [ "$FAKE_STATS" = fail ] && exit 1; echo "2.5MB (virtual 1.1GB)";;
+  ps) [ -n "$FAKE_PS_SIGNAL" ] && { kill -INT $PPID; sleep 1; }
+      [ "$FAKE_PS" = hang ] && exec sleep 3
+      [ -e "$FAKE_DIR/removed" ] && exit 0; [ "$FAKE_STATS" = fail ] && exit 1; echo "2.5MB (virtual 1.1GB)";;
   rm) touch "$FAKE_DIR/removed";;
   kill) exit 0;;
   container) echo "Error: No such container: x" >&2; exit 1;;
@@ -206,3 +210,152 @@ def test_a_context_with_no_numbers_prints_dashes(tmp_path, capsys):
     _receipt(tmp_path, "r", "ctx.x", {"sandbox": [{"name": "n", "sampler": "off"}]})
     assert capacity_report.main([str(tmp_path)]) == 0
     assert capsys.readouterr().out.splitlines()[1].split() == ["ctx.x", "1", "-", "-", "-", "-"]
+
+
+# ------------------------------------------------------------------ the gate's findings: cleanup, clock, timeouts, zero samples
+def test_a_signal_during_the_layer_read_still_removes_the_container(world, monkeypatch):
+    monkeypatch.setenv("FAKE_PS_SIGNAL", "1")   # SIGINT to the runner while `docker ps -s` runs: cmd_run turns SIGTERM into this
+    with pytest.raises(KeyboardInterrupt):
+        world()
+    calls = [c.split()[0] for c in world.calls()]
+    assert "ps" in calls and "rm" in calls and calls.index("ps") < calls.index("rm")
+
+
+def test_the_samplers_last_sample_is_not_counted_in_the_run_phase(world, monkeypatch):
+    monkeypatch.setenv("FAKE_STATS_SLOW", "1")
+    monkeypatch.setattr(runner, "SANDBOX_SAMPLE_EVERY_S", 0.05)
+    monkeypatch.setenv("FAKE_RUN_S", "0.3")
+    monkeypatch.setattr(runner, "SANDBOX_STATS_TIMEOUT_S", 20)
+    _, _, p, _, _ = world()   # a sample (0.6 s) is still in flight when the container exits at 0.3 s: the join waits for it, the clock does not
+    assert 0.3 <= p["t_start_to_exit"] < 0.55, p["t_start_to_exit"]
+
+
+def test_a_pre_start_zero_reading_is_no_sample(world, monkeypatch):
+    monkeypatch.setenv("FAKE_STATS", "zero")
+    rc, err, p, _, _ = world()
+    assert (rc, err) == (0, None) and p["mem_peak_bytes"] is None and p["sampler_error"] is None
+
+
+def test_a_stats_call_that_hangs_is_cut_at_its_timeout_and_recorded(world, monkeypatch):
+    monkeypatch.setenv("FAKE_STATS", "hang")
+    monkeypatch.setattr(runner, "SANDBOX_STATS_TIMEOUT_S", 0.3)
+    rc, err, p, _, _ = world()
+    assert (rc, err) == (0, None) and p["mem_peak_bytes"] is None and "docker stats TimeoutExpired" in p["sampler_error"]
+
+
+def test_a_layer_read_that_hangs_is_cut_at_its_timeout_and_recorded(world, monkeypatch):
+    monkeypatch.setenv("FAKE_PS", "hang")
+    monkeypatch.setattr(runner, "SANDBOX_PS_TIMEOUT_S", 0.3)
+    rc, err, p, _, _ = world()
+    assert (rc, err) == (0, None) and p["disk_rw_bytes"] is None and "docker ps -s TimeoutExpired" in p["sampler_error"] and p["t_remove"] is not None
+
+
+# ------------------------------------------------------------------ where the probe lands: candidate checks, legs, egress, jobs rows, receipts
+LOUD = {"sampler": "on", "t_create": None, "t_copy_in": None, "t_start_to_exit": None, "t_junit": None, "t_remove": None, "mem_peak_bytes": None,
+        "disk_rw_bytes": None, "sampler_error": "docker stats RuntimeError; docker ps -s RuntimeError"}
+CLEAN = {"sampler": "on", "t_create": 1.0, "t_copy_in": 2.0, "t_start_to_exit": 3.0, "t_junit": 0.5, "t_remove": 0.7, "mem_peak_bytes": 2**30,
+         "disk_rw_bytes": 2**20, "sampler_error": None}
+
+
+def _write_junit(junit: Path, names: list) -> None:
+    suite = runner.ET.Element("testsuite")
+    for n in names:
+        runner.ET.SubElement(suite, "testcase", name=n, time="0.1")
+    runner.ET.ElementTree(suite).write(junit)
+
+
+def _candidate(tmp_path, monkeypatch, kind: str, probe_values: dict, failing: bool = False) -> dict:
+    wt = tmp_path / "wt"
+    wt.mkdir(exist_ok=True)
+    monkeypatch.setattr(runner, "history_delta", lambda *a: {"added": [], "base": []})
+    monkeypatch.setattr(runner, "tree_pack_ship_safe", lambda run_dir, plan: (None, {}, None))
+
+    def fake(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, *a, probe=None, **k):
+        probe.update(probe_values)
+        if failing:
+            return None, "container create failed (the test)"
+        if kind == "pytest":
+            junit.write_text('<testsuite tests="1" failures="0" errors="0" skipped="0"><testcase classname="a" name="t"/></testsuite>')
+        else:
+            _write_junit(junit, ["s"])
+        return 0, None
+    monkeypatch.setattr(runner, "execute_contained", fake)
+    iso = {"docker": "docker", "user": "1:1", "image_id": "sha256:" + "a" * 64, "pythons": {}}
+    spec = ({"kind": "pytest", "cwd": str(wt), "modules": ["t.py"], "isolation": iso} if kind == "pytest" else
+            {"kind": "contained_steps", "context": "t", "cwd": str(wt), "isolation": iso, "git_index": False, "history": {"added": [], "base": []},
+             "path_prefix": "", "venv": False, "env": {}, "steps": [{"name": "s", "argv": ["true"]}],
+             "driver_sha256": runner.sha256_bytes(runner.STEPS_DRIVER.read_bytes())})
+    plan = {"worktree": str(wt), "base_sha": "b" * 40, "candidate_sha": "c" * 40, "run_id": "r"}
+    return runner._execute_candidate_contained("ctx.t", spec, tmp_path, plan, 60, tmp_path / "log", tmp_path / "junit.xml")
+
+
+@pytest.mark.parametrize("kind", ["pytest", "contained_steps"])
+@pytest.mark.parametrize("failing", [False, True], ids=["ran", "no-verdict"])
+def test_every_return_of_a_candidate_check_carries_its_probe_and_a_loud_probe_changes_no_verdict(tmp_path, monkeypatch, kind, failing):
+    for d in ("a", "b"):
+        (tmp_path / d).mkdir()
+    clean, loud = _candidate(tmp_path / "a", monkeypatch, kind, CLEAN, failing), _candidate(tmp_path / "b", monkeypatch, kind, LOUD, failing)
+    assert [x["sandbox"][0]["name"] for x in (clean, loud)] == ["ctx.t", "ctx.t"]
+    assert loud["sandbox"][0]["sampler_error"] and clean["sandbox"][0]["mem_peak_bytes"] == 2**30
+    strip = lambda r: {k: r.get(k) for k in ("status", "reason", "rc", "isolation")}   # noqa: E731
+    assert strip(clean) == strip(loud) and clean["status"] == ("ERROR" if failing else "PASS")
+
+
+def _leg_spec_job(steps: list):
+    job = {"job_id": "j", "legs": [{}], "needs": [], "steps": steps, "path_prefix": "", "venv": False, "job_env": {}, "services": [], "checkout": None,
+           "image_id": "sha256:img", "timeout_s": 60}
+    spec = {"context": "t", "jobs": [job], "needs": {}, "judge_modified": [], "history": None, "expr": {"github": {}, "runner": {"temp": "missing"}},
+            "isolation": {"mode": "container", "docker": "docker", "image_id": "sha256:img"},
+            "driver_sha256": runner.sha256_bytes(runner.STEPS_DRIVER.read_bytes()), "expr_sha256": runner.sha256_bytes(runner.GH_EXPR.read_bytes())}
+    return spec
+
+
+def _jobs(tmp_path, monkeypatch, probe_values: dict) -> dict:
+    for d in ("receipts", "logs"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    monkeypatch.setattr(runner, "tree_pack_ship_safe", lambda run_dir, plan: (None, {}, ""))
+    monkeypatch.setattr(runner, "disk_floor_refusal", lambda *a: None)
+    monkeypatch.setattr(runner, "start_services", lambda *a: ([], None, None))
+
+    def fake(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, *a, probe=None, **k):
+        probe.update(probe_values)
+        _write_junit(junit, ["audit"] if name.endswith(".egress") else ["s", "audit"])
+        return 0, None
+    monkeypatch.setattr(runner, "execute_contained", fake)
+    steps = [{"name": "s", "argv": ["true"]}, {"name": "audit", "argv": ["true"], "side": {"where": "egress", "inputs": ["a.txt"], "rewrite": []}}]
+    return runner._execute_jobs("ctx.t", _leg_spec_job(steps), tmp_path, {"run_id": "r", "worktree": str(tmp_path)}, tmp_path / "ctx.log")
+
+
+def test_a_leg_and_its_egress_sandbox_each_leave_a_probe_on_the_jobs_row_and_a_loud_one_changes_no_verdict(tmp_path, monkeypatch):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    clean, loud = _jobs(tmp_path / "a", monkeypatch, CLEAN), _jobs(tmp_path / "b", monkeypatch, LOUD)
+    for res in (clean, loud):
+        assert [p["name"] for p in res["jobs"][0]["sandbox"]] == ["ctx.t.j.egress", "ctx.t.j"], res
+    assert clean["jobs"][0]["sandbox"][0]["mem_peak_bytes"] == 2**30 and loud["jobs"][0]["sandbox"][1]["sampler_error"]
+    strip = lambda r: {**{k: v for k, v in r.items() if k not in ("jobs", "duration_s", "log", "steps")}, "steps": [(s["name"], s["status"]) for s in r["steps"]],
+                       "rows": [{k: v for k, v in j.items() if k not in ("sandbox", "seconds")} for j in r["jobs"]]}   # noqa: E731
+    assert strip(clean) == strip(loud) and clean["status"] == "PASS"
+
+
+@pytest.mark.usefixtures("fake_env")
+def test_a_run_stores_the_probe_in_the_receipt_and_no_status_reads_it(tmp_path, monkeypatch):
+    from .test_contexts_exec import host_ctx, planned
+    loud = [dict(LOUD, name="ctx.judge"), dict(CLEAN, name="ctx.judge.egress")]
+    seen, real = {}, runner.execute
+
+    def execute(name, spec, run_dir, plan, timeout):
+        res = real(name, spec, run_dir, plan, timeout)
+        return {**res, "sandbox": loud} if name == "ctx.judge" and seen.get("on") else res
+    monkeypatch.setattr(runner, "execute", execute)
+    out = {}
+    for tag, on in (("plain", False), ("loud", True)):
+        seen["on"] = on
+        (tmp_path / tag).mkdir()
+        fx = planned(tmp_path / tag, {"docs/new.md": "clean\n"}, host_ctx())
+        runner.main(["run", "--run-dir", str(fx["run"])])
+        s = runner.compute_status(fx["run"])
+        out[tag] = ({n: (c["status"], c["reason"]) for n, c in s["checks"].items()}, s["overall"], s["contexts"]["results"], s["checks"]["ctx.judge"]["receipt"])
+    assert out["plain"][:3] == out["loud"][:3] and out["loud"][0]["ctx.judge"][0] == "PASS"
+    rec = json.loads(Path(out["loud"][3]).read_text())
+    assert rec["result"]["sandbox"] == loud and "sandbox" not in json.loads(Path(out["plain"][3]).read_text())["result"]
