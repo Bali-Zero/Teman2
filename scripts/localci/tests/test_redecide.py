@@ -24,7 +24,6 @@ def run(recs, prs=None, **kw):
 
 @pytest.mark.parametrize("rec,reason", [
     (dec(), "error"),                                                                   # overall ERROR
-    (dec(overall="BLOCKED", contexts={"ctx.a": "ERROR", "ctx.b": "OK"}), "error"),     # a context ERROR from the runner/driver
     (dec(overall="INTERRUPTED"), "interrupted"),                                        # the run budget
     (dec(overall="BLOCKED", checks={"x": "INTERRUPTED"}), "interrupted"),
     (dec(**HOST), "host_disk"),
@@ -47,6 +46,17 @@ def test_each_transient_class_is_decided_again_at_the_same_base(rec, reason):
     dec(overall="BLOCKED", gate_pending=True, contexts={"ctx.a": "ERROR"}),            # gate_pending without a readable name list: still not B30's
     dec(overall="FAIL", **{"host_no_verdict": {"ctx.a": "host_disk_full"}, "contexts": {"ctx.a": "ERROR"}}),   # a FAIL overall outranks any no-verdict
     dec(overall="ERROR", non_executed={"ctx.a": "blocked"}),                            # an ERROR beside a non-executed mapping
+    dec(overall="BLOCKED", contexts={"ctx.a": "ERROR", "ctx.b": "OK"}),                 # B2: a context ERROR may be the candidate's crash, hang or collection error
+    dec(overall="ERROR", contexts={"ctx.a": "ERROR"}),
+    dec(overall="INTERRUPTED", contexts={"ctx.a": "ERROR"}),
+    dec(overall="BLOCKED", checks={"x": "INTERRUPTED", "y": "ERROR"}),                  # a candidate timeout beside a run-budget interruption
+    dec(overall="ERROR", contexts={"ctx.a": "FAIL"}),                                   # a FAIL context under a transient overall
+    dec(overall="INTERRUPTED", contexts={"ctx.a": "FAIL"}),
+    dec(overall="BLOCKED", gate_pending=True, gate_pending_contexts=["x"], host_no_verdict={"ctx.e2e-tests": "host_disk_below_floor"}, contexts={"ctx.e2e-tests": "ERROR"}),     # gate_pending beside a host no-verdict
+    dec(overall="INTERRUPTED", gate_pending=True),
+    dec(overall="ERROR", checks={"x": "FAIL"}),                                         # L1: a FAIL check is a verdict
+    dec(overall="INTERRUPTED", checks={"x": "FAIL", "y": "INTERRUPTED"}),
+    dec(overall="BLOCKED", **{"host_no_verdict": {"ctx.a": "host_disk_full"}, "contexts": {"ctx.a": "ERROR", "ctx.b": "ERROR"}}),   # host plus a candidate-side ERROR
 ])
 def test_a_verdict_is_never_decided_again(rec):
     todo, capped = run([rec], host_free_gb=120.0, start_floor_gb=100.0)
@@ -122,3 +132,32 @@ def test_the_tick_hands_the_measured_host_free_space_to_the_triage(world):  # no
     assert mg.main([*args, "--host-free-gb=150", "--min-host-free-gb=100"]) == 0
     rows = [r for r in world.journal() if r["kind"] == "decision"]
     assert len(rows) == 2 and rows[-1]["redecide"] == {"reason": "host_disk", "attempt": 2}
+
+
+def ev(ts, head=H1, base=B1):
+    return {"kind": "evicted", "pr": 1, "head_sha": head, "base_sha": base, "ts": ts}
+
+
+def test_the_eviction_cap_applies_to_a_transient_key_too_within_its_window():
+    recs = [dec(**HOST), *[ev("2026-10-09T11:00:00Z")] * mg.EVICT_CAP]
+    capped, evict_capped = [], []
+    todo, _ = mg.triage([pr(1, H1)], REPO, recs, B1, now_s=NOW, host_free_gb=150.0, start_floor_gb=100.0, redecide_capped=capped, evict_capped=evict_capped)
+    assert todo == [] and capped == [] and [p["number"] for p in evict_capped] == [1]
+    one_short = [dec(**HOST), *[ev("2026-10-09T11:00:00Z")] * (mg.EVICT_CAP - 1)]
+    assert run(one_short, now_s=mg._epoch("2026-10-09T11:00:00Z") + mg.REDECIDE_BACKOFF_S, host_free_gb=150.0, start_floor_gb=100.0)[0] != []
+    stale = [dec(**HOST), *[ev("2026-10-01T00:00:00Z")] * mg.EVICT_CAP]   # older than the window: history for ORDER, never a cap
+    assert run(stale, host_free_gb=150.0, start_floor_gb=100.0)[0] != []
+
+
+def test_an_eviction_pushes_the_next_attempt_by_the_backoff():
+    ev_ts = "2026-10-09T11:55:00Z"
+    recs = [dec(), ev(ev_ts)]
+    assert run(recs, now_s=mg._epoch(ev_ts) + mg.REDECIDE_BACKOFF_S - 1)[0] == []    # the decision alone would be long due
+    assert len(run(recs, now_s=mg._epoch(ev_ts) + mg.REDECIDE_BACKOFF_S)[0]) == 1
+    assert len(run([dec()], now_s=mg._epoch(ev_ts) + 1)[0]) == 1                      # without the eviction it is due
+
+
+def test_the_newest_eviction_anchors_the_backoff_not_the_oldest():
+    recs = [dec(), ev("2026-10-09T11:00:00Z"), ev("2026-10-09T11:50:00Z")]
+    assert run(recs, now_s=mg._epoch("2026-10-09T11:50:00Z") + mg.REDECIDE_BACKOFF_S - 1)[0] == []
+    assert len(run(recs, now_s=mg._epoch("2026-10-09T11:50:00Z") + mg.REDECIDE_BACKOFF_S)[0]) == 1

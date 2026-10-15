@@ -264,15 +264,18 @@ REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times it
 
 def transient_reasons(r: dict) -> list:
     """B30 D1: why a non-replay decision is a TRANSIENT local no-verdict (the host or the driver, never the candidate), else []. A FAIL
-    anywhere, a gate_pending BLOCKED and a context BLOCKED by policy (a rewritten judge, a non-executed mapping) are verdicts."""
+    anywhere (overall, context or check), a gate_pending BLOCKED, a context BLOCKED by policy (a rewritten judge, a non-executed mapping)
+    and a context ERROR the host did not name are verdicts or candidate-attributable: the runner maps a candidate's crash, hang and
+    collection error to ERROR too, and the row carries no per-check attribution, so retrying them would be retry-until-green."""
     ctx = r.get("contexts") if isinstance(r.get("contexts"), dict) else {}
     host = r.get("host_no_verdict") if isinstance(r.get("host_no_verdict"), dict) else {}
     rest = [v for k, v in ctx.items() if k not in host]
-    if r.get("replay") or r.get("gate_pending") is True or r.get("overall") == "FAIL" or r.get("non_executed") or any(v in ("FAIL", "BLOCKED") for v in rest):
-        return []
     checks = r.get("checks") if isinstance(r.get("checks"), dict) else {}
-    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR" or "ERROR" in rest),
-                                 ("interrupted", r.get("overall") == "INTERRUPTED" or "INTERRUPTED" in checks.values())) if hit]
+    if (r.get("replay") or r.get("gate_pending") is True or r.get("overall") == "FAIL" or r.get("non_executed")
+            or any(v in ("FAIL", "BLOCKED", "ERROR") for v in rest) or "FAIL" in checks.values()):
+        return []
+    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR"),
+                                 ("interrupted", (r.get("overall") == "INTERRUPTED" or "INTERRUPTED" in checks.values()) and "ERROR" not in checks.values())) if hit]
 
 
 def gh_pages(path: str, key: str | None = None) -> list:
@@ -372,11 +375,15 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             redec[k] = [redec.get(k, [0])[0] + bool(why), why, r.get("ts")]
     last: dict = {}
     evictions: Counter = Counter()
+    evicted_ts: dict = {}   # B30: key -> its newest readable eviction ts (the backoff counts from it too)
     for r in recs:
         if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":
             last[(r.get("pr"), r.get("head_sha"))] = max(last.get((r.get("pr"), r.get("head_sha")), ""), str(r.get("ts")))
         if r.get("kind") == "evicted":
             ts = r.get("ts")
+            if is_ts(ts):
+                k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
+                evicted_ts[k] = max(evicted_ts.get(k, ts), ts)
             if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:
                 evictions[(r.get("pr"), r.get("head_sha"), r.get("base_sha"))] += 1
     newest: dict = {}   # B23: (pr, head) -> the newest non-replay decision's pending contexts, None when it was not gate_pending
@@ -423,11 +430,16 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             except (hc.CompareError, OSError) as exc:
                 print(f"merger: #{n} gate status or hosted re-run not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
         elif (st := redec.get((n, head, base_sha), [0, [], None]))[1]:
+            if evictions[(n, head, base_sha)] >= EVICT_CAP:   # B30/B15: an eviction is no decision, so neither cap below would ever advance on it
+                if evict_capped is not None:
+                    evict_capped.append(pr)
+                continue
             if st[0] >= REDECIDE_CAP:
                 if redecide_capped is not None:
                     redecide_capped.append(pr)
                 continue
-            if not is_ts(st[2]) or now - _epoch(st[2]) < REDECIDE_BACKOFF_S * st[0]:
+            anchor = max([_epoch(t) for t in (st[2], evicted_ts.get((n, head, base_sha))) if is_ts(t)], default=None)   # the newest decision OR eviction
+            if not is_ts(st[2]) or anchor is None or now - anchor < REDECIDE_BACKOFF_S * st[0]:
                 continue
             if "host_disk" in st[1] and not (host_free_gb is not None and host_free_gb >= start_floor_gb):
                 continue
