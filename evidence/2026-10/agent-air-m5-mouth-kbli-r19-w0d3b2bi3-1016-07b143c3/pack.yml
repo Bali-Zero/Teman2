@@ -1,0 +1,68 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i'' (BLUE), the
+  tooling half of the 3b-2b split. The Dux (site-dux, a successor window) built and ran every
+  command. It does not self-sign; the imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md; the #8488 gate bindings
+  B1-B5; the #8249 gate bindings 2, 3 and 4; the #8560 and #8579 gates; SPEC-3b2bi-scrim-exemption.md; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4, 8.8 and 9.
+lanes:
+  - lane: kbli-r19-w0d3b2bi3-1016
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat. No PNG in this pack."
+provenance: >-
+  Successor of #8579 (gate BLOCK, same cause as #8560): its content cherry-picked onto a fresh origin/main, plus the
+  cure the lead specified in ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/SPEC-3b2bi-scrim-exemption.md. Nothing of 3b-2b-ii is in the diff.
+diff:
+  behaviour_change: >-
+    The scrim exemption is a hit-test fact, as the SPEC states it: an occlusion by the walk's scrim, or by a
+    descendant of it, is exempt only when the scrim itself is in elementsFromPoint above the run's own layer at
+    that point (at the overlay's nearest point on the reach path). No style of the scrim or of any ancestor is
+    read, so the opacity leak of #8579 and the position leak of #8560 cannot return, and no trigger list exists.
+    A scrim absent from the stack or under the run never exempts. Everything else of #8579 is carried. No verdict
+    line moves on the tree (every scrim has 0 descendants): G 577, O 18, K 188, M 741, state 51, drift 0.
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "154 passed, 95 deselected"
+    exit: 0
+    ts: "2026-10-16T02:40:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The browser rows pass on M5, the SPEC section 3 rows included."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+    result: "95 passed, 154 deselected in 237.54s"
+    exit: 0
+    ts: "2026-10-16T02:55:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (162.92s)"
+    exit: 0
+    ts: "2026-10-16T03:00:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Every cure undone fails a row: the SPEC section 4 table and the carried mutants."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bi3-1016-07b143c3/instrument_mutants.py (instrument-mutants.txt)"
+    result: "19 of 19 killed"
+    exit: 0
+    ts: "2026-10-16T03:00:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "M5, the full census at load 2 to 5: the fixture is its dump, and the fixture's replay is its live verdict byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --port 3531 --diff-base origin/main --json <fixture>; --replay <fixture>; cmp"
+    result: "492 lines, identical (sha256 8b1e0f56a01a82f5), the same verdict as #8579. captures 54 ok, opened 50 ok 0 failed, declared-not-judgeable 1, G 577, O 18, K 188, D 0, drift 0, M 741. phase-seconds: full capture 1142, walk 114, opened 1046, shared 326."
+    exit: 0
+    ts: "2026-10-16T03:50:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-16T03:55:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "B3, the composer card: is the occlusion of the 'KBLI 2025 (Peraturan BPS 7/2025)' paragraph an artefact of the census state?"
+    status: RETRACTED
+    resolution: "No. A plain user load and the census state read the same on /kbli-explorer at 1440x900 after 2.5 s. Two gates reproduced it. A product finding outside this lot; the census reports it correctly."

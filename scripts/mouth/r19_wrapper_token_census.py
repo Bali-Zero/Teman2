@@ -1126,6 +1126,7 @@ RESOLVE_JS = r"""
     for (const k in side) side[k] = Math.min(64, Math.max(0, side[k]));
     return side;
   };
+  let nearStack = null;  // the stack at the nearest point of the overlay `within` last returned
   let reachers = null;  // found at the first point, once the roots and the census style exist
   const within = (x, y, runEl) => {
     reachers = reachers || [...document.querySelectorAll("body *")]
@@ -1140,7 +1141,9 @@ RESOLVE_JS = r"""
       const py = Math.min(Math.max(y, r.top + 1, 0), r.bottom - 1, innerHeight - 1);
       const st = document.elementsFromPoint(px, py);
       const over = st.findIndex((e) => el.contains(e)), under = st.findIndex((e) => e.contains(runEl));
-      return over >= 0 && (under < 0 || over < under);
+      if (!(over >= 0 && (under < 0 || over < under))) return false;
+      nearStack = { st, i: under < 0 ? st.length : under };
+      return true;
     });
   };
   const canvasRgb = () => {
@@ -1152,12 +1155,10 @@ RESOLVE_JS = r"""
   };
   // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
   // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
-  // A descendant of a scrim is exempt only when the scrim ITSELF makes a stacking context (it is fixed or sticky,
-  // or it filters, blurs its backdrop, transforms or fades): a flat scrim cannot hold a child above the surface,
-  // wherever its ancestors sit, so a child that is above it is a real occluder (W0d-3b-2b-i').
-  const stacks = (s) => ["fixed", "sticky"].includes(cs(s).position) || cs(s).filter !== "none"
-    || (cs(s).backdropFilter || "none") !== "none" || cs(s).transform !== "none" || opacity(s) < 1;
-  const exempt = (el, runEl) => scrims.some((s) => s === el || (stacks(s) && s.contains(el))) ? "scrim"
+  // A scrim, or a descendant of one, is exempt when the scrim itself is in the stack at that point above the run's
+  // own layer (index < i): it already covers the run there, so what its children add is behind it too. No style of
+  // the scrim or of its ancestors decides it; a scrim absent from the stack, or under the run, never exempts.
+  const exempt = (el, runEl, st, i) => scrims.some((s) => s.contains(el) && st.indexOf(s) >= 0 && st.indexOf(s) < i) ? "scrim"
     : roots.some((r) => r.contains(el) && !r.contains(runEl)) ? "surface" : null;
   const pointB = (x, y, runEl) => {
     const st = document.elementsFromPoint(x, y);
@@ -1165,10 +1166,10 @@ RESOLVE_JS = r"""
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
     const near = within(x, y, runEl);
-    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl) };
+    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl, nearStack.st, nearStack.i) };
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
-        return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl) };
+        return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl, st, i) };
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
     const base = k >= 0 ? ls[k].rgb : canvasRgb();

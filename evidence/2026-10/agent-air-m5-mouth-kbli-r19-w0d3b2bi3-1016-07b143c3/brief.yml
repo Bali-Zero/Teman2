@@ -1,0 +1,33 @@
+task_id: kbli-r19-w0d3b2bi3-1016
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i'' (cure and bindings, tooling only), the successor
+  of #8579 (gate BLOCK on #8249 binding 3, the same cause as #8560's, comment 6199407798). The cure is
+  specified in ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/SPEC-3b2bi-scrim-exemption.md and is binding:
+    1. exempt() returns "scrim" iff the occluder is the walk's scrim S or a descendant of S AND S itself is in
+       elementsFromPoint at an index below the run's own layer index; no CSS property of S or of its ancestors
+       is read; the reach path reads the stack at the overlay's nearest point; S absent or under the run
+       fails closed (counted).
+    2. The cumulative-opacity / trigger-list predicate (stacks()) is removed; contract 8.4 states the hit-test fact.
+    3. Everything else of #8579 is carried unchanged: B1, B2, B4, B5, bindings 2 and 4, the walk-line causes,
+       N1, N2, the fixture counts (G 577, O 18, K 188, M 741).
+constraints:
+  - "Zero files under apps/mouth/src."
+  - "Nothing of W0d-3b-2b-ii (section 8.7 inventory, surfaces-unclaimed, bg-black/60, section 8.5 cells, the logo)."
+  - "No npm install or npm ci."
+acceptance:
+  - text: "SPEC sections 3 and 4: every guilt row counts, every innocence row is exempt, every mutant of the table is killed."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bi3-1016-07b143c3/instrument_mutants.py"
+  - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte and K stays 188."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+  - text: "WHEN CI runs the sharded and the full census on the head, THEN the two verdicts are byte-identical."
+    probe: 'gh workflow run r19-wrapper-census-tests.yml (default parts, then -f parts=''["full"]''); cmp'
+consumer_map:
+  - "r19-wrapper-census-tests runs the new rows on every census PR (census-replay offline, the e2e rows in wrapper-census-part explorer)."
+risks:
+  - "Every scrim on today's tree has 0 descendants, so no verdict line should move against #8579; the M5 and CI runs report it."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha,
+  judging the PR against the SPEC.

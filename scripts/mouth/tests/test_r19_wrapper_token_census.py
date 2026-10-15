@@ -1009,6 +1009,26 @@ CANVAS = ('<canvas id="cv" width="400" height="80" style="position:absolute;inse
           "</canvas>")
 # id: body, css, opener (JS, or None to click a selector that is not there), selectors,
 #     expected (P, K at least, M exactly or at least as ">=n", walk state, an excerpt every walk prints)
+def faded_a1(wrapper_style: str) -> str:
+    """A1: a flat absolute scrim in a wrapper, its child bar above the surface; the wrapper style is the variable."""
+    return ('<div style="' + wrapper_style + '">'
+            '<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+            '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B"></div></div>'
+            + surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+                      p(INK) + p(INK, "Villa", "margin-top:40px")) + '</div>')
+
+
+def scrim_over_static(scrim_style: str, child: bool = True) -> tuple:
+    """A scrim over a static surface: it covers the run itself, so what it holds is behind it too (SPEC-3b2bi)."""
+    bar = ('<div style="position:absolute;left:0;top:70px;width:100%;height:60px;background:#1D2C3B"></div>'
+           if child else "")
+    return (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+            appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45);'
+                     + scrim_style + f'">{bar}</div><div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
+                     f'height:64px;background:#FFFCF7;z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"],
+            (2, 0, 0, "ok", None))
+
+
 CASES = [
     ("G1", surface("background-color:rgb(28 28 31 / 0.95);padding:16px", cls="bg-[#1c1c1f]/95"), "", REVEAL, ["#s"],
      (0, 1, 0, "ok", "  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque)")),
@@ -1174,6 +1194,24 @@ CASES = [
                p(INK) + p(INK, "Villa", "margin-top:40px")) + '</div>', "", REVEAL, ["#s"],
      (0, 1, None, "ok", "  occluded 'Villa' at ")),
     # Its innocence twins: a scrim that is itself fixed, or that blurs its backdrop, holds its child.
+    # SPEC-3b2bi: a wrapper that fades, or is positioned, does not make the scrim stack: the child still rises.
+    ("G-flat-scrim-faded-wrapper", faded_a1("position:fixed;inset:0;z-index:5;opacity:.99"), "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-flat-scrim-faded-abs-wrapper", faded_a1("position:absolute;inset:0;z-index:5;opacity:.99"), "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # Its innocence: the scrim covers the run itself, by whatever it is that puts it above the surface.
+    # SPEC-3b2bi, the reach path: the blurred bar is a child of the scrim; at the run's point the surface is above
+    # the scrim, but at the bar's nearest point the scrim is above the run's page, so the bar is behind the scrim.
+    ("I-reach-reads-the-nearest-point", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px);'
+              'z-index:30"></div></div><div id="d" style="position:fixed;left:0;top:0;width:100%;height:64px;'
+              f'background:#FFFCF7;z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    ("I-scrim-own-opacity", *scrim_over_static("opacity:.99")),
+    ("I-scrim-zindex", *scrim_over_static("z-index:30")),
+    ("I-scrim-isolate", *scrim_over_static("isolation:isolate")),
+    ("I-scrim-translate", *scrim_over_static("translate:1px 0")),
+    ("I-flat-scrim-itself", *scrim_over_static("", child=False)),
     ("I-fixed-scrim-child", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
      appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;background:rgba(29,44,59,.45)">'
               '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;background:#1D2C3B"></div></div>'

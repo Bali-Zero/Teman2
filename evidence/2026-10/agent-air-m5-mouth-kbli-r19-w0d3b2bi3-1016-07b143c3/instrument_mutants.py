@@ -1,4 +1,4 @@
-"""W0d-3b-2b-i' instrument mutants: each edit undoes one cure, the named rows run with -x (through the real walks
+"""W0d-3b-2b-i'' instrument mutants: each edit undoes one cure, the named rows run with -x (through the real walks
 for N1 and N2, offline for the rest), and the file is restored before the next one. Run from the repo root with
 no census server running; prints one line per mutant."""
 import subprocess, sys
@@ -6,12 +6,18 @@ from pathlib import Path
 C = Path("scripts/mouth/r19_wrapper_token_census.py")
 W = Path(".github/workflows/r19-wrapper-census-tests.yml")
 M = [
- ("N1 G1: no scrim descendant is ever exempt", C, "s === el || (stacks(s) && s.contains(el))", "s === el", "I-fixed-scrim-child"),
- ("N1b G2: only a scrim that is itself fixed or sticky stacks", C, '["fixed", "sticky"].includes(cs(s).position) || cs(s).filter !== "none"\n    || (cs(s).backdropFilter || "none") !== "none" || cs(s).transform !== "none" || opacity(s) < 1;',
-  '["fixed", "sticky"].includes(cs(s).position);', "I-blur-scrim-child"),
- ("N1c A1: the scrim's ANCESTORS make it stack (the #8560 head)", C, "(stacks(s) && s.contains(el))", "(position(s) && s.contains(el))", "G-flat-scrim-in-fixed-wrapper"),
- ("N1d G3: the scrim clause never prints", C, 'r.get("exempt") == "scrim" for r in runs)', 'r.get("exempt") == "scrim" and False for r in runs)', "names_the_cause"),
- ("N1e a surface-covered run is counted as behind the scrim", C, '? "surface" : null;', '? "scrim" : null;', "names_the_cause"),
+ ('N1 G1: no scrim descendant is ever exempt', C, 's.contains(el) && st.indexOf(s) >= 0', 's === el && st.indexOf(s) >= 0', 'I-fixed-scrim-child'),
+ ('N1b G2: only a fixed or sticky scrim exempts', C, 's.contains(el) && st.indexOf(s) >= 0 && st.indexOf(s) < i', 's.contains(el) && ["fixed", "sticky"].includes(cs(s).position) && st.indexOf(s) >= 0 && st.indexOf(s) < i', 'I-blur-scrim-child'),
+ ("N1c A1: the scrim's ANCESTORS decide (position walks up)", C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', 'position(s)', 'G-flat-scrim-in-fixed-wrapper'),
+ ('N1d X1/M5: the cumulative opacity decides', C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', 'opacity(s) < 1', 'G-flat-scrim-faded-wrapper'),
+ ('N1e M6: a trigger list without opacity replaces the index test', C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', '(["fixed", "sticky"].includes(cs(s).position) || cs(s).filter !== "none" || (cs(s).backdropFilter || "none") !== "none" || cs(s).transform !== "none")', 'I-scrim-own-opacity'),
+ ('N1f M7: a trigger list without backdrop-filter replaces the index test', C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', '(["fixed", "sticky"].includes(cs(s).position) || cs(s).filter !== "none" || cs(s).transform !== "none" || opacity(s) < 1)', 'I-blur-scrim-child'),
+ ('N1g M8: a trigger list without fixed replaces the index test', C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', '(cs(s).filter !== "none" || (cs(s).backdropFilter || "none") !== "none" || cs(s).transform !== "none" || opacity(s) < 1)', 'I-fixed-scrim-child'),
+ ('N1h M9: a flat scrim is itself never exempt', C, 'scrims.some((s) => s.contains(el)', 'scrims.some((s) => s !== el && s.contains(el)', 'I-flat-scrim-itself'),
+ ('N1i S anywhere in the stack, even under the run', C, 'st.indexOf(s) >= 0 && st.indexOf(s) < i', 'st.indexOf(s) >= 0', 'G-flat-scrim-in-fixed-wrapper'),
+ ('N1j the reach path reads the stack at p, not at the nearest point', C, 'exempt(near, runEl, nearStack.st, nearStack.i)', 'exempt(near, runEl, st, i)', 'I-reach-reads'),
+ ('N1k G3: the scrim clause never prints', C, 'r.get("exempt") == "scrim" for r in runs)', 'r.get("exempt") == "scrim" and False for r in runs)', 'names_the_cause'),
+ ('N1l a surface-covered run is counted as behind the scrim', C, '? "surface" : null;', '? "scrim" : null;', 'names_the_cause'),
  ("N2 a drop-shadow reaches", C, "const side = { top: b,",
   "const dsb = /drop-shadow/.test(cs(el).filter) ? 24 : 0; const side = { top: Math.max(b, dsb),", "I-drop-shadow-no-reach"),
  ("N3 the capture pass opens its own context", C, "        ctx = new_context(browser, w, h, scheme)\n        ctx.add_init_script(FREEZE_JS)\n        page = ctx.new_page()\n        try:",
