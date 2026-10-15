@@ -1,0 +1,47 @@
+{
+  "block_id": "B06",
+  "status": "PARTIAL",
+  "block_closed": false,
+  "proofs": [
+    "research/operations/udb-wave8/B06/DEFINITIVE-SYNTHESIS.md",
+    "research/operations/udb-wave8/B06/b06_domain_paths.py",
+    "research/operations/udb-wave8/B06/domain-operation-instances.json",
+    "research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+    "research/operations/udb-wave8/B06/dux-requests/DUX-REQ-B06-01.out (sha256: e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa)",
+    "research/operations/udb-wave8/B06/dux-requests/DUX-REQ-B06-03.out (sha256: 1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb)",
+    ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv (sha256: c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118)"
+  ],
+  "missing": [
+    "Runtime database role resolution for 683 B06-prefix rows currently marked ACTOR_IDENTITY_UNRESOLVED in consumer-matrix.csv (routed to B04)",
+    "Canonical operation_id assignment from B05 catalog for the 21 B06 operation instances currently marked UNASSIGNED_B05 (routed to B05)",
+    "Restore drill verification for public.clients (currently FAIL), public.conversations (currently CANNOT-VERIFY), and B06 domain tables omitted from scripts/restore_drill_verify.py (routed to B07)",
+    "Live read-only aggregate receipts DUX-REQ-B06-10, DUX-REQ-B06-11, and DUX-REQ-B06-12 quantifying duplicate normalized phones, split invoice/payment rows, and outbox dead-letter counts"
+  ],
+  "tests": "PASS: exit 0, 13 passed, out sha256 f5801870ba3c5ceaddd5b679e3bc49fcaf5484957ab861eb9e4a296e654ee7e6 (PYTHONPATH=. pytest research/operations/udb-wave8/B06/test_b06_domain_paths.py); before it: Dux run at base 8061c88 before the correction: exit 1, 8 passed / 1 failed (test_consumer_matrix_census_parity_with_dux_receipts), out sha256 60fee2bd40d819e3cf6c7811d207269b135091277ad06be3af10a0ac574924d4; parent run: 3 passed / 8 failed; isolated pre-patch NAGA regression: exit 1, 1 failed / 1 passed / 11 deselected, out sha256 8832db2535d5205b9c7e55b6592b077a6a85f3af75c3eefc3ff9cbb89332174c; receipts retained",
+  "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
+  "dux_correction": {
+    "executed": true,
+    "prepared_by": "parent coordinator isolated scratch worktree; applied to this worktree with pins verified",
+    "patch_sha256": "94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5",
+    "files": {
+      "b06_domain_paths.py": {
+        "pre_sha256": "210c7b965e1f1b82bb83ab7121f9276b6d0622d5f8bc53a1307118dd2781aaf0",
+        "post_sha256": "d76a5ebe8482f1cb64f7271e7313a6ca926fd4b9abb366e0b15323b71d5c5daa"
+      },
+      "test_b06_domain_paths.py": {
+        "pre_sha256": "9a633ceaca9b7136dad2cc8472bbea9905974f6d14129e86a590cdf5a9734665",
+        "post_sha256": "c8d4281607f32aaa54b9650fb2991bcacd5e19717989f01d73658c8e31dc5d99"
+      },
+      "domain-operation-instances.json": {
+        "pre_sha256": "504140e1b4c9acb81d88f35cec7f910efb5f32f37054beb23732fb2ec121e13f",
+        "post_sha256": "857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae"
+      }
+    },
+    "tests_before": "Dux run at base 8061c88 before the correction: exit 1, 8 passed / 1 failed (test_consumer_matrix_census_parity_with_dux_receipts), out sha256 60fee2bd40d819e3cf6c7811d207269b135091277ad06be3af10a0ac574924d4; parent run: 3 passed / 8 failed; isolated pre-patch NAGA regression: exit 1, 1 failed / 1 passed / 11 deselected, out sha256 8832db2535d5205b9c7e55b6592b077a6a85f3af75c3eefc3ff9cbb89332174c",
+    "tests_after": "exit 0, 13 passed, out sha256 f5801870ba3c5ceaddd5b679e3bc49fcaf5484957ab861eb9e4a296e654ee7e6",
+    "superseded": "DEFINITIVE-SYNTHESIS.md row 19 (research_os_objects / persist_research_os_bundle) superseded by the prepended addendum",
+    "native_probe_executed": false,
+    "live_pg_probed": false,
+    "runtime_unknowns_retained": true
+  }
+}

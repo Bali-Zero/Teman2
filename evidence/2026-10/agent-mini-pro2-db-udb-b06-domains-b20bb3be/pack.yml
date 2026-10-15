@@ -1,0 +1,85 @@
+mandate: universal-db-wave8-20261015-B06
+brief_ref: evidence/2026-10/agent-mini-pro2-db-udb-b06-domains-b20bb3be/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim:
+      Pre-patch NAGA regression on the original adapter failed as expected; the cited
+      naga_persistence.py evidence path does not exist at the pinned base.
+    cmd:
+      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
+      --color=no -q research/operations/udb-wave8/B06/test_b06_domain_paths.py -k "naga_instance_is_grounded
+      or missing_evidence_file"
+    exit: 1
+    ts: "2026-10-15T14:40:00+00:00"
+    seat: codex-coordinator
+    execution_context:
+      Mini broker scratch db-udb-deadline-astra-b06 at8061c88; see pinned
+      parent regression-before.json
+    evidence_ref: research/operations/udb-wave8/B06/test_b06_domain_paths.py:525
+  - claim:
+      Corrected B06 candidate:13tests passed against the original worktree sources;
+      the NAGA instance cites persist.py save_session and no research_os_objects bridge.
+    cmd:
+      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
+      --rootdir=<original-b06-worktree> --basetemp=<scratch-worktree>/pytest --color=no -q
+      research/operations/udb-wave8/B06/test_b06_domain_paths.py
+    exit: 0
+    ts: "2026-10-15T14:47:42+00:00"
+    seat: codex-coordinator
+    execution_context:
+      Mini original worktree db-udb-b06-domains at8061c88, uncommitted candidate;
+      see pinned parent ACTUAL-CANDIDATE-RECEIPT.json
+    evidence_ref: research/operations/udb-wave8/B06/test_b06_domain_paths.py:525
+    patch_sha256: 94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5
+    source_pins:
+      b06_domain_paths.py: d76a5ebe8482f1cb64f7271e7313a6ca926fd4b9abb366e0b15323b71d5c5daa
+      test_b06_domain_paths.py: c8d4281607f32aaa54b9650fb2991bcacd5e19717989f01d73658c8e31dc5d99
+      domain-operation-instances.json: 857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae
+  - claim:
+      Dux verified the three post-patch pins before recording receipts; the synthesis
+      row 19 is superseded by a prepended addendum, original text retained.
+    cmd: /usr/bin/python3 -I -B b06_finalize.py research/operations/udb-wave8/B06 B06-ADDENDUM.md
+    exit: 0
+    ts: "2026-10-15T16:57:00+00:00"
+    seat: claude-opus-5-5-dux
+    execution_context: Mini original worktree db-udb-b06-domains at8061c88, uncommitted candidate
+    evidence_ref: research/operations/udb-wave8/B06/DEFINITIVE-SYNTHESIS.md:3
+    patch_sha256: 94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5
+dissent:
+  - seat: campaign-independent-adversary
+    objection:
+      "B06: runtime DB roles, B05 operation ids and restore-drill coverage are
+      unproved; static source is not runtime evidence. See frozen ADVERSARY-FINDINGS.md
+      B06 section. Native probe is not executed by this preparation."
+    status: CONFIRMED
+pii_scan: clean
+block_closed: false
+native_probe_executed: false
+final_gate: PENDING_EXACT_COMMITTED_HEAD
+production_adoption: false
+limitations:
+  - All runtime unknowns remain (DB roles, operation ids pending B05, restore-drill table
+    coverage, replay idempotency, erasure proof).
+  - R1 adversarial-review metadata, secret-scan baseline decisions and the exact-head final gate
+    are checked by the Dux before arming.
+  - This pack does not authorize changing any armed branch or starting successors.
+lanes:
+  - lane: B06-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B06-bounded-prepare
+    role: build
+    seat: codex-coordinator
+  - lane: B06-dux-apply
+    role: build
+    seat: claude-opus-5-5-dux
+  - lane: B06-campaign-adversary
+    role: review
+    seat: campaign-independent-adversary
+seat_override:
+  The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh
+  support and Opus5.5/xhigh support, with one adversarial pass then synthesis. This
+  model assignment supersedes the legacy two-seat council whitelist; no legacy Sol/Kimi/TP1
+  reviewer is invoked or claimed. Actual source-pinned modern-seat evidence is retained.
+  The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
+  and PENDING; this override does not sign a gate or grant block closure.
