@@ -46,6 +46,9 @@ if [ -n "${IMM:-}" ]; then
   # The sheet as the app mounts it (SearchListView.sheetLayer): C25 reads it against the flat twin (tall/) and this set's immersive one.
   for c in 56101 55203; do for t in day night; do
     shot live-sheet --sheet-open --theme $t --lang en --code $c --height 2600 "$OUT/live/sheet-open-$c-$t-en.png"; done; done
+  # The collapsed sheet at the app's minimum window (1040x700): C27 reads the verdict band against the sheet's bottom edge.
+  for spec in "87202 id" "77520 en" "56101 en"; do
+    shot live-sheet --theme day --lang ${spec#* } --code ${spec% *} --width 1040 --height 700 "$OUT/live/min-collapsed-${spec% *}-day-${spec#* }.png"; done
   # The longest titles of the dataset (87202 in Indonesian, 199 characters, no scale rows; 77520 and 47192 in English, with a matrix): the head's
   # title wraps to 2-5 lines and never squashes the plate (C26). The two with a matrix are `sheet-open` renders, so C24 judges them too, on a canvas
   # tall enough for the detail (77520's reaches y 3618 pt in Indonesian: a 3600 pt canvas cut it, and C24 could not see it).

@@ -1,0 +1,31 @@
+task_id: kbli-nav-design-h1b-verdict-first
+mission: kbli-nav-design-loop (Track A, build, lot IMM-L H1b — the head's residuals from the #8434 gate; owner decision 2026-10-13)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Visible app change (the title steps down, the collapsed sheet carries a compact head) plus two census checks of its own (C26
+  guards, C27), under the fresh-gate lane. Content frozen: no fact, verdict, cap, basis, reason or string change; the compact head
+  draws the same words on one row. The Nusantara map (H2), the H1c presentation lot, contrast coverage (CX) and the masthead stage
+  (H3) are separate PRs.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: at the app's minimum window the Bali verdict band is on the screen for every title. The title takes display 44
+  up to two lines, then 34, then 28, and is never truncated; the collapsed 470 pt sheet carries a compact head (the national plate
+  as one row, no glyph); the expanded sheet is exactly H1. Together with the head's other residuals (the glyph a title's width
+  after the title, one case for the two id chips, dead code removed) and the census guards the #8434 gate asked for.
+constraints:
+  - No fact, verdict, cap, basis, reason or string changes; the expanded sheet is as in H1.
+  - The detail mark keeps cellDetail(scales[X]).censusFrame("detail", "\(X)") as one expression; no new `expanded:` site.
+  - head_mutants.sh only grows; it restores Sources/ on any exit.
+acceptance:
+  - text: At 1040x700 collapsed the whole verdict band SHALL end above the sheet's bottom edge for the three longest-title shapes, and a plate forced back to 201 pt SHALL fail.
+    probe: "Pro: C27 on live/min-collapsed-87202-day-id: band bottom 632 pt, sheet bottom 690 pt; mutant plate201 (plate forced back to 201 pt): C27 FAIL, band bottom 700 pt below the sheet bottom 690 pt"
+  - text: The head's four shapes the #8434 gate found unguarded SHALL fail on real renders.
+    probe: "Pro: head_mutants.sh on 56101 imm day: noglyph rc 1 (glyph required, only head.compact exempt), srcopen rc 1 (3 Source open), norule rc 1 (rule not drawn), stack rc 1 (plate not beside the title at 1232 pt); control rc 0"
+  - text: The census SHALL pass on the full set and the render set SHALL not change outside the head.
+    probe: "Pro: 111 PNGs, 0 failed; png_census 0 FAIL, 1 VACUOUS (xxl C8, pre-existing), C26 armed 45, C27 armed 3; CENSUS_IDENTITY 111/111; self-test 232/232; measure_contrast TOTAL=196 FAIL=0 PARITY=0 WHITE=0"
+  - text: content_check SHALL hold on this head, steps 7 and 8 included.
+    probe: "Pro (Xcode): steps 1, 3, 4, 5, 6, 7, 8 ok, rc 0; detail_identity_mutants 33 cases, 0 misses"
+  - text: A signal SHALL never leave a mutant in Sources/.
+    probe: "Pro: head_mutants.sh run in its own process group, SIGHUP to the group mid-run: ends rc 129 and git diff -- Sources is empty (the first version kept running after the HUP; the EXIT trap alone restored but the script went on)"
