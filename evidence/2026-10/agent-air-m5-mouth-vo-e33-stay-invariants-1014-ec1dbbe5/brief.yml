@@ -1,0 +1,51 @@
+task_id: vo-e33-stay-invariants-1014
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Close the two carry-overs the fresh Opus gate of PR #8494 (PR-7 v2, permit length) set for the E33 closing
+  PR. (b) A stay policy that the backend model accepts but that breaks a stay-kind invariant (FIXED_DAYS without
+  a maximum, NOT_APPLICABLE with days, minimum above maximum, an unknown kind) must make the Visa Oracle result
+  omit only that product's permit-length line: the rest of the result renders, nothing throws, the page never
+  fail-closes, and no length is invented. (a) A vitest census reads the highest-sequence signed production
+  pack, builds every product through the same parser and view-model path, and asserts it parses, never
+  fail-closes and yields an EN and an ID permit-length line consistent with its kind, following future packs.
+  The mouth side carries the fix. The backend StayPolicy validator (apps/backend-rag/backend/services/
+  visa_engine/models.py, near line 301) is read and not edited: backend contracts are a signed-pack hot zone,
+  and tightening them is a recorded residual.
+
+  Gear 2 is declared above the deterministic floor (1, no hot-zone path), per the campaign rule that a lane
+  carries an independent final gate.
+
+acceptance:
+  - text: >-
+      WHEN a candidate's stay_policy is FIXED_DAYS without a maximum, NOT_APPLICABLE with days, minimum above
+      maximum, or an unknown kind, the parser SHALL accept it and the outcome SHALL carry no permit length for
+      that candidate, including when the candidate also carries a valid selected_duration_days and
+      duration_options; structural breaks (missing keys, non-integers, negatives, above 36500) SHALL still
+      fail-close.
+    probe: python3 scripts/ci/observe_visa_oracle_stay_invariants.py
+  - text: >-
+      WHEN every valid kind is rendered (FIXED_DAYS 365/365 and 1825/1825, FIXED_DAYS 365/730 with options,
+      VARIABLE_BY_GRANT, NOT_APPLICABLE null/null), the permit-length line SHALL be exactly what it was at
+      f408a74f72 in EN and ID.
+    probe: python3 scripts/ci/observe_visa_oracle_stay_invariants.py
+  - text: >-
+      The census SHALL select the pack from the signed payloads (environment PRODUCTION, highest sequence,
+      failure on a duplicate maximum), build all 38 products of pack 029 and follow a future pack without an edit.
+    probe: python3 scripts/ci/observe_visa_oracle_stay_invariants.py
+  - text: >-
+      The whole visa-oracle vitest tree, tsc and the replay-pin observer (312) SHALL stay green.
+    probe: "cd apps/mouth && npx vitest run 'src/app/(visa-oracle)' && npx tsc --noEmit -p . ; python3 scripts/ci/observe_visa_oracle_replay_pins.py"
+
+assumptions:
+  - text: >-
+      The backend StayPolicy accepts FIXED_DAYS with no maximum, NOT_APPLICABLE with days and min above max
+      (no cross-field validator); an unknown kind is rejected there by the closed StayPolicyKind enum, so the
+      mouth tolerance for an unknown kind is forward-compatibility for a future enum value.
+    status: verified
+    probe: "red-team reading of apps/backend-rag/backend/services/visa_engine/models.py:301-306 and enums.py:460"
+
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
