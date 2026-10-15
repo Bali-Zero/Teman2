@@ -474,7 +474,13 @@ def test_the_seed_carries_every_field_the_migration_writes(code):
 
 
 def test_every_seed_e28_name_is_the_name_migration_128_writes():
-    assert {c: SEED[c]["name"] for c in FIXES} == {c: FIXES[c]["name"] for c in FIXES}
+    named = [c for c in FIXES if "name" in FIXES[c]]
+    assert {c: SEED[c]["name"] for c in named} == {c: FIXES[c]["name"] for c in named}
+
+
+def test_migration_128_leaves_the_live_e28a_name_alone():
+    assert "name" not in FIXES["E28A"]
+    assert set(FIXES) - {"E28A"} <= {c for c in FIXES if "name" in FIXES[c]}
 
 
 def test_the_seed_writer_writes_the_optional_columns():
@@ -854,3 +860,11 @@ def test_restore_after_a_partial_run_returns_to_the_original(fx, src, capsys, tm
     fake.fail_on_write_number = None
     assert _run(fx, fake, ["--restore", str(b), "--apply"], capsys)[0] == 0
     assert {pid: p["payload"] for pid, p in fake.points.items()} == original
+
+
+@pytest.mark.parametrize("code", ["E28A", "E28B", "E28C", "E28D", "E28F"])
+def test_no_e28_row_promises_a_path_to_kitap(code):
+    # the live rows carried "Path to KITAP"; no E28 page states a KITAP route
+    assert FIXES[code]["benefits"] == ["Legal stay in Indonesia", "Multiple entry/exit"]
+    assert not any("kitap" in t.lower() for t in row_strings(FIXES[code]))
+

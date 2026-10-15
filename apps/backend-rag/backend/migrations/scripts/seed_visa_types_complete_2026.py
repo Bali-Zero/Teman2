@@ -987,6 +987,7 @@ VISA_TYPES = [
         "name": "Investor Visa",
         "category": "KITAS/Limited Stay",
         "duration": "2 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
         "processing_time_normal": "7-10 working days",
         "requirements": [
@@ -1035,6 +1036,7 @@ VISA_TYPES = [
         "name": "E28B - Investor Golden Visa (Company Establishment)",
         "category": "KITAS/Limited Stay",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -1074,6 +1076,7 @@ VISA_TYPES = [
         "name": "E28C - Investor Golden Visa (Capital Market)",
         "category": "KITAS/Limited Stay",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -1109,6 +1112,7 @@ VISA_TYPES = [
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
         "category": "KITAS/Limited Stay",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -1159,6 +1163,7 @@ VISA_TYPES = [
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan di Indonesian New Capital (IKN)",
         "category": "KITAS/Limited Stay",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",

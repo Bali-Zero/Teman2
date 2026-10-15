@@ -75,8 +75,10 @@ logger = logging.getLogger(__name__)
 # test_visa_types_seed_vs_migration_tripwire.py: it reads VISA_FIXES off disk without importing).
 VISA_FIXES = {
     "E28A": {
-        "name": "Investor Visa",
+        # no "name": the live row keeps "E28A - Investor KITAS (Standard)"; the seed's
+        # "Investor Visa" is the legacy catalogue display name (test_catalogue pins it).
         "duration": "2 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
         "processing_time_normal": "7-10 working days",
         "requirements": [
@@ -117,6 +119,7 @@ VISA_FIXES = {
     "E28B": {
         "name": "E28B - Investor Golden Visa (Company Establishment)",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -148,6 +151,7 @@ VISA_FIXES = {
     "E28C": {
         "name": "E28C - Investor Golden Visa (Capital Market)",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -175,6 +179,7 @@ VISA_FIXES = {
     "E28D": {
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
@@ -203,6 +208,7 @@ VISA_FIXES = {
     "E28F": {
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan di Indonesian New Capital (IKN)",
         "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
         "requirements": [
             "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
