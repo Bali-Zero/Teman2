@@ -1533,3 +1533,56 @@ def test_b26_u5_a_dry_run_never_removes_a_stale_part_and_reports_no_error_for_it
     (run / RES / "y.gz.part").write_bytes(b"torn")
     out = pm.trim_runs(runs, NOW, dry=True)
     assert (run / RES / "y.gz.part").exists() and out["errors"] == [] and out["freed_gb"] >= 0
+
+
+def test_b26_u5_the_part_is_fsynced_before_the_rename_the_directory_after_it_and_the_original_goes_last(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("v" * 1000)
+    events, real_fsync, real_replace, real_unlink = [], pm.os.fsync, pm.os.replace, Path.unlink
+
+    def fsync(fd):
+        events.append("fsync-dir" if "replace" in events else "fsync-part")
+        return real_fsync(fd)
+
+    def replace(a, b):
+        events.append("replace")
+        return real_replace(a, b)
+
+    def unlink(self, *a, **k):
+        if self == src:
+            events.append("unlink-original")
+        return real_unlink(self, *a, **k)
+    monkeypatch.setattr(pm.os, "fsync", fsync)
+    monkeypatch.setattr(pm.os, "replace", replace)
+    monkeypatch.setattr(Path, "unlink", unlink)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert events == ["fsync-part", "replace", "fsync-dir", "unlink-original"]
+
+
+def test_b26_u5_a_symlinked_gz_is_not_trusted_as_an_already_compressed_output(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    elsewhere = tmp_path / "elsewhere.gz"
+    elsewhere.write_bytes(b"not our output")
+    (run / RES / "taint-output.json.gz").symlink_to(elsewhere)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert src.exists() and elsewhere.read_bytes() == b"not our output" and out["compressed"] == []
+
+
+@pytest.mark.parametrize("linked", ["receipts", "receipts/pysa"])
+def test_b26_u5_a_linked_receipts_or_pysa_directory_is_neither_trimmed_nor_compressed(tmp_path, linked):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25, [f for f in RUN_FILES if not f.startswith("receipts/")])
+    outside = tmp_path / "outside"
+    target = outside / "pysa" / "base" / "results" if linked == "receipts" else outside / "base" / "results"
+    target.mkdir(parents=True)
+    (target / "taint-output.json").write_text("not ours")
+    (target / "call-graph.json").write_text("not ours")
+    (run / linked).parent.mkdir(parents=True, exist_ok=True)
+    (run / linked).symlink_to(outside)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert (target / "taint-output.json").read_text() == "not ours" and (target / "call-graph.json").read_text() == "not ours"
+    assert not list(outside.rglob("*.gz")) and out["compressed"] == []

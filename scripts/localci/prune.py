@@ -377,6 +377,11 @@ def compress_receipts(run: Path, skip: set, dry: bool, errors: list | None = Non
                         fo.flush()
                         os.fsync(fo.fileno())
                     os.replace(part, gz)
+                    dfd = os.open(res, os.O_RDONLY)   # the rename durable before the original goes
+                    try:
+                        os.fsync(dfd)
+                    finally:
+                        os.close(dfd)
                     after = gz.lstat().st_size
                 if not dry:
                     src.unlink()
