@@ -1,0 +1,50 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-15, explicit: the iQOO PIN is stored as a secret but may be used by the session and by the other LLM
+  seats; the helper rule replaces 'never save or automate the PIN'.
+mission: >-
+  The iQOO PIN rule changes per Zero 2026-10-15: the phone is cabled to Pro and any LLM seat unlocks it only through
+  the Pro-side helper iqoo-unlock, never reading or typing the PIN.
+lanes:
+  - lane: docs-iqoo-pin-rule-1015
+    role: build
+    seat: claude-sonnet-5-5 (Claude Code workflow subagent)
+pii_scan: clean
+bites:
+  consumer: >-
+    every LLM seat that opens a door file (CLAUDE.md, AGENTS.md, GEMINI.md, QWEN.md) before an iQOO mobile QA session.
+  where: ci
+  observe: grep -c -F 'iqoo-unlock' CLAUDE.md AGENTS.md GEMINI.md QWEN.md docs/runbooks/iqoo-live-qa.md
+  expect: "contains:CLAUDE.md:1"
+receipts:
+  - claim: No 'automate the PIN' or 'Never save or automate' wording remains in the four doors and the runbook.
+    cmd: grep -n -i -e 'automate the PIN' -e 'Never save or automate' CLAUDE.md AGENTS.md GEMINI.md QWEN.md docs/runbooks/iqoo-live-qa.md
+    result: "no matches"
+    exit: 1
+    ts: "2026-10-15T10:00:00Z"
+    seat: this session
+  - claim: The door-parity probe reconciles with the edited doors.
+    cmd: python3 scripts/proprioception.py --probes door_canon_parity --no-report --no-fetch
+    result: "1 probes on m5 - 0 DIVERGED, 0 unprobeable, 1 reconciled"
+    exit: 0
+    ts: "2026-10-15T10:01:00Z"
+    seat: this session
+  - claim: The Builder Contract block (from its heading to the PARABELLUM sentence) hashes identically to origin/main in all four doors.
+    cmd: "for f in CLAUDE.md AGENTS.md GEMINI.md QWEN.md: sed -n '/THE BUILDER CONTRACT/,/PARABELLUM narrows/p' on git show origin/main:$f and on $f, compared by shasum"
+    result: "CLAUDE.md, AGENTS.md, GEMINI.md, QWEN.md: contract identical"
+    exit: 0
+    ts: "2026-10-15T10:02:00Z"
+    seat: this session
+  - claim: The evidence pack lints clean as CI stages it (temporary evidence/pack.yml and evidence/brief.yml, real paths passed as --source-path and --brief-source-path), the temporary copies removed afterwards.
+    cmd: python3 scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file <changed files> --source-path <real pack path> --brief-source-path <real brief path>
+    result: "evidence_pack_lint: clean (one appetite NOTICE: no comparable spend recorded)"
+    exit: 0
+    ts: "2026-10-15T10:03:00Z"
+    seat: this session
+decisions:
+  - id: D-no-pin-value
+    decision: >-
+      The PIN value appears nowhere in the diff, the pack or the brief; only the helper path and the secret file path
+      on Pro are documented.
+dissent: []

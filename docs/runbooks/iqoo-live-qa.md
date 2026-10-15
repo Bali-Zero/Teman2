@@ -1,6 +1,6 @@
 # iQOO physical client QA
 
-Status: **Wireless, USB-free display-off QA verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
+Status: **Cabled to Pro by USB since 2026-10-15 (wireless remains verified); display-off QA verified on Pro, 2026-09-26; client-flow QA remains per-flow**.
 Owner mandates: `IQOO-LIVE-QA-20260926`, `IQOO-WIRELESS-20260926`,
 `IQOO-SHARED-CAPABILITY-20260927` (BLUE). This runbook is a shared capability
 for Claude, Codex, Gemini and Qwen; it does not grant release authority.
@@ -18,12 +18,14 @@ Check current connectivity before claiming availability. A reachable Tailscale
 peer alone does not mean ADB or browser control is available.
 
 The vivo iQOO I2508 has an authenticated **wireless ADB TLS connection through
-Tailscale**, driven by **Pro**. **USB is optional.** The full wireless test passed
+Tailscale**, driven by **Pro**. Since 2026-10-15 the phone is also **cabled to Pro
+by USB** (reported AC powered); wireless remains verified. The full wireless test passed
 with the phone on an AC wall charger, USB absent, and the physical display off
 while Chrome remained interactive. Android platform-tools 37.0.1 and scrcpy 4.1
 are installed on Pro. Wireless availability requires connectivity, authorization,
-AC power and an initial local unlock by the owner. It is a supervised, bounded
-session; reboot, host crash, SIGKILL and unattended unlock recovery are not proved.
+AC power and an unlocked screen, obtained through `iqoo-unlock` (see "One device,
+one session"). It is a supervised, bounded session; host crash and SIGKILL recovery
+are not proved; the 2026-10-15 reboot test is recorded at the end of this runbook.
 
 M5/Mini agents use `ssh pro`; they do not assume the phone is attached locally.
 Keep heavy browser builds/test runners on Pro. The
@@ -76,8 +78,15 @@ runner hashes, and apply the verified lifecycle to the approved product flow.
 - If absent: check the recorded wireless endpoint and Pro/Tailscale connectivity;
   USB remains an optional recovery path. If `unauthorized`: the owner checks the
   driver host's ADB key fingerprint and accepts the phone's RSA prompt locally.
-  If genuinely locked or freshly rebooted: the owner unlocks locally once. Never put the
-  PIN/password in commands, logs, prompts, screenshots, repo files or memory.
+  If genuinely locked or freshly rebooted (Zero's rule, 2026-10-15): any LLM seat
+  unlocks the phone ONLY by running `~/.local/bin/iqoo-unlock` on Pro (from M5/Mini:
+  `ssh pro '~/.local/bin/iqoo-unlock'`). The helper selects the phone (`adb -d` over
+  USB, else the recorded wireless serial), sends the PIN through adb's stdin (never
+  as an argument), makes ONE attempt per call and prints only `IQOO-UNLOCK: unlocked`,
+  `already unlocked` or `STILL LOCKED`. The PIN lives only on Pro in
+  `~/.config/nuzantara/iqoo/unlock-pin` (0600; never in env files, repo or memory).
+  Never read, cat, print, copy or type the PIN; never loop the helper (Android
+  lockout timers). Lease, restore and sleep+lock-on-exit duties are unchanged.
 - Use the already authenticated wireless setup when it passes readiness checks.
   Do not enable legacy/broad TCP ADB or change tailnet/network policy as part of
   a browser test. Tailscale alone does not provide ADB authentication.
@@ -225,3 +234,24 @@ The BLUE release owner publishes the runbook, receipt and door links together
 after independent review, then checks the document revision on Pro, M5 and Mini.
 An unreachable or dirty main checkout is recorded as `PENDING-ALIGN`; never
 stash or overwrite another session's work to force fleet alignment.
+
+## 2026-10-15 keep-connected settings and reboot test
+
+Verified by nuzantara-57 on Pro. The phone (vivo I2508, Android 16) is cabled to Pro
+by USB and reported AC powered. Tailscale had been offline since 2026-10-09T17:49Z.
+Applied over adb:
+
+- Tailscale battery-optimization exemption (deviceidle whitelist).
+- appops `RUN_ANY_IN_BACKGROUND` / `RUN_IN_BACKGROUND` set to allow.
+- vivo "Controllo energia in background" set to "Consenti uso di corr in background"
+  (was "Controllo intelligente"); vivo "Avvio automatico" was already granted.
+- Global `adb_allowed_connection_time=0` (was 7 days).
+- `always_on_vpn_app=com.tailscale.ipn` written.
+
+Reboot test 09:01-09:10Z: adb was back over USB in 15 s. After the owner's unlock,
+Tailscale's VPN was CONNECTED in 11 s with no app opened and the tailnet peer was
+online. However `vpn_management` logged `alwaysOn=false` at boot: on this vivo build
+the always-on setting does not take, and Tailscale returns through its own boot start
+plus the battery exemptions. The reboot switched wireless debugging off
+(`adb_wifi_enabled=0`); it was re-enabled over USB. The helper `iqoo-unlock` unlocked
+the phone once (locked -> `isKeyguardShowing=false`).
