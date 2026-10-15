@@ -250,6 +250,18 @@
         "icon_id": "visa-business",
         "tier_range": null
       },
+      "D2 Business (5 Years)": {
+        "category": "multiple_entry_visas",
+        "key": "D2 Business (5 Years)",
+        "name": "D2 Business (5 Years)",
+        "price": "13.000.000 IDR",
+        "duration": "",
+        "validity": "5 Years",
+        "notes": "",
+        "description_en": "Multiple-entry business visa valid 5 years for business meetings and non-employment activities.",
+        "icon_id": "visa-business",
+        "tier_range": null
+      },
       "D12 Business Investigation (1 Year)": {
         "category": "multiple_entry_visas",
         "key": "D12 Business Investigation (1 Year)",
