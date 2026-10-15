@@ -16,8 +16,9 @@ residuals:
     0 mergeable rows for up to 48 h after the deploy. Phase F arming re-reads the review at merge time, so an old row cannot merge on
     a stale reading.
   - >-
-    A changes-requested review from a reviewer without write access blocks here though it would not block under classic protection
-    (stricter by design). More than 100 reviewers is unreadable and blocks.
+    Only reviews from reviewers with write access count (latestOpinionatedReviews writersOnly: true), as under classic protection: a
+    changes-requested review from any other account on the public repo does not block. A dismissed review is not listed, so dismissing
+    clears it. More than 100 writer reviewers is unreadable and blocks.
   - >-
     Not enforced before or after the flip, named in the spec as follow-ups F29a-c for the owner: code-owner review
     (.github/CODEOWNERS exists), signed commits, conversation resolution. Each is off in the live classic protection today.
