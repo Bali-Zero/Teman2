@@ -1,6 +1,11 @@
 gear: 3
 brief_ref: evidence/brief.yml
 council_run: "council-journal.jsonl"
+seat_fallback_reason: >-
+  agy-gemini-4-argon replaced the unavailable titolari kimi-code/k3 and tp1-qwen3.8-max, observed live
+  2026-10-15 in this task: scripts/kimi_client.py exited 1 at 11:04:12Z with "provider.auth_error: 403
+  You've reached your weekly (7-day) usage limit", and scripts/tp1_call.py --model qwen3.8-max exited 1
+  at 11:04:23Z with "HTTP 403: Access to model denied". codex-gpt-5.6-sol (titolare) played both rounds.
 plan_ref: "Owner mandate 2026-10-15 (Zero): add D2 Business 5 years at 13.000.000 IDR on every surface; this PR is the CRM catalogue follow-up of #8540."
 mission: "practice_types.visa_d2_business_5yr active at 13000000 in production after the Fly release_command applies migration 326."
 lanes:
@@ -82,3 +87,15 @@ receipts:
     exit: 0
     ts: "2026-10-15T10:55:26Z"
     seat: claude-opus-5-5
+  - claim: "Titolare availability check: kimi-code/k3 unavailable (weekly quota)."
+    cmd: 'python3 scripts/kimi_client.py "$(cat council_r2_326_prompt.md)"'
+    result: "provider.auth_error: 403 weekly (7-day) usage limit"
+    exit: 1
+    ts: "2026-10-15T11:04:12Z"
+    seat: kimi-code/k3
+  - claim: "Titolare availability check: tp1-qwen3.8-max unavailable."
+    cmd: "python3 scripts/tp1_call.py --model qwen3.8-max --effort high --task-file council_r2_326_prompt.md"
+    result: "HTTP 403: Access to model denied"
+    exit: 1
+    ts: "2026-10-15T11:04:23Z"
+    seat: tp1-qwen3.8-max
