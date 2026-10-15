@@ -1,0 +1,72 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15
+  'go' - close the E33 family today with the out-of-scope items moved to the backlog; ledger finding F2 (observer
+  floor at the true test count).
+mission: >-
+  The /visaoracle ledger closes the E33 family: it records the wave-5 merges (#8511-#8528 and #8533) with their live
+  proofs, the Qdrant purge, the brochure E33F Onshore row, and moves the out-of-scope items to the backlog.
+lanes:
+  - lane: ledger-e33-wave5
+    role: build
+    seat: claude-sonnet-5 (Claude Code workflow subagent)
+  - lane: ledger-e33-wave5-gate
+    role: review
+    seat: claude-opus-5-5 (fresh Opus 5.5 seat outside the contribution chain; signs before the push, never arms)
+pii_scan: clean
+bites:
+  consumer: >-
+    every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_ledger_seq29.py
+  expect: "contains:seq-29 ledger holds"
+receipts:
+  - claim: The four ledger test files pass, including the wave-5 pins (twelve PR/sha pairs once and swap-sensitive, the fifteen comment URLs, the PARTIAL and NOT-run statements, the Qdrant purge facts, the SKILL lead, the four closed rows, the five backlog rows with owner, proof and class, the narrowed replay-pins row, the council and wave-3 rows untouched, the floor equal to the file's test count).
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
+    result: "74 passed in 0.92s"
+    exit: 0
+    ts: "2026-10-15T06:01:00Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised to 39, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "39 passed in 0.86s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-15T06:01:10Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main and the five backlog rows are present once each.
+    cmd: "python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main | tail -1; grep -c -F 'opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)' .claude/skills/modus/PENDING-ARMS.md"
+    result: "ratchet CLEAN: base 605 -> head 605 (delta 0); wave-5 opened rows = 5"
+    exit: 0
+    ts: "2026-10-15T06:01:20Z"
+    seat: this session
+  - claim: Every merge sha and state of the twelve PRs and the fifteen comment ids were re-read from GitHub before they were written (twelve distinct MERGED sha lines, fifteen comment ids resolve).
+    cmd: "for p in 8511 8512 8513 8515 8517 8518 8519 8520 8521 8527 8528 8533; do gh pr view $p --repo Bali-Zero/Teman2 --json state,mergeCommit; done; gh api repos/Bali-Zero/Teman2/issues/comments/<id> for the fifteen ids"
+    result: "12 distinct 'MERGED <sha>' lines, matching the ledger; 15 comment ids resolved to their PRs"
+    exit: 0
+    ts: "2026-10-15T06:03:13Z"
+    seat: this session
+  - claim: The evidence pack lints clean as CI stages it (temporary evidence/pack.yml and evidence/brief.yml, real pack and brief paths passed as --source-path and --brief-source-path), the temporary copies removed afterwards.
+    cmd: python3 scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file <changed files> --source-path <real pack path> --brief-source-path <real brief path>
+    result: "evidence_pack_lint: clean (one appetite NOTICE: no comparable spend recorded)"
+    exit: 0
+    ts: "2026-10-15T06:08:00Z"
+    seat: this session
+decisions:
+  - id: D-floor-39
+    decision: >-
+      The observer floor is the true count after the new pins (39), and the existing pin asserts the floor equals the
+      number of tests in the file, so the floor cannot drift below the count.
+  - id: D-no-upgrade
+    decision: >-
+      PARTIAL and NOT-run claims are copied from the session notes and the PR prove-live comments exactly (Zantara
+      probe, golden route, E33C, every iQOO walk, the Vercel deployment of #8528, the #8513 harness status); none is
+      upgraded.
+  - id: D-one-low-row
+    decision: >-
+      The remaining LOWs and the #8533 gate conditions 3-5 are merged into one backlog row instead of one row per nit.
+  - id: D-live-facts-from-the-session
+    decision: >-
+      The live observations were made by the session and its Pro observers and are recorded as handed over; this
+      session re-read the merge shas, PR states, merge times and comment ids with gh.
+dissent: []

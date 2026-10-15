@@ -24,7 +24,7 @@ def _rows(needle: str) -> list[str]:
 def test_skill_names_the_seq29_activation_and_boundary():
     text = SKILL.read_text(encoding="utf-8")
     for fact in (ACTIVATION, RULE_PACK, PAYLOAD, BOUNDARY, "2026-11-07", "2bf9ed3c93", PROOF,
-                 "production pack seq-29", "updated 2026-10-14"):
+                 "production pack seq-29", "updated 2026-10-15"):
         assert fact in text, fact
 
 
@@ -52,11 +52,12 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-14 (M5")
-    assert "ledger after E33 wave 4" in dated[0]
-    assert "ledger after E33 wave 3" in dated[1]
+    assert dated[0].startswith("- 2026-10-15 (M5")
+    assert "ledger wave 5 — the E33 family closes" in dated[0]
+    assert "ledger after E33 wave 4" in dated[1]
+    assert "ledger after E33 wave 3" in dated[2]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 2
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 3
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -342,39 +343,31 @@ def test_wave4_entry_names_the_in_flight_lanes_by_name():
 def test_skill_live_state_leads_with_wave4_and_stays_an_index():
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
-    assert block.index("2026-10-14 (newest): E33 wave 4 merged and live") < block.index("2026-10-14 (wave 3)")
+    assert block.index("2026-10-14 (wave 4): E33 wave 4 merged and live") < block.index("2026-10-14 (wave 3)")
     for pr, sha in E33_WAVE4:
         assert block.count(f"#{pr} ") == 1, pr
         assert block.count(f"`{sha}`") == 1, sha
-    assert "In flight, not merged" in block and "purge not run" in block and "'pensiun' live query NOT run" in block
+    assert "In flight at the time, all merged since (wave 5, above)" in block and "purge not run" in block and "'pensiun' live query NOT run" in block
     assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
 
 
-WAVE4_ROWS = (
-    ("Qdrant pricing collection still serves", "owner: operator[secret]"),
-    ("does not print the E33F Altus/Onshore row", "owner: me (next Visa Oracle session, with Zero deciding whether the brochure prints it)"),
-    ("observe_visa_oracle_replay_pins.py` is red on main", "owner: me (nuzantara-57)"),
-    ("'pensiun' live query of #8505 was not run", "owner: me (nuzantara-57)"),
-    ("brochure guard LOW follow-ups", "owner: me (nuzantara-57)"),
-)
+WAVE4_OPEN_ROW = ("observe_visa_oracle_replay_pins.py` was red on main", "owner: me (nuzantara-57)")
 
 
-def test_wave4_pending_rows_each_open_exactly_once_with_owner_and_proof():
+def test_wave4_pending_rows_only_the_replay_pins_row_stays_open_narrowed():
     opened = _rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 4)")
-    assert len(opened) == len(WAVE4_ROWS) == 5
-    replay = [r for r in opened if "observe_visa_oracle_replay_pins.py` is red" in r][0]
-    assert "AND a named workflow job or receptor runs it" in replay.split(" | ")[4]
-    for needle, owner in WAVE4_ROWS:
-        rows = [r for r in opened if needle in r]
-        assert len(rows) == 1, needle
-        fields = rows[0].split(" | ")
-        assert len(fields) == 5, needle
-        assert fields[2].startswith("missing arming step:"), needle
-        assert fields[3] == owner, needle
-        assert fields[4].startswith("proof-of-armed:"), needle
-    qdrant = [r for r in opened if "Qdrant pricing collection" in r][0]
-    for token in ("--purge-internal", "--apply", "updates=0 deletes=3", "M9 test", "Zero authorises", "is on origin/main", "recorded authorisation"):
-        assert token in qdrant, token
+    assert len(opened) == 1
+    needle, owner = WAVE4_OPEN_ROW
+    fields = opened[0].split(" | ")
+    assert needle in opened[0] and len(fields) == 5
+    assert fields[2].startswith("missing arming step: wire the observer into a workflow or a receptor")
+    assert fields[3] == owner and fields[4].startswith("proof-of-armed:")
+    for token in ("#8513", "`ba0105c684`", "Tests 305 passed (305)", "no CI workflow or receptor runs the observer", "Updated 2026-10-15 (wave 5)"):
+        assert token in fields[1], token
+    assert "AND one green observation of that job or receptor" in fields[4]
+    for gone in ("Qdrant pricing collection still serves", "does not print the E33F Altus/Onshore row",
+                 "'pensiun' live query of #8505 was not run", "the parity failure message lacks the cure"):
+        assert _rows(gone) == [], gone
 
 
 def test_wave4_council_row_is_updated_in_place_and_c6_is_closed_once():
@@ -385,7 +378,7 @@ def test_wave4_council_row_is_updated_in_place_and_c6_is_closed_once():
     assert len(closed) == 1 and "C6" in closed[0] and "#8506" in closed[0]
 
 
-def test_wave4_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
+def _report_rows(tag: str) -> list[dict]:
     import json
     import subprocess
     import sys
@@ -396,7 +389,7 @@ def test_wave4_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
 
     def walk(o):
         if isinstance(o, dict):
-            if "owner" in o and "class" in o and "VISA-ORACLE E33 wave 4" in json.dumps(o)[:4000]:
+            if "owner" in o and "class" in o and tag in json.dumps(o)[:4000]:
                 found.append(o)
             for v in o.values():
                 walk(v)
@@ -405,10 +398,181 @@ def test_wave4_rows_parse_with_the_ledger_grammar_and_classify_as_intended():
                 walk(v)
 
     walk(json.loads(out))
-    assert sorted(f["owner"] for f in found) == sorted(o.removeprefix("owner: ") for _, o in WAVE4_ROWS)
-    classes = {f["owner"]: f["class"] for f in found}
-    assert classes["operator[secret]"] == "OPERATOR-GATED"
-    assert [f["class"] for f in found].count("TECH-DEBT") == 4 and len(found) == 5
+    return found
+
+
+def test_wave4_row_parses_with_the_ledger_grammar_as_tech_debt():
+    found = _report_rows("VISA-ORACLE E33 wave 4")
+    assert [(f["owner"], f["class"]) for f in found] == [("me (nuzantara-57)", "TECH-DEBT")]
+
+
+E33_WAVE5 = (
+    ("8511", "500da5c3d0"), ("8512", "f411374c98"), ("8513", "ba0105c684"), ("8515", "da14603a95"),
+    ("8517", "6437b00137"), ("8518", "44b72bc860"), ("8519", "010e71031f"), ("8520", "03690ec350"),
+    ("8521", "d0b352ae30"), ("8527", "e21e466c1d"), ("8528", "704b07b3fe"), ("8533", "4ab255207c"),
+)
+WAVE5_COMMENTS = (
+    "8511#issuecomment-6174864680", "8511#issuecomment-6175811919", "8512#issuecomment-6175473942",
+    "8513#issuecomment-6177880264", "8513#issuecomment-6177939507", "8515#issuecomment-6176725352",
+    "8517#issuecomment-6179341400", "8518#issuecomment-6179626729", "8519#issuecomment-6178802051",
+    "8520#issuecomment-6179553313", "8521#issuecomment-6180588279", "8527#issuecomment-6182682234",
+    "8528#issuecomment-6183759368", "8533#issuecomment-6185444197", "8468#issuecomment-6177081375",
+)
+
+
+def _wave5_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-15 (M5") and "ledger wave 5" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    end = text.index("\n- 20", start + 1)
+    return " ".join(text[start:end].split())
+
+
+def _wave5_pairs_ok(body: str) -> bool:
+    """Each PR's segment (from its first `#PR ` to the next PR's first `#PR `) carries ITS merge sha and no other."""
+    sec = body[body.index("(1) Merges and live proofs"):body.index("(2) Addenda")]
+    starts = [sec.index(f"#{pr} ") for pr, _ in E33_WAVE5]
+    if starts != sorted(starts):
+        return False
+    for i, (pr, sha) in enumerate(E33_WAVE5):
+        seg = sec[starts[i]:starts[i + 1] if i + 1 < len(starts) else len(sec)]
+        if f"merge `{sha}`" not in seg:
+            return False
+        if any(f"merge `{o}`" in seg for _, o in E33_WAVE5 if o != sha):
+            return False
+    return True
+
+
+def test_wave5_entry_carries_each_pr_merge_sha_once_with_its_comment_urls():
+    body = _wave5_entry()
+    for pr, sha in E33_WAVE5:
+        assert body.count(f"merge `{sha}`") == 1, sha
+    assert _wave5_pairs_ok(body)
+    for c in WAVE5_COMMENTS:
+        assert body.count(f"pull/{c}") == 1, c
+    for token in ("dpl_5kYWa3cR4iqYwt3gLoW2KiUEeKuj", "dpl_3aqxe9ud3FeHNgHWXZ4TWRkXiZTE", "dpl_5j9XhDxPUt8BchFDNu4wyMe5UozP",
+                  "dpl_725yNekB5z76uTRU8K73GZ1qcbQ1", "26185b41341de17f", "run 38621650781", "run 38666679095", "run 38674301009",
+                  "'Tests 392 passed (392)'", "'Tests 305 passed (305)'", "eleven PRs merged besides the wave-4 ledger itself (#8519)"):
+        assert body.count(token) == 1, token
+
+
+def test_wave5_pr_to_sha_pairing_fails_when_two_shas_are_swapped():
+    body = _wave5_entry()
+    a, b = E33_WAVE5[0][1], E33_WAVE5[1][1]
+    swapped = body.replace(a, "@@").replace(b, a).replace("@@", b)
+    assert swapped != body and not _wave5_pairs_ok(swapped)
+
+
+def test_wave5_entry_never_upgrades_a_partial_or_missing_proof():
+    body = _wave5_entry()
+    assert body.count("proof level: PARTIAL") == 2
+    assert "golden route investor_kitas_retirement has no public URL, so it is PARTIAL" in body
+    assert "merged without the harness/fable-gate status" in body and "the status was never published" in body
+    assert body.count("iQOO NOT run") >= 4 and "adb not installed on Pro" in body
+    assert "E33C is not walkable in the browser (unit pins only)" in body
+    assert "The Vercel deployment was not matched to the sha (the served bytes were checked instead)" in body
+    assert "16 of 38 products with a permit-length line and 22 rendering none" in body
+    assert "Gate conditions 3-5 remain follow-ups" in body
+    assert "(6) NOT done:" in body and "outside the E33 closure" in body
+
+
+def test_wave5_entry_records_the_qdrant_purge_with_the_lost_backup():
+    body = _wave5_entry()
+    for token in ("2026-10-14T23:23Z", "`ed39c54869`", "bali_zero_pricing_hybrid", "updates=0 deletes=3 refused=0",
+                  "985842427274579734", "2740830935052460964", "8903719483458810235", "DELETED 3, APPLIED 0",
+                  "Re-plan after: deletes=0", "returns 0 points", "**The pre-delete backup was LOST**",
+                  "re-ingest from the catalog rows", "65 catalog rows have no Qdrant point, including all E33F rows",
+                  "17 points have no catalog row", "never printed"):
+        assert body.count(token) == 1, token
+
+
+def test_wave5_entry_records_zeros_decisions_and_the_addenda():
+    body = _wave5_entry()
+    for token in ("'entrambi si'", "'go'", "the Qdrant production purge is authorised",
+                  "the brochure prints the E33F Altus/Onshore row at 16.000.000", "BAILOUT_TO_CLIENT_SIDE_RENDERING",
+                  "`83debabf15`", "#8523", "#8493 re-sign C7 cured", "`gh pr edit`", "e33f-sponsor-types-1014"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_leads_with_wave5_and_stays_an_index():
+    import re
+
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    assert block.index("2026-10-15 (newest): E33 family CLOSED 2026-10-15 (wave 5)") < block.index("2026-10-14 (wave 4)")
+    lead = block[block.index("- **2026-10-15 (newest)"):block.index("- **2026-10-14 (wave 4)")]
+    for pr, sha in E33_WAVE5:
+        assert len(re.findall(rf"#{pr}\b", lead)) == 1, pr
+        if pr not in ("8513", "8518", "8519", "8520"):
+            assert lead.count(f"`{sha}`") == 1, sha
+    for token in ("PARTIAL", "**Not done:**", "pre-delete backup was lost", "Backlog rows:", "no iQOO walk"):
+        assert token in lead, token
+    assert len(lead) < 3200
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 1
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
+    assert "(updated 2026-10-15;" in text
+
+
+WAVE5_CLOSED = (
+    ("The Qdrant pricing collection no longer serves", "closed 2026-10-14T23:23Z", ("re-plan after the apply shows deletes=0", "returns 0 points")),
+    ("The brochure now prints the E33F Altus/Onshore row", "closed 2026-10-15", ("26185b41341de17f", "Onshore, 1 year Rp 16.000.000", "#8528")),
+    ("The gate's 'pensiun' live query of #8505 was run and passes", "closed 2026-10-15", ("2026-10-14T16:45Z", "3 E33F rows", "no generic Retirement row")),
+    ("#8506 brochure guard LOW follow-ups: test_guilt_f now fails", "closed 2026-10-15", ("#8518", "17 passed", "printed the cure")),
+)
+WAVE5_OPENED = (
+    ("no iQOO walk of the E33 public surfaces", "owner: operator[physical]", "OPERATOR-GATED"),
+    ("seq-30 candidate, the E33F `sponsor_types` is INDIVIDUAL", "owner: me (next session, visa-night conductor and signer)", "TECH-DEBT"),
+    ("the E28A Indonesian article does not render in Indonesian", "owner: me (nuzantara-57)", "TECH-DEBT"),
+    ("has no point for 65 catalog rows, including all E33F rows", "owner: me (nuzantara-57)", "TECH-DEBT"),
+    ("remaining LOWs of the E33 family (one row, no per-nit rows)", "owner: me (nuzantara-57)", "TECH-DEBT"),
+)
+
+
+def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
+    closed = [r for r in ARMS_LINES if r.startswith("- closed 2026-10-1") and "VISA-ORACLE E33 wave 5" in r]
+    assert len(closed) == len(WAVE5_CLOSED) == 4
+    for needle, prefix, proofs in WAVE5_CLOSED:
+        rows = [r for r in closed if needle in r]
+        assert len(rows) == 1, needle
+        assert rows[0].startswith(f"- {prefix} (M5, VISA-ORACLE E33 wave 5)"), needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 4 and fields[2] == "owner: n/a (closed)" and fields[3].startswith("proof-of-armed:"), needle
+        for proof in proofs:
+            assert proof in fields[3] or proof in fields[1], (needle, proof)
+
+
+def test_wave5_backlog_rows_each_open_once_with_owner_proof_and_class():
+    opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)")]
+    assert len(opened) == len(WAVE5_OPENED) == 5
+    for needle, owner, _ in WAVE5_OPENED:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5 and fields[1].startswith("**BACKLOG"), needle
+        assert fields[2].startswith("missing arming step:") and fields[3] == owner and fields[4].startswith("proof-of-armed:"), needle
+    found = _report_rows("VISA-ORACLE E33 wave 5")
+    assert sorted((f["owner"], f["class"]) for f in found) == sorted((o.removeprefix("owner: "), c) for _, o, c in WAVE5_OPENED)
+
+
+def test_wave5_low_row_merges_the_nits_into_one_row_and_the_qdrant_gap_row_names_the_proof():
+    low = _rows("remaining LOWs of the E33 family")
+    assert len(low) == 1
+    for token in ("BROCHURE_CURE == PDF_PARITY_CURE", "gate C5", "match='PRICE_E33E'", "'Claude Sonnet 5.5'", "claude-sonnet-5-5",
+                  "'Dolar' casing", "harness/fable-gate status", "stay.kind", "36500", "39-case count", "says 1 where the floor is 2",
+                  "StayPolicy at models.py:301 has no cross-field validator"):
+        assert low[0].count(token) == 1, token
+    assert len(_rows("match='PRICE_E33E'")) == 1 and len(_rows("StayPolicy at models.py:301")) == 1
+    qdrant = _rows("has no point for 65 catalog rows")[0]
+    assert "a Qdrant-path pricing query" in qdrant.split(" | ")[4] and "re-ingest from the catalog rows" in qdrant
+    sponsor = _rows("seq-30 candidate, the E33F `sponsor_types`")[0]
+    assert "e33f-sponsor-types-1014" in sponsor and "Pasal citation" in sponsor and "inert today" in sponsor
+
+
+def test_wave5_leaves_the_council_and_the_wave3_rows_untouched():
+    assert len(_rows("Council seats degraded")) == 1 and len(_rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)")) == 6
+    assert len(_rows("iQOO has not been attached to Pro since 2026-09-26")) == 1
+    assert len(_rows("#8468 Indonesian surfaces not proven live")) == 1
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
