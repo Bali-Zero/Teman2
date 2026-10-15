@@ -1305,6 +1305,47 @@ export function e33fE33eDepositNote(
 }
 
 /**
+ * A visit-stay dead end that names its real cause. Past 180 declared days the
+ * pack ends tourism / business / other at NO_SUPPORTED_PATH (`el.c1.tourism-family`,
+ * `el.c2.business`, `el.c6.social` all read `intent.stay_days` lte 180, source
+ * record 6f5135f2, the Kepmen visa catalogue) but the sentences it returns name
+ * something else (the visa-free list, the operational fallback, bridging) and
+ * never the stay. A visit visa starts at 60 days and extends to 180 in total
+ * (immigration_claims_db: C1 and C2 "berlaku 60 hari, dapat diperpanjang hingga
+ * 180 hari total"), so one sentence serves single and multiple entry. The
+ * business explorer branch is a different product (D12, 360 days) and is never
+ * touched. The code is the adapter's own, not a pack code.
+ */
+export const VISIT_STAY_EXCEEDS_LIMIT_CODE = "VISIT_STAY_EXCEEDS_180_DAYS";
+const VISIT_STAY_MAX_DAYS_BY_CATEGORY: Readonly<Record<string, number>> = {
+  tourism: C1_MAX_STAY_DAYS,
+  business: C2_MAX_STAY_DAYS,
+  other: C6_MAX_STAY_DAYS,
+};
+
+function visitStayLimitReason(facts: OracleFacts): OutcomeReason | undefined {
+  const category = facts.category;
+  if (category === undefined) return undefined;
+  const max = VISIT_STAY_MAX_DAYS_BY_CATEGORY[category];
+  if (max === undefined) return undefined;
+  if (category === "business" && facts.business_activity === "exploring") {
+    return undefined;
+  }
+  const raw = facts.stay_days;
+  if (raw === undefined || raw.trim() === "") return undefined;
+  const days = Number(raw);
+  if (!Number.isFinite(days) || days <= max) return undefined;
+  return {
+    code: VISIT_STAY_EXCEEDS_LIMIT_CODE,
+    message: text(
+      `Each stay on a visit visa starts at 60 days and can be extended to at most ${max} days. You told us ${days} days.`,
+      `Setiap masa tinggal dengan visa kunjungan dimulai dari 60 hari dan dapat diperpanjang paling lama ${max} hari. Anda menyebutkan ${days} hari.`,
+    ),
+    sourceIds: [],
+  };
+}
+
+/**
  * The pack's own names for the products a dead end may point at, copied
  * verbatim from `rulepack-prod-020.source.json` `products[].names` (the same
  * source the candidate sheet renders from when the engine returns one). A
@@ -2902,6 +2943,8 @@ function buildValidatedOutcome(
         response.decision.no_path_reasons.map((item) => item.code),
         options.facts ?? {},
       );
+      const stayReason = visitStayLimitReason(options.facts ?? {});
+      const stayLead = stayReason ? [stayReason] : [];
       return {
         ...base,
         state: "NO_SUPPORTED_PATH",
@@ -2910,32 +2953,35 @@ function buildValidatedOutcome(
         }),
         candidates: [],
         pathsRemaining: 0,
-        noPathReasons: deStackOverstayReasons(
-          response.decision.no_path_reasons,
-        ).map((item) => {
-          // A3'-M (M1): the narrow exemption. A listed code with a
-          // non-empty ref still goes through the normal decisive-ref gate —
-          // only the actually-sourceless shape skips it.
-          const isSourcelessDeadEnd =
-            SOURCELESS_NO_PATH_CODES.has(item.code) &&
-            item.source_refs.length === 0;
-          if (!isSourcelessDeadEnd) {
-            requireDecisiveRefs(item.source_refs);
-          }
-          const mapped = reason(
-            item.code,
-            item.source_refs,
-            trustedIds,
-            options.facts,
-          );
-          const collaborationMessage =
-            item.code === "E33A_SPONSOR_NOT_GOVERNMENT"
-              ? e33bCollaborationNotCommittedReason(options.facts ?? {})
-              : undefined;
-          return collaborationMessage
-            ? { ...mapped, message: collaborationMessage }
-            : mapped;
-        }) as [OutcomeReason, ...OutcomeReason[]],
+        noPathReasons: [
+          ...stayLead,
+          ...deStackOverstayReasons(response.decision.no_path_reasons).map(
+            (item) => {
+              // A3'-M (M1): the narrow exemption. A listed code with a
+              // non-empty ref still goes through the normal decisive-ref gate —
+              // only the actually-sourceless shape skips it.
+              const isSourcelessDeadEnd =
+                SOURCELESS_NO_PATH_CODES.has(item.code) &&
+                item.source_refs.length === 0;
+              if (!isSourcelessDeadEnd) {
+                requireDecisiveRefs(item.source_refs);
+              }
+              const mapped = reason(
+                item.code,
+                item.source_refs,
+                trustedIds,
+                options.facts,
+              );
+              const collaborationMessage =
+                item.code === "E33A_SPONSOR_NOT_GOVERNMENT"
+                  ? e33bCollaborationNotCommittedReason(options.facts ?? {})
+                  : undefined;
+              return collaborationMessage
+                ? { ...mapped, message: collaborationMessage }
+                : mapped;
+            },
+          ),
+        ] as [OutcomeReason, ...OutcomeReason[]],
         alternatives,
       };
     }

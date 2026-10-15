@@ -4774,6 +4774,88 @@ describe("V06: overstay de-stacking and the BVK list copy", () => {
   });
 });
 
+// V07: a visit-stay dead end names the 180-day limit.
+describe("V07: a visit stay past 180 days names the limit", () => {
+  function noPath(facts: OracleFacts, codes: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = codes.map((code) => ({
+      code,
+      rule_ids: ["hf.test"],
+      source_refs: [TEST_SOURCE_ID],
+    }));
+    const outcome = buildEngineOutcome(response, { facts });
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons;
+  }
+  // seq-29 measured codes for the stay-181 walks (T06 census pins).
+  const CASES: ReadonlyArray<[string, string]> = [
+    ["tourism", "BVK_NATIONALITY_ONLY"],
+    ["business", "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"],
+    ["other", "BRIDGING_ONSHORE_ONLY"],
+  ];
+
+  it.each(CASES)(
+    "%s with stay 181 leads with the 180-day sentence, EN and ID",
+    (category, code) => {
+      const reasons = noPath(
+        { in_indonesia: "no", category, stay_days: "181" },
+        [code],
+      );
+      expect(reasons[0].code).toBe("VISIT_STAY_EXCEEDS_180_DAYS");
+      expect(reasons[0].message.en).toBe(
+        "Each stay on a visit visa starts at 60 days and can be extended to at most 180 days. You told us 181 days.",
+      );
+      expect(reasons[0].message.id).toContain("visa kunjungan");
+      expect(reasons[0].message.id).toContain("180 hari");
+      expect(reasons[0].message.id).toContain("181 hari");
+      expect(reasons.map((r) => r.code)).toEqual([
+        "VISIT_STAY_EXCEEDS_180_DAYS",
+        code,
+      ]);
+      expect(reasons[0].message.en).not.toMatch(/guarantee|will be approved/i);
+    },
+  );
+
+  it.each(CASES)("%s with stay 180 is unaffected", (category, code) => {
+    const reasons = noPath({ in_indonesia: "no", category, stay_days: "180" }, [
+      code,
+    ]);
+    expect(reasons.map((r) => r.code)).toEqual([code]);
+  });
+
+  it("innocence: the business explorer (D12, 360 days), other categories and an unanswered stay are untouched", () => {
+    const code = "BVK_NATIONALITY_ONLY";
+    expect(
+      noPath(
+        {
+          category: "business",
+          business_activity: "exploring",
+          stay_days: "300",
+        },
+        [code],
+      ).map((r) => r.code),
+    ).toEqual([code]);
+    expect(
+      noPath({ category: "retirement", stay_days: "400" }, [code]).map(
+        (r) => r.code,
+      ),
+    ).toEqual([code]);
+    expect(noPath({ category: "tourism" }, [code]).map((r) => r.code)).toEqual([
+      code,
+    ]);
+    expect(
+      noPath({ category: "tourism", stay_days: "" }, [code]).map((r) => r.code),
+    ).toEqual([code]);
+  });
+
+  it("the bound is the pack's 180 (el.c1.tourism-family / el.c2.business / el.c6.social)", () => {
+    expect([C1_MAX_STAY_DAYS, C2_MAX_STAY_DAYS, C6_MAX_STAY_DAYS]).toEqual([
+      180, 180, 180,
+    ]);
+  });
+});
+
 describe("stay-permit length, verified renewal, and longer-stay continuation (PR-7)", () => {
   function makePricedResponse(
     code = "E33F",
