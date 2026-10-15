@@ -516,6 +516,20 @@ Pro, P1-P4 are live, and every open labelled Gear >= 2 PR has a ledger entry for
 - **Moved to later PRs.** Class 10 entirely (the required-set read, `AbortJudge.run_aborted`, H1-H6) and every write are P2; the gate session spawner is P3, its post P4; label-predates-head, the dependabot semver parser and N5/N6 are P5. P1 does not count class 10.
 - **Bites.** The consumer is the heartbeat `~/.organism/last_seen/pro.localci_shepherd.json` and the shepherd journal on Pro; the observation is the first `observe` row, whose per-class counts equal an independent `gh` listing taken the same minute.
 
+### B36 Mutant rows as append-only fragments
+
+`merger_mutants.py` kept one dict, and every LocalCI PR appended at its tail, so each merge made the others DIRTY and an
+armed branch is frozen. New mutants now go in `scripts/localci/tests/mutants/rows/<feature>.py`, one file per change,
+defining `ROWS` with the SAME tuple shape as `MUTANTS`. A rows file may `from merger_mutants import` any module-level name the table defines
+on main (e.g. `PY`, `SH`, `MERGER_T`, `RD`, `cq`; check the file, a name that exists only in another PR's head is not there yet).
+`merge_rows()` runs at import, after every helper and the dict are defined, so a harness that only imports `merger_mutants`
+and iterates `MUTANTS` sees the rows too, and again from `main()`: it is idempotent (a row already merged from the same file,
+identical, is skipped) and the module registers itself as `merger_mutants` first, so there is no circular import. Files merge
+in sorted filename order (`_`-prefixed files are skipped); a duplicate name (across files or against the inline dict), a
+missing or non-dict `ROWS`, or a malformed row stops the run (exit message, not a skip). A rows file never writes `MUTANTS`
+itself (an AST test over `rows/*.py`). `--list` and `--only` see rows exactly like inline ones. Inline rows stay where they are. Bites: the next LocalCI PR adds
+its mutants as a rows file and merges without touching the dict.
+
 ## 3. What is lost, and what covers it
 
 | lost                                              | cover                                                                                                                                                          |
