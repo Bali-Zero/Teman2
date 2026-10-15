@@ -31,21 +31,24 @@ grounding:
 
 verification:
   red_on_main: "mutation in the migration (E28B tiers replaced by 'Rp 2.5 miliar') fails 4 tests (figures not on page, tier missing, forbidden claim, seed drift); file restored by cp"
-  green: "test_e28_kb_data_follows_the_official_pages.py + test_visa_types_seed_vs_migration_tripwire.py: 55 passed; neighbours test_visa_types_seed_e23_pricing, test_visa_engine_compile_claims, visa_check/test_catalogue: 93 passed"
+  green: "cure round after the Codex red team (FIX-FIRST on f5f5bce12f): new test file + tripwire + seed_e23_pricing + knowledge_visa_jsonb_cast + visa_check/test_catalogue: 96 passed, 1 skipped; loadavg was 9.3 so only the touched files were run"
+  cure_round: "visa_validity is the 90-day entry window, stay tiers 1825/3650 kept, unknown extension is None (absent), KITAP concept section removed in source and fixer; migration 128 atomic with PREIMAGE line and dry-run default; fixer --restore, first-error stop, anchor guard; E28G metadata.retired skipped by the list endpoint; cost_visa 'IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive'; seed names and every written field in the tripwire; cache note deleted (no reader of zantara:knowledge_visa:* exists)"
   local_floor: "evidence_pack_lint --print-floor on the origin/main diff = 1; declared gear 2 by the orchestrator"
 
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "FIX-FIRST: 3 HIGH (visa_validity vs stay, KITAP concept republished, non-atomic migration without preimage), MEDIUM (restore, shape guard, cost_visa single price, E28G listed, shopping, loose tests, tripwire fields), LOW (cache note, enrich script embeds)"
+    status: CONFIRMED
+    resolution: "Cured in the commit after f5f5bce12f. Not adopted: single 17M cost_visa (coordinator ruling keeps the two labelled scenario prices, the seed precedent shape); decision-engine paid-up conflict is routed to seq-30 (SEQ29-A2)."
 
 out_of_scope_reported:
-  - "E28A process_steps still contains 'Bayar biaya PNBP' (a step, not an amount); not rewritten because the six live steps were not re-read here."
-  - "The two E28A lines 'Visa valid 90 days from issuance' and 'ITAS and Re-entry Permit issued automatically upon entry' leave allowed_activities and are not re-homed (tips/process_steps content unknown)."
-  - "The concept note still carries the 'KITAP E28A requires Rp 15 billion (Pasal 176(2)(c))' section: a KITAP rule not on the E28 pages, not in the audit's cure list for the concept note (F40 LOW)."
-  - "Seed E28A name 'Investor Visa' and E28F name differ from the live names; a seed re-run would rename them (pre-existing, not widened)."
-  - "A router-level retire flag for visa_types is missing."
+  - "SEQ29-A2: the signed pack's E28A role and paid-up-capital rule contradict the ruling; routed to the conductor's seq-30."
+  - "E28A name is now 'Investor Visa' in migration and seed (visa_check VISA_META pins the seed name), so the live name changes from 'E28A - Investor KITAS (Standard)'."
+  - "Detail lookup of a retired row still returns it; only the list endpoint hides retired rows."
 
 bites:
   consumer: "MCP get_visa_details / list_visa_types (PROD visa_types via GET /api/knowledge/visa) and Zantara's visa_oracle Qdrant retrieval of the E28 points"
-  observation: "after the orchestrator's authorized post-merge run (migration 128, then fix_visa_oracle_e28_points.py --backup then --apply): get_visa_details E28B shows the USD 2.500.000 / 5.000.000 tiers and no 'Rp 2.5 miliar', get_visa_details E28G reads 'Not a current visa', and a Qdrant scroll shows no E28G point and the corrected E28F note"
+  observation: "after the orchestrator's authorized post-merge run (migration 128 --apply, then fix_visa_oracle_e28_points.py --backup then --apply): get_visa_details E28B shows the USD 2.500.000 / 5.000.000 tiers and no 'Rp 2.5 miliar', list_visa_types no longer lists E28G while get_visa_details E28G reads 'not a current visa', and a Qdrant scroll shows no E28G point, visa_validity '90 days from issuance' and the corrected E28F note"
 
 receipts:
   - claim: "New tests plus the seed/migration tripwire green"
@@ -65,6 +68,12 @@ receipts:
     result: "4 failed, 46 passed; after restore 50 passed"
     exit: 1
     ts: "2026-10-15T22:55Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation: the migration's single transaction removed is convicted (atomicity + post-write rollback tests); file restored by cp"
+    cmd: "sed 'async with conn.transaction():' -> 'if True:' in migration_128, pytest the new test file, cp restore"
+    result: "2 failed, 66 passed; after restore 96 passed, 1 skipped on the touched set"
+    exit: 1
+    ts: "2026-10-15T23:55Z"
     seat: claude-sonnet-5-5
 
 spend:

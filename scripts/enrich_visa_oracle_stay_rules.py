@@ -62,10 +62,10 @@ EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims, FROZEN per CLAUDE.md
 class StayRule:
     code: str
     visa_family: str  # "visit_single" | "visit_multi" | "kitas" | "visa_free" | "voa"
-    initial_days: int
-    extension_days: int
+    initial_days: int | None
+    extension_days: int | None  # None = the source does not state it (UNKNOWN, never 0)
     max_extensions: int | str  # int or "0 (non-extendable)"
-    max_total_days: int
+    max_total_days: int | None
     legal_basis: str
     # Multi-entry visas: visa validity window (e.g. "1, 2, or 5 years")
     visa_validity: str | None = None
@@ -77,6 +77,8 @@ class StayRule:
     notes: str | None = None
     # Free-text initial-stay wording for products with several tiers (E28B-F: 5 or 10 years)
     initial_stay_text: str | None = None
+    # Stay length tiers in days (E28B-F: 5 years = 1825, 10 years = 3650)
+    tier_days: list[int] | None = None
     # Overrides the NB-2 provenance stamp (E28 rows are validated against the official page)
     validated_by: str | None = None
 
@@ -116,12 +118,10 @@ _E28_LEGAL_BASIS = (
     "(official Imigrasi page, fetched 2026-10-15)"
 )
 _E28_VALIDATED_BY = "Imigrasi official page 2026-10-15"
-_E28_A_EXTENSIONS = (
-    "extendable (official page); the extension is filed online by the sponsor; extension length not stated"
-)
-_E28_GOLDEN_EXTENSIONS = (
-    "extendable (official page: 'Dapat diperpanjang'); extension length not stated"
-)
+# Every E28 page: "Masa berlaku visa adalah 90 hari sejak diterbitkan" (the ENTRY window, not the stay).
+_E28_ENTRY_WINDOW = "90 days from issuance"
+_E28_A_EXTENSIONS = "extendable (filed online by the sponsor); length not stated"
+_E28_GOLDEN_EXTENSIONS = "extendable ('Dapat diperpanjang'); length not stated"
 _E28_TIERED_STAY = "5 years or 10 years from Tanda Masuk (date of entry), depending on the tier"
 
 # NB-2 validated 2026-04-16. All 86 visa codes.
@@ -310,10 +310,10 @@ RULES: dict[str, StayRule] = {
     # left neutral (extension length, KITAP path). There is no E28G entry: it is not a current visa.
     "E28A": StayRule(
         code="E28A", visa_family="kitas",
-        visa_validity="2 years",
-        initial_days=730, extension_days=0,
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=730, extension_days=None,
         max_extensions=_E28_A_EXTENSIONS,
-        max_total_days=0,
+        max_total_days=None,
         legal_basis=_E28_LEGAL_BASIS,
         kitap_eligible=None,
         validated_by=_E28_VALIDATED_BY,
@@ -327,10 +327,10 @@ RULES: dict[str, StayRule] = {
     ),
     "E28B": StayRule(
         code="E28B", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0,
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
         max_extensions=_E28_GOLDEN_EXTENSIONS,
-        max_total_days=0,
+        max_total_days=None,
         legal_basis=_E28_LEGAL_BASIS,
         kitap_eligible=None,
         validated_by=_E28_VALIDATED_BY,
@@ -345,10 +345,10 @@ RULES: dict[str, StayRule] = {
     ),
     "E28C": StayRule(
         code="E28C", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0,
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
         max_extensions=_E28_GOLDEN_EXTENSIONS,
-        max_total_days=0,
+        max_total_days=None,
         legal_basis=_E28_LEGAL_BASIS,
         kitap_eligible=None,
         validated_by=_E28_VALIDATED_BY,
@@ -362,10 +362,10 @@ RULES: dict[str, StayRule] = {
     ),
     "E28D": StayRule(
         code="E28D", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0,
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
         max_extensions=_E28_GOLDEN_EXTENSIONS,
-        max_total_days=0,
+        max_total_days=None,
         legal_basis=_E28_LEGAL_BASIS,
         kitap_eligible=None,
         validated_by=_E28_VALIDATED_BY,
@@ -379,10 +379,10 @@ RULES: dict[str, StayRule] = {
     ),
     "E28F": StayRule(
         code="E28F", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0,
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
         max_extensions=_E28_GOLDEN_EXTENSIONS,
-        max_total_days=0,
+        max_total_days=None,
         legal_basis=_E28_LEGAL_BASIS,
         kitap_eligible=None,
         validated_by=_E28_VALIDATED_BY,
@@ -668,7 +668,7 @@ def build_stay_section(rule: StayRule) -> str:
     else:
         lines.append("- **Extensions**: none (non-extendable)")
 
-    if rule.max_total_days > 0:
+    if rule.max_total_days:
         lines.append(f"- **Max total stay (cumulative)**: {_format_days(rule.max_total_days)}")
 
     # KITAP path
@@ -870,16 +870,28 @@ async def upsert_point(
     r.raise_for_status()
 
 
+def _set_or_pop(md: dict[str, Any], key: str, value: Any) -> None:
+    """None means UNKNOWN: the key is removed, never written as 0."""
+    if value is None:
+        md.pop(key, None)
+    else:
+        md[key] = value
+
+
 def build_metadata(existing: dict[str, Any], rule: StayRule) -> dict[str, Any]:
     """Return the point metadata with the stay fields of ``rule`` applied (pure)."""
     metadata = dict(existing)
     metadata["visa_family"] = rule.visa_family
-    metadata["stay_initial_days"] = rule.initial_days
-    metadata["stay_extension_days"] = rule.extension_days
-    metadata["stay_max_total_days"] = rule.max_total_days
-    metadata["stay_max_extensions"] = (
-        rule.max_extensions if isinstance(rule.max_extensions, int) else 0
-    )
+    _set_or_pop(metadata, "stay_initial_days", rule.initial_days)
+    _set_or_pop(metadata, "stay_extension_days", rule.extension_days)
+    _set_or_pop(metadata, "stay_max_total_days", rule.max_total_days)
+    _set_or_pop(metadata, "stay_tier_days", rule.tier_days)
+    if isinstance(rule.max_extensions, int):
+        metadata["stay_max_extensions"] = rule.max_extensions
+    elif rule.extension_days is None:
+        metadata.pop("stay_max_extensions", None)  # unknown, not 0
+    else:
+        metadata["stay_max_extensions"] = 0
     metadata["stay_max_extensions_desc"] = str(rule.max_extensions)
     metadata["stay_rules_validated"] = rule.validated_by or "NB-2 2026-04-17"
     metadata["stay_legal_basis"] = rule.legal_basis
@@ -1040,7 +1052,7 @@ Multiple Exit Re-entry Permit is now automatically integrated in KITAS and KITAP
 ## Who is eligible (Permenkumham 11/2024 Pasal 173)
 - Workers (E23)
 - Religious figures (rohaniwan)
-- Investors (E28 series, all variants)
+- Investors (E28 series): KITAP eligibility is NOT stated on the official visa pages; confirm before advising
 - Family reunification (E31 series, all variants)
 - Repatriation / ex-WNI (E32 series)
 - Second Home / Special Skills / World Figure / Retirees age 60+ (E33, E33A, E33B, E33C, E33E)
@@ -1058,10 +1070,6 @@ Multiple Exit Re-entry Permit is now automatically integrated in KITAS and KITAP
 ## Special exceptions
 - **E31A spouse of WNI**: 3 years KITAS PLUS marriage must be ≥2 years officially registered (Pasal 179(3))
 - **Ex-WNI direct KITAP without KITAS**: only if citizenship was lost WHILE physically in Indonesia (Pasal 120(2)+(4))
-
-## E28A KITAS vs KITAP threshold (IMPORTANT)
-- KITAS E28A requires: Rp 10 billion in shares
-- KITAP E28A requires: **Rp 15 billion** in shares (Permenkumham 11/2024 Pasal 176(2)(c))
 
 ## Document checklist (Pasal 176)
 - Valid KITAS (current, not expired)

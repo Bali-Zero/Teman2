@@ -19,13 +19,24 @@ Modes
                 refuses to overwrite) BEFORE any write.
   --apply       perform the writes. Refuses to run without --backup.
 
+  --restore P   put every payload back from the backup file P EXACTLY (overwrite_payload) and
+                re-upsert a point that no longer exists (the deleted E28G) with its saved vector.
+                Dry-run unless --apply is given.
+
 Idempotent: a second run finds nothing to change (and no E28G point to delete).
+
+Stops at the FIRST error of a write run and prints the exact restore command.
+
+DO NOT use ``scripts/enrich_visa_oracle_stay_rules.py`` as an alternative: it calls the OpenAI
+embeddings API (a paid per-token endpoint that needs separate owner authorization) and re-embeds
+every point. This fixer never embeds anything.
 
 Environment: QDRANT_URL, QDRANT_API_KEY (never printed).
 
     cd apps/backend-rag && set -a && . ./.env && set +a && cd ../..
     python3 scripts/fix_visa_oracle_e28_points.py                       # dry-run
     python3 scripts/fix_visa_oracle_e28_points.py --backup ~/visa_oracle_e28_backup.json --apply
+    python3 scripts/fix_visa_oracle_e28_points.py --restore ~/visa_oracle_e28_backup.json --apply   # undo
 """
 
 from __future__ import annotations
@@ -38,9 +49,10 @@ import logging
 import os
 import sys
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import httpx
 
@@ -58,6 +70,17 @@ E28G_POINT_ID = "225aed53-6663-5df6-97fe-bfb49d999800"
 CONCEPT_ID = "nb2-kitap-conversion"
 CONCEPT_POINT_ID = "b50440ec-a48a-54b5-95b4-2ffe9695dbf5"
 CONCEPT_CODE = CONCEPT_ID.upper()
+
+# A target text must contain the OLD sentence this PR replaces, or already the NEW notes
+# (idempotent re-run). Anything else is not the point we audited: refuse.
+OLD_ANCHORS: dict[str, str] = {
+    "E28A": "KITAP threshold INCREASED to Rp 15 billion",
+    "E28B": "Direct KITAP-INV after 5y",
+    "E28C": "Golden Visa Portfolio Investor",
+    "E28D": "Investor Branch/Representative Office",
+    "E28F": "Investor Real Estate (IKN Nusantara or property-based)",
+}
+OLD_CONCEPT_ANCHORS = ("Rp 15 billion", "E28 series, all variants")
 
 
 def _load_source() -> Any:
@@ -85,7 +108,11 @@ class Change:
 
 
 def _expect_code(point_id: str, payload: dict[str, Any], code: str) -> None:
-    got = (payload.get("metadata") or {}).get("code")
+    if not isinstance(payload, dict) or not isinstance(payload.get("text"), str):
+        raise RefusedError(f"point {point_id}: payload.text is missing or not a string")
+    if not isinstance(payload.get("metadata"), dict):
+        raise RefusedError(f"point {point_id}: payload.metadata is missing or not an object")
+    got = payload["metadata"].get("code")
     if got != code:
         raise RefusedError(f"point {point_id}: metadata.code is {got!r}, expected {code!r}")
 
@@ -107,7 +134,11 @@ def plan_changes(src: Any, current: dict[str, dict[str, Any] | None]) -> list[Ch
             raise RefusedError(f"point {pid} ({code}) not found")
         _expect_code(pid, payload, code)
         rule = src.RULES[code]
-        text = payload.get("text", "")
+        text = payload["text"]
+        if OLD_ANCHORS[code] not in text and rule.notes not in text:
+            raise RefusedError(
+                f"point {pid} ({code}): text holds neither the expected old sentence nor the new notes"
+            )
         meta = payload.get("metadata") or {}
         new_text = src.replace_stay_block(text, rule)
         new_meta = src.build_metadata(meta, rule)
@@ -122,11 +153,14 @@ def plan_changes(src: Any, current: dict[str, dict[str, Any] | None]) -> list[Ch
     _expect_code(CONCEPT_POINT_ID, concept, CONCEPT_CODE)
     if str(uuid.uuid5(uuid.NAMESPACE_URL, f"nb2-concept:{CONCEPT_ID}")) != CONCEPT_POINT_ID:
         raise RefusedError("concept point id does not match its deterministic uuid5")
-    old_text = concept.get("text", "")
+    old_text = concept["text"]
     new_text = concept_text(src)
     if new_text != old_text:
+        missing = [a for a in OLD_CONCEPT_ANCHORS if a not in old_text]
+        if missing:
+            raise RefusedError(f"concept point {CONCEPT_POINT_ID}: old anchor(s) not found: {missing}")
         for line in difflib.ndiff(old_text.splitlines(), new_text.splitlines()):
-            if line[:2] in ("+ ", "- ") and "E28" not in line:
+            if line[:2] in ("+ ", "- ") and line[2:].strip() and "E28" not in line:
                 raise RefusedError(
                     f"concept point {CONCEPT_POINT_ID}: unexpected drift outside the E28 lines: {line[:80]!r}"
                 )
@@ -201,18 +235,54 @@ def all_ids() -> list[str]:
     return [*CODE_POINTS.values(), CONCEPT_POINT_ID, E28G_POINT_ID]
 
 
+def restore_from_backup(client: httpx.Client, path: str, apply: bool) -> int:
+    saved = json.loads(Path(path).read_text())["points"]
+    ids = [str(p["id"]) for p in saved]
+    present = fetch_points(client, ids, with_vector=False)
+    for p in saved:
+        pid = str(p["id"])
+        action = "overwrite_payload" if pid in present else "upsert (point is missing: re-created with its saved vector)"
+        print(f"restore {pid}: {action}")
+        if not apply:
+            continue
+        if pid in present:
+            r = client.put(
+                f"/collections/{COLLECTION}/points/payload",
+                params={"wait": "true"},
+                json={"payload": p["payload"], "points": [pid]},
+            )
+        else:
+            r = client.put(
+                f"/collections/{COLLECTION}/points",
+                params={"wait": "true"},
+                json={"points": [{"id": pid, "vector": p["vector"], "payload": p["payload"]}]},
+            )
+        r.raise_for_status()
+    if not apply:
+        print(f"{len(saved)} point(s) would be restored (dry-run; add --apply)")
+        return 0
+    after = fetch_points(client, ids, with_vector=False)
+    bad = [str(p["id"]) for p in saved if after.get(str(p["id"]), {}).get("payload") != p["payload"]]
+    if bad:
+        print(f"RESTORE VERIFY FAILED for {bad}", file=sys.stderr)
+        return 4
+    print(f"restored {len(saved)} point(s); re-read matches the backup exactly")
+    return 0
+
+
 def main(
     argv: list[str] | None = None,
     client_factory: Callable[[str, str], httpx.Client] | None = None,
     env: dict[str, str] | None = None,
 ) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--apply", action="store_true", help="perform the writes (needs --backup)")
+    ap.add_argument("--apply", action="store_true", help="perform the writes (needs --backup, or --restore)")
     ap.add_argument("--backup", metavar="PATH", help="write the full current points here (0600) first")
+    ap.add_argument("--restore", metavar="PATH", help="put the payloads (and the deleted point) back from a backup")
     args = ap.parse_args(argv)
     env = os.environ if env is None else env
 
-    if args.apply and not args.backup:
+    if args.apply and not args.backup and not args.restore:
         print("REFUSED: --apply requires --backup <path>", file=sys.stderr)
         return 2
     url, key = env.get("QDRANT_URL"), env.get("QDRANT_API_KEY")
@@ -223,9 +293,16 @@ def main(
     factory = client_factory or (
         lambda u, k: httpx.Client(base_url=u, headers={"api-key": k}, timeout=60.0)
     )
-    src = _load_source()
     # the enrichment module configures INFO logging; httpx would then log every request URL
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    if args.restore:
+        with factory(url, key) as client:
+            try:
+                return restore_from_backup(client, args.restore, args.apply)
+            except Exception as exc:  # stop at once, say what failed
+                print(f"RESTORE STOPPED: {type(exc).__name__}: {exc}", file=sys.stderr)
+                return 5
+    src = _load_source()
     with factory(url, key) as client:
         points = fetch_points(client, all_ids(), with_vector=True)
         current = {pid: (points[pid]["payload"] if pid in points else None) for pid in all_ids()}
@@ -246,13 +323,25 @@ def main(
             return 0
 
         for change in changes:
-            apply_change(client, change)
+            try:
+                apply_change(client, change)
+            except Exception as exc:  # stop at the first error; the backup is complete
+                print(
+                    f"STOPPED at {change.kind} {change.label} {change.point_id}: {type(exc).__name__}: {exc}\n"
+                    f"Restore with: python3 scripts/fix_visa_oracle_e28_points.py --restore {args.backup} --apply",
+                    file=sys.stderr,
+                )
+                return 5
             print(f"applied {change.kind} {change.label} {change.point_id}")
 
         after = fetch_points(client, all_ids(), with_vector=False)
         verify = plan_changes(src, {pid: (after[pid]["payload"] if pid in after else None) for pid in all_ids()})
         if verify:
-            print(f"VERIFY FAILED: {len(verify)} change(s) still pending after apply", file=sys.stderr)
+            print(
+                f"VERIFY FAILED: {len(verify)} change(s) still pending after apply\n"
+                f"Restore with: python3 scripts/fix_visa_oracle_e28_points.py --restore {args.backup} --apply",
+                file=sys.stderr,
+            )
             return 4
         print("verified: re-read shows 0 pending changes")
     return 0

@@ -10,50 +10,61 @@ Served today by `get_visa_details` (MCP) / `GET /api/knowledge/visa/code/{code}`
     "Return/onward ticket" that the page does not list, the page's bank statement / CV /
     itinerary / application letter missing, document lines filed under `allowed_activities`
   - E28A `cost_visa` "17.000.000 - 19.000.000 IDR" (a range spanning two products)
-  - E28G "Golden Visa 10Y / Investasi Rp 5 miliar+" — not a current visa (no official page,
+  - E28G "Golden Visa 10Y / Investasi Rp 5 miliar+" - not a current visa (no official page,
     not in the signed rulepack).
 
 Sources (saved page texts, fetched 2026-10-15): `research/visa/2026-10-15-e28-pages/text/`.
 Owner rulings 2026-10-15: E28A is sold as 2 years only; Investor KITAS 17.000.000 (offshore)
 / 19.000.000 (onshore) all-inclusive; E28B-F are handled at a price on consultation; the
-"7-10 working days" processing window stays; E28G is not a current visa.
+"7-10 working days" window stays; E28G is not a current visa.
 
 Field placement (the API exposes `requirements`, `restrictions`, `allowed_activities`, not
 `description`): `requirements` = the page's document list plus its "Persyaratan khusus"
 (thresholds, stated once per row); `allowed_activities` = what the page allows, no
-documents; `restrictions` = the page's "Kegiatan yang dilarang". No PNBP amount is written
-anywhere: one all-inclusive client price per product, never a government-fee split.
+documents; `restrictions` = the page's "Kegiatan yang dilarang". `duration` is the STAY
+length; the 90-day ENTRY window of the visa sits in E28A `process_steps`. No PNBP amount is
+written anywhere: one all-inclusive client price per product, never a government-fee split,
+and the E28A step list no longer tells the client to pay a fee separately.
 
-`cost_visa` for E28A: the labelled pair "IDR 17.000.000 (offshore) / IDR 19.000.000
-(onshore), all-inclusive". It is not a range (no "17-19" span): each number is bound to its
-own scenario, the two catalogue products "Investor KITAS 2 Years (Offshore)" and "(Altus/
-Onshore)". Writing only the offshore price would under-quote an onshore client.
+`cost_visa` for E28A: "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
+the same shape the seed already uses for other offshore/onshore products. Two scenario
+prices of the two catalogue products ("Investor KITAS 2 Years (Offshore)" / "(Altus/Onshore)"),
+each bound to its label; not a range and not a fee split.
 
-E28G: the router (`app/routers/knowledge_visa.py`) does `SELECT * FROM visa_types` with no
-status / hidden / retired / active filter, and the MCP tools call it verbatim, so there is
-NO retire mechanism today. The row is therefore rewritten to say it is not a current visa
-and to point to E28B / E28C, with no threshold. A real retire flag in the router is a
-separate change.
+E28G: the row is KEPT but marked `metadata.retired = true` (replaced_by E28A/E28B/E28C) and
+its text says it is not a current visa. `GET /api/knowledge/visa/` skips retired rows; the
+detail lookup by code still answers with the "not a current visa" text. No schema change.
 
-`name` is written for E28B, E28C and E28G only, and the seed script
-(`scripts/seed_visa_types_complete_2026.py`) carries the same names, as
-`test_visa_types_seed_vs_migration_tripwire.py` requires. E28D / E28F names are untouched
-(migration_126 / migration_125 stay the latest word on them).
+`name` is written for all six codes and the seed script carries the same names, as
+`test_visa_types_seed_vs_migration_tripwire.py` requires (E28D / E28F names equal the ones
+migration_126 / migration_125 already wrote, so those two are no-ops on the live rows).
 
-Idempotent: each UPDATE is guarded by `IS DISTINCT FROM` on every field it sets; a re-run is
-a 0-row no-op per code. Same manual pattern as migration_126 (not the `migrations_v2/*.sql`
-runner). Run (prod, deployed container already has DATABASE_URL):
-    cat migration_128_fix_e28_family_rows.py | \
-      fly ssh console -a nuzantara-rag -C "python3 -"
+ATOMIC AND REVERSIBLE. One transaction for the whole family: any error, any missing row,
+any failed post-write check rolls EVERYTHING back and exits non-zero; the loop never
+continues past an error. Before any write the full current rows of the six codes are
+printed as ONE stdout line `PREIMAGE <json>` (public catalogue data, not PII); all other
+output goes to stderr so `tee` captures a clean preimage file.
 
-Cache: `visa_types` reads are cached under `zantara:knowledge_visa:*`; a direct UPDATE does
-not invalidate it, so after applying, invalidate that namespace (see migration_126) or the
-old rows are served until TTL expiry. Applying is the orchestrator's job, not this script's.
+Dry-run is the default (prints the preimage and the per-field plan, writes nothing).
+Idempotent: a second `--apply` finds nothing to change.
+
+Run (prod; the deployed container already has DATABASE_URL). `fly-deploy.yml` runs only the
+named `apply_migration_NNN.py` files, so this one never runs on merge - by hand:
+    fly ssh console -a nuzantara-rag -C "python3 -" < migration_128_fix_e28_family_rows.py
+    fly ssh console -a nuzantara-rag -C "python3 - --apply" < migration_128_fix_e28_family_rows.py \
+        | tee ~/visa_types_e28_preimage.jsonl && chmod 600 ~/visa_types_e28_preimage.jsonl
+Rollback: re-apply the `PREIMAGE` rows (UPDATE each column back from the saved JSON).
+
+Cache: nothing reads `visa_types` through a cache (the router queries Postgres on every GET;
+`invalidate_cache("zantara:knowledge_visa:*")` in the router runs only after its own writes
+and has no reader), so there is nothing to invalidate after this migration.
 """
 
 import asyncio
+import json
 import logging
 import os
+import sys
 
 import asyncpg
 
@@ -64,8 +75,9 @@ logger = logging.getLogger(__name__)
 # test_visa_types_seed_vs_migration_tripwire.py: it reads VISA_FIXES off disk without importing).
 VISA_FIXES = {
     "E28A": {
+        "name": "Investor Visa",
         "duration": "2 years",
-        "cost_visa": "IDR 17.000.000 (offshore) / IDR 19.000.000 (onshore), all-inclusive",
+        "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
         "processing_time_normal": "7-10 working days",
         "requirements": [
             "Sponsor required (the investment company)",
@@ -92,7 +104,14 @@ VISA_FIXES = {
             "Bring family to live in Indonesia",
             "Exit and re-enter Indonesia while the Re-entry Permit is valid",
             "Education through the Residence Permit Rangkap Kegiatan mechanism",
-            "Tourism, shopping and visiting friends or family"
+            "Tourism and visiting friends or family"
+        ],
+        "process_steps": [
+            "Bali Zero checks the documents and files the visa application on evisa.imigrasi.go.id together with the sponsor; the government fee is paid by Bali Zero and is included in the price",
+            "Immigration verifies the payment, builds the profile and verifies the application",
+            "Approval and issuance of the visa",
+            "The visa is valid for 90 days from issuance: enter Indonesia within that window or a new visa must be applied for",
+            "The ITAS and the Re-entry Permit are issued automatically when the immigration officer admits the foreigner at the checkpoint"
         ]
     },
     "E28B": {
@@ -154,6 +173,7 @@ VISA_FIXES = {
         ]
     },
     "E28D": {
+        "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
         "duration": "5 or 10 years",
         "cost_visa": "Contact for Quote",
         "requirements": [
@@ -181,6 +201,7 @@ VISA_FIXES = {
         ]
     },
     "E28F": {
+        "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan di Indonesian New Capital (IKN)",
         "duration": "5 or 10 years",
         "cost_visa": "Contact for Quote",
         "requirements": [
@@ -208,12 +229,12 @@ VISA_FIXES = {
         ]
     },
     "E28G": {
-        "name": "E28G - Not a current visa (see E28B or E28C)",
+        "name": "E28G - Not a current visa (see E28A, E28B or E28C)",
         "duration": "Not applicable",
         "cost_visa": "Not applicable",
+        "processing_time_normal": None,
         "extensions": None,
         "total_stay": None,
-        "processing_time_normal": None,
         "processing_time_express": None,
         "requirements": [
             "E28G is not a current Indonesian investor visa: it has no official Imigrasi page. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)"
@@ -222,101 +243,106 @@ VISA_FIXES = {
         "allowed_activities": [],
         "benefits": [],
         "process_steps": [],
-        "tips": []
+        "tips": [],
+        "metadata": {
+            "retired": True,
+            "retired_reason": "not a current visa: no official Imigrasi page, not in the signed rulepack",
+            "replaced_by": [
+                "E28A",
+                "E28B",
+                "E28C"
+            ]
+        }
     }
 }
 
 
-async def run_migration() -> bool:
-    """Returns True iff every code in VISA_FIXES ended in a known-good state
-    (updated this run, or already-applied). False on ANY error or missing
-    row — the caller turns that into a non-zero exit code so a `fly ssh`
-    run that silently failed does not look identical to success (the
-    "SKIP: not found, or already at target" ambiguity migration_125 itself
-    had — this version distinguishes the two and treats "not found" as an
-    error, not a routine skip: a missing row means a typo'd code or the
-    wrong database, and staying quiet about that is exactly the kind of gap
-    this migration exists to close for E28D).
-    """
+CODES = list(VISA_FIXES)
+
+
+def _differs(current: dict, field: str, target) -> bool:
+    if field == "metadata":
+        cur = current.get("metadata")
+        if isinstance(cur, str):
+            cur = json.loads(cur)
+        cur = cur or {}
+        return any(cur.get(k) != v for k, v in target.items())
+    return current.get(field) != target
+
+
+def plan(rows: dict[str, dict]) -> dict[str, dict]:
+    """code -> {field: target} for the fields that still differ (pure)."""
+    out: dict[str, dict] = {}
+    for code, fix in VISA_FIXES.items():
+        changes = {f: v for f, v in fix.items() if _differs(rows[code], f, v)}
+        if changes:
+            out[code] = changes
+    return out
+
+
+def build_update(code: str, changes: dict) -> tuple[str, list]:
+    """UPDATE ... WHERE code = $n for one row. `metadata` is MERGED (||), never replaced."""
+    sets: list[str] = []
+    values: list = []
+    for field, value in changes.items():
+        values.append(value)
+        if field == "metadata":
+            sets.append(f"metadata = COALESCE(metadata::jsonb, '{{}}'::jsonb) || ${len(values)}::jsonb")
+        else:
+            sets.append(f"{field} = ${len(values)}")
+    sets.append("last_updated = NOW()")
+    values.append(code)
+    return f"UPDATE visa_types SET {', '.join(sets)} WHERE code = ${len(values)}", values
+
+
+async def _read_rows(conn) -> dict[str, dict]:
+    recs = await conn.fetch("SELECT * FROM visa_types WHERE code = ANY($1::text[])", CODES)
+    return {r["code"]: dict(r) for r in recs}
+
+
+async def run_migration(apply: bool = False) -> bool:
+    """True iff every code ended in a known-good state. Dry-run (apply=False) writes nothing."""
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         logger.error("DATABASE_URL not set")
         return False
-
     conn = await asyncpg.connect(db_url)
-    logger.info("Connected to database")
-
-    updated = 0
-    already_applied = 0
-    errors = 0
     try:
-        for code, data in VISA_FIXES.items():
-            # allowed_activities/restrictions/name are native Postgres
-            # text[]/varchar columns (same schema migration_125 verified
-            # live 2026-07-19) — asyncpg maps Python list -> text[]
-            # directly, no jsonb cast needed.
-            set_clauses = []
-            values = []
-            idx = 1
-            for field, value in data.items():
-                set_clauses.append(f"{field} = ${idx}")
-                values.append(value)
-                idx += 1
-            set_clauses.append("last_updated = NOW()")
-
-            # Idempotency guard: touch the row if ANY of the fields we set
-            # still differs from its target value — not just `name`. A
-            # name-only guard would silently skip a row that has the right
-            # name but stale allowed_activities/restrictions (e.g. a prior
-            # partial hand-fix), which is the same "looks fixed, wasn't"
-            # shape this migration exists to close.
-            distinct_clauses = [f"{field} IS DISTINCT FROM ${i + 1}" for i, field in enumerate(data)]
-            code_idx = idx
-            values.append(code)
-
-            query = f"""
-                UPDATE visa_types
-                SET {", ".join(set_clauses)}
-                WHERE code = ${code_idx} AND ({" OR ".join(distinct_clauses)})
-                RETURNING code, name
-            """
-            try:
-                row = await conn.fetchrow(query, *values)
-                if row:
-                    logger.info(f"OK {code}: {row['name']}")
-                    updated += 1
-                else:
-                    exists = await conn.fetchval(
-                        "SELECT 1 FROM visa_types WHERE code = $1", code
-                    )
-                    if exists:
-                        logger.info(
-                            f"NO-OP {code}: row already matches every target field "
-                            "(idempotent re-run)"
-                        )
-                        already_applied += 1
-                    else:
-                        logger.error(
-                            f"MISSING {code}: no row in visa_types for this code — "
-                            "typo'd code, wrong database, or the row was deleted. "
-                            "This is NOT the routine no-op case."
-                        )
-                        errors += 1
-            except Exception as e:
-                logger.error(f"ERROR {code}: {e}")
-                errors += 1
+        await conn.set_type_codec("jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog")
+        rows = await _read_rows(conn)
+        missing = [c for c in CODES if c not in rows]
+        if missing:
+            logger.error(f"MISSING row(s) {missing}: wrong database or deleted rows. Nothing written.")
+            return False
+        sys.stdout.write("PREIMAGE " + json.dumps(rows, default=str, sort_keys=True, ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+        todo = plan(rows)
+        for code, changes in todo.items():
+            logger.info(f"{code}: would change {sorted(changes)}")
+        if not todo:
+            logger.info("NO-OP: every row already matches every target field")
+            return True
+        if not apply:
+            logger.info(f"dry-run: {len(todo)} row(s) would change; re-run with --apply")
+            return True
+        try:
+            async with conn.transaction():
+                for code, changes in todo.items():
+                    sql, values = build_update(code, changes)
+                    status = await conn.execute(sql, *values)
+                    if status != "UPDATE 1":
+                        raise RuntimeError(f"{code}: expected 'UPDATE 1', got {status!r}")
+                after = await _read_rows(conn)
+                if any(c not in after for c in CODES) or plan(after):
+                    raise RuntimeError("post-write check failed inside the transaction")
+        except Exception as exc:
+            logger.error(f"ROLLED BACK, nothing changed: {type(exc).__name__}: {exc}")
+            return False
+        logger.info(f"COMMITTED: {len(todo)} row(s) updated")
+        return True
     finally:
         await conn.close()
 
-    logger.info(
-        f"Migration complete: {updated} updated, {already_applied} already-applied, "
-        f"{errors} error(s) out of {len(VISA_FIXES)} code(s)"
-    )
-    return errors == 0
-
 
 if __name__ == "__main__":
-    import sys
-
-    ok = asyncio.run(run_migration())
-    sys.exit(0 if ok else 1)
+    sys.exit(0 if asyncio.run(run_migration(apply="--apply" in sys.argv[1:])) else 1)
