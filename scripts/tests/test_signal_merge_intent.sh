@@ -51,6 +51,7 @@ if [ -n "${FAKE_FIRST_VERIFY_SLEEP:-}" ] && [ ! -e "$FAKE_COUNT.s" ]; then : > "
 # FAKE_VERIFY_UNREADABLE=N: the first N reads are unreadable (rc 2), then the FAKE_VERIFY mode applies
 u="$(cat "$FAKE_COUNT.v" 2>/dev/null || echo 0)"
 if [ "$u" -lt "${FAKE_VERIFY_UNREADABLE:-0}" ]; then echo $((u + 1)) > "$FAKE_COUNT.v"; echo "LABEL_UNREADABLE: 502" >&2; exit 2; fi
+[ -z "${FAKE_VERIFY_RC:-}" ] || { echo "LABEL_UNKNOWN rc ${FAKE_VERIFY_RC}" >&2; exit "$FAKE_VERIFY_RC"; }
 case "${FAKE_VERIFY:-after-write}" in
   valid) exit 0 ;;
   never) echo "LABEL_INVALID pr=$2: label predates head"; exit 1 ;;
@@ -59,7 +60,7 @@ case "${FAKE_VERIFY:-after-write}" in
 esac
 FAKEVERIFY
 REAL_PY="$(command -v python3)"
-printf '#!/usr/bin/env bash\nif [ -n "${FAKE_PY_LOG:-}" ]; then echo "PY $*" >> "$FAKE_PY_LOG"; exit 0; fi\nexec %s "$@"\n' "$REAL_PY" > "$SANDBOX/bin/python3"
+printf '#!/usr/bin/env bash\ncase "$1" in *label_census.py) if [ -n "${FAKE_PY_LOG:-}" ]; then echo "PY $*" >> "$FAKE_PY_LOG"; exit 0; fi ;; esac\nexec %s "$@"\n' "$REAL_PY" > "$SANDBOX/bin/python3"
 printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n[ "${FAKE_REAL_SLEEP:-0}" = 1 ] && exec /bin/sleep "$1"\nexit 0\n' > "$SANDBOX/bin/sleep"
 chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep" "$SANDBOX/bin/python3"
 
@@ -113,28 +114,7 @@ done
 run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
 check "label ko + arm ko, queue present: exit 3 (the arm result)" "$([ $RC = 3 ] && echo 1 || echo 0)"
 
-# Mutant: the old behaviour, a label failure only warns (exit 0 while the queue exists). The scenario above must go red.
-mkdir -p "$SANDBOX/mut"; cp "$HELPER" "$PROBE_SRC" "$SANDBOX/mut/" 2>/dev/null
-sed 's/^\[ "\$label" = applied \] && exit 0$/exit 0/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
-HELPER_REAL="$HELPER"; HELPER="$SANDBOX/mut/signal_merge_intent.sh"
-run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1
-check "mutant (label failure no longer fatal) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
-HELPER="$HELPER_REAL"
-
-# Mutant: always remove before add (never trust a valid label). The valid-label scenario must go red.
-sed 's/^  if gh pr view .*$/  if true; then has=1; fi/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
-sed -i.bak 's/^  0) ;;$/  0) apply_label || label=failed ;;/' "$SANDBOX/mut/signal_merge_intent.sh"
-HELPER="$SANDBOX/mut/signal_merge_intent.sh"
-run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY=valid
-check "mutant (valid label still removed) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
-HELPER="$HELPER_REAL"
-
-# Mutant: the read-back skipped. A write whose read-back would fail must go red.
-sed 's/^    out="\$(verify_label)" \&\& return 0$/    return 0/' "$HELPER" > "$SANDBOX/mut/signal_merge_intent.sh"
-HELPER="$SANDBOX/mut/signal_merge_intent.sh"
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
-check "mutant (no read-back after the write) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
-HELPER="$HELPER_REAL"
+# The mutants of the helper's logic are the b31-* table of scripts/localci/tests/mutants/merger_mutants.py (a bash-sed copy of it lived here).
 
 # C2: the read-back is bounded — one initial read plus TRIES read-backs, never one, never unbounded
 run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
@@ -252,6 +232,18 @@ run 7 FAKE_RULES_COUNT=0
 check "the base branch defaults to main and the repo to Bali-Zero/Teman2 in the queue probe" "$([ "$(has 'rules/branches/main' "$CALLS")" = 1 ] && [ "$(has 'repos/Bali-Zero/Teman2/' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 SIGNAL_INTENT_REPO=o/r SIGNAL_INTENT_BASE=dev
 check "SIGNAL_INTENT_REPO and SIGNAL_INTENT_BASE reach the probe and the writes" "$([ "$(has 'repos/o/r/rules/branches/dev' "$CALLS")" = 1 ] && [ "$(has '--repo o/r' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+
+# B31'': a verify code nobody named (126, 127, 137, 255) is UNKNOWN: read again, never success, never a write, exit 2 in both queue states
+for rc in 126 127 137 255; do
+  for q in 0 1; do
+    run 7 FAKE_RULES_COUNT=$q FAKE_VERIFY_RC=$rc FAKE_HAS_LABEL=1
+    check "verify rc $rc (queue rules $q): exit 2, label=failed, SIGNAL_INTENT_FAIL, nothing written, four reads" "$([ $RC = 2 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && [ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 4 ] && echo 1 || echo 0)"
+  done
+done
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_RC=137 FAKE_VERIFY_UNREADABLE=0
+check "verify rc 137 on a label that is really there is never read as valid: no 'label=applied'" "$([ "$(has 'label=applied' "$OUT")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 PATH="$SANDBOX/nogh:/usr/bin:/bin"
+check "gh cannot start (rc 127 from the executor): label=failed, the arm fails too (exit 3), loud, no traceback" "$([ $RC = 3 ] && [ "$(has 'Traceback' "$ERR")" = 0 ] && [ "$(has 'label=failed' "$ERR")" = 1 ] && [ "$(has 'arm=failed' "$ERR")" = 1 ] && echo 1 || echo 0)"
 
 # L4: an unreadable verify is unknown, never a reason to remove the label
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1 FAKE_VERIFY=valid

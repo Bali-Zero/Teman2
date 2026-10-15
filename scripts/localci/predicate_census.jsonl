@@ -1,121 +1,115 @@
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_REPO:-Bali-Zero/Teman2}", "occ": 1, "mutants": ["b31-sh-repo-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_BASE:-main}", "occ": 1, "mutants": ["b31-sh-base-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_TRIES:-}", "occ": 1, "mutants": ["b31-sh-tries-env-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_DEADLINE_S:-}", "occ": 1, "mutants": ["b31-sh-deadline-env-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_BACKOFF_S:-}", "occ": 1, "mutants": ["b31-sh-backoff-env-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${1:-}", "occ": 1, "mutants": ["b31-sh-pr-arg-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$PR\" in ''", "occ": 1, "mutants": ["b31-sh-usage-accepts-empty", "b31-sh-usage-accepts-non-numeric"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$PR\" in *[!0-9]*", "occ": 1, "mutants": ["b31-sh-usage-accepts-non-numeric"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$TRIES\" in *[!0-9]*", "occ": 1, "mutants": ["b31-sh-tries-garbage-arm", "b31-sh-tries-garbage-fallback-9"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${TRIES:-0}", "occ": 1, "mutants": ["b31-sh-tries-empty-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$TRIES\" -ge 1 ]", "occ": 1, "mutants": ["b31-sh-tries-ge-zero", "b31-sh-tries-zero-kept"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "TRIES=4", "occ": 1, "mutants": ["b31-sh-tries-fallback-5", "b31-sh-tries-zero-fallback-5"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$DEADLINE\" in ''", "occ": 1, "mutants": ["b31-sh-deadline-empty-arm", "b31-sh-deadline-garbage-arm"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$DEADLINE\" in *[!0-9]*", "occ": 1, "mutants": ["b31-sh-deadline-garbage-arm"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$BACKOFF_START\" in ''", "occ": 1, "mutants": ["b31-sh-backoff-empty-arm", "b31-sh-backoff-fallback-3", "b31-sh-backoff-garbage-arm"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$BACKOFF_START\" in *[!0-9]*", "occ": 1, "mutants": ["b31-sh-backoff-fallback-3", "b31-sh-backoff-garbage-arm"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"${SIGNAL_INTENT_SHOW_CONFIG:-}\" = 1 ]", "occ": 1, "mutants": ["b31-sh-showconfig-default", "b31-sh-showconfig-inverted"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_SHOW_CONFIG:-}", "occ": 1, "mutants": ["b31-sh-showconfig-default"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ -n \"${SIGNAL_INTENT_VERIFY:-}\" ]", "occ": 1, "mutants": ["b31-sh-verify-override-default", "b31-sh-verify-override-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "${SIGNAL_INTENT_VERIFY:-}", "occ": 1, "mutants": ["b31-sh-verify-override-default", "b31-sh-verify-override-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$deadline_hit\" = 1 ]", "occ": 1, "mutants": ["b31-sh-deadline-note-inverted"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ $((DEADLINE - SECONDS)) -le 0 ]", "occ": 1, "mutants": ["b31-sh-budget-boundary-lt", "b31-sh-budget-elapsed-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 1, "mutants": ["b31-sh-pause-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "return 0", "occ": 1, "mutants": ["b31-sh-pause-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$BACKOFF\" -lt \"$left\" ]", "occ": 1, "mutants": ["b31-sh-pause-cap-always", "b31-sh-pause-cap-inverted", "b31-sh-pause-uncapped"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 2, "mutants": ["b31-sh-view-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok && gh pr view \"$PR\" --repo \"$REPO\" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF \"$LABEL\"", "occ": 1, "mutants": ["b31-sh-has-never", "b31-sh-has-substring-match", "b31-sh-view-gate-open", "b31-sh-view-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "gh pr view \"$PR\" --repo \"$REPO\" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF \"$LABEL\"", "occ": 1, "mutants": ["b31-sh-has-never", "b31-sh-has-substring-match", "b31-sh-view-gate-open"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "i <= TRIES", "occ": 1, "mutants": ["b31-sh-write-loop-off-by-one"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$has\" = 1 ]", "occ": 1, "mutants": ["b31-sh-has-test-inverted"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 3, "mutants": ["b31-sh-remove-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -eq 0 ]", "occ": 1, "mutants": ["b31-sh-has-clear-on-failure"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "has=0", "occ": 1, "mutants": ["b31-sh-has-not-cleared"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -eq 0 ]", "occ": 2, "mutants": ["b31-sh-add-after-failed-remove"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 4, "mutants": ["b31-sh-add-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -eq 0 ]", "occ": 3, "mutants": ["b31-sh-write-break-on-failure"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "break", "occ": 1, "mutants": ["b31-sh-write-no-break"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$i\" -lt \"$TRIES\" ]", "occ": 1, "mutants": ["b31-sh-write-never-pauses", "b31-sh-write-pause-after-last"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -ne 0 ]", "occ": 1, "mutants": ["b31-sh-write-failure-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "i <= TRIES", "occ": 2, "mutants": ["b31-sh-readback-loop-off-by-one", "b31-sh-readback-single-try", "b31-sh-readback-unbounded"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 5, "mutants": ["b31-sh-readback-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "break", "occ": 2, "mutants": ["b31-sh-readback-budget-gate-open", "b31-sh-readback-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "out=\"$(verify_label)\"", "occ": 1, "mutants": ["b31-sh-readback-accepts-failure", "b31-sh-readback-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "return 0", "occ": 2, "mutants": ["b31-sh-readback-never-succeeds"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$i\" -lt \"$TRIES\" ]", "occ": 2, "mutants": ["b31-sh-readback-never-pauses", "b31-sh-readback-pause-after-last"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "i <= TRIES", "occ": 3, "mutants": ["b31-sh-firstread-loop-off-by-one"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "budget_ok", "occ": 6, "mutants": ["b31-sh-firstread-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "break", "occ": 3, "mutants": ["b31-sh-firstread-budget-gate-open", "b31-sh-firstread-ignores-budget"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$vrc\" -eq 0 ]", "occ": 1, "mutants": ["b31-sh-firstread-retries-invalid", "b31-sh-firstread-retries-valid"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$vrc\" -eq 1 ]", "occ": 1, "mutants": ["b31-sh-firstread-retries-invalid", "b31-sh-firstread-retries-valid", "b31-sh-firstread-stops-on-unreadable"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "break", "occ": 4, "mutants": ["b31-sh-firstread-never-stops"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$i\" -lt \"$TRIES\" ]", "occ": 3, "mutants": ["b31-sh-firstread-never-pauses", "b31-sh-firstread-pause-after-last"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$vrc\" in 0", "occ": 1, "mutants": ["b31-sh-valid-label-rewritten"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$vrc\" in 1", "occ": 1, "mutants": ["b31-sh-invalid-never-written", "b31-sh-invalid-writes-nothing-but-claims", "b31-sh-write-failure-not-failed"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "apply_label", "occ": 1, "mutants": ["b31-sh-invalid-never-written", "b31-sh-invalid-writes-nothing-but-claims"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "label=failed", "occ": 1, "mutants": ["b31-sh-invalid-never-written", "b31-sh-write-failure-not-failed"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "case \"$vrc\" in *", "occ": 1, "mutants": ["b31-sh-unreadable-ignored", "b31-sh-unreadable-not-failed"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$label\" = failed ]", "occ": 1, "mutants": ["b31-sh-fail-line-always", "b31-sh-fail-line-never"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$queue\" = absent ]", "occ": 1, "mutants": ["b31-sh-queue-test-inverted"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$label\" = applied ]", "occ": 1, "mutants": ["b31-sh-failed-label-exit-0-queue-absent", "b31-sh-queue-absent-test-inverted"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "exit 0", "occ": 1, "mutants": ["b31-sh-failed-label-exit-0-queue-absent", "b31-sh-queue-absent-exit-dropped"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -ne 0 ]", "occ": 2, "mutants": ["b31-sh-arm-failure-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$rc\" -ne 0 ] && ! printf '%s' \"$out\" | grep -qi \"already queued\\|auto-merge enabled\\|already enabled\\|clean\"", "occ": 1, "mutants": ["b31-sh-arm-already-enabled-fatal", "b31-sh-arm-already-queued-fatal", "b31-sh-arm-benign-ignored", "b31-sh-arm-clean-fatal", "b31-sh-arm-enabled-fatal", "b31-sh-arm-failure-always-fatal", "b31-sh-arm-failure-ignored"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "! printf '%s' \"$out\" | grep -qi \"already queued\\|auto-merge enabled\\|already enabled\\|clean\"", "occ": 1, "mutants": ["b31-sh-arm-already-enabled-fatal", "b31-sh-arm-already-queued-fatal", "b31-sh-arm-benign-ignored", "b31-sh-arm-clean-fatal", "b31-sh-arm-enabled-fatal", "b31-sh-arm-failure-always-fatal"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "[ \"$label\" = applied ]", "occ": 2, "mutants": ["b31-sh-armed-test-inverted", "b31-sh-failed-label-exit-0-queue-present"]}
-{"file": "scripts/signal_merge_intent.sh", "cond": "exit 0", "occ": 2, "mutants": ["b31-sh-armed-exit-dropped", "b31-sh-failed-label-exit-0-queue-present"]}
-{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(mg.PR_QUERY, owner=owner, name=name, number=number).get(\"repository\")", "occ": 1, "mutants": ["b31-lc-verify-repo-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(mg.PR_QUERY, owner=owner, name=name, number=number).get(\"repository\") or {}", "occ": 1, "mutants": ["b31-lc-verify-repo-key", "b31-lc-verify-repo-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "not isinstance(p, dict)", "occ": 1, "mutants": ["b31-lc-verify-missing-pr-passes"]}
-{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 1, "mutants": ["b31-lc-unreadable-judged-invalid", "b31-lc-verify-unreadable-gate-never", "b31-lc-verify-valid-raises"]}
-{"file": "scripts/localci/label_census.py", "cond": "reason and _unreadable(reason)", "occ": 1, "mutants": ["b31-lc-everything-unreadable", "b31-lc-unreadable-judged-invalid", "b31-lc-verify-unreadable-gate-never", "b31-lc-verify-unreadable-gate-open", "b31-lc-verify-valid-raises"]}
-{"file": "scripts/localci/label_census.py", "cond": "_unreadable(reason)", "occ": 1, "mutants": ["b31-lc-everything-unreadable", "b31-lc-unreadable-judged-invalid", "b31-lc-verify-unreadable-gate-never"]}
-{"file": "scripts/localci/label_census.py", "cond": "True", "occ": 1, "mutants": ["b31-lc-open-prs-loop-once"]}
-{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(CENSUS_QUERY, owner=owner, name=name, **({\"after\": after} if after else {})).get(\"repository\")", "occ": 1, "mutants": ["b31-lc-open-prs-cursor-always", "b31-lc-open-prs-cursor-never", "b31-lc-open-prs-repo-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(CENSUS_QUERY, owner=owner, name=name, **({\"after\": after} if after else {})).get(\"repository\") or {}", "occ": 1, "mutants": ["b31-lc-open-prs-cursor-always", "b31-lc-open-prs-cursor-never", "b31-lc-open-prs-repo-key", "b31-lc-open-prs-repo-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "after", "occ": 1, "mutants": ["b31-lc-open-prs-cursor-always", "b31-lc-open-prs-cursor-never"]}
-{"file": "scripts/localci/label_census.py", "cond": "not isinstance(page, dict)", "occ": 1, "mutants": ["b31-lc-open-prs-bad-page-passes"]}
-{"file": "scripts/localci/label_census.py", "cond": "page.get(\"nodes\")", "occ": 1, "mutants": ["b31-lc-open-prs-nodes-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "page.get(\"nodes\") or []", "occ": 1, "mutants": ["b31-lc-open-prs-nodes-key", "b31-lc-open-prs-nodes-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "isinstance(n, dict)", "occ": 1, "mutants": ["b31-lc-open-prs-keeps-non-nodes"]}
-{"file": "scripts/localci/label_census.py", "cond": "page.get(\"pageInfo\")", "occ": 1, "mutants": ["b31-lc-open-prs-pageinfo-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "page.get(\"pageInfo\") or {}", "occ": 1, "mutants": ["b31-lc-open-prs-pageinfo-key", "b31-lc-open-prs-pageinfo-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "not info.get(\"hasNextPage\")", "occ": 1, "mutants": ["b31-lc-census-first-page-only", "b31-lc-census-never-stops"]}
-{"file": "scripts/localci/label_census.py", "cond": "prs is not None", "occ": 1, "mutants": ["b31-lc-census-empty-list-reads", "b31-lc-census-list-ignored"]}
-{"file": "scripts/localci/label_census.py", "cond": "mg.ARM_LABEL in {lb.get(\"name\") for lb in (p.get(\"labels\") or {}).get(\"nodes\") or [] if isinstance(lb, dict)}", "occ": 1, "mutants": ["b31-lc-census-has-label-not-in", "b31-lc-census-label-junk-node", "b31-lc-census-label-nodes-key", "b31-lc-census-label-nodes-or-none", "b31-lc-census-labels-key", "b31-lc-census-labels-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "(p.get(\"labels\") or {}).get(\"nodes\")", "occ": 1, "mutants": ["b31-lc-census-label-nodes-key", "b31-lc-census-labels-key", "b31-lc-census-labels-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "(p.get(\"labels\") or {}).get(\"nodes\") or []", "occ": 1, "mutants": ["b31-lc-census-label-nodes-key", "b31-lc-census-label-nodes-or-none", "b31-lc-census-labels-key", "b31-lc-census-labels-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"labels\")", "occ": 1, "mutants": ["b31-lc-census-labels-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"labels\") or {}", "occ": 1, "mutants": ["b31-lc-census-labels-key", "b31-lc-census-labels-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "isinstance(lb, dict)", "occ": 1, "mutants": ["b31-lc-census-label-junk-node"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isDraft\")", "occ": 1, "mutants": ["b31-lc-census-lists-drafts"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isDraft\") or not (p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label)", "occ": 1, "mutants": ["b31-lc-census-all-armed-need-all", "b31-lc-census-auto-merge-dropped", "b31-lc-census-draft-only", "b31-lc-census-drops-queue", "b31-lc-census-includes-unarmed", "b31-lc-census-label-only-dropped", "b31-lc-census-lists-drafts"]}
-{"file": "scripts/localci/label_census.py", "cond": "not (p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label)", "occ": 1, "mutants": ["b31-lc-census-all-armed-need-all", "b31-lc-census-auto-merge-dropped", "b31-lc-census-drops-queue", "b31-lc-census-includes-unarmed", "b31-lc-census-label-only-dropped"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"autoMergeRequest\")", "occ": 1, "mutants": ["b31-lc-census-auto-merge-dropped", "b31-lc-census-includes-unarmed"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label", "occ": 1, "mutants": ["b31-lc-census-all-armed-need-all", "b31-lc-census-auto-merge-dropped", "b31-lc-census-drops-queue", "b31-lc-census-includes-unarmed", "b31-lc-census-label-only-dropped"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isInMergeQueue\")", "occ": 1, "mutants": ["b31-lc-census-all-armed-need-all", "b31-lc-census-auto-merge-dropped", "b31-lc-census-drops-queue", "b31-lc-census-includes-unarmed"]}
-{"file": "scripts/localci/label_census.py", "cond": "has_label", "occ": 1, "mutants": ["b31-lc-census-includes-unarmed", "b31-lc-census-label-only-dropped"]}
-{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 2, "mutants": ["b31-lc-census-hides-invalid", "b31-lc-census-lists-valid"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"title\")", "occ": 1, "mutants": ["b31-lc-census-title-key"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"title\") or \"\"", "occ": 1, "mutants": ["b31-lc-census-title-key", "b31-lc-census-title-or-none"]}
-{"file": "scripts/localci/label_census.py", "cond": "has_label", "occ": 2, "mutants": ["b31-lc-census-armed-by-label-always"]}
-{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isInMergeQueue\")", "occ": 2, "mutants": ["b31-lc-census-armed-by-auto-lost", "b31-lc-census-armed-by-queue-lost"]}
-{"file": "scripts/localci/label_census.py", "cond": "a.cmd == \"verify\"", "occ": 1, "mutants": ["b31-lc-main-verify-branch-inverted"]}
-{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 3, "mutants": ["b31-lc-verify-invalid-test-inverted"]}
-{"file": "scripts/localci/label_census.py", "cond": "a.quiet", "occ": 1, "mutants": ["b31-lc-quiet-always-stderr", "b31-lc-quiet-to-stdout"]}
-{"file": "scripts/localci/label_census.py", "cond": "a.json", "occ": 1, "mutants": ["b31-lc-json-always", "b31-lc-json-ignored"]}
-{"file": "scripts/localci/label_census.py", "cond": "rows", "occ": 1, "mutants": ["b31-lc-census-clean-exit-1", "b31-lc-census-dirty-exit-0"]}
-{"file": "scripts/localci/label_census.py", "cond": "__name__ == \"__main__\"", "occ": 1, "mutants": ["b31-lc-entry-guard-never"]}
-{"file": "scripts/docs_guardian.sh", "cond": "[[ \"$BROKEN\" == \"0\" && -n \"$PR_URL\" && \"$PR_URL\" =~ ^https://github.com/.+/pull/[0-9]+$ ]]", "occ": 1, "mutants": ["b31-dg-gate-broken-dropped", "b31-dg-gate-broken-inverted", "b31-dg-gate-url-empty-allowed", "b31-dg-gate-url-pattern-dropped", "b31-dg-gate-url-pattern-loose"]}
-{"file": "scripts/docs_guardian.sh", "cond": "\"$BROKEN\" == \"0\"", "occ": 1, "mutants": ["b31-dg-gate-broken-dropped", "b31-dg-gate-broken-inverted"]}
-{"file": "scripts/docs_guardian.sh", "cond": "-n \"$PR_URL\"", "occ": 1, "mutants": ["b31-dg-gate-broken-dropped", "b31-dg-gate-url-empty-allowed", "b31-dg-gate-url-pattern-dropped"], "note": "Argued survivor, deleted from the mutant table: dropping this operand alone is equivalent, because the next operand (=~ ^https://github.com/.+/pull/[0-9]+$) already fails on an empty PR_URL. The row stays pinned by the killed mutant that inverts it."}
-{"file": "scripts/docs_guardian.sh", "cond": "\"$PR_URL\" =~ ^https://github.com/.+/pull/[0-9]+$", "occ": 1, "mutants": ["b31-dg-gate-url-pattern-dropped", "b31-dg-gate-url-pattern-loose"]}
-{"file": "scripts/docs_guardian.sh", "cond": "[ -x scripts/signal_merge_intent.sh ]", "occ": 1, "mutants": ["b31-dg-helper-present-inverted", "b31-dg-helper-present-never"]}
-{"file": "scripts/docs_guardian.sh", "cond": "! INTENT_OUT=$(scripts/signal_merge_intent.sh \"$PR_NUM\" 2>&1)", "occ": 1, "mutants": ["b31-dg-status-discarded", "b31-dg-status-inverted", "b31-docs-guardian-swallows-helper"]}
-{"file": "scripts/docs_guardian.sh", "cond": "gh pr merge \"$PR_NUM\" --auto >/dev/null 2>&1", "occ": 1, "mutants": ["b31-dg-fallback-arm-dropped", "b31-dg-fallback-arm-fatal"]}
-{"file": "scripts/docs_guardian.sh", "cond": "true", "occ": 1, "mutants": ["b31-dg-fallback-arm-fatal", "b31-dg-fallback-true-dropped"]}
-{"file": "scripts/docs_guardian.sh", "cond": "[[ \"${INTENT_FAILED:-0}\" == \"1\" ]]", "occ": 1, "mutants": ["b31-dg-notify-always", "b31-dg-notify-default-failed", "b31-dg-notify-dropped"]}
-{"file": "scripts/docs_guardian.sh", "cond": "${INTENT_FAILED:-0}", "occ": 1, "mutants": ["b31-dg-notify-default-failed"]}
-{"file": "scripts/docs_guardian.sh", "cond": "SUMMARY+=(\"MERGE INTENT FAILED on PR #${PR_NUM:-?} (label/arm) — it will not merge by itself\")", "occ": 1, "mutants": ["b31-dg-notify-text-dropped"]}
-{"file": "scripts/docs_guardian.sh", "cond": "[[ \"${INTENT_FAILED:-0}\" == \"1\" ]]", "occ": 2, "mutants": ["b31-dg-exit-always", "b31-dg-exit-default-failed", "b31-dg-exit-dropped"]}
-{"file": "scripts/docs_guardian.sh", "cond": "${INTENT_FAILED:-0}", "occ": 2, "mutants": ["b31-dg-exit-default-failed", "b31-dg-exit-dropped"]}
+{"file": "scripts/localci/label_intent.py", "cond": "raw.isascii()", "occ": 1, "mutants": ["b31-ast-label_intent-_number-operand-2171-2184"]}
+{"file": "scripts/localci/label_intent.py", "cond": "raw.isascii() and raw.isdigit()", "occ": 1, "mutants": ["b31-ast-label_intent-_number-ifexp-2171-2202"]}
+{"file": "scripts/localci/label_intent.py", "cond": "raw.isdigit()", "occ": 1, "mutants": ["b31-ast-label_intent-_number-operand-2189-2202"]}
+{"file": "scripts/localci/label_intent.py", "cond": "tries >= 1", "occ": 1, "mutants": ["b31-ast-label_intent-parse_config-ifexp-2349-2359"]}
+{"file": "scripts/localci/label_intent.py", "cond": "LABEL in out.splitlines()", "occ": 1, "mutants": ["b31-ast-label_intent-has_label-compare-2582-2607"]}
+{"file": "scripts/localci/label_intent.py", "cond": "any(m in out.lower() for m in BENIGN_ARM)", "occ": 1, "mutants": ["b31-ast-label_intent-arm_is_benign-predicate-call-2658-2699"]}
+{"file": "scripts/localci/label_intent.py", "cond": "m in out.lower()", "occ": 1, "mutants": ["b31-ast-label_intent-arm_is_benign-predicate-element-2662-2678"]}
+{"file": "scripts/localci/label_intent.py", "cond": "hit", "occ": 1, "mutants": ["b31-ast-label_intent-_note-ifexp-2881-2884"]}
+{"file": "scripts/localci/label_intent.py", "cond": "left <= 0", "occ": 1, "mutants": ["b31-ast-label_intent-_pause-if-3079-3088"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.deadline - elapsed <= 0", "occ": 1, "mutants": ["b31-ast-label_intent-_first_read-if-3457-3484"]}
+{"file": "scripts/localci/label_intent.py", "cond": "vrc in (0, 1)", "occ": 1, "mutants": ["b31-ast-label_intent-_first_read-if-3606-3619"]}
+{"file": "scripts/localci/label_intent.py", "cond": "i < cfg.tries", "occ": 1, "mutants": ["b31-ast-label_intent-_first_read-if-3669-3682"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.deadline - elapsed > 0", "occ": 1, "mutants": ["b31-ast-label_intent-_write-if-4022-4048"]}
+{"file": "scripts/localci/label_intent.py", "cond": "r.rc == 0", "occ": 1, "mutants": ["b31-ast-label_intent-_write-operand-4103-4112"]}
+{"file": "scripts/localci/label_intent.py", "cond": "r.rc == 0 and has_label(r.out)", "occ": 1, "mutants": ["b31-ast-label_intent-_write-boolop-4103-4133"]}
+{"file": "scripts/localci/label_intent.py", "cond": "has_label(r.out)", "occ": 1, "mutants": ["b31-ast-label_intent-_write-operand-4117-4133"]}
+{"file": "scripts/localci/label_intent.py", "cond": "has", "occ": 1, "mutants": ["b31-ast-label_intent-_write-if-4247-4250"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.deadline - elapsed > 0", "occ": 2, "mutants": ["b31-ast-label_intent-_write-if-4286-4312"]}
+{"file": "scripts/localci/label_intent.py", "cond": "has", "occ": 2, "mutants": ["b31-ast-label_intent-_write-operand-4475-4478"]}
+{"file": "scripts/localci/label_intent.py", "cond": "has and rc != 0", "occ": 1, "mutants": ["b31-ast-label_intent-_write-boolop-4475-4490"]}
+{"file": "scripts/localci/label_intent.py", "cond": "rc != 0", "occ": 1, "mutants": ["b31-ast-label_intent-_write-operand-4483-4490"]}
+{"file": "scripts/localci/label_intent.py", "cond": "rc == 0", "occ": 1, "mutants": ["b31-ast-label_intent-_write-if-4502-4509"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.deadline - elapsed > 0", "occ": 3, "mutants": ["b31-ast-label_intent-_write-if-4545-4571"]}
+{"file": "scripts/localci/label_intent.py", "cond": "rc == 0", "occ": 2, "mutants": ["b31-ast-label_intent-_write-if-4724-4731"]}
+{"file": "scripts/localci/label_intent.py", "cond": "i < cfg.tries", "occ": 2, "mutants": ["b31-ast-label_intent-_write-if-4785-4798"]}
+{"file": "scripts/localci/label_intent.py", "cond": "hit", "occ": 2, "mutants": ["b31-ast-label_intent-_write-operand-4901-4904"]}
+{"file": "scripts/localci/label_intent.py", "cond": "hit or pause_hit", "occ": 1, "mutants": ["b31-ast-label_intent-_write-boolop-4901-4917"]}
+{"file": "scripts/localci/label_intent.py", "cond": "pause_hit", "occ": 1, "mutants": ["b31-ast-label_intent-_write-operand-4908-4917"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.deadline - elapsed <= 0", "occ": 2, "mutants": ["b31-ast-label_intent-_readback-if-5155-5182"]}
+{"file": "scripts/localci/label_intent.py", "cond": "r.rc == 0", "occ": 2, "mutants": ["b31-ast-label_intent-_readback-if-5303-5312"]}
+{"file": "scripts/localci/label_intent.py", "cond": "i < cfg.tries", "occ": 3, "mutants": ["b31-ast-label_intent-_readback-if-5359-5372"]}
+{"file": "scripts/localci/label_intent.py", "cond": "vrc == 1", "occ": 1, "mutants": ["b31-ast-label_intent-plan-if-5590-5598"]}
+{"file": "scripts/localci/label_intent.py", "cond": "rc == 0", "occ": 3, "mutants": ["b31-ast-label_intent-plan-compare-5682-5689"]}
+{"file": "scripts/localci/label_intent.py", "cond": "written", "occ": 1, "mutants": ["b31-ast-label_intent-plan-ifexp-5763-5770"]}
+{"file": "scripts/localci/label_intent.py", "cond": "written", "occ": 2, "mutants": ["b31-ast-label_intent-plan-operand-5824-5831"]}
+{"file": "scripts/localci/label_intent.py", "cond": "written and valid", "occ": 1, "mutants": ["b31-ast-label_intent-plan-ifexp-5824-5841"]}
+{"file": "scripts/localci/label_intent.py", "cond": "valid", "occ": 1, "mutants": ["b31-ast-label_intent-plan-operand-5836-5841"]}
+{"file": "scripts/localci/label_intent.py", "cond": "not written", "occ": 1, "mutants": ["b31-ast-label_intent-plan-ifexp-5944-5955"]}
+{"file": "scripts/localci/label_intent.py", "cond": "valid", "occ": 2, "mutants": ["b31-ast-label_intent-plan-ifexp-5982-5987"]}
+{"file": "scripts/localci/label_intent.py", "cond": "vrc != 0", "occ": 1, "mutants": ["b31-ast-label_intent-plan-if-6096-6104"]}
+{"file": "scripts/localci/label_intent.py", "cond": "cfg.queue == \"absent\"", "occ": 1, "mutants": ["b31-ast-label_intent-plan-if-6224-6245"]}
+{"file": "scripts/localci/label_intent.py", "cond": "label == \"applied\"", "occ": 1, "mutants": ["b31-ast-label_intent-plan-ifexp-6297-6315"]}
+{"file": "scripts/localci/label_intent.py", "cond": "r.rc != 0", "occ": 1, "mutants": ["b31-ast-label_intent-plan-operand-6377-6386"]}
+{"file": "scripts/localci/label_intent.py", "cond": "r.rc != 0 and not arm_is_benign(r.out)", "occ": 1, "mutants": ["b31-ast-label_intent-plan-boolop-6377-6415"]}
+{"file": "scripts/localci/label_intent.py", "cond": "not arm_is_benign(r.out)", "occ": 1, "mutants": ["b31-ast-label_intent-plan-operand-6391-6415"]}
+{"file": "scripts/localci/label_intent.py", "cond": "failed", "occ": 1, "mutants": ["b31-ast-label_intent-plan-ifexp-6458-6464"]}
+{"file": "scripts/localci/label_intent.py", "cond": "failed", "occ": 2, "mutants": ["b31-ast-label_intent-plan-ifexp-6484-6490"]}
+{"file": "scripts/localci/label_intent.py", "cond": "label == \"applied\"", "occ": 2, "mutants": ["b31-ast-label_intent-plan-ifexp-6502-6520"]}
+{"file": "scripts/localci/label_intent.py", "cond": "OSError", "occ": 1, "mutants": ["b31-ast-label_intent-_run-except-6950-6957"]}
+{"file": "scripts/localci/label_intent.py", "cond": "stdout_only", "occ": 1, "mutants": ["b31-ast-label_intent-_run-ifexp-7046-7057"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_VERIFY\")", "occ": 1, "mutants": ["b31-ast-label_intent-run_act-operand-7218-7249"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_VERIFY\") or \"\"", "occ": 1, "mutants": ["b31-ast-label_intent-run_act-boolop-7218-7255"]}
+{"file": "scripts/localci/label_intent.py", "cond": "verify", "occ": 1, "mutants": ["b31-ast-label_intent-run_act-ifexp-7458-7464"]}
+{"file": "scripts/localci/label_intent.py", "cond": "act.kind == \"view\"", "occ": 1, "mutants": ["b31-ast-label_intent-run_act-compare-7850-7868"]}
+{"file": "scripts/localci/label_intent.py", "cond": "isinstance(step, Act)", "occ": 1, "mutants": ["b31-ast-label_intent-drive-while-7991-8012"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env is None", "occ": 1, "mutants": ["b31-ast-label_intent-main-ifexp-8217-8228"]}
+{"file": "scripts/localci/label_intent.py", "cond": "argv", "occ": 1, "mutants": ["b31-ast-label_intent-main-ifexp-8258-8262"]}
+{"file": "scripts/localci/label_intent.py", "cond": "not (pr.isascii() and pr.isdigit())", "occ": 1, "mutants": ["b31-ast-label_intent-main-if-8278-8313"]}
+{"file": "scripts/localci/label_intent.py", "cond": "pr.isascii()", "occ": 1, "mutants": ["b31-ast-label_intent-main-operand-8283-8295"]}
+{"file": "scripts/localci/label_intent.py", "cond": "pr.isascii() and pr.isdigit()", "occ": 1, "mutants": ["b31-ast-label_intent-main-boolop-8283-8312"]}
+{"file": "scripts/localci/label_intent.py", "cond": "pr.isdigit()", "occ": 1, "mutants": ["b31-ast-label_intent-main-operand-8300-8312"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_REPO\")", "occ": 1, "mutants": ["b31-ast-label_intent-main-operand-8419-8448"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_REPO\") or \"Bali-Zero/Teman2\"", "occ": 1, "mutants": ["b31-ast-label_intent-main-boolop-8419-8470"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_BASE\")", "occ": 1, "mutants": ["b31-ast-label_intent-main-operand-8482-8511"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_BASE\") or \"main\"", "occ": 1, "mutants": ["b31-ast-label_intent-main-boolop-8482-8521"]}
+{"file": "scripts/localci/label_intent.py", "cond": "env.get(\"SIGNAL_INTENT_SHOW_CONFIG\") == \"1\"", "occ": 1, "mutants": ["b31-ast-label_intent-main-if-8568-8611"]}
+{"file": "scripts/localci/label_intent.py", "cond": "out.label == \"failed\"", "occ": 1, "mutants": ["b31-ast-label_intent-main-if-9051-9072"]}
+{"file": "scripts/localci/label_intent.py", "cond": "out.arm == \"failed\"", "occ": 1, "mutants": ["b31-ast-label_intent-main-if-9181-9200"]}
+{"file": "scripts/localci/label_intent.py", "cond": "__name__ == \"__main__\"", "occ": 1, "mutants": ["b31-ast-label_intent-module-if-9481-9503"]}
+{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(mg.PR_QUERY, owner=owner, name=name, number=number).get(\"repository\")", "occ": 1, "mutants": ["b31-ast-label_census-verify-operand-1755-1838"]}
+{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(mg.PR_QUERY, owner=owner, name=name, number=number).get(\"repository\") or {}", "occ": 1, "mutants": ["b31-ast-label_census-verify-boolop-1755-1844"]}
+{"file": "scripts/localci/label_census.py", "cond": "not isinstance(p, dict)", "occ": 1, "mutants": ["b31-ast-label_census-verify-if-1872-1895"]}
+{"file": "scripts/localci/label_census.py", "cond": "isinstance(p, dict)", "occ": 1, "mutants": ["b31-ast-label_census-verify-predicate-call-1876-1895"]}
+{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 1, "mutants": ["b31-ast-label_census-verify-operand-2022-2028"]}
+{"file": "scripts/localci/label_census.py", "cond": "reason and _unreadable(reason)", "occ": 1, "mutants": ["b31-ast-label_census-verify-if-2022-2052"]}
+{"file": "scripts/localci/label_census.py", "cond": "_unreadable(reason)", "occ": 1, "mutants": ["b31-ast-label_census-verify-operand-2033-2052"]}
+{"file": "scripts/localci/label_census.py", "cond": "reason.startswith((f\"{mg.ARM_LABEL} event time or PR head unreadable\", \"check suites of \"))", "occ": 1, "mutants": ["b31-ast-label_census-_unreadable-predicate-call-2373-2464"]}
+{"file": "scripts/localci/label_census.py", "cond": "True", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-while-2576-2580"]}
+{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(CENSUS_QUERY, owner=owner, name=name, **({\"after\": after} if after else {})).get(\"repository\")", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-operand-2599-2707"]}
+{"file": "scripts/localci/label_census.py", "cond": "mg.gh_graphql(CENSUS_QUERY, owner=owner, name=name, **({\"after\": after} if after else {})).get(\"repository\") or {}", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-boolop-2599-2713"]}
+{"file": "scripts/localci/label_census.py", "cond": "after", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-ifexp-2674-2679"]}
+{"file": "scripts/localci/label_census.py", "cond": "not isinstance(page, dict)", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-if-2747-2773"]}
+{"file": "scripts/localci/label_census.py", "cond": "isinstance(page, dict)", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-predicate-call-2751-2773"]}
+{"file": "scripts/localci/label_census.py", "cond": "page.get(\"nodes\")", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-operand-2882-2899"]}
+{"file": "scripts/localci/label_census.py", "cond": "page.get(\"nodes\") or []", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-boolop-2882-2905"]}
+{"file": "scripts/localci/label_census.py", "cond": "isinstance(n, dict)", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-comp-if-2909-2928"]}
+{"file": "scripts/localci/label_census.py", "cond": "page.get(\"pageInfo\")", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-operand-2945-2965"]}
+{"file": "scripts/localci/label_census.py", "cond": "page.get(\"pageInfo\") or {}", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-boolop-2945-2971"]}
+{"file": "scripts/localci/label_census.py", "cond": "not info.get(\"hasNextPage\")", "occ": 1, "mutants": ["b31-ast-label_census-open_prs-if-2983-3010"]}
+{"file": "scripts/localci/label_census.py", "cond": "prs is not None", "occ": 1, "mutants": ["b31-ast-label_census-census-ifexp-3305-3320"]}
+{"file": "scripts/localci/label_census.py", "cond": "mg.ARM_LABEL in {lb.get(\"name\") for lb in (p.get(\"labels\") or {}).get(\"nodes\") or [] if isinstance(lb, dict)}", "occ": 1, "mutants": ["b31-ast-label_census-census-compare-3362-3471"]}
+{"file": "scripts/localci/label_census.py", "cond": "(p.get(\"labels\") or {}).get(\"nodes\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3404-3440"]}
+{"file": "scripts/localci/label_census.py", "cond": "(p.get(\"labels\") or {}).get(\"nodes\") or []", "occ": 1, "mutants": ["b31-ast-label_census-census-boolop-3404-3446"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"labels\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3405-3420"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"labels\") or {}", "occ": 1, "mutants": ["b31-ast-label_census-census-boolop-3405-3426"]}
+{"file": "scripts/localci/label_census.py", "cond": "isinstance(lb, dict)", "occ": 1, "mutants": ["b31-ast-label_census-census-comp-if-3450-3470"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isDraft\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3483-3499"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isDraft\") or not (p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label)", "occ": 1, "mutants": ["b31-ast-label_census-census-if-3483-3574"]}
+{"file": "scripts/localci/label_census.py", "cond": "not (p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label)", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3503-3574"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"autoMergeRequest\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3508-3533"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"autoMergeRequest\") or p.get(\"isInMergeQueue\") or has_label", "occ": 1, "mutants": ["b31-ast-label_census-census-boolop-3508-3573"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isInMergeQueue\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3537-3560"]}
+{"file": "scripts/localci/label_census.py", "cond": "has_label", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3564-3573"]}
+{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 2, "mutants": ["b31-ast-label_census-census-if-3654-3660"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"title\")", "occ": 1, "mutants": ["b31-ast-label_census-census-operand-3719-3733"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"title\") or \"\"", "occ": 1, "mutants": ["b31-ast-label_census-census-boolop-3719-3739"]}
+{"file": "scripts/localci/label_census.py", "cond": "has_label", "occ": 2, "mutants": ["b31-ast-label_census-census-ifexp-3790-3799"]}
+{"file": "scripts/localci/label_census.py", "cond": "p.get(\"isInMergeQueue\")", "occ": 2, "mutants": ["b31-ast-label_census-census-ifexp-3841-3864"]}
+{"file": "scripts/localci/label_census.py", "cond": "a.cmd == \"verify\"", "occ": 1, "mutants": ["b31-ast-label_census-main-if-4465-4482"]}
+{"file": "scripts/localci/label_census.py", "cond": "reason", "occ": 3, "mutants": ["b31-ast-label_census-main-if-4548-4554"]}
+{"file": "scripts/localci/label_census.py", "cond": "a.quiet", "occ": 1, "mutants": ["b31-ast-label_census-main-ifexp-4646-4653"]}
+{"file": "scripts/localci/label_census.py", "cond": "Exception", "occ": 1, "mutants": ["b31-ast-label_census-main-except-4813-4822"]}
+{"file": "scripts/localci/label_census.py", "cond": "a.json", "occ": 1, "mutants": ["b31-ast-label_census-main-if-5018-5024"]}
+{"file": "scripts/localci/label_census.py", "cond": "rows", "occ": 1, "mutants": ["b31-ast-label_census-main-ifexp-5277-5281"]}
+{"file": "scripts/localci/label_census.py", "cond": "__name__ == \"__main__\"", "occ": 1, "mutants": ["b31-ast-label_census-module-if-5294-5316"]}
