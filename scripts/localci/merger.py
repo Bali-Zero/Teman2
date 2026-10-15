@@ -251,6 +251,7 @@ def wants_merge(pr: dict) -> bool:
 
 
 GATE_CONTEXT = "harness/fable-gate"
+REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200   # B28: replay turns a waiting labelled PR may take, and the age of the first, before one replay runs anyway
 PENDING_RETRY_MAX = 3      # B19: pending merges retried in one tick
 PENDING_RETRY_S = 900      # B19: a key is retried at most this often
 PENDING_TTL_S = 86400      # B19: a pending merge older than this (from its decision) is never retried
@@ -1832,6 +1833,19 @@ def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: li
     return False
 
 
+def replay_skips(recs: list[dict]) -> tuple[int, float | None]:
+    """B28: (replay turns deferred since the newest replay decision or ``replay_none`` row, the epoch of the oldest of them)."""
+    n, first = 0, None
+    for r in recs:
+        if (r.get("kind") == "decision" and r.get("replay")) or (r.get("kind") == "skipped" and r.get("why") == "replay_none"):
+            n, first = 0, None
+        elif r.get("kind") == "replay_deferred":
+            n += 1
+            if is_ts(r.get("ts")):
+                first = _epoch(r["ts"]) if first is None else min(first, _epoch(r["ts"]))
+    return n, first
+
+
 def tick(a, state: Path, lease_id: str) -> int:
     repo_dir = ensure_mirror(state, a.remote_url or f"https://github.com/{a.repo}.git", a.seed, push_url_of(a))
     shutil.rmtree(state / "cand", ignore_errors=True)   # a killed tick's leftovers: nothing else uses them while the lease is ours
@@ -1871,8 +1885,19 @@ def tick(a, state: Path, lease_id: str) -> int:
     after_replay = bool(last and last[0].get("replay"))
     # B11: replays and PR decisions alternate — a replay when the previous decision was a PR decision (or there is no PR to decide)
     reason = "alternation: the previous decision was not a replay" if not after_replay else "no pull request to decide" if not todo else None
+    forced = False
+    if (reason and todo and has_arm_label(todo[0]) and os.environ.get(PHASE_F_ENV) != "1"
+            and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28: a waiting labelled PR is decided before a replay (no replay exists before a first PR decision)
+        skipped, first = replay_skips(recs)
+        if skipped >= REPLAY_MAX_SKIP or (first is not None and time.time() - first >= REPLAY_MAX_SKIP_S):
+            reason, forced = f"starvation bound: {skipped} replay turn(s) deferred since the last replay", True
+        else:
+            journal(state, {"kind": "replay_deferred", "reason": "a labelled PR is waiting", "skipped_n": skipped + 1, "pr": todo[0]["number"], "lease_id": lease_id})
+            reason = None
     pick = replay_pending(a, state, repo_dir, recs) if reason else None
     check_watchdog()   # B19-W4: replay_pending swallows broad exceptions too
+    if forced and pick is None:   # the bound's turn found nothing to replay: the count starts again
+        journal(state, {"kind": "skipped", "why": "replay_none", "lease_id": lease_id})
     if pick:
         return decide(a, state, repo_dir, lease_id, pick["pr"], pick["head"], pick["base_sha"], {"merge_commit": pick["merge_commit"], "schedule": reason})
     if not todo:

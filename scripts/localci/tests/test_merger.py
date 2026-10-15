@@ -926,7 +926,7 @@ def test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_v
     world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(2, world.head2, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0 and world.tick() == 0   # #1 decided and enqueued; #2 conflicts with main: no verdict, no criterion
-    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]
+    assert [(r["kind"], r["pr"]) for r in world.journal() if r["kind"] != "replay_deferred"] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]   # B28: a labelled #2 may forfeit the replay turn
     assert world.gql.mutations() == [{"pr": "PR_node_1", "oid": world.head1}]
 
 
