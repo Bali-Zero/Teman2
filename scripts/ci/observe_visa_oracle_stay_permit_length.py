@@ -14,7 +14,8 @@ Vitest files from `apps/mouth` and requires every test in each to pass:
 * engine-adapter.test.ts — a permit length (1-year / 5-year) appears only beside the
   candidate's own AVAILABLE price, the renewal line only for a VERIFIED and allowed
   extension, the longer-stay sentence only inside the pack's renewal coverage, and the
-  signed-pack shapes E28A, E30A, BRIDGING and A1 render no length, renewal or raw code;
+  signed-pack E28A (730) renders its 2-year length and no renewal line; E30A, BRIDGING and A1
+  render no length, renewal or raw code;
 * OutcomeSheet.test.tsx — the sheet and the share summary carry the same wording, EN and ID.
 
 Exit 0 only if Vitest reports each file passed with zero failures and every required
@@ -52,15 +53,23 @@ FILES = (
     ),
     (
         LIB + "engine-adapter.test.ts",
-        100,
+        228,
         (
             "within 2190-day coverage, and advisor line above 2190",
             "for priced Working KITAS (E23)",
             "shows 5-year length for E33 and E33E with no extension sentence",
             "omits permit length for unquoted candidates (E33A, E33B, E33C)",
             "keeps E31 duration-option candidates unchanged",
-            "guilt: signed-pack E28A (730 + 100x365), E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1",
+            "guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and no renewal; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1",
             "maintains non-empty distinct EN/ID parity across all PR-7 stay-permit copy tables",
+        ),
+    ),
+    (
+        COMPONENTS + "OutcomeSheet.duration.test.tsx",
+        1,
+        (
+            "EN: '2-year stay permit', no renewal sentence",
+            "ID: 'Izin tinggal 2 tahun', no renewal sentence",
         ),
     ),
     (

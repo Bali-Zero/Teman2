@@ -347,7 +347,7 @@ const en = {
   "q.investment_vehicle.opt.merit": "Merit, talent, or public contribution",
   "q.investment_vehicle.opt.family": "A family-linked route",
   "q.investment_vehicle.opt.capital_market":
-    "Capital-market investments only, such as listed shares or bonds",
+    "Capital-market investments only: Indonesian government bonds, shares of companies listed in Indonesia, or mutual funds",
   "q.investment_vehicle.opt.undecided": "I have not chosen a basis yet",
   "why.investment_vehicle":
     "Property or a bank deposit points to the Second Home visa. Your choice decides which route we look at and which questions come next.",
@@ -396,7 +396,7 @@ const en = {
   "q.investment_establishes_company":
     "Will you establish a company in Indonesia as part of this investment?",
   "q.investment_establishes_company.hint":
-    "A subsidiary set up in Indonesia, including one of a company abroad, counts as a company. Answer no if the investment does not involve setting up a company in Indonesia.",
+    "A branch or subsidiary set up in Indonesia, including one of a company abroad, counts as a company. Answer no if the investment does not involve setting up a company in Indonesia.",
   "why.investment_establishes_company":
     "Only your yes or no about establishing a company is used here.",
   "q.investment_foreign_branch":
@@ -406,21 +406,21 @@ const en = {
   "why.investment_foreign_branch":
     "Only your yes or no about a branch or subsidiary of a foreign company is used here.",
   "q.investment_ikn_subsidiary":
-    "Will the company you are establishing be a subsidiary located in the new capital, IKN (Ibu Kota Nusantara)?",
+    "Will the branch or subsidiary of a company outside Indonesia that you are establishing be located in the new capital, IKN (Ibu Kota Nusantara)?",
   "q.investment_ikn_subsidiary.hint":
     "Answer no for a company located anywhere else in Indonesia.",
   "why.investment_ikn_subsidiary":
-    "Only your yes or no about a subsidiary in IKN is used here.",
+    "Only your yes or no about a branch or subsidiary in IKN is used here.",
   "q.investment_capital_market_only":
-    "Is your investment held only in capital-market instruments, without establishing a company?",
+    "Is your investment only in Indonesian government bonds, shares of companies listed in Indonesia, or mutual funds, without establishing a company?",
   "q.investment_capital_market_only.hint":
-    "Answer no if any part of the investment is outside the capital market.",
+    "Answer no if any part of the investment is in anything else.",
   "why.investment_capital_market_only":
     "Only your yes or no about a capital-market-only investment is used here.",
   "q.investment_meets_threshold":
-    "Does your investment meet every published financial minimum for the route you chose — the capital amount, and the annual turnover where that route publishes one?",
+    "Can you commit at least the minimum amount the official immigration page sets for the visa you are considering, to be met within 90 days of entering Indonesia?",
   "q.investment_meets_threshold.hint":
-    "If you do not know the published minimum for your route, answer no: the Oracle never assumes it is met.",
+    "If you do not know that minimum, answer no: the Oracle never assumes it is met.",
   "why.investment_meets_threshold":
     "Only your yes or no is used here. No amount is shown or assumed here.",
   "q.unit.idr": "IDR",
@@ -766,7 +766,7 @@ const en = {
   "tree.investment_role": "Company role",
   "tree.investment_establishes_company": "Company in Indonesia",
   "tree.investment_foreign_branch": "Foreign branch or subsidiary",
-  "tree.investment_ikn_subsidiary": "Subsidiary in IKN",
+  "tree.investment_ikn_subsidiary": "Branch or subsidiary in IKN",
   "tree.investment_capital_market_only": "Capital market only",
   "tree.investment_meets_threshold": "Published minimum",
   "tree.family_relation": "Family relationship",
@@ -1403,38 +1403,37 @@ const id: Record<Keys, string> = {
   "q.investment_vehicle.opt.merit": "Prestasi, talenta, atau kontribusi publik",
   "q.investment_vehicle.opt.family": "Jalur terkait keluarga",
   "q.investment_vehicle.opt.capital_market":
-    "Hanya investasi pasar modal, seperti saham tercatat atau obligasi",
+    "Hanya investasi pasar modal: obligasi pemerintah Indonesia, saham perusahaan terbuka di Indonesia, atau reksa dana",
   "q.investment_vehicle.opt.undecided": "Saya belum memilih dasar",
   "why.investment_vehicle":
     "Properti atau deposito bank mengarah ke Visa Rumah Kedua. Pilihan Anda menentukan jalur yang kami periksa dan pertanyaan berikutnya.",
   "q.investment_currency":
-    "Dalam mata uang apa Anda dapat mengomitmenkan jumlah investasi?",
+    "Dalam mata uang apa Anda dapat berkomitmen pada jumlah investasi?",
   "q.investment_currency.hint":
-    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada konversi yang pernah dilakukan antar mata uang.",
+    "Ini hanya menentukan pertanyaan jumlah berikutnya. Tidak ada angka yang dikonversi ke mata uang lain.",
   "q.investment_currency.opt.idr": "Rupiah Indonesia (IDR)",
   "q.investment_currency.opt.usd": "Dolar AS (USD)",
   "q.investment_currency.opt.still_unsure": "Saya belum bisa memastikan",
   "why.investment_currency":
-    "Ini hanya memilih pertanyaan jumlah mana yang mengikuti. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi antar mata uang.",
+    "Ini hanya memilih pertanyaan jumlah yang muncul berikutnya. Ini tidak pernah memilih jalur visa, dan tidak ada angka yang dikonversi ke mata uang lain.",
   "q.investment_pt_pma": "Apakah komitmen PT PMA sudah konkret?",
   "q.investment_pt_pma.hint":
     "Jawab tidak untuk ide, pembicaraan awal, atau rencana tanpa komitmen.",
   "why.investment_pt_pma":
-    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
-  "q.investment_capital_idr":
-    "Berapa modal investasi yang sudah dikomitmenkan?",
+    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang muncul berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
+  "q.investment_capital_idr": "Berapa nilai komitmen modal investasi Anda?",
   "q.investment_capital_idr.hint":
-    "Masukkan jumlah rupiah bulat yang dapat didukung bukti.",
-  "q.investment_capital_idr.label": "Modal investasi yang dikomitmenkan",
+    "Masukkan jumlah rupiah bulat yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_capital_idr.label": "Komitmen modal investasi",
   "why.investment_capital_idr":
-    "Jumlah dipakai persis seperti yang Anda masukkan. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini.",
+    "Jumlah dipakai persis seperti yang Anda masukkan. Tidak ada batas minimum yang ditampilkan atau diasumsikan di sini.",
   "q.investment_amount_usd":
-    "Berapa jumlah investasi yang dikomitmenkan, dalam dolar AS?",
+    "Berapa nilai komitmen investasi Anda, dalam dolar AS?",
   "q.investment_amount_usd.hint":
-    "Masukkan jumlah dolar utuh yang tepat dan dapat Anda dukung dengan bukti.",
-  "q.investment_amount_usd.label": "Jumlah investasi yang dikomitmenkan",
+    "Masukkan jumlah dolar bulat yang tepat dan dapat Anda dukung dengan bukti.",
+  "q.investment_amount_usd.label": "Komitmen investasi",
   "why.investment_amount_usd":
-    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
+    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada batas minimum yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
   "q.investment_paid_up_capital_idr":
     "Berapa modal disetor yang sudah terdokumentasi?",
   "q.investment_paid_up_capital_idr.hint":
@@ -1455,7 +1454,7 @@ const id: Record<Keys, string> = {
   "q.investment_establishes_company":
     "Apakah Anda akan mendirikan perusahaan di Indonesia sebagai bagian dari investasi ini?",
   "q.investment_establishes_company.hint":
-    "Anak perusahaan yang didirikan di Indonesia, termasuk anak perusahaan dari perusahaan di luar negeri, dihitung sebagai perusahaan. Jawab tidak jika investasi ini tidak melibatkan pendirian perusahaan di Indonesia.",
+    "Kantor cabang atau anak perusahaan yang didirikan di Indonesia, termasuk milik perusahaan di luar negeri, dihitung sebagai perusahaan. Jawab tidak jika investasi ini tidak melibatkan pendirian perusahaan di Indonesia.",
   "why.investment_establishes_company":
     "Hanya jawaban ya atau tidak Anda tentang pendirian perusahaan yang dipakai di sini.",
   "q.investment_foreign_branch":
@@ -1465,24 +1464,24 @@ const id: Record<Keys, string> = {
   "why.investment_foreign_branch":
     "Hanya jawaban ya atau tidak Anda tentang kantor cabang atau anak perusahaan dari perusahaan asing yang dipakai di sini.",
   "q.investment_ikn_subsidiary":
-    "Apakah perusahaan yang Anda dirikan merupakan anak perusahaan yang berlokasi di Ibu Kota Nusantara (IKN)?",
+    "Apakah kantor cabang atau anak perusahaan dari perusahaan di luar Indonesia yang Anda dirikan akan berlokasi di Ibu Kota Nusantara (IKN)?",
   "q.investment_ikn_subsidiary.hint":
     "Jawab tidak untuk perusahaan yang berlokasi di tempat lain di Indonesia.",
   "why.investment_ikn_subsidiary":
-    "Hanya jawaban ya atau tidak Anda tentang anak perusahaan di IKN yang dipakai di sini.",
+    "Hanya jawaban ya atau tidak Anda tentang kantor cabang atau anak perusahaan di IKN yang dipakai di sini.",
   "q.investment_capital_market_only":
-    "Apakah investasi Anda hanya ditempatkan pada instrumen pasar modal, tanpa mendirikan perusahaan?",
+    "Apakah investasi Anda hanya ditempatkan pada obligasi pemerintah Indonesia, saham perusahaan terbuka di Indonesia, atau reksa dana, tanpa mendirikan perusahaan?",
   "q.investment_capital_market_only.hint":
-    "Jawab tidak jika ada bagian investasi di luar pasar modal.",
+    "Jawab tidak jika ada bagian investasi pada hal lain.",
   "why.investment_capital_market_only":
     "Hanya jawaban ya atau tidak Anda tentang investasi yang hanya di pasar modal yang dipakai di sini.",
   "q.investment_meets_threshold":
-    "Apakah investasi Anda memenuhi seluruh batas minimum keuangan yang dipublikasikan untuk jalur yang Anda pilih — jumlah modal, dan omzet tahunan jika jalur tersebut mensyaratkannya?",
+    "Dapatkah Anda berkomitmen memenuhi batas minimum yang ditetapkan halaman resmi keimigrasian untuk visa yang Anda pertimbangkan, dalam 90 hari sejak masuk ke Indonesia?",
   "q.investment_meets_threshold.hint":
-    "Jika Anda tidak mengetahui batas minimum yang dipublikasikan untuk jalur Anda, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
+    "Jika Anda tidak mengetahui batas minimum tersebut, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
   "why.investment_meets_threshold":
     "Hanya jawaban ya atau tidak Anda yang dipakai di sini. Tidak ada jumlah yang ditampilkan atau diasumsikan di sini.",
-  "q.unit.idr": "IDR",
+  "q.unit.idr": "Rp",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
   "q.unit.usd_year": "USD per tahun",
@@ -1822,7 +1821,7 @@ const id: Record<Keys, string> = {
   "tree.investment_role": "Peran perusahaan",
   "tree.investment_establishes_company": "Perusahaan di Indonesia",
   "tree.investment_foreign_branch": "Cabang atau anak perusahaan asing",
-  "tree.investment_ikn_subsidiary": "Anak perusahaan di IKN",
+  "tree.investment_ikn_subsidiary": "Kantor cabang atau anak perusahaan di IKN",
   "tree.investment_capital_market_only": "Hanya pasar modal",
   "tree.investment_meets_threshold": "Batas minimum terpublikasi",
   "tree.family_relation": "Hubungan keluarga",
@@ -1867,7 +1866,7 @@ const id: Record<Keys, string> = {
   "confirmation.group.location": "Situasi saat ini",
   "confirmation.group.identity": "Tentang Anda",
   "confirmation.group.intent": "Tujuan Anda",
-  "confirmation.group.details": "Rincian cabang",
+  "confirmation.group.details": "Detail rencana Anda",
   "confirmation.group.review": "Sinyal tinjauan",
   "confirmation.assumptions_title": "Asumsi yang kami buat",
   "confirmation.edit": "Ubah",

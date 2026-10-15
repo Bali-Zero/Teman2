@@ -1495,6 +1495,46 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  // I-M01 (2026-10-15): the four E28 Golden Visa advisor checks added at seq-6
+  // were never emitted by any signed pack. They are tombstones: no pack emits
+  // them, no copy exists, and every other E28 copy key is a code the highest
+  // signed pack really emits (or an explicitly listed retired one).
+  const DEAD_E28_ADVISOR_KEYS = [
+    "E28B_USD_THRESHOLD_ADVISOR_CHECK",
+    "E28C_USD_THRESHOLD_ADVISOR_CHECK",
+    "E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK",
+    "E28F_IKN_THRESHOLD_ADVISOR_CHECK",
+  ] as const;
+
+  it("I-M01: the four dead E28 advisor-check keys are tombstones — in no signed pack, with no copy", () => {
+    const everywhere = reasonCodesOfSignedPacksFrom(0);
+    expect(everywhere.size).toBeGreaterThanOrEqual(2);
+    const emitted = new Set<string>();
+    for (const codes of everywhere.values())
+      codes.forEach((c) => emitted.add(c));
+    // Guard the guard: the walk does see E28 codes (a live one is present).
+    expect(emitted.has("E28B_COMPANY_ESTABLISHMENT_ELIGIBLE")).toBe(true);
+    for (const key of DEAD_E28_ADVISOR_KEYS) {
+      expect(emitted.has(key), `${key} emitted by a signed pack`).toBe(false);
+      expect(key in SUPPORT_REASON_COPY, `${key} has copy`).toBe(false);
+      expect(RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS).toContain(key);
+    }
+  });
+
+  it("I-M01: every E28 key in the copy table is emitted by the highest signed pack or listed as retired; every E28 code the pack emits has copy", () => {
+    const packs = reasonCodesOfSignedPacksFrom(0);
+    const live = packs.get(Math.max(...packs.keys()))!;
+    const liveE28 = [...live].filter((key) => /^E28[A-Z]_/.test(key));
+    expect(liveE28.length).toBeGreaterThanOrEqual(7);
+    expect(liveE28.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
+    const orphans = Object.keys(SUPPORT_REASON_COPY)
+      .filter((key) => /^E28[A-Z]_/.test(key))
+      .filter(
+        (key) => !live.has(key) && !RETIRED_SUPPORT_REASON_KEYS.includes(key),
+      );
+    expect(orphans).toEqual([]);
+  });
+
   /**
    * Walks a rule's `when` tree looking for a `{ op: "lt", fact, value }`
    * node on the named fact, at any nesting depth — same shape as
@@ -1550,6 +1590,7 @@ describe("support reasons are sentences, not machine codes", () => {
 
     const paidCapitalEn = paidCapitalValue!.toLocaleString("en-US");
     const paidCapitalId = paidCapitalValue!.toLocaleString("id-ID");
+    // I-M02: Indonesian writes rupiah as "Rp", never "IDR"; one style per language.
     const totalInvestmentEn = totalInvestmentValue!.toLocaleString("en-US");
     const totalInvestmentId = totalInvestmentValue!.toLocaleString("id-ID");
 
@@ -1557,14 +1598,49 @@ describe("support reasons are sentences, not machine codes", () => {
       `IDR ${paidCapitalEn}`,
     );
     expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).toContain(
-      `IDR ${paidCapitalId}`,
+      `Rp ${paidCapitalId}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).not.toContain(
+      "IDR",
     );
     expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.en).toContain(
       `IDR ${totalInvestmentEn}`,
     );
     expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id).toContain(
-      `IDR ${totalInvestmentId}`,
+      `Rp ${totalInvestmentId}`,
     );
+    expect(
+      SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id,
+    ).not.toContain("IDR");
+  });
+
+  it("I-M02: E28A reason and exclusions write rupiah as 'Rp' in Indonesian, 'IDR' in English, and name the role with the question labels", () => {
+    const support = SUPPORT_REASON_COPY.E28A_INVESTMENT_ELIGIBLE;
+    expect(support.id).toContain("Rp 2,5 miliar");
+    expect(support.id).toContain("Rp 10 miliar");
+    expect(support.id).not.toContain("IDR");
+    expect(support.en).toContain("IDR 2.5 billion");
+    expect(support.en).toContain("IDR 10 billion");
+    for (const key of [
+      "E28A_INVESTMENT_ELIGIBLE",
+      "E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR",
+    ]) {
+      // Guilt: the hyphenated calque; innocence: the question's own labels
+      // ("Pemegang saham dan direktur" / "Pemegang saham dan komisaris").
+      expect(SUPPORT_REASON_COPY[key].id).not.toMatch(/pemegang saham-/i);
+      expect(SUPPORT_REASON_COPY[key].id).toContain(
+        "pemegang saham dan direktur",
+      );
+      expect(SUPPORT_REASON_COPY[key].id).toContain(
+        "pemegang saham dan komisaris",
+      );
+    }
+    for (const key of [
+      "E28A_PAID_CAPITAL_BELOW_MIN",
+      "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+    ]) {
+      expect(SUPPORT_REASON_COPY[key].id).toMatch(/Rp \d{1,3}(\.\d{3})+/);
+    }
   });
 
   describe("RETIREMENT_INCOME_BELOW_THRESHOLD names the figure the rules check", () => {
@@ -1861,18 +1937,19 @@ describe("support reasons are sentences, not machine codes", () => {
     return Number(match[1].replace(/\./g, ""));
   }
 
-  function idrBillionFromProse(copy: string): number {
-    const match = copy.match(/IDR\s+([\d.]+)\s+billion/i);
+  // `nth` picks the nth figure of the sentence (E28A names two: paid-up, then total).
+  function idrBillionFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/IDR\s+([\d.]+)\s+billion/gi)][nth];
     if (!match) {
-      throw new Error(`no "IDR <n> billion" figure found in: ${copy}`);
+      throw new Error(`no "IDR <n> billion" figure #${nth} found in: ${copy}`);
     }
     return Math.round(Number(match[1]) * 1_000_000_000);
   }
 
-  function rpMiliarFromProse(copy: string): number {
-    const match = copy.match(/Rp\s+([\d,]+)\s+miliar/i);
+  function rpMiliarFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/Rp\s+([\d,]+)\s+miliar/gi)][nth];
     if (!match) {
-      throw new Error(`no "Rp <n> miliar" figure found in: ${copy}`);
+      throw new Error(`no "Rp <n> miliar" figure #${nth} found in: ${copy}`);
     }
     return Math.round(Number(match[1].replace(",", ".")) * 1_000_000_000);
   }
@@ -1884,6 +1961,8 @@ describe("support reasons are sentences, not machine codes", () => {
       fact: string;
       readEn: (copy: string) => number;
       readId: (copy: string) => number;
+      /** The copy key when the map key is a suffixed second figure of one sentence. */
+      copyKey?: string;
     }
   > = {
     E28A_INVESTMENT_ELIGIBLE: {
@@ -1891,6 +1970,14 @@ describe("support reasons are sentences, not machine codes", () => {
       fact: "investment.paid_up_capital_idr",
       readEn: idrBillionFromProse,
       readId: rpMiliarFromProse,
+    },
+    // I-M02: the same sentence names the SECOND figure the rule checks.
+    "E28A_INVESTMENT_ELIGIBLE#total_investment": {
+      copyKey: "E28A_INVESTMENT_ELIGIBLE",
+      ruleId: "el.e28a.investment",
+      fact: "investment.investment_capital_idr",
+      readEn: (copy: string) => idrBillionFromProse(copy, 1),
+      readId: (copy: string) => rpMiliarFromProse(copy, 1),
     },
     E33E_RETIREMENT_ELIGIBLE: {
       ruleId: "el.e33e.retirement",
@@ -1916,7 +2003,7 @@ describe("support reasons are sentences, not machine codes", () => {
     // Guard the guard: an empty map would make the loop below vacuously pass.
     expect(Object.keys(FIGURE_BACKED_BY_RULE).length).toBeGreaterThan(0);
     for (const [key, spec] of Object.entries(FIGURE_BACKED_BY_RULE)) {
-      const copy = SUPPORT_REASON_COPY[key];
+      const copy = SUPPORT_REASON_COPY[spec.copyKey ?? key];
       const expected = gteThresholdInPack(spec.ruleId, spec.fact);
       expect(spec.readEn(copy.en)).toBe(expected);
       expect(spec.readId(copy.id)).toBe(expected);
@@ -5307,8 +5394,8 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     },
   );
 
-  it("guilt: signed-pack E28A (730 + 100x365), E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
-    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> duration undefined
+  it("guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and no renewal; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
+    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> the 2-year length (owner ruling 2026-10-15), never the unsourced 365x100 renewal
     const e28a = makePricedResponse("E28A", 20_000_000);
     e28a.display.candidates[0].stay_policy = {
       stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
@@ -5326,7 +5413,16 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     if (e28aOutcome.state !== "SUPPORTED_CANDIDATES") {
       throw new Error("expected SUPPORTED_CANDIDATES");
     }
-    expect(e28aOutcome.candidates[0].duration).toBeUndefined();
+    // Innocence: the length IS shown (E28A is sold as 2 years only) ...
+    expect(e28aOutcome.candidates[0].duration).toEqual({
+      selectedDays: 730,
+      options: [],
+      extensionRequired: false,
+      longerStay: STAY_PERMIT_LONGER_STAY_COPY.verified,
+    });
+    // Guilt: no renewal sentence (STAY_PERMIT_RENEWAL_COPY has no 365:100 key). The
+    // pre-existing longerStay line for a 1000-day plan is NOT cured here (reported).
+    expect(e28aOutcome.candidates[0].duration?.renewal).toBeUndefined();
 
     // E30A signed-pack shape: FIXED_DAYS 365..730, extension UNKNOWN -> duration undefined
     const e30a = makePricedResponse("E30A", 15_000_000);
@@ -5390,12 +5486,7 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     }
     expect(a1Outcome.candidates[0].duration).toBeUndefined();
 
-    for (const outcome of [
-      e28aOutcome,
-      e30aOutcome,
-      bridgingOutcome,
-      a1Outcome,
-    ]) {
+    for (const outcome of [e30aOutcome, bridgingOutcome, a1Outcome]) {
       const candidate = outcome.candidates[0];
       expect(candidate.duration).toBeUndefined();
       expect(JSON.stringify(candidate)).not.toMatch(
@@ -5403,8 +5494,8 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
       );
     }
 
-    // Unmapped fixed day counts (30, 60, 180, 730) -> no length, never raw days
-    for (const days of [30, 60, 180, 730]) {
+    // Unmapped fixed day counts (30, 60, 180) -> no length, never raw days
+    for (const days of [30, 60, 180]) {
       const unmapped = makePricedResponse("C1", 3_250_000);
       unmapped.display.candidates[0].stay_policy = {
         stay: { kind: "FIXED_DAYS", minimum_days: days, maximum_days: days },
@@ -5862,11 +5953,11 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
         },
       },
       {
-        label: "FIXED_DAYS 730/730",
+        label: "FIXED_DAYS 730/1095",
         stay: {
           kind: "FIXED_DAYS" as const,
           minimum_days: 730,
-          maximum_days: 730,
+          maximum_days: 1095,
         },
       },
     ];

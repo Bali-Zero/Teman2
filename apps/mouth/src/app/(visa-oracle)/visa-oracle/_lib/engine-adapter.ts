@@ -394,7 +394,7 @@ export const C2_MAX_STAY_DAYS = 180;
 export const C6_MAX_STAY_DAYS = 180;
 
 /**
- * E33-family reason-copy keys that NO signed pack at or after seq-28 emits
+ * E33-family (and, since I-M01, four E28 Golden Visa) reason-copy keys that NO signed pack at or after seq-28 emits
  * (PR-15 of the 2026-10-11 E33 audit, re-derived from the signed packs
  * themselves at seq-29, never typed from the audit's seq-28 reading).
  * engine-adapter.test.ts fails if a signed pack at seq >= 28 emits one of
@@ -416,6 +416,14 @@ export const RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS: readonly string[] = [
 export const RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS: readonly string[] = [
   "E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK",
   "E33F_AGE_UNDER_55_ADVISOR_CHECK",
+  // E28 Golden Visa advisor checks (I-M01, 2026-10-15): added at seq-6 for four
+  // USD bands the engine had no fact for, but no signed pack has ever emitted
+  // them (older packs used *_MANUAL_CHECK, then the E28B/C/D/F *_ELIGIBLE
+  // codes below). The E28D one also claimed a turnover check no rule makes.
+  "E28B_USD_THRESHOLD_ADVISOR_CHECK",
+  "E28C_USD_THRESHOLD_ADVISOR_CHECK",
+  "E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK",
+  "E28F_IKN_THRESHOLD_ADVISOR_CHECK",
 ];
 export const RETIRED_SUPPORT_REASON_KEYS: readonly string[] = [
   ...RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS,
@@ -444,8 +452,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan rencana total masa tinggal ${C6_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   E28A_INVESTMENT_ELIGIBLE: text(
-    "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more.",
-    "Anda berkomitmen pada PT PMA sebagai pemegang saham-direktur atau pemegang saham-komisaris, dengan modal disetor minimal Rp 2,5 miliar.",
+    "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more and total investment capital of IDR 10 billion or more.",
+    "Anda berkomitmen pada PT PMA sebagai pemegang saham dan direktur atau pemegang saham dan komisaris, dengan modal disetor minimal Rp 2,5 miliar dan total modal investasi minimal Rp 10 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
     `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus income or allowance of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
@@ -616,7 +624,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR: text(
     "Operational work needs this work permit even when you are a shareholder-director or shareholder-commissioner.",
-    "Pekerjaan operasional memerlukan izin kerja ini meskipun Anda pemegang saham-direktur atau pemegang saham-komisaris.",
+    "Pekerjaan operasional memerlukan izin kerja ini meskipun Anda pemegang saham dan direktur atau pemegang saham dan komisaris.",
   ),
   RESTRICTED_TO_DOMESTIC_HELPER: text(
     "This permit covers domestic-helper roles only.",
@@ -687,22 +695,6 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   E33G_INCOME_60K_ADVISOR_CHECK: text(
     "This route has a minimum annual income threshold. We confirm the current figure and your evidence with one of our advisors.",
     "Jalur ini memiliki ambang penghasilan tahunan minimum. Kami memastikan angka terkini dan bukti Anda bersama konsultan kami.",
-  ),
-  E28B_USD_THRESHOLD_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment threshold in USD. A Bali Zero advisor can confirm the current figure and your evidence with you.",
-    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
-  ),
-  E28C_USD_THRESHOLD_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment threshold in USD. A Bali Zero advisor can confirm the current figure, the instrument, and your evidence with you.",
-    "Jalur Golden Visa ini memiliki ambang investasi minimum dalam USD. Konsultan Bali Zero dapat memastikan angka terkini, instrumennya, dan bukti Anda bersama Anda.",
-  ),
-  E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK: text(
-    "This Golden Visa route has a minimum investment and turnover threshold. A Bali Zero advisor can confirm the current figures and your evidence with you.",
-    "Jalur Golden Visa ini memiliki ambang investasi dan omzet minimum. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
-  ),
-  E28F_IKN_THRESHOLD_ADVISOR_CHECK: text(
-    "This IKN route has its own investment threshold. A Bali Zero advisor can confirm the current figure and your evidence with you.",
-    "Jalur IKN ini memiliki ambang investasi tersendiri. Konsultan Bali Zero dapat memastikan angka terkini dan bukti Anda bersama Anda.",
   ),
   // RETIRED (replayable): last emitted by signed seq-7. See RETIRED_SUPPORT_REASON_KEYS.
   E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK: text(
@@ -835,21 +827,27 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You told us you have an invitation letter from an Indonesian central-government agency inviting you as a world figure — the Second Home Golden Visa — World-Figure Government Invitation (E33C). This government-invitation route is handled with a Bali Zero advisor.",
     "Anda menyampaikan bahwa Anda memiliki surat undangan dari instansi pemerintah pusat Indonesia yang mengundang Anda sebagai tokoh dunia — Visa Rumah Kedua Tokoh Dunia Undangan Pemerintah (E33C). Jalur undangan pemerintah ini ditangani bersama konsultan Bali Zero.",
   ),
+  // E28B-F (I-M03, 2026-10-15): each sentence says only what the visitor
+  // declared (the single "can you commit the page's minimum" answer) and what
+  // the official page for that code asks. No US$ figure is named here (the
+  // pack holds none), no turnover claim on E28D (its page has none; turnover
+  // is E28B's audited-financials requirement), and the advisor is offered
+  // ("can"), never promised a check.
   E28B_COMPANY_ESTABLISHMENT_ELIGIBLE: text(
-    "You are establishing a company in Indonesia and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Company Establishment (E28B). A Bali Zero advisor can confirm the amount against the official schedule with you.",
-    "Anda mendirikan perusahaan di Indonesia dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Perusahaan (E28B). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a company in Indonesia and told us you can commit the minimum the official page sets for it — the Investor Golden Visa — Company Establishment (E28B). The minimum for each length of stay is on https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28B, which also asks for audited proof of shareholding in a company outside Indonesia and of that company's turnover. A Bali Zero advisor can go through the amount and these documents with you.",
+    "Anda mendirikan perusahaan di Indonesia dan menyatakan dapat berkomitmen pada batas minimum yang ditetapkan halaman resmi untuk jalur tersebut — Visa Investor Pendirian Perusahaan (E28B). Batas minimum untuk setiap lama tinggal ada di https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28B, yang juga meminta bukti audit kepemilikan saham pada perusahaan di luar Indonesia dan omzet perusahaan tersebut. Konsultan Bali Zero dapat membahas jumlah dan dokumen ini bersama Anda.",
   ),
   E28C_CAPITAL_MARKET_ELIGIBLE: text(
-    "You are investing in capital-market instruments without establishing a company, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — Capital Market (E28C). A Bali Zero advisor can confirm the amount against the official schedule with you.",
-    "Anda berinvestasi pada instrumen pasar modal tanpa mendirikan perusahaan, dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Tanpa Mendirikan Perusahaan (E28C). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are investing only in capital-market instruments, without establishing a company, and told us you can commit the minimum the official page sets for it — the Investor Golden Visa — Capital Market (E28C). The official page names Indonesian government bonds, shares of companies listed in Indonesia, or mutual funds; the minimum for each length of stay is on https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28C. A Bali Zero advisor can go through the amount with you.",
+    "Anda berinvestasi hanya pada instrumen pasar modal, tanpa mendirikan perusahaan, dan menyatakan dapat berkomitmen pada batas minimum yang ditetapkan halaman resmi untuk jalur tersebut — Visa Investor Tanpa Mendirikan Perusahaan (E28C). Halaman resmi menyebut obligasi pemerintah Indonesia, saham perusahaan terbuka di Indonesia, atau reksa dana; batas minimum untuk setiap lama tinggal ada di https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28C. Konsultan Bali Zero dapat membahas jumlahnya bersama Anda.",
   ),
   E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE: text(
-    "You are establishing a branch or subsidiary of a foreign company and declared that it meets the published minimums for that route — the Investor Golden Visa — Branch or Subsidiary (E28D). A Bali Zero advisor can confirm the investment and turnover figures against the official schedule with you.",
-    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan asing dan menyatakan bahwa hal itu memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D). Konsultan Bali Zero dapat mengonfirmasi angka investasi dan omzetnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a branch or subsidiary of a company outside Indonesia and told us you can commit the minimum the official page sets for it — the Investor Golden Visa — Branch or Subsidiary (E28D). The official page asks for the foreign company's investment commitment, to be met within 90 days of your entry; the minimum for each length of stay is on https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28D. A Bali Zero advisor can go through the amount with you.",
+    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan di luar Indonesia dan menyatakan dapat berkomitmen pada batas minimum yang ditetapkan halaman resmi untuk jalur tersebut — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan (E28D). Halaman resmi meminta pernyataan komitmen investasi dari perusahaan asing, yang harus dipenuhi dalam 90 hari sejak tanggal masuk Anda; batas minimum untuk setiap lama tinggal ada di https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28D. Konsultan Bali Zero dapat membahas jumlahnya bersama Anda.",
   ),
   E28F_IKN_SUBSIDIARY_ELIGIBLE: text(
-    "You are establishing a subsidiary in the new capital, IKN, and declared that your investment meets the published minimum for that route — the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F). A Bali Zero advisor can confirm the amount against the official schedule with you.",
-    "Anda mendirikan anak perusahaan di Ibukota Nusantara (IKN) dan menyatakan bahwa investasi Anda memenuhi batas minimum yang dipublikasikan untuk jalur tersebut — Visa Investor Anak Perusahaan Ibukota Nusantara (E28F). Konsultan Bali Zero dapat mengonfirmasi jumlahnya terhadap ketentuan resmi bersama Anda.",
+    "You are establishing a branch or subsidiary of a company outside Indonesia in the new capital, Ibu Kota Nusantara (IKN), and told us you can commit the minimum the official page sets for it — the Investor Golden Visa — New Capital (IKN) Subsidiary (E28F). The official page requires the company to be a branch or subsidiary of a company outside Indonesia, with that company's investment commitment met within 90 days of your entry; the minimum for each length of stay is on https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28F. A Bali Zero advisor can go through the amount with you.",
+    "Anda mendirikan kantor cabang atau anak perusahaan dari perusahaan di luar Indonesia di Ibu Kota Nusantara (IKN) dan menyatakan dapat berkomitmen pada batas minimum yang ditetapkan halaman resmi untuk jalur tersebut — Visa Investor Anak Perusahaan Ibukota Nusantara (E28F). Halaman resmi mensyaratkan perusahaan tersebut berupa cabang atau anak perusahaan dari perusahaan di luar Indonesia, dengan komitmen investasi yang harus dipenuhi dalam 90 hari sejak tanggal masuk Anda; batas minimum untuk setiap lama tinggal ada di https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28F. Konsultan Bali Zero dapat membahas jumlahnya bersama Anda.",
   ),
   // The two EXCLUDE codes that replace the OPERATIONAL sentence on the three
   // dead-end walks that used to render it. Each one names the door that IS
@@ -967,11 +965,11 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
   ),
   E28A_PAID_CAPITAL_BELOW_MIN: text(
     "The Investor Visa (E28A) requires paid-up capital of at least IDR 2,500,000,000, and the figure you gave is below it.",
-    "Visa Investor (E28A) memerlukan modal disetor minimal IDR 2.500.000.000, dan angka yang Anda berikan berada di bawahnya.",
+    "Visa Investor (E28A) memerlukan modal disetor minimal Rp 2.500.000.000, dan angka yang Anda berikan berada di bawahnya.",
   ),
   E28A_TOTAL_INVESTMENT_BELOW_MIN: text(
     "The Investor Visa (E28A) requires total investment capital of at least IDR 10,000,000,000, and the figure you gave is below it.",
-    "Visa Investor (E28A) memerlukan total modal investasi minimal IDR 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",
+    "Visa Investor (E28A) memerlukan total modal investasi minimal Rp 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",
   ),
   E33B_SPONSOR_NOT_GOVERNMENT_OR_NONE: text(
     "The Second Home Golden Visa — Special-Expertise Collaboration (E33B) is applied for without a sponsor, and you named a sponsor for your stay.",
@@ -2424,7 +2422,10 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
-const STAY_PERMIT_LENGTH_DAYS = new Set([365, 1825]);
+// 730 = E28A, sold as a 2-year permit only (owner ruling 2026-10-15). The pack's
+// 365x100 extension for it is unsourced, so no renewal line follows (see
+// STAY_PERMIT_RENEWAL_COPY, keyed by 365:5 alone).
+const STAY_PERMIT_LENGTH_DAYS = new Set([365, 730, 1825]);
 
 export const STAY_PERMIT_RENEWAL_COPY: Readonly<Record<string, LocalizedText>> =
   {

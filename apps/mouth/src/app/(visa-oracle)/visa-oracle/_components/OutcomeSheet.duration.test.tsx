@@ -202,4 +202,45 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
     );
     expect(summary).toMatch(/ · Izin tinggal 1 tahun$/m);
   });
+
+  // F6 (2026-10-15): E28A is a pack FIXED_DAYS 730..730 product with no
+  // duration options; its card names the 2-year permit (sold as 2 years only)
+  // and, because the pack's 365x100 extension is unsourced, says nothing of
+  // renewal.
+  describe("E28A: a fixed 730-day stay_policy names the 2-year permit and no renewal", () => {
+    const e28a = {
+      stay_policy: {
+        stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
+        extension: {
+          status: "VERIFIED",
+          reason_code: null,
+          allowed: true,
+          maximum_extensions: 100,
+          days_per_extension: 365,
+        },
+      },
+    };
+
+    it("EN: '2-year stay permit', no renewal sentence", () => {
+      const text = priceText(e28a);
+      expect(text).toContain("2-year stay permit");
+      expect(text).not.toMatch(/renewable|renewal|Also available/);
+    });
+
+    it("ID: 'Izin tinggal 2 tahun', no renewal sentence", () => {
+      const text = priceText(e28a, "id");
+      expect(text).toContain("Izin tinggal 2 tahun");
+      expect(text).not.toMatch(/diperpanjang|perpanjangan|Pilihan lain/);
+    });
+
+    it("innocence: a 1095-day fixed stay (no mapped length) still shows no permit line", () => {
+      const text = priceText({
+        stay_policy: {
+          ...e28a.stay_policy,
+          stay: { kind: "FIXED_DAYS", minimum_days: 1095, maximum_days: 1095 },
+        },
+      });
+      expect(text).not.toMatch(/stay permit/);
+    });
+  });
 });
