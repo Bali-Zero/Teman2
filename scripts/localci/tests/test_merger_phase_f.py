@@ -475,6 +475,7 @@ def test_b21_main_moved_to_a_third_commit_halts_even_after_a_timeout(fw, monkeyp
 
 
 def test_b21_the_read_back_runs_twice_with_the_deploy_key_ssh_command(fw, monkeypatch):
+    monkeypatch.delenv("GIT_SSH_COMMAND", raising=False)   # a clean process env, so a key leaked into it by the read-back shows
     _push_reports(monkeypatch, lands=False, timeout=True)
     seen = []
     real = mg.git
@@ -487,6 +488,7 @@ def test_b21_the_read_back_runs_twice_with_the_deploy_key_ssh_command(fw, monkey
     fw.tick()
     readbacks = [x for x in seen if x[0][0][-1] == "refs/heads/main" and (x[0][1] or {}).get("GIT_SSH_COMMAND")]
     assert len(readbacks) == 2 and all(r[0][1] == {"GIT_SSH_COMMAND": SSH_COMMAND(fw)} and r[1] == mg.REMOTE_TIMEOUT_S for r in readbacks)
+    assert "GIT_SSH_COMMAND" not in os.environ   # the key rides the child's env only, never the merger's own
 
 
 def _readbacks(monkeypatch, per_call):
