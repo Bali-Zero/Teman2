@@ -1,0 +1,54 @@
+task_id: infra-localci-prune-main-keeper-1014
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI prune, B15 headroom and B22 keeper. The host-pressure threshold is
+  now the start floor plus RUN_HEADROOM_GB (15, from the Pro measurement of
+  2026-10-13: a prune at 104.9 GB free and an eviction 23 min later at 91.48
+  mean one run uses at least 13.4 GB), so second-slot deps images are shed
+  before runs starve. Under pressure the prune used to keep the NEWEST image
+  per recipe, which on 2026-10-14 08:00Z shed main's e2e (25 plans) and mouth
+  (15 plans) images and kept a PR's. B22 K1 v3: main's tag is RECOMPUTED, not
+  inferred. runner.py's pure deps_recipe runs on the mirror at
+  refs/merger/base with the current candidate image id; that image holds
+  slot 1 and is never shed by the cap or by pressure (only the VM floor can
+  take it). Measured on Pro, read-only: at 49e9dbfb810d the recomputed tags
+  match the plans' for 6/6 recipes (e2e 9aa8f63142d1438e, mouth
+  e3039f2abd407ed7, backend 76c8ea4a8e023f9d, codeql 3b7868e3dc7c322b); over
+  the last 150 plans the recompute matches 238/238 replays and 304/318 PR
+  decisions, the 14 differences all from 3 dependency-bump PRs (their own
+  lock changed, as it should).
+acceptance:
+  - text: >-
+      Pressure fires at start floor + headroom, the start floor and the
+      eviction line are unchanged, and the prune row journals pressure_gb.
+    probe: python3 -m pytest -q scripts/localci/tests/test_prune.py -k headroom
+  - text: >-
+      Main's recomputed tag is kept under the cap and under pressure, the
+      PR's newer image goes, and every failure path (no candidate image, no
+      deps block, missing mirror, any exception, one recipe's workflow
+      absent) falls back to today's rule without crashing the prune.
+    probe: python3 -m pytest -q scripts/localci/tests/test_prune.py -k b22
+  - text: >-
+      The extraction of deps_recipe from plan_deps_image is byte-identical,
+      and the tag a build produces is the tag the keeper recomputes.
+    probe: python3 -m pytest -q scripts/localci/tests/test_prune.py -k "recorded_ones or recomputes"
+assumptions:
+  - text: >-
+      The b22 mutants (wrong candidate, stale image id, exception escalates,
+      python prefix lost, digest field dropped, main shed under pressure, cap
+      sheds main, VM floor spares main) are all killed.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '$1 ~ /^b22-/ {print $1}')
+residual:
+  - text: >-
+      L3: the keeper computes only the prefix of the context's OWN job
+      (select_python over that job). A context whose upstream jobs pin a
+      different python builds another image for them; that tag is not
+      recomputed, so such an image falls back to today's rule (the newest
+      holds slot 1). No code planned.
+  - text: >-
+      runner.py or matrix edits that change a Dockerfile template move every
+      digest; the recorded golden digests in test_prune.py then fail on
+      purpose and are re-recorded in the same change.

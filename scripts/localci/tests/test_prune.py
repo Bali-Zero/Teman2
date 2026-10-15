@@ -74,7 +74,7 @@ elif a[:2] == ["buildx", "du"]:   # `du` is the summary text; `du_fails` makes i
 elif a[:2] == ["image", "ls"]:
     print("\n".join([im["tag"] for im in world["images"]] + world.get("others", [])))
 elif a[:2] == ["image", "inspect"] and a[-1] == "localci-candidate:1" and world.get("candidate_id"):   # B22: the sandbox spec the keeper reads
-    print(world["candidate_id"] + "\nPYTHON_VERSION=3.11.9")
+    print(world["candidate_id"] + "\nPYTHON_VERSION=3.11.9\nLOCALCI_PYTHONS=3.12.1=/opt/py312/bin")
 elif a[:2] == ["image", "inspect"]:
     im = next((i for i in world["images"] if i["tag"] == a[-1]), None)
     if im is None:
@@ -1142,7 +1142,8 @@ def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 
 
 
 # ------------------------------------------------------------------ B22 K1 v3: main's tag is recomputed from main's tree
-WORKFLOW = "jobs:\n  e2e: {steps: []}\n  mouth: {steps: []}\n"
+WORKFLOW = "jobs:\n  e2e: {steps: []}\n  mouth: {steps: [{uses: actions/setup-python@v5, with: {python-version: '3.12'}}]}\n"   # mouth's interpreter is the image's extra
+PREFIX = {"frontend-tests-mouth": "/opt/py312/bin"}   # select_python: 3.12 is not the default 3.11.9, it is LOCALCI_PYTHONS' 3.12.1
 MATRIX_YAML = """
 contexts:
   - workflow_file: .github/workflows/t.yml
@@ -1181,8 +1182,8 @@ class Mirror:
             self.git("update-ref", "refs/merger/base", sha)
         return sha
 
-    def tag(self, recipe: str, ref: str = "refs/merger/base", image_id: str = CAND_ID, prefix: str = "") -> str:   # what the runner would build for `ref`
-        info, why = runner.deps_recipe(self.dir, self.git("rev-parse", ref), {"image_id": image_id}, DEPS[recipe], prefix)
+    def tag(self, recipe: str, ref: str = "refs/merger/base", image_id: str = CAND_ID, prefix: str | None = None) -> str:   # what the runner would build for `ref`
+        info, why = runner.deps_recipe(self.dir, self.git("rev-parse", ref), {"image_id": image_id}, DEPS[recipe], PREFIX.get(recipe, "") if prefix is None else prefix)
         assert info, why
         return "localci-deps:" + info["digest"][:16]
 
@@ -1321,6 +1322,21 @@ def test_b22_the_tag_the_build_produces_is_the_tag_the_keeper_recomputes(tmp_pat
     run = tmp_path / "run"
     (run / "logs").mkdir(parents=True)
     for recipe in (E2E, MOUTH):
-        runner.plan_deps_image(m.dir, m.git("rev-parse", "HEAD"), {"image_id": CAND_ID, "docker": str(fake)}, DEPS[recipe], "", run, recipe)   # the verdict is not the point: the build's -t is
+        runner.plan_deps_image(m.dir, m.git("rev-parse", "HEAD"), {"image_id": CAND_ID, "docker": str(fake)}, DEPS[recipe], PREFIX.get(recipe, ""), run, recipe)   # the verdict is not the point: the build's -t is
         built = [ln.split("-t ")[1].split()[0] for ln in log.read_text().splitlines() if ln.startswith("build ")]
         assert built[-1] == m.tag(recipe)
+
+
+# ------------------------------------------------------------------ B22 gap tests (own block)
+def test_b22_a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    m.commit({"scripts/localci/contexts_matrix.yaml": MATRIX_YAML.replace("workflow_file: .github/workflows/t.yml\n    job_id: mouth", "workflow_file: .github/workflows/gone.yml\n    job_id: mouth")}, "mouth's workflow gone")
+    line = prune_line(state, docker)
+    assert line["main_tags"][MOUTH] is None and "TypeError" in line["main_evidence"][MOUTH]["reason"]
+    assert line["main_tags"][E2E] == imgs[E2E][0]["tag"] and imgs[E2E][0]["tag"] not in _removed(line)
+
+
+def test_b22_the_python_prefix_of_the_job_is_part_of_the_recomputed_tag(tmp_path, monkeypatch):
+    state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
+    assert m.tag(MOUTH, prefix="/opt/py312/bin") != m.tag(MOUTH, prefix="")   # the digest depends on it
+    assert prune_line(state, docker)["main_tags"][MOUTH] == imgs[MOUTH][0]["tag"]

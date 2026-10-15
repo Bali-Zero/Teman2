@@ -43,7 +43,8 @@ K = lambda *names: tuple(f"{PRUNE_T}::test_b22_{n}" for n in names)  # noqa: E73
 B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "the_cap_rule_does_not_shed_main_without_pressure",
         "main_is_judged_at_base_not_at_a_pr_head", "a_new_candidate_image_id_moves_the_tag_and_the_old_image_is_no_longer_main",
         "no_candidate_image_means_unknown_and_todays_rule", "an_exception_in_the_keeper_is_unknown_never_a_crash",
-        "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones")
+        "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones",
+        "a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown", "the_python_prefix_of_the_job_is_part_of_the_recomputed_tag")
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -387,6 +388,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b22-candidate-image-unchecked": (PRUNE, 'if insp.returncode != 0 or not lines or not lines[0].startswith("sha256:"):', "if False:", B22),
     "b22-digest-field-dropped-fetch": (RUN_PY, '"packages": pkgs, "fetch": fetch, "node": node,', '"packages": pkgs, "node": node,', B22),
     "b22-digest-field-dropped-python": (RUN_PY, 'recipe = {"base": iso["image_id"], "python": py, "requirements"', 'recipe = {"base": iso["image_id"], "requirements"', B22),
+    "b22-recipe-error-escalates": (PRUNE, "except Exception as exc:  # noqa: BLE001 — one recipe", "except KeyError as exc:  # noqa: BLE001 — one recipe", B22),
+    "b22-python-prefix-lost": (PRUNE, "runner.select_python(job, iso.get(\"python_version\"), iso.get(\"pythons\") or {})", "runner.select_python(job, None, {})", B22),
     "b22-main-shed-under-pressure": (PRUNE, "named, main)", "named, frozenset())", B22),
     "b22-cap-rule-sheds-main": (PRUNE, "        if mains:\n            top = max(", "        if False:\n            top = max(", B22),
     "b22-vm-floor-spares-main": (PRUNE, 'for im in sorted((d for d in decided if not d["remove"] and not d["live"] and not never(d["tag"], keep)),\n                         key=shed_order):\n            if rec["vm_free_gb"]',
