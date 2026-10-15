@@ -8,6 +8,12 @@
       "_note": "launchd organ pro.localci_merger (com.balizero.localci-merger): the LOCALCI-SOVEREIGN shadow merger tick; the plist runs this copy, which runs merger.py from origin/main."
     },
     {
+      "live": "~/.nuzantara-cron/localci_shepherd_tick.sh",
+      "repo": "scripts/localci/localci_shepherd_tick.sh",
+      "machines": ["pro"],
+      "_note": "launchd organ pro.localci_shepherd (com.balizero.localci-shepherd): the LOCALCI-SOVEREIGN B34 PR shepherd tick (observe only); the plist runs this copy, which runs shepherd.py from origin/main."
+    },
+    {
       "live": "~/.nuzantara-cron/pro_disk_floor_tick.sh",
       "repo": "scripts/ops/pro_disk_floor_tick.sh",
       "machines": ["pro"],

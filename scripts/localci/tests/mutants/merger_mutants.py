@@ -1052,6 +1052,30 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b28-age-from-the-newest-deferral": (PY, "else min(first, _epoch", "else max(first, _epoch", (PF,)),
     "b28-skip-bound-60": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 60, 43200", (PF,)),
     "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
+    # B34 P1: the shepherd's budget floors, call cap, fork predicate and off-limits entities, against test_shepherd.py
+    "b34-skip-floor-inclusive": ("scripts/localci/shepherd.py", "if core < CORE_SKIP or", "if core <= CORE_SKIP or", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-graphql-floor-inclusive": ("scripts/localci/shepherd.py", "or graphql < GQL_SKIP:", "or graphql <= GQL_SKIP:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-observe-floor-inclusive": ("scripts/localci/shepherd.py", "if core < CORE_OBSERVE:", "if core <= CORE_OBSERVE:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-cap-check-dropped": ("scripts/localci/shepherd.py", "if self.used + n > self.cap:", "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-cap-off-by-one": ("scripts/localci/shepherd.py", "if self.used + n > self.cap:", "if self.used + n >= self.cap:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-fork-predicate-dropped": ("scripts/localci/shepherd.py", 'if pr.get("isCrossRepository"):', "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-env-substring": ("scripts/localci/shepherd.py", "base.startswith(OFF_LIMITS_ENV_PREFIX)", '"env" in path', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-fly-toml-top-level-only": ("scripts/localci/shepherd.py", "base in OFF_LIMITS_BASENAMES", "path in OFF_LIMITS_BASENAMES", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-lease-ignored": ("scripts/localci/shepherd.py", "if fh is None:", "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-ratelimit-error-acts": ('scripts/localci/shepherd.py', '        res = get("rate_limit").get("resources") or {}\n', '        try:\n            res = get("rate_limit").get("resources") or {}\n        except Exception:\n            res = {"core": {"remaining": 5000}, "graphql": {"remaining": 5000}}\n', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-ratelimit-missing-acts": ('scripts/localci/shepherd.py', '.get("remaining") for k in ("core", "graphql"))', '.get("remaining", 5000) for k in ("core", "graphql"))', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-state-is-the-mergers": ('scripts/localci/shepherd.py', '"local-ci" / "shepherd"', '"local-ci" / "merger"', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-state-is-the-mergers": ('scripts/localci/localci_shepherd_tick.sh', 'local-ci/shepherd}', 'local-ci/merger}', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-warning-reads-ok": ('scripts/localci/localci_shepherd_tick.sh', 'elif [ "$STATUS" = "warning" ]; then', 'elif false; then', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-killswitch-silent": ('scripts/localci/localci_shepherd_tick.sh', '  heartbeat disabled "kill switch LOCALCI_SHEPHERD_ENABLED=false"\n', '', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-full-clone": ('scripts/localci/localci_shepherd_tick.sh', 'git clone --bare --shared --quiet', 'git clone --bare --quiet', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-env-dot-substring": ('scripts/localci/shepherd.py', 'base.startswith(OFF_LIMITS_ENV_PREFIX)', 'OFF_LIMITS_ENV_PREFIX in path', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-write-via-merger": ('scripts/localci/shepherd.py', '\n\ndef main(argv', '\n\ndef _w(a, state, rec, loc, live):\n    return mg.enqueue_step(a, state, rec, loc, live)\n\n\ndef main(argv', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-write-verb-assembled": ('scripts/localci/shepherd.py', '\n\ndef main(argv', '\n\n_Q = "mut" + "ation{addLabelsToLabelable(input:{}){clientMutationId}}"\n\n\ndef main(argv', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-journal-armed-true": ('scripts/localci/shepherd.py', '"armed": False', '"armed": True', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-brief-truncation-ignored": ('scripts/localci/shepherd.py', '        return None   # a truncated file list', '        pass   # a truncated file list', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-files-truncation-ignored": ('scripts/localci/shepherd.py', 'if (files.get("totalCount") or 0) > len(files.get("nodes") or []):\n        return {**row, "action": "never_auto"', 'if False:\n        return {**row, "action": "never_auto"', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-role-failure-retried": ('scripts/localci/shepherd.py', '            roles[login] = None\n            continue\n', '            continue\n', ('scripts/localci/tests/test_shepherd.py',)),
 }
 
 
@@ -1066,7 +1090,8 @@ def copy_tree(dest: Path) -> None:
     for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
-    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
+    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json",
+                "infra/launchagents/com.balizero.localci-shepherd.plist", "docs/rules/RULINGS.md"):   # B34: test_shepherd.py reads the last two
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
         shutil.copy2(ROOT / rel, dest / rel)
 
