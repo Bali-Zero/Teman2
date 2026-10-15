@@ -1026,7 +1026,7 @@ ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
             " id number state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
-            " reviewDecision latestOpinionatedReviews(first: 100) { totalCount nodes { state } }"
+            " reviewDecision latestOpinionatedReviews(first: 100, writersOnly: true) { totalCount nodes { state } }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
 
@@ -1100,8 +1100,9 @@ REVIEW_STATES = ("APPROVED", "CHANGES_REQUESTED", "DISMISSED", "COMMENTED", "PEN
 
 def review_block(p: dict) -> str | None:
     """B29: None when GitHub's view of the PR holds no changes-requested review, else the reason. ``reviewDecision`` can read null once no
-    review is required (the flip deletes the requirement), so the reviewers' own latest opinionated reviews are read as well: a later
-    APPROVED or DISMISSED review of the same reviewer is what GitHub then reports in place of the earlier one. Anything unreadable blocks."""
+    review is required (the flip deletes the requirement), so the latest opinionated reviews of reviewers with write access are read as
+    well (``writersOnly``: the repo is public, and a review from any other account must not be able to stall a PR). GitHub lists no
+    dismissed review: a later APPROVED review of the same reviewer replaces the earlier one, a COMMENTED one does not. Anything unreadable blocks."""
     if not isinstance(p, dict) or "reviewDecision" not in p:
         return "the review decision is unreadable"
     decision, latest = p["reviewDecision"], p.get("latestOpinionatedReviews")

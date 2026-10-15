@@ -18,7 +18,8 @@ def test_innocence_no_review_an_approval_a_dismissal_or_a_comment_do_not_block(p
 
 
 @pytest.mark.parametrize("p", [pull("CHANGES_REQUESTED"), pull(None, "CHANGES_REQUESTED"), pull("APPROVED", "APPROVED", "CHANGES_REQUESTED"),
-                               pull("CHANGES_REQUESTED", "CHANGES_REQUESTED", "CHANGES_REQUESTED")], ids=range(4))
+                               pull("CHANGES_REQUESTED", "CHANGES_REQUESTED", "CHANGES_REQUESTED"),
+                               pull(None, "DISMISSED", "CHANGES_REQUESTED")], ids=range(5))
 def test_guilt_a_changes_requested_review_blocks_by_the_decision_or_by_one_reviewer_alone(p):
     assert "requests changes" in mg.review_block(p)
 
@@ -43,5 +44,13 @@ def test_a_row_journalled_before_the_term_existed_is_not_mergeable():
     assert measure([old])["mergeable_rows"] == 0
 
 
-def test_the_query_asks_for_the_decision_and_every_reviewers_latest_opinionated_review():
-    assert "reviewDecision" in mg.PR_QUERY and "latestOpinionatedReviews(first: 100) { totalCount nodes { state } }" in mg.PR_QUERY
+def test_the_query_asks_for_the_decision_and_every_writers_latest_opinionated_review():
+    assert "reviewDecision" in mg.PR_QUERY and "latestOpinionatedReviews(first: 100, writersOnly: true) { totalCount nodes { state } }" in mg.PR_QUERY
+
+
+def test_innocence_a_non_writers_changes_request_is_absent_from_the_writers_only_list_and_does_not_block():
+    assert mg.review_block(pull(None, "APPROVED")) is None and mg.review_block(pull(None)) is None
+
+
+def test_guilt_a_writers_changes_request_blocks_even_beside_an_approval():
+    assert "requests changes" in mg.review_block(pull(None, "APPROVED", "CHANGES_REQUESTED"))
