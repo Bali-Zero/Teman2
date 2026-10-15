@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import signal
 import threading
 from pathlib import Path
 
@@ -213,7 +214,14 @@ def test_a_context_with_no_numbers_prints_dashes(tmp_path, capsys):
 
 
 # ------------------------------------------------------------------ the gate's findings: cleanup, clock, timeouts, zero samples
-def test_a_signal_during_the_layer_read_still_removes_the_container(world, monkeypatch):
+@pytest.fixture
+def sigint_raises():
+    old = signal.signal(signal.SIGINT, signal.default_int_handler)   # a background launch (nohup, &) leaves SIGINT ignored
+    yield
+    signal.signal(signal.SIGINT, old)
+
+
+def test_a_signal_during_the_layer_read_still_removes_the_container(world, monkeypatch, sigint_raises):
     monkeypatch.setenv("FAKE_PS_SIGNAL", "1")   # SIGINT to the runner while `docker ps -s` runs: cmd_run turns SIGTERM into this
     with pytest.raises(KeyboardInterrupt):
         world()
