@@ -50,10 +50,17 @@ def mirror(path, workflow=WORKFLOW) -> tuple:
 
 class Hub:
     """GET actions/jobs/{id} and check-runs/{id}/annotations for one cancelled check run."""
-    def __init__(self, sha, steps=HUNG, annotations=(TIMEOUT,), rid=11, wname="Tests", jname=NAME):
+    def __init__(self, sha, steps=HUNG, annotations=(TIMEOUT,), rid=11, wname="Tests", jname=NAME, attempts=None):
         self.sha, self.steps, self.annotations, self.rid, self.wname, self.jname = sha, steps, annotations, rid, wname, jname
+        self.attempts = attempts   # the context's every attempt (filter=all); by default the one cancelled run
+        self.paths = []
 
     def __call__(self, path):
+        self.paths.append(path)
+        if "filter=all" in path:
+            return {"check_runs": self.attempts if self.attempts is not None else [
+                {"id": self.rid, "name": self.jname, "status": "completed", "conclusion": "cancelled", "completed_at": "2026-10-14T18:50:08Z",
+                 "app": {"id": APP, "slug": "github-actions"}, "head_sha": self.sha}]}
         if "/annotations" in path:
             return [{"annotation_level": "failure", "message": m} for m in self.annotations]
         if f"/actions/jobs/{self.rid}" in path:
@@ -310,16 +317,17 @@ def test_an_unreadable_workflow_keeps_both_false_greens(tmp_path, monkeypatch):
     assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["recorded_context_false_green"] == 1 and rep["hosted_aborted"]["count"] == 0
 
 
-def test_a_recorded_row_whose_reds_are_not_all_cancelled_runs_still_listed_is_kept(tmp_path, monkeypatch):
+def test_a_recorded_row_is_cleared_only_by_the_contexts_whole_history(tmp_path, monkeypatch):
     path, sha = mirror(tmp_path / "repo.git")
-    monkeypatch.setattr(hc, "gh_get", AbortGH({}, {}, Hub(sha), [check_run(11, NAME, "cancelled")]))
+    monkeypatch.setattr(hc, "gh_get", Hub(sha))
     j = mg.AbortJudge(REPO, path, {})
-    a = type("A", (), {"repo": REPO})
     row = {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]}
-    assert mg.recorded_abort(a, j, sha, row)["aborted"] is True
-    assert mg.recorded_abort(a, j, sha, {**row, "hosted_red": [{"id": 11, "conclusion": "failure"}]}) == {}
-    assert mg.recorded_abort(a, j, sha, {**row, "hosted_red": None}) == {}
-    assert "no longer listed cancelled" in mg.recorded_abort(a, j, sha, {**row, "hosted_red": [{"id": 99, "conclusion": "cancelled"}]})["abort_check"]
+    clear = lambda r, runs: mg.recorded_clearance(j, j, lambda: runs, r)
+    hung = check_run(11, NAME, "cancelled")
+    assert clear(row, [hung])["stale_why"] == "hosted_aborted"
+    assert clear({**row, "hosted_red": [{"id": 11, "conclusion": "failure"}]}, [hung]) == {}
+    assert clear({**row, "hosted_red": None}, [hung]) == {}
+    assert clear({**row, "hosted_red": [{"id": 99, "conclusion": "cancelled"}]}, [hung]) == {}   # the run the tick recorded is not in the history
 
 
 def test_one_red_context_that_is_not_an_abort_keeps_the_pr_level_false_green(tmp_path, monkeypatch):
@@ -364,3 +372,50 @@ def test_a_memo_served_row_classifies_exactly_like_the_live_one(tmp_path, monkey
     assert served_memo.hits > 0 and not [p for p in gh.paths if "/pulls/" in p]   # the pull came from the memo
     for key in ("counts", "context_counts", "hosted_aborted", "false_green_breakdown", "recorded_context_false_green", "phase_e_ready"):
         assert served[key] == live[key], key
+
+
+FAILED_ATTEMPT = {**check_run(10, NAME, "failure", "2026-10-14T18:20:00Z"), "head_sha": None}
+
+
+def test_f2_a_failed_attempt_hidden_by_a_hung_re_run_is_not_laundered_live_or_recorded(tmp_path, monkeypatch):
+    path, sha = mirror(tmp_path / "repo.git")
+    hub = Hub(sha, attempts=[FAILED_ATTEMPT, check_run(11, NAME, "cancelled")])
+    monkeypatch.setattr(hc, "gh_get", hub)
+    j = mg.AbortJudge(REPO, path, {})
+    (row,) = compare_one(j)["rows"]   # the default listing shows only attempt 2, the hang
+    assert row["class"] == "FALSE_GREEN" and row["abort_check"].startswith("fresh")
+    rec = {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]}
+    assert mg.recorded_clearance(j, j, lambda: hub.attempts, rec) == {}
+    hub.attempts = [check_run(11, NAME, "cancelled")]   # innocence: with no failed attempt it is the abort (a fresh judge: the history is cached per report)
+    assert compare_one(mg.AbortJudge(REPO, path, {}))["rows"][0]["class"] == "HOSTED_ABORTED"
+
+
+def test_f2_a_non_cancel_red_of_any_kind_keeps_the_context_red_over_its_history(tmp_path, monkeypatch):
+    path, sha = mirror(tmp_path / "repo.git")
+    for concl in ("failure", "timed_out", "action_required", "startup_failure", "stale"):
+        hub = Hub(sha, attempts=[{**FAILED_ATTEMPT, "conclusion": concl}, check_run(11, NAME, "cancelled")])
+        monkeypatch.setattr(hc, "gh_get", hub)
+        assert compare_one(mg.AbortJudge(REPO, path, {}))["rows"][0]["class"] == "FALSE_GREEN", concl
+
+
+def test_h1_the_history_is_read_once_per_sha_and_context_and_shared_across_paths(tmp_path, monkeypatch):
+    path, sha = mirror(tmp_path / "repo.git")
+    hub = Hub(sha)
+    monkeypatch.setattr(hc, "gh_get", hub)
+    j = mg.AbortJudge(REPO, path, {})
+    compare_one(j)
+    mg.recorded_clearance(j, j, lambda: j.attempts(sha, NAME), {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]})
+    assert len([p for p in hub.paths if "filter=all" in p]) == 1
+
+
+def test_h5_the_call_site_does_not_reread_a_row_with_per_entry_data(tmp_path, monkeypatch):
+    d, gh = incident(tmp_path, monkeypatch, WORKFLOW.replace("Backend Tests (Python)", CTX[0]))   # the workflow is unreadable-by-mapping: the abort cannot clear
+    gh.attempts = [FAILED_ATTEMPT_FOR(CTX[0]), {**check_run(11, CTX[0], "cancelled"), "app": {"id": APP}}]
+    gh.hub.attempts = gh.attempts
+    monkeypatch.setattr(mg, "reclassify_by_reread", lambda *a, **k: pytest.fail("a row with per-entry data was reread"))
+    rc, rep = run_report(tmp_path, monkeypatch, [d], gh)
+    assert rep["recorded_context_false_green"] == 1
+
+
+def FAILED_ATTEMPT_FOR(name):
+    return {**FAILED_ATTEMPT, "name": name, "app": {"id": APP}}

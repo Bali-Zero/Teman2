@@ -72,7 +72,8 @@ def _row(count=1, **kw):
 OTHER_OK = {**_run(9, "success", "2026-10-10T15:00:00Z"), "name": "other"}
 
 
-def test_a_row_without_entry_data_is_reclassified_when_the_reread_shows_cancelled_then_success():
+def test_a_row_without_entry_data_is_reclassified_when_the_reread_shows_cancelled_then_success(monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H(LIVE["check_runs"]))
     lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
     (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
     assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
@@ -139,7 +140,7 @@ TIMEOUT = "The job has exceeded the maximum execution time of 15m0s"
 class _H:
     """GET fake: the failure annotations of a check run, and the context's every attempt (``filter=all``)."""
     def __init__(self, attempts=(), notes=None):
-        self.attempts, self.notes, self.paths = list(attempts), notes or {}, []
+        self.attempts, self.notes, self.paths = (attempts if isinstance(attempts, dict) else list(attempts)), notes or {}, []
 
     def __call__(self, path):
         self.paths.append(path)
@@ -147,6 +148,9 @@ class _H:
             rid = int(path.split("/check-runs/")[1].split("/")[0])
             return [{"annotation_level": "failure", "message": m} for m in self.notes.get(rid, [])]
         if "filter=all" in path:
+            if isinstance(self.attempts, dict):
+                from urllib.parse import unquote
+                return {"check_runs": self.attempts.get(unquote(path.split("check_name=")[1].split("&")[0]), [])}
             return {"check_runs": self.attempts}
         raise AssertionError(path)
 
@@ -203,3 +207,54 @@ def test_a_row_without_entry_data_is_cleared_by_the_full_history_when_the_listin
     lives = {(SHA, None): _live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK)}   # the default listing shows only the re-run
     (x,) = mg.reclassify_by_reread(_A, _row(), lives, 1)
     assert (x["context"], x["stale_why"], x["superseded_cancelled"]) == (CTX, "cancelled_superseded", [1])
+
+
+# ------------------------------------------------------------------ H: the context's whole history decides, in every path that clears a red
+X, Y = CTX, "other"
+FAIL_THEN_GREEN = [_run(7, "failure", "2026-10-10T15:20:00Z"), _run(8, "success", "2026-10-10T15:40:00Z")]
+CANCEL_THEN_GREEN = [{**_run(1, "cancelled", "2026-10-10T15:29:12Z"), "name": Y}, {**_run(2, "success", "2026-10-10T15:31:00Z"), "name": Y}]
+LATEST = [_run(8, "success", "2026-10-10T15:40:00Z"), {**_run(2, "success", "2026-10-10T15:31:00Z"), "name": Y}]   # filter=latest hides both attempts one
+
+
+def test_f1_a_failed_attempt_re_run_green_is_stuck_so_another_contexts_hidden_cancel_cannot_make_the_count(monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H({X: FAIL_THEN_GREEN, Y: CANCEL_THEN_GREEN}, {7: ["Process completed with exit code 1."], 1: ["Canceling since a higher priority waiting request exists"]}))
+    d = {"pr": 8514, "head_sha": "d" * 40, "contexts": {X: "OK", Y: "OK"}, "hosted_compare": {"sha": SHA, "counts": {"FALSE_GREEN": 1}}}
+    assert mg.reclassify_by_reread(_A, d, {(SHA, None): _live(*LATEST)}, 1) == []
+    monkeypatch.setattr(mg.hc, "gh_get", _H({X: [_run(8, "success", "2026-10-10T15:40:00Z")], Y: CANCEL_THEN_GREEN}, {1: ["Canceling since a higher priority waiting request exists"]}))
+    (x,) = mg.reclassify_by_reread(_A, d, {(SHA, None): _live(*LATEST)}, 1)   # innocence: with no failed attempt the hidden concurrency cancel is the one flipped
+    assert (x["context"], x["stale_why"]) == (Y, "cancelled_superseded")
+
+
+def test_f1_the_call_site_never_rereads_a_row_that_journals_per_entry_data(tmp_path):
+    (tmp_path / "hosted_compare.json").write_text(json.dumps({"rows": [{"context": X, "class": "FALSE_GREEN", "hosted_red": RED1}]}))
+    assert mg.recorded_has_entries({"run_dir": str(tmp_path)}) is True
+    (tmp_path / "hosted_compare.json").write_text(json.dumps({"rows": [{"context": X, "class": "FALSE_GREEN"}]}))
+    assert mg.recorded_has_entries({"run_dir": str(tmp_path)}) is False
+    assert mg.recorded_has_entries({"run_dir": str(tmp_path / "missing")}) is False
+
+
+def test_f3_the_replay_path_never_drops_a_timeout_cancel(tmp_path, monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H(notes={1: [TIMEOUT]}))
+    got, _ = mg.reclassify_replay_superseded(_d(tmp_path, RED1), LIVE)
+    assert got == []
+    monkeypatch.setattr(mg.hc, "gh_get", _H())   # innocence: the same replay with a concurrency cancel is reclassified
+    got, _ = mg.reclassify_replay_superseded(_d(tmp_path, RED1), LIVE)
+    assert [x["stale_why"] for x in got] == ["cancelled_superseded"]
+
+
+def test_f3_the_replay_path_reads_the_whole_history_of_the_judged_sha(tmp_path, monkeypatch):
+    hub = _H([_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(3, "failure", "2026-10-10T15:30:00Z"), _run(2, "success", "2026-10-10T15:31:00Z")])
+    monkeypatch.setattr(mg.hc, "gh_get", hub)
+    got, _ = mg.reclassify_replay_superseded(_d(tmp_path, RED1), LIVE, mg.HostedReads("o/r"), SHA)
+    assert got == [] and any("filter=all" in p for p in hub.paths)
+
+
+def test_h3_every_cancelled_attempt_must_qualify_one_answered_red_is_not_enough(tmp_path, monkeypatch):
+    attempts = [_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "success", "2026-10-10T15:31:00Z"), _run(3, "cancelled", "2026-10-10T15:35:00Z")]
+    reads = mg.HostedReads("o/r")
+    monkeypatch.setattr(mg.hc, "gh_get", _H(attempts))
+    red = [{"id": 1, "conclusion": "cancelled", "completed_at": "x"}, {"id": 3, "conclusion": "cancelled", "completed_at": "y"}]
+    row = {"context": CTX, "hosted_red": red}
+    assert mg.recorded_clearance(reads, None, lambda: attempts, row) == {}   # attempt 3 came after the only green: nothing answers it
+    assert mg.recorded_clearance(reads, None, lambda: attempts[:2], {"context": CTX, "hosted_red": red[:1]})["stale_why"] == "cancelled_superseded"
+    assert mg.recorded_clearance(reads, None, lambda: attempts, {"context": CTX, "hosted_red": red[:1]}) == {}   # the unanswered attempt 3 stands even if the row never named it
