@@ -53,11 +53,12 @@ def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
     assert dated[0].startswith("- 2026-10-15 (M5")
-    assert "ledger wave 5 — the E33 family closes" in dated[0]
-    assert "ledger after E33 wave 4" in dated[1]
-    assert "ledger after E33 wave 3" in dated[2]
+    assert "ledger addendum after the E33 closure" in dated[0]
+    assert "ledger wave 5 — the E33 family closes" in dated[1]
+    assert "ledger after E33 wave 4" in dated[2]
+    assert "ledger after E33 wave 3" in dated[3]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 3
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 4
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -469,7 +470,7 @@ def test_wave5_entry_never_upgrades_a_partial_or_missing_proof():
     assert body.count("proof level: PARTIAL") == 2
     assert "golden route investor_kitas_retirement has no public URL, so it is PARTIAL" in body
     assert "merged without the harness/fable-gate status" in body and "the status was never published" in body
-    assert body.count("iQOO NOT run") >= 4 and "adb not installed on Pro" in body
+    assert body.count("iQOO NOT run") >= 4 and "adb is installed on Pro" in body and "adb not installed" not in body
     assert "E33C is not walkable in the browser (unit pins only)" in body
     assert "The Vercel deployment was not matched to the sha (the served bytes were checked instead)" in body
     assert "16 of 38 products with a permit-length line and 22 rendering none" in body
@@ -500,28 +501,29 @@ def test_skill_live_state_leads_with_wave5_and_stays_an_index():
 
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
-    assert block.index("2026-10-15 (newest): E33 family CLOSED 2026-10-15 (wave 5)") < block.index("2026-10-14 (wave 4)")
-    lead = block[block.index("- **2026-10-15 (newest)"):block.index("- **2026-10-14 (wave 4)")]
+    assert block.index("2026-10-15 (wave 5): E33 family CLOSED 2026-10-15 (wave 5)") < block.index("2026-10-14 (wave 4)")
+    lead = block[block.index("- **2026-10-15 (wave 5)"):block.index("- **2026-10-14 (wave 4)")]
     for pr, sha in E33_WAVE5:
         assert len(re.findall(rf"#{pr}\b", lead)) == 1, pr
         if pr not in ("8513", "8518", "8519", "8520"):
             assert lead.count(f"`{sha}`") == 1, sha
     for token in ("PARTIAL", "**Not done:**", "pre-delete backup was lost", "Backlog rows:", "no iQOO walk"):
         assert token in lead, token
-    assert len(lead) < 3200
-    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 1
+    assert len(lead) < 3300 and "adb not installed" not in lead and "adb is installed on Pro" in lead
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 2
     assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
     assert "(updated 2026-10-15;" in text
 
 
 WAVE5_CLOSED = (
     ("The Qdrant pricing collection no longer serves", "closed 2026-10-14T23:23Z", ("re-plan after the apply shows deletes=0", "returns 0 points")),
+    ("The iQOO walk of the E33 public surfaces", "closed 2026-10-15", ("W1-W6 PASS comments", "pull/8511#issuecomment-6188925096", "pull/8533#issuecomment-6188925677", "pull/8512#issuecomment-6188926239", "20261015-e33-mobile")),
     ("The brochure now prints the E33F Altus/Onshore row", "closed 2026-10-15", ("26185b41341de17f", "Onshore, 1 year Rp 16.000.000", "#8528")),
     ("The gate's 'pensiun' live query of #8505 was run and passes", "closed 2026-10-15", ("2026-10-14T16:45Z", "3 E33F rows", "no generic Retirement row")),
     ("#8506 brochure guard LOW follow-ups: test_guilt_f now fails", "closed 2026-10-15", ("#8518", "17 passed", "printed the cure")),
 )
 WAVE5_OPENED = (
-    ("no iQOO walk of the E33 public surfaces", "owner: operator[physical]", "OPERATOR-GATED"),
+    ("the book-pricing.spec.ts ID test added by #8543", "owner: me (nuzantara-57)", "TECH-DEBT"),
     ("seq-30 candidate, the E33F `sponsor_types` is INDIVIDUAL", "owner: me (next session, visa-night conductor and signer)", "TECH-DEBT"),
     ("the E28A Indonesian article does not render in Indonesian", "owner: me (nuzantara-57)", "TECH-DEBT"),
     ("has no point for 65 catalog rows, including all E33F rows", "owner: me (nuzantara-57)", "TECH-DEBT"),
@@ -531,7 +533,7 @@ WAVE5_OPENED = (
 
 def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
     closed = [r for r in ARMS_LINES if r.startswith("- closed 2026-10-1") and "VISA-ORACLE E33 wave 5" in r]
-    assert len(closed) == len(WAVE5_CLOSED) == 4
+    assert len(closed) == len(WAVE5_CLOSED) == 5
     for needle, prefix, proofs in WAVE5_CLOSED:
         rows = [r for r in closed if needle in r]
         assert len(rows) == 1, needle
@@ -560,7 +562,7 @@ def test_wave5_low_row_merges_the_nits_into_one_row_and_the_qdrant_gap_row_names
     assert len(low) == 1
     for token in ("BROCHURE_CURE == PDF_PARITY_CURE", "gate C5", "match='PRICE_E33E'", "'Claude Sonnet 5.5'", "claude-sonnet-5-5",
                   "'Dolar' casing", "harness/fable-gate status", "stay.kind", "36500", "39-case count", "says 1 where the floor is 2",
-                  "StayPolicy at models.py:301 has no cross-field validator"):
+                  "StayPolicy at models.py:301 has no cross-field validator", "(10) the Firefox project of the book-pricing e2e is not runnable on Pro"):
         assert low[0].count(token) == 1, token
     assert len(_rows("match='PRICE_E33E'")) == 1 and len(_rows("StayPolicy at models.py:301")) == 1
     qdrant = _rows("has no point for 65 catalog rows")[0]
@@ -573,6 +575,63 @@ def test_wave5_leaves_the_council_and_the_wave3_rows_untouched():
     assert len(_rows("Council seats degraded")) == 1 and len(_rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)")) == 6
     assert len(_rows("iQOO has not been attached to Pro since 2026-09-26")) == 1
     assert len(_rows("#8468 Indonesian surfaces not proven live")) == 1
+
+
+E33_ADDENDUM = (("8541", "66c7c706dd"), ("8543", "3d94f56a4c"))
+ADDENDUM_COMMENTS = (
+    "8511#issuecomment-6188925096", "8533#issuecomment-6188925677", "8512#issuecomment-6188926239",
+    "8543#issuecomment-6190499447",
+)
+
+
+def _addendum_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-15 (M5") and "ledger addendum after the E33 closure" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    return " ".join(text[start:text.index("\n- 20", start + 1)].split())
+
+
+def test_addendum_entry_carries_the_walks_the_two_prs_and_the_comment_urls_once():
+    body = _addendum_entry()
+    for pr, sha in E33_ADDENDUM:
+        assert body.count(f"merge `{sha}`") == 1 and body.count(f"#{pr} ") >= 1, sha
+    for c in ADDENDUM_COMMENTS:
+        assert body.count(f"pull/{c}") == 1, c
+    for token in ("W1-W6 of 2026-10-15, all PASS", "20261015-e33-mobile/receipt.md", "dpl_GqCCrtn9NeZ47hT5CwLcCndhrF69",
+                  "`vercel promote`", "chromium and webkit pass all 4 tests", "the Firefox project is not runnable on Pro",
+                  "`card.innerText()` is empty under reducedMotion", "a spec fragility, not a product defect",
+                  "`ssh pro '~/.local/bin/iqoo-unlock'`", "always-on VPN setting did NOT take", "phone is cabled to Pro by USB",
+                  "Not proved: unlock without the owner after a reboot, and wireless ADB returning after a reboot",
+                  "adb is installed on Pro; the blocker of the unrun iQOO walks was the missing device", "(6) NOT done:"):
+        assert body.count(token) == 1, token
+
+
+def test_addendum_never_writes_the_pin_or_overclaims_the_unlock():
+    body = _addendum_entry()
+    assert "one attempt per call, never looped, never read or printed" in body
+    assert "PIN lives only on Pro in a 0600 file" in body
+    assert "the Mobile Chrome spec is not cured" in body
+
+
+def test_skill_live_state_leads_with_the_addendum_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    lead = block[block.index("- **2026-10-15 (addendum, newest)"):block.index("- **2026-10-15 (wave 5)")]
+    for token in ("#8511, #8512, #8533", "`3d94f56a4c`", "`66c7c706dd`", "Firefox is not installed on Pro", "~/.local/bin/iqoo-unlock"):
+        assert token in lead, token
+    assert len(lead) < 1800 and block.count("newest)") == 1
+
+
+def test_addendum_pending_rows_close_the_iqoo_walk_and_open_the_spec_fragility_once():
+    assert len(_rows("no iQOO walk of the E33 public surfaces was run")) == 0
+    spec = _rows("the book-pricing.spec.ts ID test added by #8543")
+    assert len(spec) == 1
+    fields = spec[0].split(" | ")
+    assert len(fields) == 5 and "textContent" in fields[2] and fields[3] == "owner: me (nuzantara-57)"
+    assert "Mobile Chrome against balizero.com" in fields[4]
+    assert "adb is installed" in _rows("The iQOO walk of the E33 public surfaces")[0]
+    assert "adb is not installed on Pro" not in ARMS.read_text(encoding="utf-8").split("opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)", 1)[1]
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
