@@ -1152,7 +1152,9 @@ RESOLVE_JS = r"""
   };
   // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
   // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
-  const hides = (el, runEl) => !scrims.some((s) => s === el || s.contains(el))
+  // A descendant of a scrim is exempt only when the scrim makes a stacking context (fixed or sticky): a flat
+  // scrim cannot hold a child above the surface, so a child that is above it is a real occluder (W0d-3b-2b).
+  const hides = (el, runEl) => !scrims.some((s) => s === el || (position(s) && s.contains(el)))
     && !roots.some((r) => r.contains(el) && !r.contains(runEl));
   const pointB = (x, y, runEl) => {
     const st = document.elementsFromPoint(x, y);
@@ -1325,7 +1327,9 @@ RESOLVE_JS = r"""
       while (this.pending.length) {
         const i = this.pending[0], r = runs[i];
         if (this.target === i) {
-          r.state = r.trial && r.trial.bs.some((b) => b.occluded) ? "occluded" : "unreached";
+          const occ = r.trial && r.trial.bs.find((b) => b.occluded);
+          r.state = occ ? "occluded" : "unreached";
+          if (occ) { r.occludedBy = occ.occluded; r.hides = occ.hides; }
           this.pending.shift();
           continue;
         }
@@ -2097,6 +2101,8 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
                    + "".join(f", {n} {what}" for n, what in (
                        (sum(bool(over_image(r)) for r in measured), "over an image"),
                        (sum(r["state"] == "occluded" for r in runs), "occluded"),
+                       (sum(r["state"] == "occluded" and r.get("hides") is False for r in runs),
+                        "of them behind the walk's own scrim"),
                        (sum(r["state"] == "unreached" for r in runs), "unreached")) if n)
                    + f", {o.get('positions', 0)} position(s)" + (", INCOMPLETE" if o.get("incomplete") else ""))
     tail = (f" (INCOMPLETE: {len(failed)} walks failed, {len(short)} over the scroll cap, not a verdict)"
@@ -2111,8 +2117,10 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
     out += disagree[:40] + ([f"  ... and {len(disagree) - 40} more"] if len(disagree) > 40 else [])
     # It also counts the disagreements read at rest, so a failed capture leaves it short too.
     cap_failed = census.get("failed", [])
+    cap_short = [c for c in census.get("captures", []) if "page_off" not in c or c.get("page_incomplete")]
     out.append(f"ground-resolver-disagree: {len(disagree)}"
-               + (tail or (f" (INCOMPLETE: {len(cap_failed)} captures failed, not a verdict)" if cap_failed else "")))
+               + (tail or (f" (INCOMPLETE: {len(cap_failed)} captures failed, {len(cap_short)} not read through, "
+                           "not a verdict)" if cap_failed or cap_short else "")))
     out += unpinned
     out.append(f"shared-touched-unpinned: {unpinned_count}")
     drift, count = shared_drift(census, pin)
