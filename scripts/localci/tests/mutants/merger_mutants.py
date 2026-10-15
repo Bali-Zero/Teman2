@@ -56,6 +56,7 @@ REPLAY = "scripts/localci/tests/test_replay.py"
 PHASEF = "scripts/localci/tests/test_merger_phase_f.py"
 WRAPPER_T = tuple(f"{PHASEF}::{t}" for t in ("test_the_wrapper_fetches_into_its_own_ref_and_leaves_the_authoritative_base_alone",
                                                  "test_a_mirror_from_before_the_wrapper_ref_existed_runs_the_code_the_last_tick_ran"))
+B35 = (f"{MERGER_T}::test_the_timeouts_hold_a_cold_build_inside_one_tick",)   # B35
 GP = ("scripts/localci/tests/test_gate_pending.py",)   # B12
 GS = ("scripts/localci/tests/test_gate_stale.py",)   # B12b
 ROOT = Path(__file__).resolve().parents[4]
@@ -1101,6 +1102,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b33-prediction-from-stale-offset": (SH, 'OFFSET="$(wc -c 2>/dev/null < "$STATE/decisions.jsonl" | tr -d \'[:space:]\' || true)"', 'OFFSET=0', B33),
     "b33-garbage-depth-chains": (SH, "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0; CHAIN_OK=0 ;; esac", "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0 ;; esac", B33),
     "b33-sibling-instead-of-exec": (SH, '  exec "$BASH" "$0" ||', '  "$BASH" "$0" ||', B33),
+    # B35: the run budget, and the bounds derived from it
+    "b35-run-budget-back-to-5400": (PY, "RUN_TIMEOUT_S = 7200\n", "RUN_TIMEOUT_S = 5400\n", B35),
+    "b35-run-budget-under-measured-need": (PY, "RUN_TIMEOUT_S = 7200\n", "RUN_TIMEOUT_S = 6500\n", B35),
+    "b35-run-default-not-the-constant": (PY, 'type=int, default=RUN_TIMEOUT_S,', 'type=int, default=5400,', B35),
+    "b35-tick-watchdog-not-raised": (PY, "TICK_TIMEOUT_S = 16200 ", "TICK_TIMEOUT_S = 14400 ", B35),
+    "b35-tick-watchdog-no-margin": (PY, "TICK_TIMEOUT_S = 16200 ", "TICK_TIMEOUT_S = 15600 ", B35),
+    "b35-heartbeat-window-not-raised": ("apps/organism/organism/organs_registry.yaml", "  type: cron\n  expected_hb_seconds: 5700\n  owner_module: scripts/localci/localci_merger_tick.sh",
+                                        "  type: cron\n  expected_hb_seconds: 5400\n  owner_module: scripts/localci/localci_merger_tick.sh", B35),
 }
 
 

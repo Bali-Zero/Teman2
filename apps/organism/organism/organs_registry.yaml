@@ -3249,7 +3249,7 @@ organs:
 - id: pro.localci_merger
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 5400
+  expected_hb_seconds: 5700
   owner_module: scripts/localci/localci_merger_tick.sh
   dependencies: []
   recovery_action: launchctl_kickstart

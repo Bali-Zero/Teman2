@@ -563,7 +563,12 @@ def runner_takes(base_wt: Path, flag: str) -> bool:
 # cancelled on every tick and every e2e candidate was ERROR, with no progress possible. The plan step must outlast the build,
 # and the tick watchdog must hold plan + run + status: tests/test_merger.py pins both relations against runner.py.
 PLAN_TIMEOUT_S = 7500        # > runner.DEPS_BUILD_TIMEOUT_S (7200) + the rest of a plan
-TICK_TIMEOUT_S = 14400       # >= PLAN_TIMEOUT_S + --run-timeout 5400 + the status step 900 + margin
+# B35: the run step is the SUM of the checks (they run one after another). Measured on Pro 2026-10-08..15: 36 full-matrix runs,
+# run time p50 3848 s, p95 4878 s, max 5486 s, and that max was the 5400 s cap itself (#8523: rc 124, ctx.visa-oracle-smoke
+# SIGTERMed 88 s into a ~150-200 s check, so the run needed ~5600 s). 7200 s = that need + ~28%: it covers the growth of
+# backend-tests (the largest check, 1451 s p50, 2511 s max) and the late checks, and turns an INTERRUPTED into a real PASS/FAIL.
+RUN_TIMEOUT_S = 7200
+TICK_TIMEOUT_S = 16200       # >= PLAN_TIMEOUT_S + RUN_TIMEOUT_S + the status step 900 + 600 margin
 
 def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
@@ -2757,7 +2762,7 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--python", default=sys.executable, help="interpreter that runs the BASE runner")
     t.add_argument("--plan-timeout", type=int, default=PLAN_TIMEOUT_S,
                    help="seconds for the runner's `plan` step: above the runner's DEPS_BUILD_TIMEOUT_S, so a cold deps image build finishes inside one tick")
-    t.add_argument("--run-timeout", type=int, default=5400, help="seconds for the runner's `run` step")
+    t.add_argument("--run-timeout", type=int, default=RUN_TIMEOUT_S, help="seconds for the runner's `run` step")
     t.add_argument("--tick-timeout", type=int, default=TICK_TIMEOUT_S,
                    help="watchdog for the whole tick (plan + run + status + margin); past it the decision is ERROR")
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")

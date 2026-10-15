@@ -265,3 +265,50 @@ that GitHub had to remain the writer. The brief said so, the hard constraints sa
 careful answer on it. The owner's actual goal was the opposite. The loop's defect is the one named in that spec
 for local-CI itself, turned on the loop: a document taken for a decision. A governance premise in a brief is a
 LEAD; before designing on it, ask the owner one question.
+
+## 6. §B35 — the run budget
+
+**Measured (Pro journal, `decisions.jsonl`, 2026-10-08 to 2026-10-15, read-only).** 252 decisions; the 36 with
+elapsed >= 3000 s are the full-matrix runs (the rest reuse receipts or stop early). The runner executes the
+checks one after another, so the run step costs the SUM of their durations.
+
+| quantity                              | p50         | p95         | max                                            |
+| ------------------------------------- | ----------- | ----------- | ---------------------------------------------- |
+| full-matrix elapsed (plan+run+status) | 3848 s      | 4878 s      | 5486 s (= the 5400 s cap + the plan; censored) |
+| ctx.backend-tests                     | 1451 s      | 2252 s      | 2511 s                                         |
+| ctx.e2e-tests / frontend-mouth        | 423 / 352 s | 547 / 595 s | 608 / 708 s                                    |
+| ctx.visa-oracle-smoke (late check)    | 153 s       | 193 s       | 203 s (job budget 1800 s)                      |
+
+One run ended `run_rc 124`: #8523, 2026-10-15T02:16Z, 5486 s. Its twelve first contexts had used about 5400 s; `ctx.visa-oracle-smoke`
+was SIGTERMed 88 s after it started and read INTERRUPTED, the later checks never ran. Three other runs of the last 14 h took
+4406 to 5077 s (and 4878 s a day before): the margin under the cap was down to 6%. The 5486 s is censored by the cap, so the true need of #8523
+is its 5400 s plus the rest of visa-oracle-smoke (about 65-115 s) and the checks after it: about 5600 s.
+
+**New budget: `RUN_TIMEOUT_S = 7200`** (named constant in `merger.py`, default of `--run-timeout`). 7200 = the censored need
+(5600 s) x 1.28. It is not "p99 + the 1800 s job budget of visa-oracle-smoke" (7400+): that job budget is a hosted
+ceiling, the check itself measured 153-203 s, and a budget sized on ceilings would keep an hour of dead air before a hung
+run is cut. The growth that matters is backend-tests (the largest check); 28% covers about 700 s of it plus the late checks.
+
+**Every dependent bound, updated together.**
+
+| bound                                         | before | after | rule                                                                   |
+| --------------------------------------------- | ------ | ----- | ---------------------------------------------------------------------- |
+| `--run-timeout` default (README, `merger.py`) | 5400   | 7200  | `RUN_TIMEOUT_S`                                                        |
+| `TICK_TIMEOUT_S` (tick watchdog)              | 14400  | 16200 | >= plan 7500 + run 7200 + status 900 + 600 margin (was margin 300+300) |
+| `expected_hb_seconds` of `pro.localci_merger` | 5400   | 5700  | 3 x it must exceed `TICK_TIMEOUT_S` + 600 (the healer's dead window)   |
+
+Unchanged on purpose: `PLAN_TIMEOUT_S` 7500 (cold deps build, not the run), the status step 900, the launchd `StartInterval`
+600 and the plist (it passes no `--run-timeout`; the default is read from the merger at the tick's sha), the lease and its
+reclaim (pid liveness, `take_lease`: they follow the process, not a run budget), and the B33 chain: each chained tick writes its own heartbeat before it
+re-execs, so the chain cap of 12 never stretches the per-tick bound above.
+
+**Why it cannot make a verdict greener.** The budget only decides when the runner stops waiting. A check that finishes inside
+7200 s gets the PASS or FAIL its own steps earn; a check that was cut at 5400 s read INTERRUPTED (never PASS). Nothing about
+which checks run, their order, their per-job `timeout-minutes` (kept as hosted's ceiling), the tolerance, the seal or the
+status binding changes. A run that really hangs is still cut, now at 7200 s, and reads INTERRUPTED as before.
+
+**Why not an ordering change.** The sum of the checks is the same in any order; moving the long late checks first would only
+move which check is cut when the budget is short, not whether the run fits. The smaller safe change is the budget.
+
+**Pinned** by `test_the_timeouts_hold_a_cold_build_inside_one_tick` (the default equals `RUN_TIMEOUT_S`; tick >= plan + run + 900 +
+600; `RUN_TIMEOUT_S` >= 1.25 x the 5600 s need; 3 x `expected_hb_seconds` > tick + 600) and by the `b35-*` mutants.

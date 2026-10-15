@@ -317,7 +317,11 @@ def test_the_timeouts_hold_a_cold_build_inside_one_tick():
     finally:
         mg.argparse.ArgumentParser.parse_args = real
     assert ap_defaults["plan_timeout"] == mg.PLAN_TIMEOUT_S and ap_defaults["tick_timeout"] == mg.TICK_TIMEOUT_S
-    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 300
+    assert ap_defaults["run_timeout"] == mg.RUN_TIMEOUT_S
+    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 600
+    # B35: the run step is the sum of the checks, measured on Pro 2026-10-08..15: p95 4878 s, and #8523 needed ~5600 s (5486 s
+    # at the old 5400 s cap, the last check SIGTERMed). A budget under 1.25x that need turns a normal full-matrix run INTERRUPTED.
+    assert mg.RUN_TIMEOUT_S >= int(5600 * 1.25)
     # The heartbeat is written when the wrapper exits: the healer calls the organ dead past expected_hb_seconds x DEAD_MULTIPLIER
     # (3), so the longest legal tick plus one StartInterval must stay under it, or a slow cold tick opens a spurious cure session.
     reg = (_MODULE.parents[2] / "apps" / "organism" / "organism" / "organs_registry.yaml").read_text()
