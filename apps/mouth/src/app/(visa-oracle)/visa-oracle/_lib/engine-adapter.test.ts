@@ -277,6 +277,69 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     }
   });
 
+  describe("V08: the Legal references link opens the per-code imigrasi page", () => {
+    const CATALOGUE = "https://www.imigrasi.go.id/wna/daftar-visa-indonesia";
+    const catalogueResponse = (code: string) => {
+      const response = makeVisaOracleResponse();
+      response.sources[0].source_record_id =
+        "6f5135f2-0000-4000-8000-000000000000";
+      response.sources[0].canonical_url = CATALOGUE;
+      response.sources[0].locators = ["B1", "C1", "C2", "C6", "E33"].map(
+        (c) => ({
+          kind: "PAGE" as const,
+          value: `/wna/daftar-visa-indonesia/${c}`,
+        }),
+      );
+      response.display.candidates[0].product_code = code;
+      response.decision.candidates[0].product_code = code;
+      response.decision.candidates[0].source_refs = [
+        response.sources[0].source_record_id,
+      ];
+      return response;
+    };
+
+    it.each(["B1", "C1", "C2", "C6"])(
+      "candidate %s links its own page",
+      (code) => {
+        const outcome = buildEngineOutcome(catalogueResponse(code));
+        expect(outcome.sources[0].url).toBe(`${CATALOGUE}/${code}`);
+      },
+    );
+
+    it("keeps the catalogue URL when candidates span two in-scope codes (D-ambiguous-keeps-catalogue)", () => {
+      const response = catalogueResponse("B1");
+      const second = structuredClone(response.display.candidates[0]);
+      second.product_code = "C1";
+      response.display.candidates.push(second);
+      const secondDecision = structuredClone(response.decision.candidates[0]);
+      secondDecision.product_code = "C1";
+      response.decision.candidates.push(secondDecision);
+      const url = buildEngineOutcome(response).sources[0].url;
+      expect(url).toBe(CATALOGUE);
+      expect(url).not.toMatch(/\/(B1|C1)$/);
+    });
+
+    it("leaves other codes, other sources, and missing locators unchanged", () => {
+      const foreignId = catalogueResponse("C1");
+      foreignId.sources[0].source_record_id =
+        "99999999-0000-4000-8000-000000000000";
+      foreignId.decision.candidates[0].source_refs = [
+        foreignId.sources[0].source_record_id,
+      ];
+      expect(buildEngineOutcome(foreignId).sources[0].url).toBe(CATALOGUE);
+      expect(buildEngineOutcome(catalogueResponse("E33")).sources[0].url).toBe(
+        CATALOGUE,
+      );
+      const other = makeVisaOracleResponse();
+      expect(buildEngineOutcome(other).sources[0].url).toBe(
+        "https://www.imigrasi.go.id/regulation",
+      );
+      const noLocator = catalogueResponse("C1");
+      noLocator.sources[0].locators = [{ kind: "ARTICLE", value: "1" }];
+      expect(buildEngineOutcome(noLocator).sources[0].url).toBe(CATALOGUE);
+    });
+  });
+
   it("uses only processing/pricing/document assessments, never stay policy or mock content", () => {
     const outcome = buildEngineOutcome(makeVisaOracleResponse());
     expect(outcome.state).toBe("SUPPORTED_CANDIDATES");

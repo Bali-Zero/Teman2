@@ -2227,9 +2227,58 @@ function condition(
   };
 }
 
-function outcomeSource(source: VisaOracleSourceRecord): OutcomeSource | null {
-  const url = trustedPrimarySourceUrl(source.canonical_url);
-  if (!url) return null;
+/**
+ * V08: the visit-visa codes whose own official page the "Legal references"
+ * link may open. Scoped on purpose: E33 and every other code keep the source's
+ * canonical URL untouched.
+ */
+const PER_CODE_REFERENCE_CODES: ReadonlySet<string> = new Set([
+  "B1",
+  "C1",
+  "C2",
+  "C6",
+]);
+
+const CATALOGUE_SOURCE_ID_PREFIX = "6f5135f2-";
+
+/**
+ * The Kepmen visa catalogue record (6f5135f2) is cited by canonical URL
+ * `.../wna/daftar-visa-indonesia` and carries one PAGE locator per code
+ * (`/wna/daftar-visa-indonesia/C1`). When exactly one in-scope candidate code
+ * has such a locator under the source's own path, the link is that code's page
+ * (derived from the locator, never typed here). Zero or several matching
+ * codes keep the catalogue URL: one link cannot name two pages.
+ */
+function perCodeReferenceUrl(
+  source: VisaOracleSourceRecord,
+  url: string,
+  candidateCodes: readonly string[],
+): string {
+  if (!source.source_record_id.startsWith(CATALOGUE_SOURCE_ID_PREFIX))
+    return url;
+  const codes = new Set(
+    candidateCodes.filter((code) => PER_CODE_REFERENCE_CODES.has(code)),
+  );
+  if (codes.size !== 1) return url;
+  const [code] = [...codes];
+  const parsed = new URL(url);
+  const basePath = parsed.pathname.replace(/\/+$/, "");
+  const wanted = `${basePath}/${code}`;
+  const hasLocator = (source.locators ?? []).some(
+    (locator) => locator.kind === "PAGE" && locator.value === wanted,
+  );
+  if (!hasLocator) return url;
+  parsed.pathname = wanted;
+  return parsed.href;
+}
+
+function outcomeSource(
+  source: VisaOracleSourceRecord,
+  candidateCodes: readonly string[] = [],
+): OutcomeSource | null {
+  const trusted = trustedPrimarySourceUrl(source.canonical_url);
+  if (!trusted) return null;
+  const url = perCodeReferenceUrl(source, trusted, candidateCodes);
   return {
     id: source.source_record_id,
     title: source.title,
@@ -2706,7 +2755,12 @@ function buildValidatedOutcome(
     response.sources.map((source) => [source.source_record_id, source]),
   );
   const sources = response.sources
-    .map(outcomeSource)
+    .map((source) =>
+      outcomeSource(
+        source,
+        response.display.candidates.map((c) => c.product_code),
+      ),
+    )
     .filter((source): source is OutcomeSource => source !== null);
   const trustedIds = new Set(sources.map((source) => source.id));
 
