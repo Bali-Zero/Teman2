@@ -1372,8 +1372,8 @@ def test_e2e_i11_two_walks_print_the_same_verdict(tmp_path, monkeypatch):
 
 
 def test_the_origin_main_opened_walk_is_the_guilt(census):
-    """Main today, by pixels: every surface opens; the dropdown titles are white and readable, the red code chips
-    are not; the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
+    """Main today, by pixels: every surface opens; the dropdown titles and the red code chips read at 4.5 or more (the chips were 3.3 and 3.26 on the tree of the 3b-2a census),
+    and the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
     out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 50 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 18"
@@ -1381,17 +1381,17 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 784"
+    assert out[-1] == "opened-text-below-4.5: 741"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
              and census_mod.contrast(census_mod.text_colour(r), r["a"]) < 4.5]
-    assert below == [(3.3, "#DC2626", "56101"), (3.26, "#DC2626", "55130")]
+    assert below == []
 
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
     """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 579"
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 577"
     card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
             for ln in c["page_off"].values()
             if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}
