@@ -1,3 +1,9 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "2a5e9ad0c90c8ac19fe45e0b79d695be0a63d252a34ed6718ebc026022ce6c1d"
+review_disposition: REVIEWED_ACCURATE_PARTIAL_SCOPE
+---
+
 # research(udb-wave8): B05 operation contracts — validator, 23-contract ledger, relation-bound catalog join
 
 Branch: `agent/mini-pro2/db/udb-b05-contracts` · Campaign `universal-db-wave8-20261015`, block B05.
@@ -46,3 +52,8 @@ joins 8 of 8 relations through the chr(31) database/schema/relation derivation, 
 lock-busy exit-0 counterexample.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+
+## Adversarial review
+
+Independent Codex document review: `REVIEWED_ACCURATE_PARTIAL_SCOPE`. The reviewed original bytes have SHA256 `2a5e9ad0c90c8ac19fe45e0b79d695be0a63d252a34ed6718ebc026022ce6c1d` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.

@@ -1,3 +1,9 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "b52ea73917e3f693ea7ae77da84e696a39c49e15ea8e63ba0f545679eb3dafe6"
+review_disposition: REVIEWED_COHERENT_MANDATE
+---
+
 # B05: Effective operation contracts
 
 ## 1 Mandate
@@ -28,3 +34,8 @@ Use the common deadline, no resets; no repeated rounds. Compact return <=500 wor
 
 ## 7 Evidence and release
 Exactly ONE final PR for B05. Freeze scope and candidate before opening. Release through BLUE Dux and Pro's canonical GitHub route, never a Mini origin push. Failure/blocked results remain open. Four-step successors are gated on actual all8 closure.
+
+
+## Adversarial review
+
+Independent Codex document review: `REVIEWED_COHERENT_MANDATE`. The reviewed original bytes have SHA256 `b52ea73917e3f693ea7ae77da84e696a39c49e15ea8e63ba0f545679eb3dafe6` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.

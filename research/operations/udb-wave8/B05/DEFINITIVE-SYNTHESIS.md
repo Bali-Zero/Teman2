@@ -1,3 +1,11 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "ce0098132aa50e7c6159549acf2d2f192256272c43d9a4fa4e154729ac3c29f2"
+review_disposition: REVIEWED_PARTIAL_SUPERSEDED_BODY
+---
+
+> HISTORICAL DESIGN: the body below includes a superseded schema and an absent innocence ledger entry. The delivered19-key records in operation-contracts.json and the corrected validator are authoritative. This historical body is not an executable schema specification.
+
 # DEFINITIVE SYNTHESIS — B05 Effective Operation Contracts
 
 > **Dux correction (2026-10-15, supersedes conflicting statements below).** Executed on Mini against
@@ -148,3 +156,8 @@ pytest -q research/operations/udb-wave8/B05/test_b05_operation_contracts.py
 - [DUX-REQ-B05-12] type=probe target=.agent-receipts/udb-wave8-inputs/LIVE-DB-CONSTRAINTS-INDEXES.json reason=Export read-only pg_indexes (indexdef) and pg_constraint (contype, conkey) for the 16 B05 target relations to verify ON CONFLICT targets against live catalog blocking=true
 - [DUX-REQ-B05-13] type=shared-file-touch target=apps/backend-rag/backend/services/database/connection_pool.py reason=Follow-up PR per PRINCIPAL-ROLE-BINDING-PROPOSAL.md §3 Stage A to set server_settings application_name on all 10 pool factories blocking=false
 - [DUX-REQ-B05-14] type=shared-file-touch target=scripts/migrate.py reason=Follow-up bugfix PR so apply_all_pending lock-busy refusal returns distinct status and migrate.py exits nonzero as claimed by consumer-matrix.csv:4440 blocking=false
+
+
+## Adversarial review
+
+Independent Codex document review: `REVIEWED_PARTIAL_SUPERSEDED_BODY`. The reviewed original bytes have SHA256 `ce0098132aa50e7c6159549acf2d2f192256272c43d9a4fa4e154729ac3c29f2` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.

@@ -1,3 +1,11 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "12d96acdad0d3f8feea5ab41b09ab893658453576faca4c9b0066332b0ba020a"
+review_disposition: REVIEWED_PARTIAL_PROVENANCE_AND_COUNT_ERRORS
+---
+
+> HISTORICAL ANALYSIS WITH CORRECTIONS: the source-pinned R1 review records inconsistent provenance hashes and a count error. Current accounting is6,029matrix rows plus1delta; the corrected validator/artifacts, not superseded claims below, are authoritative.
+
 # B05 ANALYSIS — Effective Operation Contracts
 
 - **Campaign**: `universal-db-wave8-20261015`
@@ -162,3 +170,8 @@ All read-only inputs under `.agent-receipts/udb-wave8-inputs/` are pinned in [`I
    - Fly.io production inspection (`fly_pro`) is `CANNOT-VERIFY` (`unauthorized_token`, `STATE.json:48-51`).
 4. **Real Backup Restore Failures on `Mini` (`Recovery Blocker`)**:
    - `REAL-RUN-RECEIPT.json:32-56` shows `clients` = `FAIL` (`VIOLATION: 1`) and `conversations` = `CANNOT-VERIFY` (`UNMEASURED_CHECK: 1` due to `json` vs. `jsonb` column type mismatch in `restore_drill_verify.py:130-137`). Until resolved, any operation contract touching `clients` or `conversations` must record `recovery.real_restore_status = "FAIL"` or `"CANNOT-VERIFY"`, never `"VERIFIED"`.
+
+
+## Adversarial review
+
+Independent Codex document review: `REVIEWED_PARTIAL_PROVENANCE_AND_COUNT_ERRORS`. The reviewed original bytes have SHA256 `12d96acdad0d3f8feea5ab41b09ab893658453576faca4c9b0066332b0ba020a` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.

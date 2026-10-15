@@ -1,3 +1,11 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "945cbf17ea05efd8914b1e650c6ab82548011c0eae3cfbe28976f34e0b83e508"
+review_disposition: REVIEWED_PARTIAL_HISTORICAL_DESIGN
+---
+
+> HISTORICAL PROPOSAL: dotted store IDs and PARTIAL_VERIFIED examples below are superseded. Use the delivered colon-delimited grammar, current status vocabulary and corrected23-contract ledger. This document grants no execution or closure authority.
+
 # B05 PROPOSAL — Effective Operation Contracts Schema, Validator & Instantiation Plan
 
 - **Campaign**: `universal-db-wave8-20261015`
@@ -194,3 +202,8 @@ Because `run_command` is disabled in this non-interactive `ANALYSIS` session (`D
    - Confirm whether active Python/TypeScript runtime writer `consumer_id` rows exist in `consumer-matrix.csv` for `garuda_orders` (beyond migration `src_63bd7ca41f966a78`) and `research_os_objects` (beyond migration `src_5ebca16bb2011dc6`), or if they remain DDL-only (`PARTIAL_SOURCE`) on commit `8061c88e0c43dd42e735fd012f9ed072df3ef3d6`.
 5. **`DUX-B05-05` — Execution-Stage Pytest & Receipt Runner**:
    - In the subsequent execution stage, run `pytest research/operations/udb-wave8/B05/test_b05_operation_contracts.py -q` and capture the test receipt SHA-256 for the B05 Evidence Pack.
+
+
+## Adversarial review
+
+Independent Codex document review: `REVIEWED_PARTIAL_HISTORICAL_DESIGN`. The reviewed original bytes have SHA256 `945cbf17ea05efd8914b1e650c6ab82548011c0eae3cfbe28976f34e0b83e508` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.

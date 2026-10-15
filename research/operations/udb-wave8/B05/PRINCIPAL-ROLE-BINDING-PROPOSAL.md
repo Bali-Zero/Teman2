@@ -1,3 +1,11 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "0bc4713b55ff3032255579947536a5aac447f3788cdc9d4b571242e883e2350f"
+review_disposition: BLOCK_FOR_IMPLEMENTATION
+---
+
+> BLOCKED FOR IMPLEMENTATION: do not execute this proposed design. Independent review found name-only relation hashes, obsolete16-target accounting, nonexistent delivered schema fields, optional/unbound effective-role observation and unrestricted application_name output. Current artifacts contain23contracts and8database/schema/relation joins. Runtime principal-to-role bindings remain UNKNOWN; no new probe or application change is admitted by this archived proposal.
+
 # B05 Proposal: Evidencing Runtime Principal-to-DB-Role Bindings
 
 - **Campaign:** `universal-db-wave8-20261015`
@@ -135,3 +143,8 @@ SELECT
    - If `binding_status == "RUNTIME_OBSERVED"` and all required privileges are `true` (or `rolsuper == true`): promote `CATALOG_JOINED_ROLE_UNBOUND` → `RUNTIME_ROLE_VERIFIED`.
    - If `binding_status == "RUNTIME_OBSERVED"` and any required privilege is `false`: transition to `RUNTIME_ROLE_DENIED` (hard contract violation).
    - If `binding_status != "RUNTIME_OBSERVED"`: remain `CATALOG_JOINED_ROLE_UNBOUND`.
+
+
+## Adversarial review
+
+Independent Codex document review: `BLOCK_FOR_IMPLEMENTATION`. The reviewed original bytes have SHA256 `0bc4713b55ff3032255579947536a5aac447f3788cdc9d4b571242e883e2350f` at candidate `3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e`. See [the source-pinned review receipt](R1-DOCUMENT-REVIEW.json) for findings and limitations. The requested reviewer seat was Astra6/xhigh; its effective runtime identity was not separately echoed. This attribution records review with the stated blockers; it does not approve implementation of historical proposals, prove live role bindings, close B05, or replace the fresh BLUE exact-head Opus gate.
