@@ -1,0 +1,65 @@
+gear: 3
+brief_ref: evidence/brief.yml
+plan_ref: "Owner mandate 2026-10-15 (Zero): add D2 Business 5 years at 13.000.000 IDR on every surface; this PR is the CRM catalogue follow-up of #8540."
+mission: "practice_types.visa_d2_business_5yr active at 13000000 in production after the Fly release_command applies migration 326."
+lanes:
+  - lane: practice-types-d2-business-5yr-1015
+    role: build
+    seat: "claude-opus-5-5 (interactive session: wrote migration 326, scratch-Postgres receipts, this pack)"
+  - lane: practice-types-d2-business-5yr-1015-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol (round 1, env-scrubbed, read-only, high effort; findings verified by a claude-sonnet-5 subagent)"
+pii_scan: clean
+pii_scan_note: "The diff and the council prompt carry only catalogue values (service code, name, price, duration). No client data; production was read only through the read-only role for practice_types and the migration ledger."
+bites: "practice_types.visa_d2_business_5yr reads base_price 13000000, is_active true in production after the deploy (scripts/pg.sh read-only); consumer crm_practices.py quotes base_price for a practice opened without an explicit price."
+diff:
+  net_lines: "One new SQL file (~80 lines incl. comments) plus this evidence directory."
+  behaviour_change: "New active practice_types row visa_d2_business_5yr (13000000, 1825 days, multiple_entry_visa). No schema change, no other row touched."
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "HIGH: migration number 324 already used by origin/agent/air-m5/backend-rag/bootstrap-notnull-prod (58948f5b60); the runner selects pending files by number, so one of the two would be silently skipped."
+    status: CONFIRMED
+    resolution: "Verified across all origin branches: 324 and 325 are taken on open branches, production ledger max is 323. Renumbered to 326."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: postcondition checks only price and is_active; a wrong duration, category or name would pass."
+    status: CONFIRMED
+    resolution: "Postcondition now requires active AND price 13000000 AND 1825 days AND multiple_entry_visa AND the ruled name; four guilt cases proven to raise."
+  - seat: codex-gpt-5.6-sol
+    objection: "MEDIUM: rollback only deactivates; it does not restore prior values of a pre-existing row."
+    status: PLAUSIBLE
+    resolution: "Measured on production 2026-10-15: the code does not exist, so there is no prior value to restore. Deactivate-not-delete is deliberate (practices may reference the row)."
+  - seat: codex-gpt-5.6-sol
+    objection: "LOW: a manual rerun bumps updated_at every time."
+    status: CONFIRMED
+    resolution: "Accepted: the runner never reruns an applied number; a manual rerun re-asserting the ruled row is the intended behaviour."
+receipts:
+  - claim: "Production before: practice_types has visa_d2_business_1yr/2yr and visa_d1_tourism_5yr, no visa_d2_business_5yr; unique index practice_types_code_key on code."
+    cmd: 'scripts/pg.sh -c "SELECT code,... FROM practice_types WHERE code LIKE ''visa_d2_%'' OR code=''visa_d1_tourism_5yr''"; SELECT indexdef FROM pg_indexes WHERE tablename=''practice_types'''
+    result: "3 rows, no d2 5yr; UNIQUE INDEX practice_types_code_key (code)"
+    exit: 0
+    ts: "2026-10-15T10:39:00Z"
+    seat: claude-opus-5-5
+  - claim: "Number collision check: 324 and 325 exist on open origin branches; production _schema_versions max migration_number is 323."
+    cmd: 'git ls-tree over every refs/remotes/origin/* for migrations_v2/32[4-9]_*; scripts/pg.sh -c "SELECT migration_number FROM _schema_versions ORDER BY 1 DESC LIMIT 3"'
+    result: "324 bootstrap-notnull-prod, 325 migration-325-expiry-view-isfinite; ledger 323,322,321"
+    exit: 0
+    ts: "2026-10-15T10:54:00Z"
+    seat: claude-opus-5-5
+  - claim: "Scratch Postgres 17 with the production practice_types shape: forward section (split by backend.db.migration_base.split_migration_sql) applied twice exits 0, one row at 13000000/1825/active/multiple_entry_visa; rollback deactivates; reapply after rollback exits 0."
+    cmd: "docker run postgres:17; psql -v ON_ERROR_STOP=1 < fwd.sql (x2); < rb.sql; < fwd.sql"
+    result: "apply1 0, apply2 0, row as ruled, count 3, rollback is_active f, reapply 0"
+    exit: 0
+    ts: "2026-10-15T10:55:26Z"
+    seat: claude-opus-5-5
+  - claim: "Guilt and innocence of the postcondition: wrong price, inactive, wrong duration, wrong category each raise; the ruled row passes."
+    cmd: "scratch: UPDATE the row; psql -v ON_ERROR_STOP=1 < DO-block"
+    result: "guilt x4 exit 3 (RAISE); innocence exit 0"
+    exit: 0
+    ts: "2026-10-15T10:55:26Z"
+    seat: claude-opus-5-5
+  - claim: "codex round 1 on migration 324 (pre-renumber), env-scrubbed, read-only, high effort."
+    cmd: 'env -i PATH="$PATH" HOME="$HOME" codex exec --skip-git-repo-check -s read-only -m gpt-5.6-sol -c model_reasoning_effort=high - < review_prompt_324.txt'
+    result: "SEAT-VERDICT: not-ok (verdict line says 4 HIGH; the listed findings are 1 HIGH, 2 MEDIUM, 1 LOW — all dispositioned above)"
+    exit: 0
+    ts: "2026-10-15T10:53:43Z"
+    seat: codex-gpt-5.6-sol

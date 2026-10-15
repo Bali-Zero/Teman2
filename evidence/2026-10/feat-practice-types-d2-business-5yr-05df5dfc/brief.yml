@@ -1,0 +1,32 @@
+task_id: practice-types-d2-business-5yr-1015
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Owner ruling 2026-10-15: D2 Business multiple-entry visa, 5-year validity, final selling price
+  13.000.000 IDR. The canonical price sheet and the mouth snapshot already carry the row (#8540,
+  live). This PR adds the same service to the CRM catalogue: migrations_v2/326 inserts
+  practice_types.visa_d2_business_5yr (base_price 13000000, 1825 days, multiple_entry_visa,
+  active), the value crm_practices.py quotes and invoice_service.py bills.
+constraints:
+  - "One new data migration file only; no schema change, no other row touched."
+  - "Idempotent upsert on the unique code; a DO-block postcondition raises unless the row is active at 13000000."
+  - "Rollback deactivates the row instead of deleting it (practices may reference it)."
+  - "The file was written under the operator two-key guardrail bypass, opened by Zero for this single file; no other SQL is written while it is open."
+acceptance:
+  - text: "WHEN the migration runs twice on a Postgres 17 table shaped like production practice_types, THEN both runs exit 0 and exactly one row visa_d2_business_5yr exists at 13000000, 1825 days, active."
+    probe: "docker postgres:17 scratch: psql -v ON_ERROR_STOP=1 < forward section (split by backend.db.migration_base.split_migration_sql), twice"
+  - text: "WHEN the row has a wrong price, is inactive, or has a wrong duration or category, THEN the postcondition raises; WHEN it carries every ruled value, THEN it passes."
+    probe: "scratch: UPDATE the row, run the DO block alone"
+  - text: "WHEN the Fly release_command applies the migration after merge, THEN production practice_types.visa_d2_business_5yr reads base_price 13000000, is_active true."
+    probe: 'scripts/pg.sh -c "SELECT base_price,is_active FROM practice_types WHERE code=''visa_d2_business_5yr''"'
+consumer_map:
+  - "crm_practices.py: practice created without an explicit price quotes practice_types.base_price."
+  - "invoice_service.py: bills the quoted amount."
+  - "Fly release_command (apps/backend-rag/fly.toml:14) applies migrations_v2 on deploy."
+risks:
+  - "If the production row were edited by hand to another price later, a rerun of this migration would reset it to 13000000 (ON CONFLICT re-asserts the ruled value) — intended."
+grader: |
+  Adversarial review by an external seat (codex gpt-5.6-sol, env-scrubbed, read-only) verified
+  finding by finding; executed scratch-Postgres receipts; a fresh Opus gate session outside the
+  contribution chain publishes harness/fable-gate on the head sha before merge.
