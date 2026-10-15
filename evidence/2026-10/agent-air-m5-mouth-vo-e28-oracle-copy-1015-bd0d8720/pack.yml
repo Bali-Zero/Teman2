@@ -1,0 +1,40 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Conductor spec PR-A (I-M01, I-M02, I-M03, I-T01, I-T03) re-verified against rulepack-prod-029 and the official E28A-F
+  page texts of 2026-10-15, plus F6 from the E28 family audit.
+mission: >-
+  The Visa Oracle investor copy says what the active pack checks and what the official E28 pages ask.
+lanes:
+  - lane: oracle-copy
+    role: build
+    seat: claude-sonnet-5-5 implementer (worktree mouth-vo-e28-oracle-copy-1015; commit trailers carry the roster label Claude Opus 5.5 required by the task).
+pii_scan: clean
+bites:
+  consumer: >-
+    The public /visa-oracle result card and investor interview (adapter reason copy, i18n questions, E28A stay-permit
+    line). The live walk on production after vercel promote is left to PROVE-LIVE, not claimed here.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_stay_permit_length.py
+  expect: "contains:stay-permit length holds"
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 0
+  paid_api: none
+results:
+  - claim: "Whole visa-oracle mouth suite."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 62 passed (62); Tests 1738 passed (1738)"
+    exit: 0
+    ts: "2026-10-15T23:26:28Z"
+  - claim: "Mutation: STAY_PERMIT_LENGTH_DAYS without 730 turns the E28A length tests red (cp backup, restored)."
+    cmd: cd apps/mouth && npx vitest run OutcomeSheet.duration.test.tsx engine-adapter.test.ts
+    result: "3 failed, 238 passed (E28A EN, E28A ID, adapter guilt row)"
+    exit: 1
+    ts: "2026-10-15T23:30:00Z"
+decisions:
+  - id: D-no-figures
+    decision: "Golden Visa reasons name no US dollar figure and point to the per-code official page; the figures wait for source records in the pack."
+  - id: D-e28a-longer-stay
+    decision: "E28A longerStay line (verified renewal) is pre-existing behaviour driven by the pack's unsourced 365x100 extension; not changed here, reported to the conductor."
+dissent: []
