@@ -1,0 +1,85 @@
+task_id: vo-e28-zantara-1015
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+brief_ref: evidence/brief.yml
+plan_ref:
+  "PR C of the E28 family audit 2026-10-15 (Gear 2, lane backend-rag). Built by a Claude Sonnet 5.5 implementer
+  from the written spec in the lead's scratchpad (specs/PR-C-zantara-e28.md); the lead verifies and ships."
+lanes:
+  - lane: e28-zantara
+    role: build
+    seat: "claude-sonnet-5-5 implementer, TDD (tests red first), local commits only; no push, no PR"
+
+seat_override: "R8 ground_truth: the ground truth of this lane is the signed pack seq-29 and the saved official pages under research/visa/2026-10-15-e28-pages, read and grepped on disk this turn; no NotebookLM query was run, so no nb or query_hash exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4 / SYMBIOSIS Law 2: code-only lane over repository text, saved public official pages and the signed rulepack. No client data reached any seat."
+pii_scan_note: "Diff holds public immigration page citations, catalogue wording and synthetic test strings only."
+
+grounding:
+  origin_main: "c68ae57f15 (branch base)"
+  signed_pack: "apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json (seq-29): E28A stay 730, extension 365 per extension VERIFIED; no Talent product"
+  saved_pages: "research/visa/2026-10-15-e28-pages/ (E28A..E28F, copied into this PR so the tests read them)"
+  capital_rule: "apps/backend-rag/backend/prompts/zantara_core_v4.py RULE 6 (Permen Investasi/BKPM 5/2025, Article 26)"
+
+verification:
+  red_first: "the three new test files were written before the fixes: 7 failed on the prompts+catalogue files, 16 failed on the routes file; green after the fixes"
+  green: "observe_zantara_e28_1015.py: 27 passed; wider run of the touched suites (kg, prompts, visa_check, zantara_core_v3): 1147 passed"
+  mutation: "see receipts: E28G back in a route (2 failed), E28D USD 50,000,000 to 5,000,000 (2 failed), E28A extensions back to 365*2 (1 failed); files restored by cp"
+  load_note: "M5 loadavg was 9-13 during the work, above the quiet-window limit of 8, so only the touched suites were run, not the whole backend file"
+
+dissent: []
+
+out_of_scope_reported:
+  - "kg_enhanced_retrieval.py restaurant_foreigner still carries 'Apply for TKA allocation and IMTA via SPKP for investor/director position' and tech_company_digital 'Apply for IMTA for foreign tech workers': IMTA outside a rewritten E28A step was left untouched by the brief."
+  - "match_tree._STEPS_INVESTOR is a purpose-level list, so D12 (pre-investment visit visa) shows the same E28A document list when D12 is ranked first; pre-existing shape, a per-visa split is a separate lane."
+  - "migrations/scripts/seed_visa_types_complete_2026.py still seeds an E28G row (the visa_types migration is its own lane in the audit)."
+
+bites:
+  consumer: "Zantara RAG golden-route context, the v3/v4 prompts and few-shot examples, and the legacy /api/visa/match E28A entry"
+  where: ci
+  observe: python3 scripts/ci/observe_zantara_e28_1015.py
+  expect: exit0
+
+receipts:
+  - claim: "Observer green at its floor of 27"
+    cmd: "python3 scripts/ci/observe_zantara_e28_1015.py"
+    result: "observe_zantara_e28_1015: 27 passed"
+    exit: 0
+    ts: "2026-10-15T22:44Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation E28G restored in the villa_rental_business route is convicted"
+    cmd: "edit kg_enhanced_retrieval.py, pytest test_kg_routes_e28_1015.py, restore by cp"
+    result: "2 failed, 16 passed (test_no_golden_route_names_e28g: ['villa_rental_business'] == []; test_former_e28g_routes_name_e28a_with_the_page_shareholding[villa_rental_business])"
+    exit: 1
+    ts: "2026-10-15T22:43Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation E28D USD 50,000,000 to 5,000,000 is convicted"
+    cmd: "edit kg_enhanced_retrieval.py, pytest test_kg_routes_e28_1015.py, restore by cp"
+    result: "2 failed, 16 passed (test_visa_golden_figures_equal_the_saved_pages, test_visa_golden_figures_checker_convicts_mutants)"
+    exit: 1
+    ts: "2026-10-15T22:43Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutation E28A extensions back to (1, 365 * 2) is convicted"
+    cmd: "edit catalogue.py, pytest test_catalogue_e28a_1015.py, restore by cp"
+    result: "1 failed, 3 passed (test_stay_and_extension_follow_the_pack: assert 730 == 365)"
+    exit: 1
+    ts: "2026-10-15T22:44Z"
+    seat: claude-sonnet-5-5
+  - claim: "Legacy matcher suite green with the E28A changes"
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider"
+    result: "492 passed"
+    exit: 0
+    ts: "2026-10-15T22:46Z"
+    seat: claude-sonnet-5-5
+  - claim: "Touched suites green"
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/rag/test_kg_*.py backend/tests/unit/services/rag/test_kg_*.py backend/tests/unit/prompts backend/tests/unit/llm/test_prompt_manager.py backend/tests/unit/routers/test_whatsapp_router_formats_llm_answers.py backend/tests/services/visa_check backend/tests/unit/test_zantara_core_v3.py -p no:cacheprovider"
+    result: "1147 passed"
+    exit: 0
+    ts: "2026-10-15T22:42Z"
+    seat: claude-sonnet-5-5
+
+spend:
+  adversarial_rounds: 0
