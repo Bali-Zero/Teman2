@@ -124,6 +124,13 @@ def test_the_tick_decides_the_key_again_with_the_redecide_row_and_journals_the_c
     assert len(skips) == 1 and skips[0]["pr"] == 1
 
 
+def test_an_ordinary_decision_carries_no_redecide_key(world):  # noqa: F811
+    world.gh.prs = [pr(2, world.head2)]   # conflicts with main: a decision with no run
+    assert world.tick() == 0
+    rows = [r for r in world.journal() if r["kind"] == "decision"]
+    assert len(rows) == 1 and "redecide" not in rows[0]
+
+
 def test_the_tick_hands_the_measured_host_free_space_to_the_triage(world):  # noqa: F811
     world.gh.prs = [pr(1, world.head1)]
     world.state.mkdir(parents=True, exist_ok=True)
