@@ -324,6 +324,17 @@ extension Snapshot {
                 content = AnyView(SearchListView().environmentObject(state).environmentObject(lang)
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
+        case "root-sheet":
+            // The sheet in the REAL window (#8492 gate): RootView with its sidebar (default width) and toolbar at the window's size, a code
+            // selected. The app's minimum window is 1040 pt wide, which leaves the main pane about 807 pt, not the 1040 of `live-sheet`.
+            // `--width` / `--height` are the WINDOW's. png_census C27 reads it against the window's bottom edge.
+            if let k = state.store.code(code) {
+                if args.contains("--sheet-open") { setenv("KBLI_SHEET_EXPANDED", "1", 1) }
+                state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
+                state.selected = k
+                content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+                    .frame(width: w, height: h, alignment: .top))
+            } else { content = notFound }
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
@@ -376,6 +387,15 @@ extension Snapshot {
         let host = NSHostingView(rootView: framedView)
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return true }
+        // The live sheet sizes itself from what it measures (`SheetFit`, `PaneKey`): a preference read into @State lays the window out
+        // once more, which a single draw never reaches. The window the user has settles; these two bands render it settled.
+        if ["live-sheet", "root-sheet"].contains(band) {
+            for _ in 0..<12 {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+                host.layoutSubtreeIfNeeded()
+                host.cacheDisplay(in: host.bounds, to: rep)
+            }
+        }
         host.cacheDisplay(in: host.bounds, to: rep)
         // Written in sRGB, so a pixel reads the token's own hex: the cache comes back tagged
         // Generic RGB (paper F7F4EE read F5F1EA, lineSoft DAD8D1 read D1CFC7), which a colour-managed
@@ -433,6 +453,11 @@ extension Snapshot {
                                              "cells": cells, "chipSet": chipSet]
                 if let cap = verdict.nationalCap { record["cap"] = cap }
                 doc["record"] = record
+            }
+            if ["registry-sheet", "live-sheet", "root-sheet"].contains(band) {
+                // What a sheet band rendered, said by the snapshot and not by a mark (#8492 gate binding 5): png_census keys the compact head's
+                // exemption and C27's "collapsed" on it, so a head.compact mark on an expanded render buys nothing.
+                doc["sheet"] = ["expanded": args.contains("--sheet-open"), "immersive": imm || band != "registry-sheet"]
             }
             if let data = try? JSONSerialization.data(withJSONObject: doc, options: [.prettyPrinted, .sortedKeys]) {
                 try? data.write(to: URL(fileURLWithPath: jsonPath))
