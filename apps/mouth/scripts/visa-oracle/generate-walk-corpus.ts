@@ -1158,8 +1158,9 @@ export function enumerateScenarios(): Scenario[] {
   // interview by construction (an offshore walk never asks `overstay_days`,
   // so its `immigration.overstay_days` is `KNOWN 0`; the onshore overstay
   // walks of PR-13 do answer it, and are measured, not assumed, to leave the
-  // flag unraised) and is covered instead by an allowlist row in the census, citing
-  // `test_evaluate_endpoint.py:2641`/`:2727`.
+  // flag unraised) and is covered instead by an allowlist row in the census,
+  // citing `test_evaluate_endpoint.py::test_condition_notice_order_is_canonical_not_request_order`
+  // and `::test_condition_notice_order_covers_the_three_new_flags`.
   scenarios.push({
     // The nine conditioning gate items in one walk: `CRIMINAL_RECORD` and
     // `ACTIVITY_BOUNDARY` are HOLDING flags (they empty candidates), so they
@@ -1408,7 +1409,9 @@ export function enumerateScenarios(): Scenario[] {
 
   // PR-13 (visa-night work family, 2026-10-15): the global filters no walk
   // answered on the employment tile, now that the backend names a no-path
-  // cause for each (E31-B01). Every row changes ONLY the listed answers of
+  // cause for the filters that end a walk (E31-B01; the minor, guardian,
+  // criminal-record and paid-medical walks end in a question or a hold, and
+  // the census pins which). Every row changes ONLY the listed answers of
   // the default `offshore/work` walk (or its `onshore` / paid-`other`
   // sibling), so the walk's whole content is that answer. `overstay_days` is
   // asked ONLY on the onshore arm (flow.ts: offshore skips it), so the

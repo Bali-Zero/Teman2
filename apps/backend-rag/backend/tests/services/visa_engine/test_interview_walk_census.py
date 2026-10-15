@@ -1786,7 +1786,7 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
 # PR-13 adds 9 global-filter walks to EVERY sequence, derived from `_pr13_rows(seq)`, the one
-# table the replay test re-measures (seq-20..22 hold three of them for review instead).
+# table the replay test re-measures (seq-20..22 hold four of them for review instead: calling-visa and the three overstay walks).
 EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     _seq: {
         _state: _census.get(_state, 0)
