@@ -1,0 +1,23 @@
+task_id: infra-localci-capacity-s2-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  B33 step 2 (S2) of the LocalCI capacity plan: measure what the concurrent lane (S3) and the once-per-run tree
+  (S4) must budget. Every candidate container the runner starts now leaves a probe in its check's receipt: five
+  host-side monotonic phase times (create, copy-in, start-to-exit, junit read-out, remove), the peak memory read
+  by the TRUSTED side (docker stats --no-stream every 2 s, maximum kept; the candidate never writes it), and the
+  writable-layer size read with docker ps -s before the removal. A sampler failure records null plus an error
+  string and never changes a verdict; LOCALCI_SANDBOX_SAMPLER=0 turns the sampler off. No verdict function and no
+  merger GATE term reads any new field (an AST test pins it), and a fixture run gives the same verdict with the
+  sampler on, off and failing. A small reader, scripts/localci/capacity_report.py, prints the per-context p95
+  memory, disk and setup table from the receipts; its consumer is the owner sizing S3's resources declarations
+  and pricing S4. Bites: the consumer is the LocalCI tick on Pro; the observation is one Pro decision whose
+  receipts carry all fields for every container of the run, and the table printed from it. Gear is 2 because
+  runner.py is the trusted executor; the gear-2 verdict is not asserted here, a fresh Opus gate reads the diff.
+residuals:
+  - docker stats reports the cgroup figure the engine exposes (cache subtracted by the engine), so mem_peak_bytes
+    is docker's number, not RSS; S3 reads it with that in mind.
+  - A 2 s sampler can miss a spike shorter than the interval; the figure is a lower bound of the true peak.
+  - Service containers (stand-in databases) are not probed in this step; their memory counts inside the context.
+  - The receipt grows by about 400 bytes per container.

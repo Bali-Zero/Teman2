@@ -65,6 +65,7 @@ PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
 TCH, B33 = "scripts/localci/tick_chain.py", ("scripts/localci/tests/test_tick_chain.py",)   # B33 S1
+CAP, B33S2 = "scripts/localci/capacity_report.py", ("scripts/localci/tests/test_capacity_probe.py",)   # B33 S2
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
@@ -1101,6 +1102,29 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b33-prediction-from-stale-offset": (SH, 'OFFSET="$(wc -c 2>/dev/null < "$STATE/decisions.jsonl" | tr -d \'[:space:]\' || true)"', 'OFFSET=0', B33),
     "b33-garbage-depth-chains": (SH, "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0; CHAIN_OK=0 ;; esac", "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0 ;; esac", B33),
     "b33-sibling-instead-of-exec": (SH, '  exec "$BASH" "$0" ||', '  "$BASH" "$0" ||', B33),
+    # B33 S2: per-container phases, trusted-side peak memory and layer size are data in the receipt, never a verdict
+    "b33s2-sampler-error-escapes-thread": (RUNNER, "        except Exception as e:   # noqa: BLE001 — a sampler failure is data in the receipt, never a verdict\n",
+                                           "        except ZeroDivisionError as e:\n", B33S2),
+    "b33s2-layer-error-escapes-run": (RUNNER, "    except Exception as e:   # noqa: BLE001 — as the memory sampler: data, never a verdict\n",
+                                      "    except ZeroDivisionError as e:\n", B33S2),
+    "b33s2-peak-is-last-sample": (RUNNER, '            elif self.probe["mem_peak_bytes"] is None or used > self.probe["mem_peak_bytes"]:\n', "            elif True:\n", B33S2),
+    "b33s2-sampler-switch-ignored": (RUNNER, 'sampler = "off" if os.environ.get(SANDBOX_SAMPLER_ENV) == "0" else "on"', 'sampler = "on"', B33S2),
+    "b33s2-layer-read-after-removal": (RUNNER, '        if made:\n            _probe_layer(docker, ctr, denv, probe)\n        with _timed(probe, "t_remove"):\n            _remove_verified(docker, ctr, denv)\n',
+                                       '        with _timed(probe, "t_remove"):\n            _remove_verified(docker, ctr, denv)\n        if made:\n            _probe_layer(docker, ctr, denv, probe)\n', B33S2),
+    "b33s2-layer-asked-without-container": (RUNNER, "        if made:\n            _probe_layer(", "        if True:\n            _probe_layer(", B33S2),
+    "b33s2-no-t-create": (RUNNER, '        with _timed(probe, "t_create"):\n', "        if True:\n", B33S2),
+    "b33s2-no-t-copy-in": (RUNNER, '                    probe["t_copy_in"] = round(time.monotonic() - t_cp, 3)\n', "                    pass\n", B33S2),
+    "b33s2-no-t-start-to-exit": (RUNNER, 'with _timed(probe, "t_start_to_exit"), _MemSampler(', "with _MemSampler(", B33S2),
+    "b33s2-no-t-junit": (RUNNER, '        with _timed(probe, "t_junit"):\n', "        if True:\n", B33S2),
+    "b33s2-no-t-remove": (RUNNER, '        with _timed(probe, "t_remove"):\n            _remove_verified(docker, ctr, denv)\n\n\nclass', '        if True:\n            _remove_verified(docker, ctr, denv)\n\n\nclass', B33S2),
+    "b33s2-sampler-not-joined": (RUNNER, "            self._t.join(30)\n", "            pass\n", B33S2),
+    "b33s2-steps-verdict-reads-the-probe": (RUNNER, "def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:\n",
+                                            'def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:\n    _ = spec.get("sandbox")\n', B33S2),
+    "b33s2-merger-reads-the-probe": (PY, 'GATE_CONTEXT = "harness/fable-gate"\n', 'GATE_CONTEXT = "harness/fable-gate"\n_PEAK = "mem_peak_bytes"\n', B33S2),
+    "b33s2-job-rows-drop-probes": (RUNNER, '"sandbox": x.get("sandbox") or []} for x in legs]', '"sandbox": []} for x in legs]', B33S2),
+    "b33s2-report-p95-is-max": (CAP, "v[max(0, math.ceil(0.95 * len(v)) - 1)]", "v[-1]", B33S2),
+    "b33s2-report-setup-drops-remove": (CAP, 'SETUP = ("t_create", "t_copy_in", "t_junit", "t_remove")', 'SETUP = ("t_create", "t_copy_in", "t_junit")', B33S2),
+    "b33s2-report-ignores-jobs-shape": (CAP, ' + [j.get("sandbox") for j in res.get("jobs") or [] if isinstance(j, dict)]', "", B33S2),
 }
 
 
