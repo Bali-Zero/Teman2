@@ -1,0 +1,14 @@
+mandate: universal-db-wave8-20261015-B07
+gear: 3
+colour: BLUE
+intent:
+  Prepare truthful migration,maintenance and retention lineage evidence; runtime
+  reconciliation remains unproved.
+scope:
+  - research/operations/udb-wave8/B07/
+constraints:
+  - One PR for B07; original Gemini conversation retained.
+  - No client rows,live mutation,credential creation,application changes,or unadmitted
+    native probe.
+  - Fresh independent Opus5.5/xhigh exact-head final gate required; Dux alone releases.
+  - S1 cannot start before all8actual block closures.

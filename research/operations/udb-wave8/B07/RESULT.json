@@ -1,0 +1,115 @@
+{
+  "block_id": "B07",
+  "campaign_id": "universal-db-wave8-20261015",
+  "dimensions": [
+    "D02",
+    "D11",
+    "D13"
+  ],
+  "status": "PARTIAL",
+  "block_closed": false,
+  "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
+  "proofs": [
+    {
+      "claim": "DR-B07-01 receipt keys: 199 SQL migrations_v2 files and 138 Python migrations (asserted by test_b07_lineage_invariants.py:142-143), plus alembic.ini pointing to script_location = backend/db/migrations where versions/ is absent on disk.",
+      "file": ".agent-receipts/udb-wave8-inputs/dux-requests/DR-B07-01.out",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "DR-B07-05.pro.out proves Mini and Pro launchctl states: com.nuzantara.outbox-prune and com.balizero.visa-retention-worker are NOT_LOADED on both Mini and Pro; only com.nuzantara.postgres-backup is loaded on Pro (exit 0).",
+      "file": ".agent-receipts/udb-wave8-inputs/dux-requests/DR-B07-05.pro.out",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Static counterexample CE-01: fly-deploy.yml release_command runs python -m backend.db.migrate apply (consumer_id src_e98bb23501189d64 -> src_c8f206461cd9bf69), executing only SQL migrations and leaving Python MigrationManager (src_058ad32e4ad2e6a8) outside automatic release_command.",
+      "file": ".github/workflows/fly-deploy.yml",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Static counterexample CE-02 & CE-05: migrate.py (src_c8f206461cd9bf69) hashes full file bytes into schema_versions without populating applied_from_sha/applied_by/migration_source, whereas schema_audit.py (src_697f237385fbe9eb) hashes stripped forward SQL into schema_migrations and stamps 'manual-apply' on bootstrap.",
+      "file": "apps/backend-rag/backend/db/migrate.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Static counterexample CE-03: Olympus DatabaseGuardian (src_fcca1b3652b56e72) and OlympusPulse (src_5726ef98e1124f67) are gated behind settings.enable_olympus (False by default in config.py:423) inside service_initializer.py (src_33d3066a868d2df3).",
+      "file": "apps/backend-rag/backend/app/setup/service_initializer.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Static counterexample CE-04 & CE-08: Guardian maintenance tasks (src_fcca1b3652b56e72) hardcode 5 tables for dead-tuple autovacuum checks, hardcode 3 logs tables for 90d cleanup, and catch partition ensure_future_partitions() errors as warning without failing readiness.",
+      "file": "apps/backend-rag/backend/services/olympus/guardian.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "B07 canonical lineage adapter implementing CONTRACT-CONVENTIONS.md 19-key envelope, x_ extension namespace, consumer-matrix.csv membership guard, and file-vs-ledger SHA-256 drift detection.",
+      "file": "research/operations/udb-wave8/B07/b07_lineage_adapter.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Read-only boolean/hash/count probe for schema_versions, schema_migrations, and partition bounds (conn.transaction(readonly=True), zero PII/actor strings).",
+      "file": "research/operations/udb-wave8/B07/b07_ledger_boolean_probe.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Deterministic pytest suite verifying CONTRACT-CONVENTIONS.md compliance, negative checksum-drift detection (B07-F2), consumer-matrix.csv IDs (B07-F4), DR-B07-01/DR-B07-05.pro.out invariants (B07-F1), and static counterexamples CE-01..CE-08.",
+      "file": "research/operations/udb-wave8/B07/test_b07_lineage_invariants.py",
+      "sha256": "PENDING_DUX_HASHER",
+      "timestamp": "2026-10-15T00:00:00Z",
+      "status": "EVIDENCED"
+    }
+  ],
+  "missing": [
+    "UN-01 (DUX-REQ-B07-10): Live Fly PostgreSQL read-only boolean/hash execution of research/operations/udb-wave8/B07/b07_ledger_boolean_probe.py against nuzantara-postgres to reconcile live schema_versions (199 SQL files per DR-B07-01) and schema_migrations checksums against disk SHA-256s.",
+    "UN-02 (DUX-REQ-B07-11): Live Fly nuzantara-rag verification of ENABLE_OLYMPUS runtime value and numeric row/aggregates from olympus_heartbeats, olympus_action_audit, and pg_stat_user_tables (n_dead_tup, last_vacuum, last_autovacuum, last_analyze).",
+    "UN-03 (DUX-REQ-B07-10): Live Fly PostgreSQL partition existence and child count for audit_events, security_events, and olympus_Metrics via pg_inherits.",
+    "UN-04 (DUX-REQ-B07-12): Latest restore drill receipt and Pro backup log tail from ~/.Nuzantara_backups/postgres/backup.log and scripts/pg-restore-drill.sh (consumer_id src_def7a4c288a552af)."
+  ],
+  "tests": [
+    {
+      "command": "pytest research/operations/udb-wave8/B07/test_b07_lineage_invariants.py -q",
+      "result": "PASS: 12 passed, exit 0 (Mini original worktree, after the Dux-applied parent bounded patch); before it 1 passed / 4 failed, receipt retained",
+      "evidence_file": "research/operations/udb-wave8/B07/test_b07_lineage_invariants.py"
+    }
+  ],
+  "dux_correction": {
+    "executed": true,
+    "prepared_by": "parent coordinator isolated scratch worktree; applied by Dux after pin check",
+    "patch_sha256": "c8c0b6ba58f89ebbf6203ea4df174b0438fc2ff5a20de5d8e74ba5e358caa1a3",
+    "files": {
+      "b07_lineage_adapter.py": {
+        "pre_sha256": "9bc149e58a22bafea463b68400df79cca3c9c91557ea43de3966d82010a90b9e",
+        "post_sha256": "ac0879e2f4200a0989e8a920776700e5f0d3d058328ad964e6245d138374b178"
+      },
+      "test_b07_lineage_invariants.py": {
+        "pre_sha256": "f0d79f26882bf59bb3a7fec9c14ab95bdc18ee66b479b39a06f30db61ad60def",
+        "post_sha256": "dcd5460c616e7d97c2b36de65f2897b57059a1eb2ba62872333b829c386249d9"
+      },
+      "b07_ledger_boolean_probe.py": {
+        "pre_sha256": "c0da81b1b3d490638f1e6626bd70297271fe211435febad0c7ae77021c259e90",
+        "post_sha256": "47255638648b4691d655cec7894156f47885ee8c2acc3f46caea6011c3fabde4"
+      }
+    },
+    "tests_before": "1 passed / 4 failed",
+    "tests_after": "12 passed, exit 0",
+    "native_probe_executed": false,
+    "live_pg_probed": false,
+    "runtime_unknowns_retained": true
+  }
+}
