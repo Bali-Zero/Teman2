@@ -27,7 +27,7 @@ cat > "$SANDBOX/bin/gh" <<'FAKEGH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 case "$1 $2" in
-  "pr view") [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "localci:merge-shadow-ok"; exit 0 ;;
+  "pr view") [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "${FAKE_LABEL_NAME:-localci:merge-shadow-ok}"; exit 0 ;;
   "pr edit")
     case "$*" in
       *--add-label*)
@@ -35,7 +35,7 @@ case "$1 $2" in
         if [ "$n" -lt "${FAKE_ADD_FAILS:-0}" ]; then echo $((n + 1)) > "$FAKE_COUNT"; echo "502 bad gateway" >&2; exit 1; fi ;;
     esac
     [ "${FAKE_EDIT_RC:-0}" = 0 ] || { echo "label not found" >&2; exit "$FAKE_EDIT_RC"; }; exit 0 ;;
-  "pr merge") [ "${FAKE_MERGE_RC:-0}" = 0 ] || { echo "boom" >&2; exit "$FAKE_MERGE_RC"; }; echo "Auto-merge enabled"; exit 0 ;;
+  "pr merge") [ "${FAKE_MERGE_RC:-0}" = 0 ] || { echo "${FAKE_MERGE_MSG:-boom}" >&2; exit "$FAKE_MERGE_RC"; }; echo "Auto-merge enabled"; exit 0 ;;
   "api repos/"*) [ "${FAKE_RULES_RC:-0}" = 0 ] || exit "$FAKE_RULES_RC"; echo "${FAKE_RULES_COUNT:-1}"; exit 0 ;;
 esac
 echo "FAKE_GH: unhandled: $*" >&2; exit 99
@@ -50,11 +50,14 @@ if [ "$u" -lt "${FAKE_VERIFY_UNREADABLE:-0}" ]; then echo $((u + 1)) > "$FAKE_CO
 case "${FAKE_VERIFY:-after-write}" in
   valid) exit 0 ;;
   never) echo "LABEL_INVALID pr=$2: label predates head"; exit 1 ;;
+  unreadable-after-write) grep -q -e '--add-label' "$FAKE_GH_LOG" && { echo "LABEL_UNREADABLE: 502" >&2; exit 2; }; echo "LABEL_INVALID pr=$2: label absent"; exit 1 ;;
   *) grep -q -e '--add-label' "$FAKE_GH_LOG" && exit 0; echo "LABEL_INVALID pr=$2: label absent"; exit 1 ;;
 esac
 FAKEVERIFY
+REAL_PY="$(command -v python3)"
+printf '#!/usr/bin/env bash\nif [ -n "${FAKE_PY_LOG:-}" ]; then echo "PY $*" >> "$FAKE_PY_LOG"; exit 0; fi\nexec %s "$@"\n' "$REAL_PY" > "$SANDBOX/bin/python3"
 printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n' > "$SANDBOX/bin/sleep"
-chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep"
+chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep" "$SANDBOX/bin/python3"
 
 run() {  # run <PR> [ENV=VAL...]
   local pr="$1"; shift
@@ -143,6 +146,56 @@ run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=n
 total="$(paste -sd+ "$SLEEPLOG" | bc)"
 check "worst case across all three phases is 42s, under 60 (got ${total}s)" "$([ "$total" -lt 60 ] && echo 1 || echo 0)"
 
+# C3: a read-back that is UNREADABLE after the write is not a success
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=unreadable-after-write
+check "read-back unreadable after the write: exit 2, 'read-back' on stderr, VERIFY == 5, no arm" "$([ $RC = 2 ] && [ "$(has 'read-back' "$ERR")" = 1 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 5 ] && [ "$(has 'pr merge' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+
+# L5: the default backoff (variable unset or empty) and the wall-clock deadline
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "default backoff (empty): worst-case sleep is exactly 42s (got ${total}s)" "$([ "$total" = 42 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=0
+check "deadline spent: the write loop stops at once, exit 2, the deadline is named" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 1 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never SIGNAL_INTENT_DEADLINE_S=0
+check "deadline spent: the read-back stops after one try, exit 2, the deadline is named" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 2 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99 SIGNAL_INTENT_DEADLINE_S=0
+check "deadline spent: the first read stops after one try, nothing written, exit 2" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=3 SIGNAL_INTENT_BACKOFF_S=2
+longest="$(sort -n "$SLEEPLOG" | tail -1)"
+check "no sleep runs past the deadline (longest ${longest}s, cap 3s)" "$([ "$longest" -le 3 ] && [ "$longest" -ge 2 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=1 SIGNAL_INTENT_DEADLINE_S=garbage SIGNAL_INTENT_BACKOFF_S=2
+check "a garbage deadline falls back to the default: the retry still happens, one sleep of exactly 2s, exit 0" "$([ $RC = 0 ] && [ "$(cat "$SLEEPLOG")" = 2 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_BACKOFF_S=2
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "write never succeeds: pauses between tries only, 2+4+8 = 14s (got ${total}s)" "$([ "$total" = 14 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99 SIGNAL_INTENT_BACKOFF_S=2
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "first read never readable: pauses between tries only, 14s (got ${total}s)" "$([ "$total" = 14 ] && echo 1 || echo 0)"
+
+# Predicate census (README, B31): every remaining conditional of the helper, guilt and innocence
+run ""
+check "empty PR argument: exit 1" "$([ $RC = 1 ] && echo 1 || echo 0)"
+for t in 0 abc; do
+  run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_TRIES=$t
+  check "SIGNAL_INTENT_TRIES=$t falls back to 4 tries" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 4 ] && echo 1 || echo 0)"
+done
+run 7 FAKE_RULES_COUNT=0 FAKE_PY_LOG="$SANDBOX/py" SIGNAL_INTENT_VERIFY=
+check "no override: the real read-back is label_census.py verify on the repo and PR" "$(has 'verify --repo Bali-Zero/Teman2 --pr 7' "$(cat "$SANDBOX/py" 2>/dev/null)")"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=valid
+check "a valid label is read exactly once" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9
+check "a plain write failure does not claim a deadline" "$([ "$(has 'deadline' "$ERR")" = 0 ] && [ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_LABEL_NAME=xlocalci:merge-shadow-ok-2
+check "another label that merely contains ours is not ours: no remove" "$([ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_ADD_FAILS=1
+check "stale label, first add fails: removed once, then only the add is retried" "$([ $RC = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--remove-label')" = 1 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 2 ] && echo 1 || echo 0)"
+for msg in "already queued" "Auto-Merge enabled" "already enabled" "pull request is clean"; do
+  run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1 "FAKE_MERGE_MSG=$msg"
+  check "arm refused with '$msg' is not an arm failure: exit 0, armed" "$([ $RC = 0 ] && [ "$(has 'arm=armed' "$OUT")" = 1 ] && echo 1 || echo 0)"
+done
+run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1 "FAKE_MERGE_MSG=GraphQL: something else"
+check "arm refused with an unknown message: exit 3" "$([ $RC = 3 ] && echo 1 || echo 0)"
+
 # L4: an unreadable verify is unknown, never a reason to remove the label
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1 FAKE_VERIFY=valid
 check "unreadable once on a valid label: re-read, exit 0, no remove, no add" "$([ $RC = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && echo 1 || echo 0)"
@@ -168,6 +221,20 @@ check "mutant (backoff not reset) is caught" "$([ "$total" -ge 60 ] && echo 1 ||
 mutate 's/^  \*) label=failed; why=.*$/  *) apply_label || label=failed ;;/'
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99
 check "mutant (unreadable treated as invalid) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; [ $? -ge 2 ] \&\& return 0/'
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=unreadable-after-write
+check "mutant (read-back accepts unreadable) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
+mutate 's/\${SIGNAL_INTENT_BACKOFF_S:-2}/${SIGNAL_INTENT_BACKOFF_S:-5}/g'
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=
+total="$(paste -sd+ "$SLEEPLOG" | bc)"
+check "mutant (default backoff 5) is caught" "$([ "$total" != 42 ] && echo 1 || echo 0)"
+mutate 's/^  if \[ "\$left" -le 0 \]; then deadline_hit=1; return 1; fi$/  :/'
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=0
+check "mutant (deadline never checked) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" != 1 ] && echo 1 || echo 0)"
+mutate 's/^  if \[ "\$BACKOFF" -lt "\$left" \]; then sleep "\$BACKOFF"; else sleep "\$left"; fi$/  sleep "$BACKOFF"/'
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=3 SIGNAL_INTENT_BACKOFF_S=2
+longest="$(sort -n "$SLEEPLOG" | tail -1)"
+check "mutant (sleep not capped by the deadline) is caught" "$([ "$longest" -gt 3 ] && echo 1 || echo 0)"
 HELPER="$HELPER_REAL"
 
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1

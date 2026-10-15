@@ -233,10 +233,109 @@ postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Front
 the label on the PR, the last `LabeledEvent` by an admin or maintain user, stamped no earlier than the head's push). Valid: nothing is written. Absent:
 add. Present but stale: remove, then add. The add retries with bounded backoff (`SIGNAL_INTENT_TRIES`, `SIGNAL_INTENT_BACKOFF_S`), then the label is read
 back again; a label not shown valid is exit 2 and `SIGNAL_INTENT_FAIL` on stderr, queue or no queue (with the queue rule present the arm is still
-attempted first). No caller swallows it (`docs_guardian.sh` used `|| true`; a test now refuses that spelling). Before the flip run
+attempted first). An unreadable read (rc other than 0 and 1, including a check-suites read that failed) is unknown, never invalid: it is retried and never removes a label. The whole helper runs under a wall-clock deadline (`SIGNAL_INTENT_DEADLINE_S`, default 45 s; the poller kills it at 60 s, pinned by test). No caller swallows it (`docs_guardian.sh` used `|| true`; a test now refuses that spelling). Before the flip run
 `python3 scripts/localci/label_census.py census --repo Bali-Zero/Teman2` (read-only; exit 1 and a list when open armed PRs lack a valid label; on
 2026-10-15 it named 7, among them the auto-publish article PR #8530) and re-run the helper on each. Auto-publish article PRs are opened by
 backend-rag's `GitHubPublisher`, which enables auto-merge but never labels; that change belongs to a backend-rag PR (its merge is a deploy).
+
+#### Predicate census (B31)
+
+Every conditional of `scripts/signal_merge_intent.sh`, the read-back (`scripts/localci/label_census.py`) and the `docs_guardian.sh` consumer, with the mutant that turns it and the test that kills it. `test_label_census.py::test_the_predicate_census_is_complete` fails when a row names a mutant that does not exist, when a `b31-*` mutant is not listed, or when the number of conditional lines of either file drifts from the counts below, so a new predicate cannot land unlisted.
+
+| # | file | predicate | mutant | killing test |
+|---|---|---|---|---|
+| 1 | `signal_merge_intent.sh` | PR argument numeric (`*[!0-9]*`) | `b31-sh-usage-accepts-non-numeric` | shell suite: non-numeric PR: exit 1 |
+| 2 | `signal_merge_intent.sh` | PR argument non-empty (`''`) | `b31-sh-usage-accepts-empty` | shell suite: empty PR argument: exit 1 |
+| 3 | `signal_merge_intent.sh` | TRIES sanitising: empty branch | — | equivalent: `${SIGNAL_INTENT_TRIES:-4}` already turns an empty value into 4 |
+| 4 | `signal_merge_intent.sh` | TRIES sanitising: zero branch | `b31-sh-tries-zero-allowed` | shell suite: SIGNAL_INTENT_TRIES=0 falls back to 4 |
+| 5 | `signal_merge_intent.sh` | TRIES sanitising: non-digits | `b31-sh-tries-garbage-allowed` | shell suite: SIGNAL_INTENT_TRIES=abc falls back to 4 |
+| 6 | `signal_merge_intent.sh` | DEADLINE sanitising: non-digits | `b31-sh-deadline-garbage-allowed` | shell suite: a garbage deadline falls back to the default |
+| 7 | `signal_merge_intent.sh` | DEADLINE sanitising: empty | — | equivalent: `${SIGNAL_INTENT_DEADLINE_S:-45}` already turns an empty value into 45 |
+| 8 | `signal_merge_intent.sh` | read-back override present (`-n SIGNAL_INTENT_VERIFY`) | `b31-sh-verify-override-ignored` | shell suite: every scenario (the fake verify is the override) |
+| 9 | `signal_merge_intent.sh` | read-back default is `label_census.py verify` | `b31-sh-verify-wrong-subcommand` | shell suite: no override: the real read-back is label_census.py verify |
+| 10 | `signal_merge_intent.sh` | deadline note printed only when hit (never) | `b31-sh-deadline-note-never` | shell suite: deadline spent: ... the deadline is named |
+| 11 | `signal_merge_intent.sh` | deadline note printed only when hit (always) | `b31-sh-deadline-note-always` | shell suite: a plain write failure does not claim a deadline |
+| 12 | `signal_merge_intent.sh` | pause: deadline spent (`left -le 0`) boundary | `b31-sh-deadline-boundary-lt` | shell suite: deadline spent (SIGNAL_INTENT_DEADLINE_S=0) |
+| 13 | `signal_merge_intent.sh` | pause: deadline spent returns failure | `b31-sh-deadline-continues` | shell suite: deadline spent: the write loop stops at once |
+| 14 | `signal_merge_intent.sh` | pause: deadline spent records the flag | `b31-sh-deadline-flag-unset` | shell suite: deadline spent: ... the deadline is named |
+| 15 | `signal_merge_intent.sh` | pause: sleep capped by the time left (comparison) | `b31-sh-sleep-cap-inverted` | shell suite: default backoff exactly 42s |
+| 16 | `signal_merge_intent.sh` | pause: sleep capped by the time left (the cap) | `b31-sh-sleep-uncapped` | shell suite: no sleep runs past the deadline |
+| 17 | `signal_merge_intent.sh` | pause: sleep capped by the time left (`-le`) | — | equivalent: at `BACKOFF == left` both branches sleep the same time |
+| 18 | `signal_merge_intent.sh` | pause: backoff doubles | `b31-sh-backoff-not-doubled` | shell suite: default backoff exactly 42s |
+| 19 | `signal_merge_intent.sh` | pause: backoff doubles (factor) | `b31-sh-backoff-tripled` | shell suite: default backoff exactly 42s |
+| 20 | `signal_merge_intent.sh` | pause: backoff restarts per phase | `b31-sh-backoff-not-reset` | shell suite: backoff restarts per phase, 28s |
+| 21 | `signal_merge_intent.sh` | default backoff value 2 | `b31-sh-backoff-default-5` | shell suite: default backoff exactly 42s |
+| 22 | `signal_merge_intent.sh` | label present on the PR (`grep -qxF`): never true | `b31-sh-has-never` | shell suite: label present but stale: refreshed (remove, then add) |
+| 23 | `signal_merge_intent.sh` | label present on the PR: always true | `b31-sh-has-always` | shell suite: label absent: added without a remove |
+| 24 | `signal_merge_intent.sh` | label present on the PR: exact match (`-x`) | `b31-sh-has-substring-match` | shell suite: another label that merely contains ours is not ours |
+| 25 | `signal_merge_intent.sh` | has cleared once the remove succeeded | `b31-sh-has-not-cleared-after-remove` | shell suite: stale label, first add fails: removed once |
+| 26 | `signal_merge_intent.sh` | add only after a successful remove | `b31-sh-add-after-failed-remove` | shell suite: label refresh failing: no add, exit 2 |
+| 27 | `signal_merge_intent.sh` | write loop breaks on success | `b31-sh-write-no-break` | shell suite: add fails twice then succeeds ... three adds |
+| 28 | `signal_merge_intent.sh` | write loop: no pause after the last try | `b31-sh-write-pause-after-last` | shell suite: default backoff exactly 42s |
+| 29 | `signal_merge_intent.sh` | write loop: pause failure (deadline) ends the loop | `b31-sh-write-ignores-deadline` | shell suite: deadline spent: the write loop stops at once |
+| 30 | `signal_merge_intent.sh` | write loop bound (`TRIES`) | `b31-sh-no-retry` | shell suite: add keeps failing: exactly the bounded number of adds |
+| 31 | `signal_merge_intent.sh` | write failure is fatal (`rc -ne 0`) | `b31-sh-write-failure-ignored` | shell suite: add keeps failing: exit 2, loud |
+| 32 | `signal_merge_intent.sh` | read-back follows the write | `b31-sh-no-readback-after-write` | shell suite: write ok but the read-back never shows a valid label |
+| 33 | `signal_merge_intent.sh` | read-back loop bound (low) | `b31-sh-readback-single-try` | shell suite: read-back bound: VERIFY calls == 1 + TRIES |
+| 34 | `signal_merge_intent.sh` | read-back loop bound (high) | `b31-sh-readback-unbounded` | shell suite: read-back bound: VERIFY calls == 1 + TRIES |
+| 35 | `signal_merge_intent.sh` | read-back: unreadable is not valid | `b31-sh-readback-accepts-unreadable` | shell suite: read-back unreadable after the write: exit 2 |
+| 36 | `signal_merge_intent.sh` | read-back loop: no pause after the last try | `b31-sh-readback-pause-after-last` | shell suite: default backoff exactly 42s |
+| 37 | `signal_merge_intent.sh` | read-back loop: pause failure (deadline) ends the loop | `b31-sh-readback-ignores-deadline` | shell suite: deadline spent: the read-back stops after one try |
+| 38 | `signal_merge_intent.sh` | first read loop: pause failure (deadline) ends the loop | `b31-sh-firstread-ignores-deadline` | shell suite: deadline spent: the first read stops after one try |
+| 39 | `signal_merge_intent.sh` | first read loop: no pause after the last try | `b31-sh-firstread-pause-after-last` | shell suite: default backoff exactly 42s |
+| 40 | `signal_merge_intent.sh` | first read: rc 1 (invalid) stops the loop | `b31-sh-firstread-retries-invalid` | shell suite: read-back bound: VERIFY calls == 1 + TRIES |
+| 41 | `signal_merge_intent.sh` | first read: rc 0 (valid) stops the loop | `b31-sh-firstread-retries-valid` | shell suite: a valid label is read exactly once |
+| 42 | `signal_merge_intent.sh` | first read: stops at all | `b31-sh-firstread-never-stops` | shell suite: a valid label is read exactly once |
+| 43 | `signal_merge_intent.sh` | first read: valid leaves the label alone | `b31-sh-valid-label-rewritten` | shell suite: label present and valid: no remove, no add |
+| 44 | `signal_merge_intent.sh` | first read: invalid is written | `b31-sh-invalid-never-written` | shell suite: label absent: added without a remove |
+| 45 | `signal_merge_intent.sh` | first read: unreadable is never written | `b31-sh-unreadable-is-invalid` | shell suite: never readable: exit 2, nothing removed or added |
+| 46 | `signal_merge_intent.sh` | first read: unreadable is a failure | `b31-sh-unreadable-not-failed` | shell suite: never readable: exit 2 |
+| 47 | `signal_merge_intent.sh` | fail line printed when the label failed (never) | `b31-sh-fail-line-never` | shell suite: label failure: SIGNAL_INTENT_FAIL on stderr |
+| 48 | `signal_merge_intent.sh` | queue absent branch | `b31-sh-queue-test-inverted` | shell suite: queue absent: label applied, no merge call |
+| 49 | `signal_merge_intent.sh` | queue absent: failed label is exit 2 | `b31-sh-failed-label-exit-0-queue-absent` | shell suite: label failure, queue absent: exit 2 |
+| 50 | `signal_merge_intent.sh` | arm failure (`rc -ne 0`) | `b31-sh-arm-failure-ignored` | shell suite: arm failure with queue: exit 3 |
+| 51 | `signal_merge_intent.sh` | arm failure: known benign messages excluded | `b31-sh-arm-failure-always-fatal` | shell suite: arm refused with 'already queued' ... exit 0 |
+| 52 | `signal_merge_intent.sh` | arm benign message `already queued` | `b31-sh-arm-already-queued-fatal` | shell suite: arm refused with 'already queued' |
+| 53 | `signal_merge_intent.sh` | arm benign message `auto-merge enabled` | `b31-sh-arm-enabled-fatal` | shell suite: arm refused with 'Auto-Merge enabled' |
+| 54 | `signal_merge_intent.sh` | arm benign message `already enabled` | `b31-sh-arm-already-enabled-fatal` | shell suite: arm refused with 'already enabled' |
+| 55 | `signal_merge_intent.sh` | arm benign message `clean` | `b31-sh-arm-clean-fatal` | shell suite: arm refused with 'pull request is clean' |
+| 56 | `signal_merge_intent.sh` | queue present: failed label is exit 2 | `b31-sh-failed-label-exit-0-queue-present` | shell suite: label failure, queue present: exit 2 |
+| 57 | `docs_guardian.sh` | docs_guardian: helper failure is detected | `b31-docs-guardian-swallows-helper` | pytest: test_docs_guardian_fails_loud_when_the_helper_fails |
+| 58 | `docs_guardian.sh` | docs_guardian: status kept | `b31-dg-status-discarded` | pytest: test_docs_guardian_fails_loud_when_the_helper_fails |
+| 59 | `docs_guardian.sh` | docs_guardian: failure notified | `b31-dg-notify-dropped` | pytest: test_docs_guardian_fails_loud_when_the_helper_fails |
+| 60 | `docs_guardian.sh` | docs_guardian: failure is the exit code | `b31-dg-exit-dropped` | pytest: test_docs_guardian_fails_loud_when_the_helper_fails |
+| 61 | `label_census.py` | verify: pull request must be a dict | `b31-lc-verify-missing-pr-passes` | pytest: test_verify_a_missing_pull_request_is_an_error_not_a_verdict |
+| 62 | `label_census.py` | verify: an unreadable judgement is unknown (never) | `b31-lc-unreadable-judged-invalid` | pytest: test_verify_check_suites_unreadable_is_unknown_not_invalid |
+| 63 | `label_census.py` | verify: only unreadable judgements are unknown (always) | `b31-lc-everything-unreadable` | pytest: test_verify_a_judged_invalid_label_stays_rc_1 |
+| 64 | `label_census.py` | _unreadable: event time / head clause | `b31-lc-unreadable-head-time-missed` | pytest: test_verify_unreadable_head_or_event_time_is_unknown |
+| 65 | `label_census.py` | _unreadable: check-suites clause | `b31-lc-unreadable-suites-missed` | pytest: test_verify_check_suites_unreadable_is_unknown_not_invalid |
+| 66 | `label_census.py` | _unreadable: ` unreadable (` part of the check-suites clause | — | equivalent: no other reason of merger.label_arm starts with `check suites of ` |
+| 67 | `label_census.py` | open_prs: page must be a dict | `b31-lc-open-prs-bad-page-passes` | pytest: test_open_prs_refuses_a_page_that_is_not_a_page_and_skips_non_nodes |
+| 68 | `label_census.py` | open_prs: nodes that are not dicts are skipped | `b31-lc-open-prs-keeps-non-nodes` | pytest: test_open_prs_refuses_a_page_that_is_not_a_page_and_skips_non_nodes |
+| 69 | `label_census.py` | open_prs: stops without a next page | `b31-lc-census-first-page-only` | pytest: test_the_census_reads_every_page |
+| 70 | `label_census.py` | open_prs: cursor carried | `b31-lc-open-prs-cursor-dropped` | pytest: test_the_census_reads_every_page |
+| 71 | `label_census.py` | census: draft excluded | `b31-lc-census-lists-drafts` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 72 | `label_census.py` | census: unarmed excluded | `b31-lc-census-includes-unarmed` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 73 | `label_census.py` | census: auto-merge arms | `b31-lc-census-auto-merge-dropped` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft (PR 8) |
+| 74 | `label_census.py` | census: queue arms | `b31-lc-census-drops-queue` | pytest: test_census_lists_a_queue_only_armed_pr_without_a_valid_label |
+| 75 | `label_census.py` | census: label arms | `b31-lc-census-label-only-dropped` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft (PR 6) |
+| 76 | `label_census.py` | census: valid excluded | `b31-lc-census-lists-valid` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 77 | `label_census.py` | census row: label flag | `b31-lc-census-label-flag-true` | pytest: test_census_row_carries_the_label_flag_and_a_bounded_title |
+| 78 | `label_census.py` | census row: armed_by label | `b31-lc-census-armed-by-label-lost` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 79 | `label_census.py` | census row: armed_by queue | `b31-lc-census-armed-by-queue-lost` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 80 | `label_census.py` | census row: armed_by auto-merge | `b31-lc-census-armed-by-auto-lost` | pytest: test_the_census_leaves_out_what_is_valid_unarmed_or_draft |
+| 81 | `label_census.py` | census row: title bounded (high) | `b31-lc-census-title-unbounded` | pytest: test_census_row_carries_the_label_flag_and_a_bounded_title |
+| 82 | `label_census.py` | census row: title bounded (low) | `b31-lc-census-title-cut-short` | pytest: test_census_row_carries_the_label_flag_and_a_bounded_title |
+| 83 | `label_census.py` | main verify: quiet goes to stderr | `b31-lc-quiet-to-stdout` | pytest: test_verify_quiet_writes_the_invalid_line_to_stderr |
+| 84 | `label_census.py` | main verify: invalid is rc 1 | `b31-lc-verify-invalid-exits-zero` | pytest: test_verify_exit_codes_valid_invalid_unreadable |
+| 85 | `label_census.py` | main verify: valid is rc 0 | `b31-lc-verify-ok-exit-1` | pytest: test_verify_exit_codes_valid_invalid_unreadable |
+| 86 | `label_census.py` | main: unreadable is rc 2 | `b31-lc-unreadable-exits-zero` | pytest: test_verify_exit_codes_valid_invalid_unreadable |
+| 87 | `label_census.py` | main census: `--json` | `b31-lc-json-ignored` | pytest: test_census_exit_code_and_json |
+| 88 | `label_census.py` | main census: rows printed | `b31-lc-census-rows-print-dropped` | pytest: test_census_exit_code_and_json (non-json half) |
+| 89 | `label_census.py` | main census: rows give rc 1 | `b31-lc-census-clean-exit-1` | pytest: test_census_exit_code_and_json |
+| 90 | `label_census.py` | main census: no rows give rc 0 | `b31-lc-census-dirty-exit-0` | pytest: test_census_exit_code_and_json |
+
+Conditional lines counted: `signal_merge_intent.sh` = 30, `label_census.py` = 26.
 
 ### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
 

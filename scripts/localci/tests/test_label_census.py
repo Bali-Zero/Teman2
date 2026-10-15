@@ -77,6 +77,42 @@ def test_verify_exit_codes_valid_invalid_unreadable(monkeypatch, capsys):
     assert lc.main(["verify", "--repo", "o/r", "--pr", "1"]) == 2 and "LABEL_UNREADABLE" in capsys.readouterr().err
 
 
+def _suites(monkeypatch, fn, only="check-suites"):
+    real = mg.hc.gh_get
+    monkeypatch.setattr(mg.hc, "gh_get", lambda path: fn(path) if only in path else real(path))
+
+
+@pytest.mark.parametrize("how", ["raises", "incomplete", "no-timestamp"])
+def test_verify_check_suites_unreadable_is_unknown_not_invalid(monkeypatch, capsys, how):
+    """B31 L6: a transient read failure on a VALID label must be rc 2 (the helper retries), never rc 1 (the helper would remove the label)."""
+    _graphql(monkeypatch, pr(1))
+    def fn(path):
+        if how == "raises":
+            raise RuntimeError("502")
+        return {"total_count": 2, "check_suites": [{"created_at": PUSH}]} if how == "incomplete" else {"total_count": 1, "check_suites": [{"created_at": None}]}
+    _suites(monkeypatch, fn)
+    assert lc.main(["verify", "--repo", "o/r", "--pr", "1"]) == 2 and "LABEL_UNREADABLE" in capsys.readouterr().err
+
+
+def test_verify_unreadable_head_or_event_time_is_unknown(monkeypatch, capsys):
+    _graphql(monkeypatch, pr(1, head="not-a-sha"))
+    assert lc.main(["verify", "--repo", "o/r", "--pr", "1"]) == 2 and "LABEL_UNREADABLE" in capsys.readouterr().err
+
+
+def test_verify_permission_read_failure_is_unknown(monkeypatch, capsys):
+    _graphql(monkeypatch, pr(1))
+    def boom(path):
+        raise RuntimeError("502")
+    _suites(monkeypatch, boom, only="/permission")
+    assert lc.main(["verify", "--repo", "o/r", "--pr", "1"]) == 2
+
+
+@pytest.mark.parametrize("kw", [{"label": False}, {"actor": ("User", "writer")}, {"actor": ("Bot", "github-actions")}, {"at": BEFORE}])
+def test_verify_a_judged_invalid_label_stays_rc_1(monkeypatch, capsys, kw):
+    _graphql(monkeypatch, pr(1, **kw))
+    assert lc.main(["verify", "--repo", "o/r", "--pr", "1"]) == 1 and "LABEL_INVALID" in capsys.readouterr().out
+
+
 def test_a_read_failure_inside_the_census_is_exit_2_not_a_clean_list(monkeypatch, capsys):
     monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: (_ for _ in ()).throw(mg.GraphQLError("502")))
     assert lc.main(["census", "--repo", "o/r"]) == 2 and "LABEL_UNREADABLE" in capsys.readouterr().err
@@ -87,12 +123,59 @@ def test_census_lists_a_queue_only_armed_pr_without_a_valid_label():
     assert [(r["pr"], r["armed_by"]) for r in rows] == [(5, "queue")]
 
 
+def test_verify_a_missing_pull_request_is_an_error_not_a_verdict(monkeypatch):
+    _graphql(monkeypatch, None)
+    with pytest.raises(mg.GraphQLError):
+        lc.verify("o/r", 3)
+
+
+def test_open_prs_refuses_a_page_that_is_not_a_page_and_skips_non_nodes(monkeypatch):
+    monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: {"repository": {"pullRequests": None}})
+    with pytest.raises(mg.GraphQLError):
+        lc.open_prs("o/r")
+    monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: {"repository": {"pullRequests": {"pageInfo": {"hasNextPage": False}, "nodes": [None, "x", pr(4, label=False)]}}})
+    assert [n["number"] for n in lc.open_prs("o/r")] == [4]
+
+
+def test_census_row_carries_the_label_flag_and_a_bounded_title():
+    long = pr(6, at=BEFORE, auto=False)
+    long["title"] = "t" * 200
+    rows = lc.census("o/r", [long, pr(8, label=False)])
+    by = {r["pr"]: r for r in rows}
+    assert by[6]["label"] is True and by[8]["label"] is False and len(by[6]["title"]) == 70
+
+
+def test_verify_quiet_writes_the_invalid_line_to_stderr(monkeypatch, capsys):
+    _graphql(monkeypatch, pr(1, at=BEFORE))
+    assert lc.main(["verify", "--repo", "o/r", "--pr", "1", "--quiet"]) == 1
+    out = capsys.readouterr()
+    assert out.out == "" and "LABEL_INVALID" in out.err
+
+
+def test_the_poller_outlives_the_helpers_deadline_with_margin():
+    """B31 L5: the helper's wall-clock deadline plus one in-flight call must end before the poller kills it."""
+    root = Path(__file__).resolve().parents[3]
+    helper = (root / "scripts/signal_merge_intent.sh").read_text()
+    poller = (root / "apps/bali-intel-scraper/scripts/post_publish_poller.py").read_text()
+    deadline = int(re.search(r'DEADLINE="\$\{SIGNAL_INTENT_DEADLINE_S:-(\d+)\}"', helper)[1])
+    window = poller[poller.index("signal_merge_intent"):]
+    timeout = int(re.search(r"timeout=(\d+)", window)[1])
+    assert timeout >= deadline + 15, (timeout, deadline)
+
+
 def test_census_exit_code_and_json(monkeypatch, capsys):
     _graphql(monkeypatch, pr(9, label=False))
     assert lc.main(["census", "--repo", "o/r", "--json"]) == 1
     assert json.loads(capsys.readouterr().out)[0]["pr"] == 9
     _graphql(monkeypatch, pr(9))
     assert lc.main(["census", "--repo", "o/r"]) == 0
+
+
+def test_census_prints_each_row_and_the_total(monkeypatch, capsys):
+    _graphql(monkeypatch, pr(9, label=False))
+    assert lc.main(["census", "--repo", "o/r"]) == 1
+    out = capsys.readouterr().out
+    assert "#9 [auto-merge] label" in out and "CENSUS 1 armed PR(s)" in out
 
 
 def test_no_caller_swallows_the_helpers_exit():
@@ -146,3 +229,39 @@ def test_the_signal_merge_intent_shell_suite_passes():
     root = Path(__file__).resolve().parents[3]
     run = subprocess.run(["bash", str(root / "scripts/tests/test_signal_merge_intent.sh")], capture_output=True, text=True, timeout=300)
     assert run.returncode == 0, run.stdout[-1500:] + run.stderr[-500:]
+
+
+_SH_COND = re.compile(r"^\s*(if|elif|case|for|while)\b|&&|\|\||^\s*(\d+|\*|'')\S*\)")
+_PY_COND = re.compile(r"^\s*(if|elif|for|while)\b|\bif\b.*\belse\b|\b(and|or)\b")
+
+
+def _conditional_lines(path, rx):
+    return sum(1 for line in path.read_text().splitlines() if not line.lstrip().startswith("#") and rx.search(line))
+
+
+def test_the_predicate_census_is_complete():
+    """B31 round 3: a predicate of the helper or the read-back cannot land without a row, a mutant and a killing test."""
+    root = Path(__file__).resolve().parents[3]
+    readme = (root / "scripts/localci/README.md").read_text()
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("b31_mm", root / "scripts/localci/tests/mutants/merger_mutants.py")
+    mm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mm)
+    b31 = {n: v for n, v in mm.MUTANTS.items() if n.startswith("b31-")}
+    listed, rows = set(), 0
+    for line in readme.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) != 5 or not cells[0].isdigit():
+            continue
+        rows += 1
+        mutant = cells[3].strip("`")
+        if mutant == "\u2014":
+            assert cells[4].startswith("equivalent:"), f"row {cells[0]}: no mutant and no equivalence argument"
+            continue
+        assert mutant in b31, f"row {cells[0]} names a mutant that does not exist: {mutant}"
+        assert b31[mutant][0].endswith(cells[1].strip("`")), f"row {cells[0]}: mutant {mutant} turns another file"
+        assert cells[4], f"row {cells[0]}: no killing test"
+        listed.add(mutant)
+    assert listed == set(b31), sorted(set(b31) ^ listed)
+    sh, py = _conditional_lines(root / "scripts/signal_merge_intent.sh", _SH_COND), _conditional_lines(root / "scripts/localci/label_census.py", _PY_COND)
+    assert f"`signal_merge_intent.sh` = {sh}, `label_census.py` = {py}." in readme, (sh, py, rows)

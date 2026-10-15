@@ -30,7 +30,15 @@ def verify(repo: str, number: int) -> tuple[str | None, str | None]:
     p = (mg.gh_graphql(mg.PR_QUERY, owner=owner, name=name, number=number).get("repository") or {}).get("pullRequest")
     if not isinstance(p, dict):
         raise mg.GraphQLError(f"#{number} is not a pull request of {repo}")
-    return mg.label_arm(repo, p)
+    reason, actor = mg.label_arm(repo, p)
+    if reason and _unreadable(reason):
+        raise mg.GraphQLError(f"the label of #{number} could not be judged: {reason}")
+    return reason, actor
+
+
+def _unreadable(reason: str) -> bool:
+    """merger.label_postdates_head folds a read that failed (check suites, event time, head) into a reason; for the helper that is UNKNOWN, not invalid."""
+    return reason.startswith(f"{mg.ARM_LABEL} event time or PR head unreadable") or (reason.startswith("check suites of ") and " unreadable (" in reason)
 
 
 def open_prs(repo: str) -> list[dict]:
