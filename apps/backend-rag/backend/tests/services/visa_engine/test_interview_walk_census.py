@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **171 real interview walks** — every distinct
+the user lives in: replay the **180 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -667,7 +667,19 @@ _PR12_UNSURE_SPONSOR_ROW = (
         why_unaskable=ANSWER_NEVER_CERTIFIED,
     ),
 )
+#: PR-13: a minor on the employment tile. The pack reads `family.sponsor_confirmed` for
+#: an applicant under 18 (E31E child scope), the work branch never asks the family
+#: sponsor question, so the walk ends NEEDS_INPUT on a fact its own tile cannot supply
+#: (`QUESTION_NOT_IN_THIS_WALK`). Measured on seq-20..29; reported, not cured, here.
+_PR13_MINOR_WORK_ROW = (
+    DeadEnd(
+        fact="family.sponsor_confirmed",
+        source_question="family_sponsor_confirmed",
+        why_unaskable=QUESTION_NOT_IN_THIS_WALK,
+    ),
+)
 for _seq, _rows in WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE.items():
+    _rows["offshore/work/minor"] = _PR13_MINOR_WORK_ROW
     _rows["offshore/work/no_government_collaboration/payer_unsure"] = _PR12_UNSURE_PAYER_ROW
     _rows["offshore/work/no_government_collaboration/sponsor_confirmed_unsure"] = (
         _PR12_UNSURE_SPONSOR_ROW
@@ -1416,6 +1428,87 @@ _T06_FLAGGED_WALKS = (
     "offshore/business/training/no_local_compensation",
     "offshore/business/other/no_local_compensation",
 )
+#: PR-13 (visa-night work family, 2026-10-15): 9 walks that answer a GLOBAL filter on
+#: the employment tile (nationality, overstay, minor, criminal record) or the paid
+#: `other` walk's medical purpose. Every row is the engine's own replay on seq-20..29
+#: (never the audit's seq-27 prediction copied), as (state, candidates, no-path reason
+#: codes, review reason codes). The global no-path causes land at seq-23: seq-20..22 end
+#: the calling-visa and overstay walks in HUMAN_REVIEW_REQUIRED (CALLING_VISA_REVIEW /
+#: ACTIVE_OVERSTAY), seq-23..29 name the cause. seq-20 has no E33B, so the two SUPPORTED
+#: walks lose it there. Measured on this corpus: `OVERSTAY_EXCEEDS_60_DAYS` sits beside
+#: the settle-first cause only past 60 days, and the Indonesian-citizen walk names its
+#: cause on every sequence. The two SUPPORTED walks are held only at FUNNEL level, by
+#: the disclosure flag they carry (see the flag and funnel tables).
+_PR13_ROW = tuple[str, tuple[str, ...], tuple[str, ...], tuple[str, ...]]
+_PR13_OVERSTAY_WALKS = (
+    "onshore/work/overstay_30",
+    "onshore/work/overstay_61",
+    "onshore/work/sponsor_government/trade_office_only/overstay_61",
+)
+_PR13_FLAGGED_WALKS = ("offshore/work/disclosed_criminal", "offshore/other/paid/medical")
+_PR13_GLOBAL_FILTER_ROWS: dict[str, _PR13_ROW] = {
+    "offshore/work/nationality_id": (
+        "NO_SUPPORTED_PATH",
+        (),
+        ("APPLICANT_IS_INDONESIAN_CITIZEN",),
+        (),
+    ),
+    "offshore/work/nationality_calling_visa": (
+        "NO_SUPPORTED_PATH",
+        (),
+        ("CALLING_VISA_NATIONALITY_NOT_ASSESSED",),
+        (),
+    ),
+    "onshore/work/overstay_30": ("NO_SUPPORTED_PATH", (), ("ACTIVE_OVERSTAY_SETTLE_FIRST",), ()),
+    "onshore/work/overstay_61": (
+        "NO_SUPPORTED_PATH",
+        (),
+        ("ACTIVE_OVERSTAY_SETTLE_FIRST", "OVERSTAY_EXCEEDS_60_DAYS"),
+        (),
+    ),
+    "offshore/work/minor": ("NEEDS_INPUT", (), (), ()),
+    "offshore/work/minor/guardian_no": (
+        "HUMAN_REVIEW_REQUIRED",
+        (),
+        (),
+        ("MINOR_GUARDIAN_PRIVACY_REVIEW",),
+    ),
+    "offshore/work/disclosed_criminal": ("SUPPORTED_CANDIDATES", ("E23", "E33B"), (), ()),
+    "onshore/work/sponsor_government/trade_office_only/overstay_61": (
+        "NO_SUPPORTED_PATH",
+        (),
+        ("ACTIVE_OVERSTAY_SETTLE_FIRST", "OVERSTAY_EXCEEDS_60_DAYS"),
+        (),
+    ),
+    "offshore/other/paid/medical": ("SUPPORTED_CANDIDATES", ("E23", "E33B"), (), ()),
+}
+_PR13_REVIEW_BEFORE_SEQ23: dict[str, _PR13_ROW] = {
+    "offshore/work/nationality_calling_visa": (
+        "HUMAN_REVIEW_REQUIRED",
+        (),
+        (),
+        ("CALLING_VISA_REVIEW",),
+    ),
+    **dict.fromkeys(_PR13_OVERSTAY_WALKS, ("HUMAN_REVIEW_REQUIRED", (), (), ("ACTIVE_OVERSTAY",))),
+}
+
+
+def _pr13_rows(sequence: int) -> dict[str, _PR13_ROW]:
+    """The nine PR-13 rows as measured on ``sequence`` (20..29)."""
+
+    rows = dict(_PR13_GLOBAL_FILTER_ROWS)
+    if sequence < 23:
+        rows.update(_PR13_REVIEW_BEFORE_SEQ23)
+    if sequence == 20:
+        for label in _PR13_FLAGGED_WALKS:
+            rows[label] = ("SUPPORTED_CANDIDATES", ("E23",), (), ())
+    return rows
+
+
+def _pr13_outcomes(sequence: int) -> dict[str, tuple[str, tuple[str, ...]]]:
+    return {label: (row[0], row[1]) for label, row in _pr13_rows(sequence).items()}
+
+
 # The sequences share one corpus, so every one of them pins the 13 PR-11 walks and the 12
 # PR-12 walks; the replay tests
 # `test_retirement_walks_replay_to_their_pins_on_every_pinned_sequence` and
@@ -1427,6 +1520,7 @@ EXPECTED_OUTCOME_BY_SEQUENCE = {
         **_PR11_RETIREMENT_OUTCOMES,
         **(_PR12_WORK_OUTCOMES_SEQ20 if _seq == 20 else _PR12_WORK_OUTCOMES),
         **(_T06_VISIT_OUTCOMES_SEQ20 if _seq == 20 else _T06_VISIT_OUTCOMES),
+        **_pr13_outcomes(_seq),
     }
     for _seq, _pins in EXPECTED_OUTCOME_BY_SEQUENCE.items()
 }
@@ -1520,6 +1614,13 @@ _EXPECTED_REASONS_ON_SEQ27: dict[str, ReasonPin] = {
     "offshore/tourism/stay_181/multiple": (("BVK_NATIONALITY_ONLY", "AGE_BELOW_55"), ()),
     "offshore/business/no_local_compensation/stay_181": (("AGE_BELOW_55",), ()),
     "offshore/other/medical/stay_181": (("BRIDGING_ONSHORE_ONLY",), ()),
+    # PR-13 (measured on seq-27, 28 and 29): the global-filter walks that end without a
+    # product, every one naming its own cause beside the open minor answer.
+    **{
+        label: (row[2], row[3])
+        for label, row in _PR13_GLOBAL_FILTER_ROWS.items()
+        if row[0] != "SUPPORTED_CANDIDATES"
+    },
 }
 #: seq-28 (E33G Step C, #8300): the business no-path stops naming AGE_BELOW_55
 #: next to BUSINESS_LOCAL_COMPENSATION_NOT_ALLOWED (measured from the evaluated
@@ -1568,6 +1669,10 @@ FUNNEL_REASON_CHANGES: dict[str, ReasonPin] = {
     "offshore/other/no_paid_activity/medical": _FUNNEL_ACTIVITY_BOUNDARY,
     "offshore/tourism/disclosed_criminal": ((), ("DISCLOSED_CRIMINAL_RECORD_REVIEW",)),
     **dict.fromkeys(_T06_FLAGGED_WALKS, _FUNNEL_ACTIVITY_BOUNDARY),
+    # PR-13: the criminal-record walk is held for review and the paid medical walk dead-ends,
+    # both by the flag they carry (their engine verdict is SUPPORTED_CANDIDATES).
+    "offshore/work/disclosed_criminal": ((), ("DISCLOSED_CRIMINAL_RECORD_REVIEW",)),
+    "offshore/other/paid/medical": _FUNNEL_ACTIVITY_BOUNDARY,
     # The one flagged walk already at NO_SUPPORTED_PATH keeps its own cause beside the flag's.
     "offshore/other/medical/stay_181": (
         ("BRIDGING_ONSHORE_ONLY", "DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH"),
@@ -1680,6 +1785,16 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
     }
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
+# PR-13 adds 9 global-filter walks to EVERY sequence, derived from `_pr13_rows(seq)`, the one
+# table the replay test re-measures (seq-20..22 hold three of them for review instead).
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {
+        _state: _census.get(_state, 0)
+        + Counter(_row[0] for _row in _pr13_rows(_seq).values()).get(_state, 0)
+        for _state in {*_census, *(_row[0] for _row in _pr13_rows(_seq).values())}
+    }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
 
 #: Which fact blocks how many walks — the §2.2 table, EMPTY between PR-3 and
 #: PR-5. A cure that moves walks between blocking facts instead of removing
@@ -1738,6 +1853,8 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE = {
             "work.indonesian_work_sponsor_confirmed", 0
         )
         + 1,
+        # PR-13: the employment-tile minor blocks on the family sponsor fact on every sequence.
+        "family.sponsor_confirmed": _facts.get("family.sponsor_confirmed", 0) + 1,
     }
     for _seq, _facts in EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE.items()
 }
@@ -1821,6 +1938,9 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
         "SOURCE_OF_FUNDS_UNCLEAR",
     ),
     "offshore/tourism/disclosed_criminal": ("CRIMINAL_RECORD",),
+    # PR-13: the same two flags on the employment tile and the paid `other` walk.
+    "offshore/work/disclosed_criminal": ("CRIMINAL_RECORD",),
+    "offshore/other/paid/medical": ("ACTIVITY_BOUNDARY",),
     "offshore/tourism/multi_purpose": ("MULTI_PURPOSE_TRIP",),
 }
 
@@ -1838,7 +1958,11 @@ EXPECTED_DISCLOSED_REVIEW_FLAGS: dict[str, tuple[str, ...]] = {
 #: while this hold fires on a declared no-guardian, on BOTH censuses, with
 #: or without flags. Counting them together would let a new flag-driven hold
 #: hide behind the privacy one, or the reverse.
-PRIVACY_HELD_WALKS: set[str] = {"offshore/family/PARENT/spNat=IT/minor/guardian=no"}
+PRIVACY_HELD_WALKS: set[str] = {
+    "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+    # PR-13: the employment tile asks the same guardian question of a minor.
+    "offshore/work/minor/guardian_no",
+}
 
 #: Walks the highest signed pack ITSELF holds — a `REQUIRE_REVIEW` rule in the
 #: pack, so neither a disclosure flag nor the minor-privacy adapter. Empty
@@ -2798,9 +2922,12 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
     from the default; see `_PR12_WORK_OUTCOMES`).
 
     T06 (2026-10-14): adds 27, corpus 144 -> 171: the visit stay bounds, entry
-    patterns, business activities and other purposes (see `_T06_VISIT_OUTCOMES`)."""
+    patterns, business activities and other purposes (see `_T06_VISIT_OUTCOMES`).
 
-    assert len(walks) == 171, f"expected 171 interview walks, found {len(walks)}"
+    PR-13 (2026-10-15): adds 9, corpus 171 -> 180: the global filters on the
+    employment tile (see `_PR13_GLOBAL_FILTER_ROWS`)."""
+
+    assert len(walks) == 180, f"expected 180 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"
@@ -3026,6 +3153,7 @@ def test_the_census_pins_the_signed_sequence() -> None:
         | set(_PR11_RETIREMENT_OUTCOMES)
         | set(_PR12_WORK_OUTCOMES)
         | set(_T06_VISIT_OUTCOMES)
+        | set(_PR13_GLOBAL_FILTER_ROWS)
     )
     for sequence, pins in EXPECTED_OUTCOME_BY_SEQUENCE.items():
         expected_labels = common_labels | ({_SEQ28_E33G_59999_WALK} if sequence >= 28 else set())
@@ -3177,6 +3305,73 @@ def test_the_e23_work_walks_replay_to_their_pins_on_every_pinned_sequence(
         if state == "NEEDS_INPUT":
             rows = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[sequence][label]
             assert actual["missing_facts"] == [row.fact for row in rows], (sequence, label)
+
+
+def test_the_pr13_global_filter_walks_carry_the_answer_they_are_named_for(
+    walks: dict[str, dict[str, Any]],
+) -> None:
+    """PR-13: the facts a walk's name promises are read from the committed fixture
+    (the label never decides): the nationality, the overstay days, the birth date of a
+    minor, the guardian answer and the criminal-record gate item."""
+
+    assert set(_PR13_GLOBAL_FILTER_ROWS) <= set(walks)
+    facts = {label: walks[label]["overrides"] for label in _PR13_GLOBAL_FILTER_ROWS}
+    assert facts["offshore/work/nationality_id"]["person.nationalities"]["value"] == ["ID"]
+    assert facts["offshore/work/nationality_calling_visa"]["person.nationalities"]["value"] == [
+        "AF"
+    ]
+    for label, days in (
+        ("onshore/work/overstay_30", 30),
+        ("onshore/work/overstay_61", 61),
+        ("onshore/work/sponsor_government/trade_office_only/overstay_61", 61),
+    ):
+        assert facts[label]["immigration.overstay_days"] == {"status": "KNOWN", "value": days}
+    for label in ("offshore/work/minor", "offshore/work/minor/guardian_no"):
+        assert facts[label]["person.birth_date"]["value"] == "2012-11-11", label
+    assert facts["offshore/work/minor"]["person.guardian_consent"]["value"] is True
+    assert facts["offshore/work/minor/guardian_no"]["person.guardian_consent"]["value"] is False
+    assert walks["offshore/work/disclosed_criminal"]["disclosed_review_flags"] == [
+        "CRIMINAL_RECORD"
+    ]
+    assert walks["offshore/other/paid/medical"]["disclosed_review_flags"] == ["ACTIVITY_BOUNDARY"]
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        sequence
+        for sequence in sorted(EXPECTED_OUTCOME_BY_SEQUENCE)
+        if (PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json").is_file()
+    ],
+)
+def test_the_pr13_global_filter_walks_replay_to_their_pins_on_every_pinned_sequence(
+    walks: dict[str, dict[str, Any]], sequence: int
+) -> None:
+    """PR-13: the nine walks are replayed on each pinned sequence's own source pack
+    (seq-20..29) and graded on state, candidates, no-path reasons and review reasons
+    together, so a global filter that changes its cause, or stops naming one, on any
+    sequence goes red. `OVERSTAY_EXCEEDS_60_DAYS` is pinned on both walks past 60 days."""
+
+    path = PACKS_DIR / f"rulepack-prod-{sequence:03d}.source.json"
+    replayed = _outcomes_on(walks, _pack_from_source(path))
+    rows = _pr13_rows(sequence)
+    assert len(rows) == 9
+    for label, (state, candidates, no_path, review) in rows.items():
+        actual = replayed[label]
+        assert actual["state"] == state, (sequence, label)
+        assert tuple(actual["candidates"]) == candidates, (sequence, label)
+        assert tuple(actual["no_path_reason_codes"]) == no_path, (sequence, label)
+        assert tuple(actual["review_reason_codes"]) == review, (sequence, label)
+    if sequence >= 23:
+        for label in (
+            "onshore/work/overstay_61",
+            "onshore/work/sponsor_government/trade_office_only/overstay_61",
+        ):
+            assert "OVERSTAY_EXCEEDS_60_DAYS" in replayed[label]["no_path_reason_codes"], label
+        assert (
+            "OVERSTAY_EXCEEDS_60_DAYS"
+            not in replayed["onshore/work/overstay_30"]["no_path_reason_codes"]
+        )
 
 
 def test_the_t06_boundary_walks_sit_on_the_bound_they_are_named_for(
@@ -3578,6 +3773,7 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
         "offshore/work/no_government_collaboration/payer_unsure",
         "offshore/work/no_government_collaboration/sponsor_confirmed_unsure",
     }
+    pr12 = pr12 | {"offshore/work/minor"}  # PR-13: the employment-tile minor, every sequence
     assert set(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == pr12 | {
         "offshore/work/payer_unsure",
         "offshore/other/paid/sponsor_unsure",
@@ -3590,7 +3786,7 @@ def test_allowlist_has_exactly_the_two_pr_d3_rows() -> None:
         "offshore/retirement/undecided/age64/still_unsure",
     }
     assert WALK_DEAD_END_ALLOWLIST is WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[_SIGNED_SEQUENCE]
-    assert len(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == 5
+    assert len(WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[20]) == 6
 
 
 def _unaskable_violations(
@@ -4113,7 +4309,10 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
         for label, flags in EXPECTED_DISCLOSED_REVIEW_FLAGS.items()
         if set(flags) & _HOLDING_DISCLOSED_FLAG_NAMES
     }
-    assert disclosure_held == {"offshore/tourism/disclosed_criminal"}
+    assert disclosure_held == {
+        "offshore/tourism/disclosed_criminal",
+        "offshore/work/disclosed_criminal",  # PR-13
+    }
     assert funnel_census["HUMAN_REVIEW_REQUIRED"] == (
         len(PRIVACY_HELD_WALKS) + len(STUDIO_HELD_WALKS) + len(disclosure_held)
     )
@@ -4140,6 +4339,8 @@ def test_the_flagged_census_is_the_funnel_the_applicant_meets(
         # T06: the six `other_purpose` and two `business_activity` walks whose answer is an
         # undecidable purpose, and the C6 stay-181 walk that is already a no-path.
         *_T06_FLAGGED_WALKS,
+        # PR-13: the paid `other` walk that answers medical (engine SUPPORTED, funnel dead end).
+        "offshore/other/paid/medical",
     }
     dead_ended_from_a_supported_or_needs_input_base = {
         label
@@ -4267,7 +4468,8 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
                 )
 
     assert {flag: len(rows) for flag, rows in per_flag.items()} == {
-        "ACTIVITY_BOUNDARY": 6 + len(_T06_FLAGGED_WALKS),  # T06: +10 undecidable-purpose walks
+        # T06: +10 undecidable-purpose walks; PR-13: +1 (the paid `other` medical walk)
+        "ACTIVITY_BOUNDARY": 6 + len(_T06_FLAGGED_WALKS) + 1,
         "NOT_CERTAIN": 5,  # PR-12: +3 unsure work-tile walks
         # A4 (mission VISA-ORACLE-DW-20260919): one walk each, the nine
         # conditioning items on `offshore/tourism/disclosed_conditions` plus
@@ -4281,7 +4483,7 @@ def test_every_disclosure_flag_reports_the_walks_it_rewrites(
         "PEP_OR_SANCTIONS": 1,
         "PRIOR_VISA_REFUSAL": 1,
         "SOURCE_OF_FUNDS_UNCLEAR": 1,
-        "CRIMINAL_RECORD": 1,
+        "CRIMINAL_RECORD": 2,  # PR-13: +1 on the employment tile
         "MULTI_PURPOSE_TRIP": 1,
     }
     assert sorted(
@@ -4490,7 +4692,11 @@ def test_the_products_the_applicant_is_never_shown_are_pinned_by_cause(
         "offshore/family/PARENT/spNat=IT/minor/guardian=no",
     }
     assert set(funnel_named["E31E"]) == {"offshore/family/PARENT/spNat=IT/minor"}
-    assert set(engine_named["E31E"]) - set(funnel_named["E31E"]) == PRIVACY_HELD_WALKS
+    # PR-13: the employment-tile minor with no guardian is privacy-held too, but the engine
+    # names no E31E on a work walk, so it is not one of this product's held walks.
+    assert set(engine_named["E31E"]) - set(funnel_named["E31E"]) == (
+        PRIVACY_HELD_WALKS - {"offshore/work/minor/guardian_no"}
+    )
 
 
 def test_every_support_bearing_product_is_named_by_some_walk(
