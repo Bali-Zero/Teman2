@@ -468,6 +468,32 @@ function ReviewReasonGroup({
 const GENERIC_SUPPORT_REASON_RE =
   /^(Verified reason|Alasan terverifikasi): [A-Z0-9_]+$/;
 
+// A reason may name an official page as a bare https URL. Renders it as an
+// anchor; everything else stays text. Only https is linked; trailing
+// punctuation stays outside the link. React nodes only, never raw HTML.
+const REASON_URL_RE = /https:\/\/[^\s<>"'`]+/g;
+const REASON_URL_TRAILING_RE = /[.,;:!?)\]]+$/;
+
+function linkifyReasonText(text: string): ReactNode {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  for (const match of text.matchAll(REASON_URL_RE)) {
+    const start = match.index ?? 0;
+    const url = match[0].replace(REASON_URL_TRAILING_RE, "");
+    if (url.length <= "https://".length) continue;
+    if (start > last) nodes.push(text.slice(last, start));
+    nodes.push(
+      <a key={start} href={url} target="_blank" rel="noopener noreferrer">
+        {url}
+      </a>,
+    );
+    last = start + url.length;
+  }
+  if (nodes.length === 0) return text;
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
 function ReasonList({
   language,
   reasons,
@@ -518,7 +544,7 @@ function ReasonList({
     <ul className="oracle-reason-list">
       {rows.map(({ reason, text }) => (
         <li key={reason.code}>
-          <span>{text}</span>
+          <span>{linkifyReasonText(text)}</span>
           {REVIEW_REASON_ELEMENTS[reason.code] && (
             <dl className="oracle-review-elements">
               {(

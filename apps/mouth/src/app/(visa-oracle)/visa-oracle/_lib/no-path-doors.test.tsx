@@ -474,7 +474,13 @@ describe("no-path doors — what the visitor actually reads", () => {
         );
         for (const reason of outcome.noPathReasons) {
           expect(
-            screen.getAllByText(reason.message[language]).length,
+            // A reason may carry a linked URL, so match the span's full
+            // text rather than a single text node.
+            screen.getAllByText(
+              (_content, element) =>
+                element?.tagName === "SPAN" &&
+                element.textContent === reason.message[language],
+            ).length,
           ).toBeGreaterThan(0);
         }
         for (const door of outcome.alternatives) {
