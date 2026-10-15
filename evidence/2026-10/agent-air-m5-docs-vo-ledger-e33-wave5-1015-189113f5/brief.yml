@@ -1,0 +1,21 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, two test files and the observer floor
+  constant. Churn is far under 400 net lines of code; no visa-engine production rule pack, no data, no runtime change.
+mission: >-
+  The /visaoracle ledger closes the E33 family: it records the wave-5 merges (#8511-#8528 and #8533) with their live
+  proofs, the Qdrant purge, the brochure E33F Onshore row, and moves the out-of-scope items to the backlog.
+objective: >-
+  live-state-log.md carries a 2026-10-15 wave-5 entry as newest, SKILL.md leads its LIVE STATE with the E33 closure,
+  PENDING-ARMS.md closes the four wave-4 rows the work closed, narrows the replay-pins row, and holds five backlog
+  rows each exactly once, and the seq-29 ledger observer floor is raised from 29 to 39 with pins for the new content.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
