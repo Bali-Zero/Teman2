@@ -182,6 +182,8 @@ class PortalDashboardMixin:
                     FROM client_company_links ccl
                     JOIN companies c ON c.id = ccl.company_id
                     WHERE ccl.client_id = $1
+                      AND ccl.status = 'active'
+                      AND ccl.end_date IS NULL
                     """,
                     client_id,
                 )
@@ -701,6 +703,8 @@ class PortalDashboardMixin:
                 FROM client_company_links ccl
                 JOIN companies c ON c.id = ccl.company_id
                 WHERE ccl.client_id = $1
+                  AND ccl.status = 'active'
+                  AND ccl.end_date IS NULL
                 ORDER BY ccl.is_primary DESC, ccl.created_at
                 """,
                 client_id,
@@ -742,6 +746,8 @@ class PortalDashboardMixin:
                 SELECT ccl.role, ccl.is_primary, ccl.ownership_percentage
                 FROM client_company_links ccl
                 WHERE ccl.client_id = $1 AND ccl.company_id = $2
+                  AND ccl.status = 'active'
+                  AND ccl.end_date IS NULL
                 """,
                 client_id,
                 company_id,
@@ -811,6 +817,8 @@ class PortalDashboardMixin:
                 FROM client_company_links ccl
                 JOIN clients cl ON cl.id = ccl.client_id
                 WHERE ccl.company_id = $1
+                  AND ccl.status = 'active'
+                  AND ccl.end_date IS NULL
                 ORDER BY ccl.is_primary DESC, ccl.role, cl.full_name
                 """,
                 company_id,
@@ -920,6 +928,8 @@ class PortalDashboardMixin:
                     UPDATE client_company_links
                     SET is_primary = true
                     WHERE client_id = $1 AND company_id = $2
+                      AND status = 'active'
+                      AND end_date IS NULL
                     """,
                 client_id,
                 company_id,
