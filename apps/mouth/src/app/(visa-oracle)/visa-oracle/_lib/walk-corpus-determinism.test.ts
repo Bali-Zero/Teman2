@@ -151,8 +151,14 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  * T06 (2026-10-14): +27, 144 -> 171 — the visit stay bounds (30/31, 60/61,
  * 180/181, 360/361), the MULTIPLE entry walks, and every `business_activity`
  * and `other_purpose` answer no walk gave; no existing fixture moves.
+ *
+ * PR-13 (2026-10-15): +9, 171 -> 180 — the global filters on the employment
+ * tile (Indonesian nationality, a calling-visa nationality, onshore overstay
+ * 30/61, a minor with and without guardian consent, a disclosed criminal
+ * record, the trade-office walk past the overstay cap, and the paid `other`
+ * walk answering `medical`); no existing fixture moves.
  */
-const EXPECTED_WALK_COUNT = 171;
+const EXPECTED_WALK_COUNT = 180;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)
