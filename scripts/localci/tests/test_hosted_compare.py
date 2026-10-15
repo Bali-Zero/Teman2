@@ -47,7 +47,7 @@ def _klass(report, name):
 
 
 def _one(local, runs, statuses=(), app_id=ACTIONS):
-    return _klass(hc.compare(_status({"a": _local(local)}), _req("a", app_id=app_id), list(runs), list(statuses)), "a")
+    return _klass(hc.compare(_status({"a": _local(local)}), _req("a", app_id=app_id), list(runs), list(statuses), cancel_timeout=lambda rid: False), "a")
 
 
 def test_both_green_and_both_red_agree():
@@ -119,7 +119,7 @@ def test_b17_a_cancelled_run_is_dropped_in_either_order_when_a_completed_run_dec
 def test_b17_the_8231_shape_success_first_then_a_rerun_cancelled_by_concurrency():
     runs = [{**_run("catE-sovereignty-lint", "success", at="2026-10-10T15:18:52Z"), "id": 114244599437},
             {**_run("catE-sovereignty-lint", "cancelled", at="2026-10-10T15:29:12Z"), "id": 114246937884}]
-    rep = hc.compare(_status({"catE-sovereignty-lint": _local("OK")}), _req("catE-sovereignty-lint"), runs, [])
+    rep = hc.compare(_status({"catE-sovereignty-lint": _local("OK")}), _req("catE-sovereignty-lint"), runs, [], cancel_timeout=lambda rid: False)
     row = rep["rows"][0]
     assert row["class"] == "AGREE" and row["superseded_cancelled"] == [114246937884] and hc.exit_code(rep) == 0
 

@@ -296,7 +296,28 @@ def with_gate(reading: dict, gate: dict) -> dict:
             "stale_check": gate["gate_check"] if gate["gate_check"].startswith("unknown") and not prior.startswith("unknown") else prior}
 
 
-def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None, abort_judge=None) -> dict:
+def comparison_view(h: dict, entries: list, cancel_timeout) -> dict:
+    """B27 R3: the hosted verdict as the COMPARISON reads it (the class and counts READY rests on), where a superseded cancel that carries the job-timeout
+    annotation is red again, like a failure: ``hosted_verdict`` itself, which feeds mergeability, is left as GitHub's required-check semantics have it.
+    ``cancel_timeout(id) -> bool`` reads the annotations; with none, or a read that raises, the cancel stays red (fail closed)."""
+    dropped = [e for e in entries if e.get("id") in h["superseded_cancelled"] and e["source"] != "commit-status"]
+    restored = []
+    for e in dropped:
+        try:
+            timeout = True if cancel_timeout is None else bool(cancel_timeout(e["id"]))
+        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red
+            timeout = True
+        if timeout:
+            restored.append(e)
+    if not restored:
+        return h
+    red = h["red"] + [{"id": e.get("id"), "conclusion": e.get("conclusion"), "completed_at": e.get("completed_at")} for e in restored]
+    stamps = [r["completed_at"] for r in red]
+    return {**h, "verdict": "RED", "red": red, "superseded_cancelled": [i for i in h["superseded_cancelled"] if i not in {e["id"] for e in restored}],
+            "completed_at": max(stamps) if all(isinstance(t, str) and _TS_RE.match(t) for t in stamps) else None}
+
+
+def compare(status: dict, required_checks, check_runs, statuses, stale_judge=None, gate_judge=None, abort_judge=None, cancel_timeout=None) -> dict:
     names = required_names(required_checks)
     if not isinstance(check_runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in check_runs + statuses):
         raise CompareError("check_runs / statuses are not lists of objects")
@@ -304,7 +325,7 @@ def compare(status: dict, required_checks, check_runs, statuses, stale_judge=Non
     rows = []
     for chk in required_checks:
         name, app_id = chk["context"], chk.get("app_id")
-        h = hosted_verdict(hosted.get(name, []), app_id)
+        h = comparison_view(hosted_verdict(hosted.get(name, []), app_id), hosted.get(name, []), cancel_timeout)   # B27 R3
         lo = local.get(name, {"verdict": "BLIND", "detail": "unmapped", "coverage": "unrecorded", "coverage_note": None})
         klass = classify(lo["verdict"], h["verdict"])
         reading = stale_reading(stale_judge, name, h["completed_at"]) if stale_judge is not None and klass in COMPARED else {}

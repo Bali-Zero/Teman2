@@ -495,3 +495,97 @@ def test_a_mixed_decision_never_rereads(tmp_path, monkeypatch):
     rows = [{"context": "a", "class": "FALSE_GREEN", "hosted_red": [{"id": 1, "conclusion": "cancelled"}]}, {"context": "b", "class": "FALSE_GREEN"}]
     (run_dir / "hosted_compare.json").write_text(json.dumps({"rows": rows}))
     assert mg.recorded_has_entries({"run_dir": str(run_dir)}) is True   # any row with per-entry data keeps the whole decision off the re-read
+
+
+# ------------------------------------------------------------------ R3 / N3: the comparison class treats a job timeout as red, mergeability does not
+CANCEL_T1 = lambda i=11: check_run(i, NAME, "cancelled", "2026-10-14T18:50:08Z")   # noqa: E731
+GREEN_T2 = lambda i=12: check_run(i, NAME, "success", "2026-10-14T19:10:00Z")   # noqa: E731
+
+
+def n3_class(runs, reader, abort_judge=None):
+    status = {"candidate_sha": "9" * 40, "overall": "PASS", "contexts": {"status": "ok", "results": {NAME: {"verdict": "OK", "coverage": "full"}}}}
+    return hc.compare(status, [{"context": NAME, "app_id": APP}], runs, [], abort_judge=abort_judge, cancel_timeout=reader)["rows"][0]
+
+
+def test_n3_a_cross_suite_timeout_cancel_answered_by_a_later_green_is_red_for_the_comparison_like_a_failure():
+    runs = [CANCEL_T1(), GREEN_T2()]
+    assert n3_class(runs, lambda rid: True)["class"] == "FALSE_GREEN"
+    assert n3_class([check_run(11, NAME, "failure", "2026-10-14T18:50:08Z"), GREEN_T2()], lambda rid: False)["class"] == "FALSE_GREEN"   # the same pair with a failure, as before
+    row = n3_class(runs, lambda rid: False)
+    assert row["class"] == "AGREE" and row["superseded_cancelled"] == [11]   # a concurrency cancel stays cleared as today
+
+
+def test_n3_no_annotation_reader_or_a_failing_one_keeps_the_cancel_red_for_the_class():
+    runs = [CANCEL_T1(), GREEN_T2()]
+    assert n3_class(runs, None)["class"] == "FALSE_GREEN"
+    def broken(rid):
+        raise OSError("gh down")
+    assert n3_class(runs, broken)["class"] == "FALSE_GREEN"
+
+
+def test_n3_mergeability_is_untouched_the_same_data_is_still_green_for_hosted_side(tmp_path):
+    runs = [CANCEL_T1(), GREEN_T2()]
+    live = {"required_checks": [{"context": NAME, "app_id": APP}], "check_runs": runs, "statuses": []}
+    assert hc.hosted_verdict(hc.hosted_entries(runs, []).get(NAME, []), APP)["verdict"] == "GREEN"
+    assert mg.required_verdicts(live) == {NAME: "GREEN"} and mg.hosted_side(live) is None   # hosted_required_green stays true
+
+
+def test_n3_a_timeout_cancel_that_is_a_setup_hang_is_aborted_not_red(tmp_path, monkeypatch):
+    path, sha = mirror(tmp_path / "repo.git")
+    monkeypatch.setattr(hc, "gh_get", Hub(sha, attempts=[CANCEL_T1(), GREEN_T2()]))
+    j = mg.AbortJudge(REPO, path, {})
+    row = n3_class([CANCEL_T1(), GREEN_T2()], lambda rid: any(TIMEOUT in m for m in j.failures(rid)), j)
+    assert row["class"] == "HOSTED_ABORTED" and row["aborted_runs"] == [{"check_run_id": 11, "step": "Checkout code"}]
+
+
+def test_n3_the_ticks_hosted_summary_journals_the_red(tmp_path, monkeypatch):
+    runs = [CANCEL_T1(), GREEN_T2()]
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda *a, **k: {"required_checks": [{"context": NAME, "app_id": APP}], "check_runs": runs, "statuses": []})
+    notes = {"on": (TIMEOUT,)}
+    monkeypatch.setattr(mg.hc, "gh_get", lambda path: [{"annotation_level": "failure", "message": m} for m in notes["on"]])
+    status = {"candidate_sha": "9" * 40, "overall": "PASS", "contexts": {"status": "ok", "results": {NAME: {"verdict": "OK", "coverage": "full"}}}}
+    out, _ = mg.hosted_summary(REPO, "main", status, "9" * 40, tmp_path)
+    assert out["counts"]["FALSE_GREEN"] == 1 and out["counts"]["AGREE"] == 0
+    notes["on"] = (CONCURRENCY,)
+    out, _ = mg.hosted_summary(REPO, "main", status, "9" * 40, tmp_path)
+    assert out["counts"]["AGREE"] == 1 and out["counts"]["FALSE_GREEN"] == 0
+
+
+class N3GH(AbortGH):
+    """The first context also has a later green from another suite on the same sha."""
+    def __call__(self, path):
+        got = super().__call__(path)
+        if isinstance(got, dict) and "check_runs" in got and "filter=all" not in path:
+            ctx = CTX[0]
+            got["check_runs"] = [{**r, "completed_at": "2026-10-14T18:50:08Z"} if r["name"] == ctx else r for r in got["check_runs"]]
+            got["check_runs"].append({**check_run(12, ctx, "success", "2026-10-14T19:10:00Z"), "app": {"id": APP, "slug": "github-actions"}})
+        return got
+
+
+def n3_world(tmp_path, monkeypatch, notes, steps):
+    d, gh = incident(tmp_path, monkeypatch, (WITH_ASSERT + ALWAYS).replace("Backend Tests (Python)", CTX[0]), steps=steps)
+    d = {k: v for k, v in d.items() if k not in ("run_dir", "hosted_compare")}
+    gh = N3GH(gh.pulls, gh.checks, Hub(d["head_sha"], jname=CTX[0], annotations=notes, steps=steps), gh.attempts)
+    return d, gh
+
+
+def test_n3_the_report_counts_the_cross_suite_timeout_as_a_false_green_a_setup_hang_as_aborted_and_a_concurrency_cancel_as_agreement(tmp_path, monkeypatch):
+    logic = [HUNG[0], ("Assert every upstream job succeeded", "success"), ("Checkout code", "success"), ("Set up Python", "success"), ("Run unit tests", "cancelled"), *POST]
+    one = tmp_path / "one"
+    one.mkdir()
+    d, gh = n3_world(one, monkeypatch, (TIMEOUT,), logic)
+    gh.attempts = [{**check_run(11, CTX[0], "cancelled"), "app": {"id": APP}}, {**check_run(12, CTX[0], "success", "2026-10-14T19:10:00Z"), "app": {"id": APP}}]
+    rc, rep = run_report(one, monkeypatch, [d], gh)
+    assert rc == 1 and rep["context_counts"]["FALSE_GREEN"] == 1 and rep["context_counts"]["HOSTED_ABORTED"] == 0   # a logic-step timeout stays red
+    tail = [*ASSERT_HUNG[:5], ("Report", "success"), ("Upload test results", "success"), *POST]
+    two = tmp_path / "two"
+    two.mkdir()
+    d, gh = n3_world(two, monkeypatch, (TIMEOUT,), tail)
+    gh.attempts = [{**check_run(11, CTX[0], "cancelled"), "app": {"id": APP}}, {**check_run(12, CTX[0], "success", "2026-10-14T19:10:00Z"), "app": {"id": APP}}]
+    rc, rep = run_report(two, monkeypatch, [d], gh)
+    assert rc == 0 and rep["context_counts"]["HOSTED_ABORTED"] == 1 and rep["context_counts"]["FALSE_GREEN"] == 0
+    three = tmp_path / "three"
+    three.mkdir()
+    d, gh = n3_world(three, monkeypatch, (CONCURRENCY,), tail)
+    rc, rep = run_report(three, monkeypatch, [d], gh)
+    assert rc == 0 and rep["context_counts"]["FALSE_GREEN"] == 0 and rep["context_counts"]["HOSTED_ABORTED"] == 0

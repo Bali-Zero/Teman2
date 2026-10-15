@@ -1008,7 +1008,9 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path,
     try:
         live = hc.fetch_live(repo, base, head, matrix)
         out["required_source"], out["pins"] = live.get("required_source"), live.get("pins")
-        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate)
+        reads = HostedReads(repo)   # B27 R3: a superseded cancel is read for the job-timeout annotation, at tick time too
+        rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate,
+                         cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in reads.failures(rid)))
         rep.update(source="live", repo=repo, branch=base, **out)
         atomic_write(run_dir / "hosted_compare.json", json.dumps(rep, indent=2) + "\n")
     except Exception as exc:  # noqa: BLE001 — a failed comparison is recorded beside the gate's verdict, never loses it
@@ -2204,7 +2206,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                 status = {"candidate_sha": d.get("candidate_sha"), "contexts": {"status": d["contexts_status"], "results": {
                     k: {"verdict": v, "coverage": cov.get(k), "skipped": skip.get(k)} for k, v in (d.get("contexts") or {}).items()}}}
                 rep = hc.compare(status, live["required_checks"], live["check_runs"], live["statuses"], stale_judge=judge, gate_judge=gate,
-                                 abort_judge=abort)
+                                 abort_judge=abort, cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in abort.failures(rid)))
                 for row in (x for x in rep["rows"] if x["class"] == "HOSTED_ABORTED"):   # B27
                     for run in row["aborted_runs"]:
                         aborted_seen[(n, head, row["context"], run["check_run_id"])] = run["step"]

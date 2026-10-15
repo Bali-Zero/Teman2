@@ -414,7 +414,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b27-aborted-counts-as-agree": (HC, 'reading["class_before"], klass = klass, "HOSTED_ABORTED"', 'reading["class_before"], klass = klass, "AGREE"', HA),
     "b27-aborted-is-compared": (HC, 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED")', 'COMPARED = ("AGREE", "FALSE_GREEN", "FALSE_RED", "HOSTED_ABORTED")', HA),
     "b27-judge-asked-on-green": (HC, 'and h["verdict"] == "RED" and reading.get("stale") is not True:', 'and reading.get("stale") is not True:', HA),
-    "b27-live-rows-unjudged": (PY, "stale_judge=judge, gate_judge=gate,\n                                 abort_judge=abort)", "stale_judge=judge, gate_judge=gate)", HA),
+    "b27-live-rows-unjudged": (PY, "abort_judge=abort, cancel_timeout=", "abort_judge=None, cancel_timeout=", HA),
     "b27-pr-level-stays-red": (PY, 'github = "PENDING"   # B27', 'github = "RED"   # B27', HA),
     "b27-pr-level-one-aborted-is-enough": (PY, "red_ctx <= {x[", "red_ctx & {x[", HA),
     # B17b (the context's full history; a timeout is no concurrency cancel)
@@ -432,6 +432,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "r1-remainder-red-ignored": (HC, 'if any(e["verdict"] == "RED" for e in entries if not is_q(e)):', "if False:", (CS, *HA)),
     "r2-live-judge-statuses-dropped": (PY, "self.attempts(sha, name), list(statuses), name, app_id,", "self.attempts(sha, name), [], name, app_id,", HA),
     "r4-all-for-any-per-entry": (PY, 'return any(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', 'return bool(rows) and all(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', HA),
+    # R3 (the comparison class treats a job timeout as red; mergeability stays GitHub's)
+    "r3-comparison-ignores-the-timeout": (HC, "        if timeout:\n            restored.append(e)", "        if False:\n            restored.append(e)", HA),
+    "r3-missing-reader-clears-the-cancel": (HC, "timeout = True if cancel_timeout is None else bool(cancel_timeout(e[\"id\"]))", "timeout = False if cancel_timeout is None else bool(cancel_timeout(e[\"id\"]))", HA),
+    "r3-failing-reader-clears-the-cancel": (HC, "        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red\n            timeout = True", "        except Exception:  # noqa: BLE001 — an unreadable annotation list keeps the cancel red\n            timeout = False", HA),
+    "r3-tick-reads-no-annotations": (PY, "cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in reads.failures(rid)))", "cancel_timeout=lambda rid: False)", HA),
+    "r3-report-reads-no-annotations": (PY, "cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in abort.failures(rid)))", "cancel_timeout=lambda rid: False)", HA),
+    "r3-mergeability-loses-the-supersede": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o) for o in entries)', "decided = False", HA),
+    "r3-hosted-side-reads-the-comparison": (PY, 'return {c["context"]: hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}', 'return {c["context"]: hc.comparison_view(hc.hosted_verdict(by.get(c["context"], []), c.get("app_id")), by.get(c["context"], []), None)["verdict"] for c in live["required_checks"]}', HA),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),

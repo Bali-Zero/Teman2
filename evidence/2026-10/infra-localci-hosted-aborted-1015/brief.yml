@@ -19,6 +19,11 @@ objective: >-
   PENDING (spec A6) lives only in the report path. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
   - >-
+    compare() now restores a job-timeout cancel that a later green superseded as red for the comparison class (spec R3), through an
+    injected annotation reader (one GET per superseded cancel at tick and report time; none or a failing read keeps it red).
+    hosted_verdict, required_verdicts, hosted_side, GATE and phase_f_arming are untouched, so mergeability still follows GitHub's
+    required-check semantics. The standalone hosted_compare CLI has no reader and so fails closed on superseded cancels.
+  - >-
     A post-hang step that ran is not content-checked: the guarantee is that no step produced a red, not that no logic
     ran. It must have concluded success under an if that calls always(), cancelled() or failure() (parsed as a call,
     not by substring).
