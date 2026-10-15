@@ -407,6 +407,8 @@ state, fails closed as before. `hosted_compare.json`, the journal's `hosted_comp
 
 ## Merger (phase C, shadow)
 
+The merge predicate for a PR that rewrites a file the BASE judge reads (any file: tests, workflows, `.gitattributes`), its oracle table and the Pro gate-verdict ledger are specified in `docs/specs/localci-sovereign-2026-10-07.md` §2b (B25-prime); that rescue is not in the code yet.
+
 `merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would
 do with a pull request and journals it. It merges nothing, posts nothing, labels nothing; every GitHub API call is a bare
 GET through `hosted_compare.gh_get`, and the only other traffic is `git fetch`. `merger.py merge` refuses with exit 2

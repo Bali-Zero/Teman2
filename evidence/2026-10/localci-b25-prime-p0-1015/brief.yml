@@ -1,0 +1,28 @@
+task_id: localci-b25-prime-p0-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B25 (a PR that rewrites a file the BASE judge reads counts OK only if the BASE judge passed on the
+  candidate tree and an independent gate verdict exists for the head) was suspended after three gates
+  blocked it for one cause: merge-predicate terms no test pinned. This P0 is docs only. It adds section
+  2b "B25-prime" to the LocalCI sovereign spec: the one decision predicate E with a normative oracle, the
+  Pro-local append-only gate verdict ledger written first by the gate publisher, the tiered oracle table
+  with an MC/DC meta-test requirement, the mutant rows, acceptance criteria for P1-P5, residuals and the
+  owner actions (D1 AUTOMERGE_PAT, D2 forced-command key). Plus a one-line pointer in the LocalCI README.
+constraints:
+  - "Docs only: no code, no behaviour change; the rescue stays unimplemented until P2/P3."
+  - "The ledger path and the oracle text are normative for P1-P4; a gate survivor is cured by a table row, never a one-off test."
+acceptance:
+  - text: "The section states the predicate inputs, each term with its reason, and the oracle as executable-shaped text."
+    probe: "grep -n '^### 2b.1' docs/specs/localci-sovereign-2026-10-07.md"
+  - text: "The provenance rule, the 7-tier oracle table, the MC/DC meta-test and per-PR acceptance (P1-P5) are all present."
+    probe: "grep -n '^### 2b.[2-5]' docs/specs/localci-sovereign-2026-10-07.md"
+  - text: "Residuals and owner actions D1 and D2 are named."
+    probe: "grep -n 'D1 (Zero)' docs/specs/localci-sovereign-2026-10-07.md"
+consumer_map:
+  - "P1-P4 implementers and their gates read section 2b; P3's mutant sweep runs the 2b.4 rows by name and the PR bodies cite 2b row ids."
+risks:
+  - "The spec describes code that is not on main yet: the README pointer says so explicitly."
+grader: |
+  Fresh Opus gate reads the section against the design B25-prime.md; no code to run.

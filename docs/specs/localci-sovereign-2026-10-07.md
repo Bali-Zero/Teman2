@@ -240,6 +240,220 @@ _Required set after the flip (2026-10-14) — the required set's BASE._ Deleting
 
 Until then every `would_merge` line says `armed: false` and names why. To stop (B21 S5, in this order): step 0, `touch <state>/phase_f_halt` or unset `LOCALCI_MERGER_PHASE_F` and reload the plist; then `phase_e_flip.py --rollback`; then `scripts/signal_merge_intent.sh <n>` on the open labelled PRs, so they are armed for the restored merge queue; remove the halt only when phase F is re-armed. To resume after a `push_refused` or `storage_diverged`: read the reason in the halt file and the journal, reconcile GitHub's main with the mirror, then remove the file.
 
+## 2b. B25-prime — one merge predicate with a written oracle, and a gate verdict no candidate can write
+
+Status: SPEC (2026-10-15). It replaces B25 (J1', J3, J4', J5), which was SUSPENDED after three gates blocked it for one
+cause: terms of the merge predicate that no test pinned (`6009ba2a6a`: 4 survivors; `80b2d83dc2`: 3; `87e8e177a9`: 2, the
+last two proven to reach `merged`). Each round added hand-written tests for the survivors just named and the next gate
+found the next unpinned term. Contract rule 1 (three reds, same cause, suspend) says write the surface down. The cure is
+structural: (A) the predicate is stated once, as a pure function of an explicit record, and pinned by a table that
+enumerates the input space against that statement; (B) the gate term reads a verdict source no candidate can write.
+
+Rulings that bind and are not reopened: a PR that rewrites ANY file the BASE judge reads (tests, workflows,
+`.gitattributes`) counts OK for that context only if the BASE judge passed on the candidate tree AND an independent gate
+verdict exists for THIS head; the candidate's judge copy is never executed; after the flip `main` has one writer (the
+merger) and no PR class needs a human.
+
+### 2b.1 The decision predicate E
+
+Inputs, for one decision tick D and its B19 retry R (the merger is the only reader; `local_side` and `enqueue_step` in
+`scripts/localci/merger.py` evaluate it, the oracle module of P3 restates it independently):
+
+| input                                                   | domain                                                                                                          | why it is a term                                                    |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `contexts_status`                                       | `"ok"` or anything else                                                                                         | a runner that did not vouch for its own view decides nothing        |
+| `required`                                              | list of context names                                                                                           | an empty list is vacuous truth, never green                         |
+| per context: `verdict`                                  | `OK FAIL ERROR BLOCKED UNCOVERED`; absent; non-dict                                                             | the result itself                                                   |
+| per context: `no_verdict`                               | absent, `judge_rewritten_base_ok`, `judge_rewritten`, `gate_pending`, a host kind, any other string, non-string | the only way a BLOCKED is told apart from a red                     |
+| per context: `mapping`, `coverage`                      | `executed blocked not_implemented`; `full partial`                                                              | a not-implemented mapping is NE, not a red                          |
+| `local_checks_clean`, `review_independent`, `same_repo` | bool                                                                                                            | the local half of the criterion, copied to R                        |
+| `pr_terms`                                              | head_unchanged, not_draft, base_main, open, not_in_queue, first_enqueue, label_privileged                       | GraphQL at D, fresh at R                                            |
+| `G`                                                     | the gate state of THIS head, read from the ledger (2b.2)                                                        | the independent verdict; never the GitHub status, never another sha |
+| `H`                                                     | `green`, `pending/red`, `read_failed`                                                                           | the hosted required set, a separate term the gate never substitutes |
+| `overall`, `gate_pending`                               | runner overall; B12 flag                                                                                        | pending is not admitted on CONFLICT/ERROR/FAIL or a B12 wait        |
+| `moved`                                                 | none, head moved, base moved                                                                                    | a moved head or base ends the key                                   |
+
+The oracle (normative; the test implements THIS text, never the code):
+
+```python
+HOST_KINDS = {"host_disk_full", "host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid"}
+
+def cls(r):                       # one required context; r = its result dict or anything else
+    v  = r.get("verdict") if isinstance(r, dict) else None
+    nv = r.get("no_verdict") if isinstance(r, dict) and isinstance(r.get("no_verdict"), str) else ""
+    if isinstance(r, dict) and r.get("mapping") in ("blocked", "not_implemented") and v == "BLOCKED": return "NE"
+    if v in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_KINDS:                                 return "HOST"
+    if v == "BLOCKED" and nv == "judge_rewritten_base_ok":                                           return "RESCUE"
+    if v == "OK":                                                                                    return "OK"
+    return "RED"                  # FAIL, ERROR, UNCOVERED, absent, BLOCKED of any other kind
+
+base   = contexts_status == "ok" and len(required) > 0
+X      = any(cls(c) in ("HOST", "RED") for c in required)          # a reason other than the gate
+R      = [c for c in required if cls(c) == "RESCUE"]
+gate   = lambda G: ledger_ok(G, repo, head)                         # 2b.2; NEVER the GitHub status, NEVER another sha
+E      = lambda G: base and not X and (not R or gate(G))            # executed_contexts_ok
+only   = base and not X and bool(R)                                  # the gate is the ONLY reason E could be false
+gated  = {c: gate(G1) and base and not X for c in R}                 # record
+hosted = lambda H: H == "green"                                      # NEVER substituted by gate(G)
+L      = local_checks_clean and review_independent and same_repo
+ok1    = L and E(G1) and hosted(H1) and all(pr_terms1)               # would_enqueue.ok at D
+pending1 = (not ok1 and overall not in ("CONFLICT", "ERROR", "FAIL") and not gate_pending
+            and L and (E(G1) or only))                               # B19 pending, on RECORDED inputs
+ok2    = (pending1 and moved == "none" and local_checks_clean and review_independent and same_repo2
+          and (not R or gate(G2)) and hosted(H2) and all(pr_terms2)) # the retry's would_enqueue.ok
+```
+
+Invariants (each is a row family of 2b.3): **I1** a context is rescued only as `BLOCKED` plus the exact
+`judge_rewritten_base_ok`; **I2** any HOST or RED context forbids E and forbids pending, at D and at R; **I3** the gate
+term is read for THIS head from the authorized source at D and again at R, never copied; **I4** the hosted term is the
+hosted read alone; **I5** pending is decided on recorded inputs, never on a derived flag; **I6** the retry re-reads G, H
+and the PR side and copies only `local_checks_clean`, `review_independent` and the rescued list; **I7** a moved head or
+base ends the key.
+
+Merger deltas this requires (the runner half is unchanged from the last good B25 candidate `2a9ecddddd`):
+
+- **J3''** the `would_enqueue` row records the predicate's local inputs on every row: `contexts_status`, `required_n`,
+  `not_ok` (`{ctx: "VERDICT (mapping)"}`), `host_no_verdict`, `judge_rewritten_base_ok`; `judge_rewritten_gate_only` and
+  `judge_rewritten_gated` stay as records of `only` and `gated`.
+- **J4''** `pending_merges` admits a row whose `executed_contexts_ok` is false only when the RECORDED inputs say `only`
+  (`contexts_status == "ok"`, `required_n > 0`, `not_ok == {}`, `host_no_verdict == {}`, rescued list non-empty, every
+  other local term true). A row missing any of these fields is not pending (legacy rows fail closed).
+  `judge_rewritten_gate_only` is read by neither `pending_merges` nor the retry, so a wrong `gate_only` can falsify a
+  record, never admit a key.
+- **J1''** `gate_success(live, head)` is replaced by `gate_verdict(ledger, repo, head) -> (ok, why)`, called at D and at
+  every R; `live` is no longer a gate source. When R is non-empty the row records `gate_sources: {ledger, github}` and a
+  disagreement (GitHub success, ledger not) journals `gate_provenance_mismatch` once per head.
+- **H-sep** `hosted_required_green` is assigned from `hosted_side(live)` only; the B25 block never writes it.
+- The tick takes `--gate-ledger PATH`; the wrapper passes it only when `merger.py` declares the flag.
+
+The merger is NOT refactored to mirror the oracle's shape: the oracle stays a second, independent statement.
+
+### 2b.2 Gate verdict provenance: the Pro ledger
+
+Measured 2026-10-15 (names only, no value read): the combined `commits/{sha}/status` entries carry no creator; every
+host's `gh` is the same account (`Balizero1987`, repo and org admin); repo secret `AUTOMERGE_PAT` exists and no workflow
+on `main` references it; same-repo PRs run their OWN workflow file with every repo secret. Threat model: the adversary
+is the candidate (workflow text and code of a same-repo PR). A `/statuses` creator allowlist is therefore insufficient:
+a rewritten workflow (inside the rescue scope) posts `harness/fable-gate` with `secrets.AUTOMERGE_PAT`, and the creator
+is the same login as a real gate; a creator check also leaves the authority on GitHub, the opposite of the mission.
+
+**Ledger.** On Pro, `~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl`: directory 0700, file 0600, owner = the merger's
+uid; outside the merger state dir, `prune.py`'s scope and every run dir; never in a container argv or env; retention
+forever; added to the M5 `~/Backups` set. One JSON line per verdict, exact key set (unknown keys rejected):
+`v, ts` (Pro clock, set by the appender), `repo`, `pr`, `head_sha` (40 lowercase hex), `verdict` (`success` or
+`failure`), `gate_session`, `evidence_sha256|null`, `supersedes` (digest of an earlier line|null), `via` (measured from
+`SSH_CONNECTION` by the appender, never supplied). A line's digest is the sha256 of its bytes without the newline.
+
+**Writer, first.** `scripts/harness_fable_gate.py` appends over `ssh pro` through the tick wrapper's own `gate-append`
+mode (so writer and reader are the code the tick runs; superscar #1), and only then posts the GitHub status. A failed
+append exits non-zero and posts nothing, so a GitHub-only success is always an anomaly. The append takes `LOCK_EX`,
+`O_APPEND|O_CREAT` 0600, one `write()`, `fsync`; it is idempotent on (repo, head, verdict, evidence, supersedes).
+`--supersede` reads the head's newest entry and names its digest.
+
+**Reader, one rule** `gate_verdict(path, repo, head)`:
+
+1. `lstat` missing, not a regular file, a symlink, any group/other mode bit, or owner not `geteuid()`: false.
+2. Under `LOCK_SH` every line must parse and validate, else false for EVERY head.
+3. `mine` = entries with `repo` equal and `head_sha` equal (exact 40-hex equality); none: false.
+4. The newest of `mine` must be exactly `"success"`; every earlier non-success entry of `mine` must be named by the
+   `supersedes` of a later entry of `mine`; otherwise false.
+
+| reader                                                                        | confers OK?   | source                                                                          |
+| ----------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------- |
+| merger B25 rescue, at D and at R                                              | yes           | ledger only (plus the mismatch journal)                                         |
+| LocalCI floor context, host reader                                            | yes           | ledger (`harness_gate_read.py --ledger $GATE_LEDGER --head <decided head>`, P4) |
+| merger `gate_posted_at` / `gate_ready` (B12/B23 scheduling), B12b `GateJudge` | no            | GitHub `/statuses`, unchanged                                                   |
+| hosted `Harness floor recompute`                                              | yes, pre-flip | GitHub combined status; it cannot read Pro                                      |
+
+Pre-flip, GitHub's queue merges and the hosted floor still reads the GitHub status: the hole stays open there until the
+flip, measured by `gate_provenance_mismatch`. Post-flip the merger needs E (ledger-gated) AND the hosted required set; a
+forged GitHub status satisfies only the hosted half, so it is necessary and never sufficient. A rewritten floor workflow
+is itself a judged file, so rewriting the floor's own workflow closes too. Rollback of P3/P4 is the ledger unread: today's
+BLOCKED, fail closed.
+
+### 2b.3 The oracle table and the MC/DC meta-test
+
+Every tier compares the merger's journalled behaviour with the oracle row by row, aggregates every mismatch into one
+failure message (first 25 rows with row ids), enumerates in a fixed order, hard-codes the oracle's constants, and asserts
+`HOST_KINDS == set(merger.HOST_NO_VERDICT)`. The oracle side imports nothing from `merger`/`runner`.
+
+| tier                       | what runs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | rows   |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| T1 classification          | `local_side` on one-context docs: verdict (9: five values, `STALE`, `INTERRUPTED`, absent, non-dict) x no_verdict (11: absent, base_ok, `judge_rewritten`, `gate_pending`, `host_disk_full`, `"host_disk_full: x"`, `host_disk_below_floor`, `"host_disk_unmeasured (df)"`, `"judge_rewritten_base_ok "`, upper-case, non-string) x mapping (3) x coverage (2) = 594, each paired with one probe per class in both orders, plus `contexts_status != "ok"`, `required == []`, a non-string name | ~6.5 k |
+| T2 decision x retry        | 13 representatives: singles, ordered pairs, two-rescued triples = 208 configs x G1 (6: success, none, failure, ledger unreadable, success on other heads only, GitHub-only success with an empty ledger) x H1 (3) = 3 744 decisions; each oracle-pending row over G2 (6) x H2 (2) x moved (3); each non-pending row one permissive retry                                                                                                                                                       | ~17 k  |
+| TC runner to merger chain  | `steps_verdict -> judge_rc0_of -> evaluate_contexts -> local_side` over judge_modified (judge test, workflow file, `.gitattributes` alone, none) x step lists of 1..2 over (PASS, FAIL, ERROR, BLOCKED with the forged "rc=0 with the BASE judge" reason, NOT_APPLICABLE with a written reason, NOT_APPLICABLE with an empty reason)                                                                                                                                                           | 168    |
+| T2b MC/DC on the AND terms | from two merging baselines flip ONE of: each L term, `contexts_status`, `required=[]`, each pr term at D and at R, moved head, moved base, overall CONFLICT/ERROR                                                                                                                                                                                                                                                                                                                              | ~30    |
+| T2c recorded-input rows    | `executed_contexts_ok` false with `gate_only=True` and each of: host_no_verdict, not_ok, contexts_status not ok, required_n 0, rescued empty, a field missing: never pending; the clean `only` row: pending                                                                                                                                                                                                                                                                                    | ~10    |
+| TB ledger reader           | `gate_verdict` over every ledger of 0..3 lines drawn from 13 atoms (success, failure, success superseding the latest failure, success superseding a random digest, success for the candidate sha, the base sha, another PR's head, a 12-char head, another repo, an upper-case head, verdict `"Success"`, a torn line, valid JSON missing a key) = 2 380, plus file states (missing, empty, symlink, 0644, other owner, directory) and bad head arguments                                      | ~2.4 k |
+| TR runner products         | `judge_rc0_of` (status 6 x steps 0..2 over 8 statuses x judge_modified 3 x forged reason 2) and `evaluate_contexts` (view status 7 x reason prefix 4 x flag 4 x gate_pending 2)                                                                                                                                                                                                                                                                                                                | ~2.9 k |
+| TI integration             | the 2b.4 rows through the real `fw` fixture (two real ticks, real git, real `phase_f_arming`), asserting `merged` or not                                                                                                                                                                                                                                                                                                                                                                       | ~25    |
+
+**MC/DC meta-test (what makes an unpinned term structurally impossible).** A meta-test runs over the enumerated rows with
+the ORACLE only and asserts, for every derived term (E, only, hosted, ok1, pending1, ok2) and every atomic condition in
+it (each class inside X separately, R nonempty, base's two halves, gate(G1), gate(G2), H1, H2, each L term, each pr
+term, each `moved` value), that the row set holds a pair of rows differing only in that condition whose oracle output
+differs. A term without a pair fails the meta-test, so a term cannot be added to the oracle without its killing row.
+Seed rows: the grader counterexamples of gates 1-3 (34 tests, all passing on `2a9ecddddd`) are re-expressed as row ids;
+under the ledger only the gate fixture changes (a GitHub status becomes a ledger line), never the expected outcome.
+
+### 2b.4 Mutant rows the table must kill, and the survivor rule
+
+Notation `ctxA[+ctxB] | G1,H1 [-> G2,H2,moved]`; `RS` = BLOCKED `judge_rewritten_base_ok`, `HB`/`HE` = BLOCKED/ERROR host
+kinds, `JR` = BLOCKED `judge_rewritten`, `BL` = BLOCKED with none, `FA` = FAIL; `S` ledger success, `N` none, `F` failure,
+`g`/`p` hosted green/pending, `O` success for other heads only, `Gh` GitHub success with an empty ledger.
+
+| mutant class                                                                                                                                                                                         | killing rows                                                                                            | oracle                    | mutant                 |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------- |
+| gate-only ignores a host context (`m-gate-only-ignores-host`)                                                                                                                                        | `RS+HB \| S,g -> S,g,none`; `RS+HE \| N,g -> S,g,none`                                                  | pending F                 | pending T, merged on R |
+| gate stands in for hosted (`m-gate-replaces-hosted`)                                                                                                                                                 | `RS \| S,p`; `RS \| N,p -> S,p,none`                                                                    | ok1 F, ok2 F              | T                      |
+| gate-only ignores another red; gate overrides another red                                                                                                                                            | `RS+BL`, `RS+JR`, `RS+FA \| N,g -> S,g,none`; `RS+FA \| S,g`                                            | not pending; ok1 F        | pending / ok1 T        |
+| rescue of a non-BLOCKED or a non-exact kind                                                                                                                                                          | `JR`, `BL`, `RF`, `RE \| S,g`                                                                           | ok1 F                     | ok1 T                  |
+| gate not required; gated record lies                                                                                                                                                                 | `RS \| N,g`; `RS+FA \| S,g`                                                                             | ok1 F, pending T; gated F | ok1 T; gated T         |
+| retry copies the gate or the D row's record                                                                                                                                                          | `RS \| S,p -> F,g,none`, `-> N,g,none`                                                                  | ok2 F                     | ok2 T                  |
+| retry keys the gate on the wrong sha                                                                                                                                                                 | `RS \| N,g -> O,g,none` (F) and `-> S,g,none` (T)                                                       | F / T                     | T / F                  |
+| gate falls back to GitHub                                                                                                                                                                            | `RS \| Gh,g`; `RS \| N,g -> Gh,g,none`                                                                  | ok1 F, ok2 F              | T                      |
+| hosted read failure is green                                                                                                                                                                         | `OK \| N,x`; `RS \| S,x`                                                                                | ok1 F                     | T                      |
+| a moved key is retried                                                                                                                                                                               | `RS \| N,g -> S,g,head` and `-> S,g,base`                                                               | no retry row              | retry row              |
+| pending admits on a recorded field (host, not_ok, contexts_status, required_n, legacy missing field)                                                                                                 | T2c, one row each                                                                                       | not pending               | pending                |
+| ledger rule (any-success, first/last-wins, prefix, case, repo, torn line skipped, junk skipped, supersede-any-digest, missing file true, symlink followed, mode or owner unchecked, read error true) | TB atoms                                                                                                | false                     | true                   |
+| runner (labels swapped, any step status counts, rc0 without a PASS, rc0 reads step reason text, ERROR step allowed, wiring takes any BLOCKED or its text)                                            | TR and TC products; `test_b25_cmd_run_takes_the_flag_from_the_steps_never_from_any_blocked_or_its_text` | `None`                    | `base_ok`              |
+
+Accepted as equivalent, each with its reason: `g-flag-kept-across-attempts`/`-when-moved` (the pops mirror B12; a later
+attempt overwrites the flag from its own steps and the merger never runs `--only`); `g-retry-gate-only-forced` (the line
+no longer exists after J4''); `m-gate-last-wins` and the combined-endpoint shapes (the ledger has its own rule, TB).
+**Survivor rule from here on:** a gate's survivor is killed by an added ROW of the table with the oracle unchanged, or
+the oracle is wrong and this section is amended first. A hand-written one-off test is not a cure.
+
+### 2b.5 Acceptance criteria per later PR
+
+| PR                      | content                                                                                                                                                                                             | net lines                                | acceptance (each also a `Bites:` line)                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1                      | `gate_ledger.py` (reader, append, verify, quarantine), wrapper `gate-append` mode, `harness_fable_gate.py` ledger-first, TB and writer tests, a runbook line that gates run candidate code isolated | ~360                                     | TB 2 380 files pass against its own oracle; the writer rejects each malformed field, a client-supplied `ts`/`via`, a tail without newline, and never alters existing bytes; no file under `.github/` names the ledger; after a real publish `ssh pro 'tail -n1 ~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl'` shows the head, the verdict and `via`, `verify` exits 0, GitHub shows the same verdict |
+| P2                      | runner half: `judge_rewritten_base_ok` as a structured `no_verdict` (`judge_rc0_of`, `cmd_run` wiring, `evaluate_contexts`), TR and TC                                                              | ~230                                     | TR/TC products pass against the oracle text; the runner mutant rows killed; on Pro the first judge-editing PR with every step rc=0 journals `no_verdict: {<ctx>: "judge_rewritten_base_ok"}` and stays not OK                                                                                                                                                                                            |
+| P3                      | merger half: J1''/J3''/J4'', `--gate-ledger`, the oracle module, T1/T2/T2b/T2c, seed rows as TI, MC/DC meta-test                                                                                    | ~400 (TI moves to P3b unchanged if over) | the whole 2b.4 list reports KILLED with the merger-mutant names equal to the table's; meta-test green; the next judge-editing PR's row carries the J3'' fields and `gated` true exactly when its ledger holds a success for the head; a retry after the ledger append journals `retry: true` (shadow)                                                                                                    |
+| P4                      | `harness_gate_read.py --ledger PATH --head SHA` (hosted path byte-identical), matrix argv, runner `$GATE_LEDGER`; FLIP PREREQUISITE                                                                 | ~220                                     | guilt: GitHub success with an empty ledger reads PENDING locally, and a live head different from the decided head reads false; innocence: ledger success reads 0; the next Gear >= 2 plan shows the host reader with `--ledger` and the decided head                                                                                                                                                     |
+| P5 (optional, pre-flip) | hosted floor accepts `harness/fable-gate` only from an allowlisted `User` creator on `/statuses`                                                                                                    | ~120                                     | closes the GITHUB_TOKEN and hand-posting routes only (not `AUTOMERGE_PAT`); the hosted job log prints the publisher beside the verdict                                                                                                                                                                                                                                                                   |
+
+PRs serialize (they share this spec and the README) and each starts from a fresh `origin/main`. Migration: no backfill
+from GitHub (a backfill would import exactly the trust being removed); gates dual-publish from P1; Gear >= 2 PRs gated
+before P1 read PENDING locally until re-gated. The flip checklist gains one line: `gate_ledger.py verify` exits 0 on
+Pro, P1-P4 are live, and every open labelled Gear >= 2 PR has a ledger entry for its head.
+
+### 2b.6 Residuals and owner actions
+
+- **Exposure today.** Until P4 and the flip the hole stays open through the hosted floor for every Gear >= 2 same-repo
+  PR: a PR workflow declaring `statuses: write` posts the gate with `GITHUB_TOKEN`; the same with `AUTOMERGE_PAT`
+  (indistinguishable from a real gate); a push-collaborator posts by hand; the PR rewrites `harness-floor.yml` itself.
+  Severity MEDIUM for the forgery, HIGH if `AUTOMERGE_PAT` is an admin-power owner token readable by any same-repo PR.
+- **R1** gate hosts run candidate code as an operator holding `gh` and ssh to Pro; gates run it isolated (procedural).
+- **R2** anything executing as the Pro user can write the ledger.
+- **R3** a gate later than `PENDING_TTL_S` (24 h) after the decision expires the key; liveness, not safety.
+- **R4** "no Actions secret reaches Pro" is by secret name, and names are not entities.
+- **D1 (Zero)** `AUTOMERGE_PAT`: delete it (no workflow on `main` uses it; its lane is parked), or replace it with a
+  fine-grained PAT (pull requests: write, this repo only) in an environment restricted to `main`. GUI or
+  `gh secret delete AUTOMERGE_PAT`.
+- **D2 (optional, Zero)** an ssh key dedicated to gate appends, installed on Pro with a forced `gate-append` command.
+
 ## 3. What is lost, and what covers it
 
 | lost                                              | cover                                                                                                                                                          |
