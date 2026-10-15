@@ -1,0 +1,7 @@
+N1 a flat scrim's child is exempt again | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-flat-scrim-child
+N2 a drop-shadow reaches | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-drop-shadow-no-r
+N3 the capture pass opens its own context | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_every_census_context_asks_for_reduced_motion_from_one_place
+N4 bring() drops the occluder | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_bring_fallback_keeps_the_occluder_and_whether_it_hides
+N5 ground-resolver-disagree ignores a capture not read through | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree
+N6 the full job is back at 40 minutes | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_decla
+N7 the exit step omits the declared line | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_decla

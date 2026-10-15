@@ -1,0 +1,77 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i (BLUE), the
+  tooling half of the 3b-2b split. The Dux (site-dux, a successor window) built and ran every
+  command. It does not self-sign; the imperator commissions a fresh Opus gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md; the #8488 gate bindings
+  B1-B5; the #8249 gate bindings 2, 3 and 4; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 8.4, 8.8 and 9.
+lanes:
+  - lane: kbli-r19-w0d3b2b-1015
+    role: build
+    seat: "claude-sonnet-5-5 (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat. No PNG in this pack."
+provenance: >-
+  Two commits on origin/main d0b352ae30: the cures (code, tests, contract, workflow) and the
+  regenerated census fixture with its pinned counts. Nothing of 3b-2b-ii (section 8.7 inventory,
+  surfaces-unclaimed, bg-black/60, section 8.5 cells, logo) is in the diff.
+diff:
+  behaviour_change: >-
+    The instrument opens every context from one place (reduced motion), a drop-shadow reaches
+    nothing, a flat scrim's child is counted (a fixed scrim's is not), the walk line names the
+    occluded runs behind the walk's own scrim, bring() keeps occludedBy and hides,
+    ground-resolver-disagree is INCOMPLETE on a capture not read through, the full job has 75
+    minutes, and the exit step lists the declared-not-judgeable line. The fixture is regenerated
+    on a quiet machine: G 577, O 18, K 188, M 741, state 51, drift 0 (the 3b-2a fixture read
+    G 579, M 784). The movement is the tree, not the cures: the search-dropdown red code chips
+    now read at 5.09 or more where the old fixture had 3.3 and 3.26, a 'TERBUKA' chip is 11px
+    where it was 10px, and the pages the cures cannot touch moved with them. The K count did not
+    move, so no flat-scrim child exists on the tree.
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "154 passed, 81 deselected"
+    exit: 0
+    ts: "2026-10-15T11:43:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The browser rows (guilt and innocence through the real walk, the page judge, the opener) pass on M5, the new rows included."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+    result: "81 passed, 154 deselected in 451.26s"
+    exit: 0
+    ts: "2026-10-15T09:55:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The armed apps/mouth test still reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed; Tests 5 passed, 1 skipped (142.85s)"
+    exit: 0
+    ts: "2026-10-15T11:46:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "Every cure undone fails a row: N1 and N2 through the real walks, N3 to N7 offline."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2b-1015-296b4784/instrument_mutants.py (instrument-mutants.txt)"
+    result: "7 of 7 killed"
+    exit: 0
+    ts: "2026-10-15T10:20:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "M5, the full census on port 3531 at load 3 to 10: the fixture is its dump, and the fixture's replay is its live verdict byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --port 3531 --diff-base origin/main --json <fixture>; --replay <fixture>; cmp"
+    result: "492 lines, identical (sha256 832d6a029b48d961). captures 54 ok, opened 50 ok 0 failed, declared-not-judgeable 1, G 577, O 18, K 188, D 0, drift 0, M 741. phase-seconds: full capture 1110, walk 110, opened 1074, shared 318."
+    exit: 0
+    ts: "2026-10-15T11:41:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-15T11:47:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "A first full census ran while a foreign simulator pushed M5 load to 400; its verdict differed from the second run on pages the cures cannot touch (the 51101 page read two element counts)."
+    status: CONFIRMED
+    resolution: "That dump was discarded. The fixture is the second run, at load 3 to 10, and its replay equals its live verdict byte for byte."
+  - seat: claude-sonnet-5-5
+    objection: "B3, the composer card: is the occlusion of the 'KBLI 2025 (Peraturan BPS 7/2025)' paragraph an artefact of the census state?"
+    status: REFUTED
+    resolution: "A plain user load (no reduced motion, no style tag) and the census state read the same on /kbli-explorer at 1440x900 after 2.5 s: card at y 1, height 142; the form input at y 40, height 66, covers the paragraph at y 62; opacity 1, transform none in both. The scroll container (flex-1 overflow-y-auto) sits at scrollTop 185 of 185 in both. The entrance has finished; the card is genuinely under the composer on desktop. A product finding outside this lot (no apps/mouth/src edit), not an instrument defect; the census reports it correctly as three occluded keys."
