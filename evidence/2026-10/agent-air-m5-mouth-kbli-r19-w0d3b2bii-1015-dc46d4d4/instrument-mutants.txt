@@ -1,0 +1,28 @@
+N1 G1: no scrim descendant is ever exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-fixed-scrim-chil
+N1b G2: only a fixed or sticky scrim exempts | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-blur-scrim-child
+N1c A1: the scrim's ANCESTORS decide (position walks up) | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-flat-scrim-in-fi
+N1d X1/M5: the cumulative opacity decides | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-flat-scrim-faded
+N1e M6: a trigger list without opacity replaces the index test | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-scrim-own-opacit
+N1f M7: a trigger list without backdrop-filter replaces the index test | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-blur-scrim-child
+N1g M8: a trigger list without fixed replaces the index test | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-fixed-scrim-chil
+N1h M9: a flat scrim is itself never exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-flat-scrim-itsel
+N1i S anywhere in the stack, even under the run | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-flat-scrim-in-fi
+r1-NEAR the reach path reads the nearest-point stack (r0, #8581's head) | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-glow-scrim
+r1-MEM the same, as membership only on the reach path | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-glow-scrim
+r1-NOSCRIM the reach path never returns scrim | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-reach-scrim-cove
+r1-ABSENT a scrim absent from the stack exempts | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-shadow-scr
+N1k G3: the scrim clause never prints | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion[the wal
+N1l a surface-covered run is counted as behind the scrim | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion[a surfa
+N2 a drop-shadow reaches | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-drop-shadow-no-r
+N3 the capture pass opens its own context | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_every_census_context_asks_for_reduced_motion_from_one_place
+ii-5 G6: the capture pass emulates no-preference after new_context | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_capture_pass_asks_for_reduced_motion
+N4 G9: bring() keeps the occluder but drops why it is exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_bring_fallback_keeps_the_occluder_and_why_it_is_exempt
+N4b G7: a drop-shadow reaches, written without the literal | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-drop-shadow-only
+ii-6 M10: a drop-shadow reaches like an offset box-shadow (1 blur radius), no literal | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-drop-shadow-only
+ii-11a decode() takes the first occluded point even when a later point is non-exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-mix-reach]
+ii-11b bring() fallback takes the first occluded point even when a later point is non-exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_bring_fallback_keeps_the_occluder_and_why_it_is_exempt
+ii-12a within() returns only the first reacher in DOM order | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-two-reachers-exe
+ii-12b pointB() returns the first hit instead of preferring a non-exempt occluder | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-near-first-reach
+N5 ground-resolver-disagree ignores a capture not read through | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree
+N6 the full job is back at 40 minutes | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_decla
+N7 the exit step omits the declared line | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_decla

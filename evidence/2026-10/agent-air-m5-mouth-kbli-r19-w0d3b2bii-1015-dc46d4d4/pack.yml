@@ -1,0 +1,85 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Dispatched by the imperator: mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-ii (BLUE), the
+  content half of the 3b-2b split plus the accumulated gate bindings ii-1..ii-13. The builder seat
+  ran every command and prepared the candidate; an independent gate session (Astra gpt-6-astra xhigh,
+  appointed by Zero while Claude is at session limit) verifies and signs harness/fable-gate.
+plan_ref: >-
+  ~/BATTAGLIA-20261008/DYNAMIC-WORKFLOW-kbli-nav-design/Z-DECISIONI.md; SPEC-W0d-census; SPEC-3b2bi-scrim-exemption.md
+  revision 1; gate bindings ii-1..ii-13 from #8560, #8579, #8581 and #8583; the contract
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 5, 8.1, 8.3, 8.4, 8.5 and 8.7.
+lanes:
+  - lane: kbli-r19-w0d3b2bii-1015
+    role: build
+    seat: "claude-sonnet-5-5 / agy-conductor (Dux)"
+pii_scan: clean
+pii_scan_note: "Census dumps, verdict texts and mutant outputs hold public page labels, colours, CSS paths and route paths only. No client data, no external seat. No PNG in this pack."
+provenance: >-
+  Built on top of #8583 (W0d-3b-2b-i''', merged at 934e1ccf8e536c490fe446e1e6ea84d9dee250b0): carries the section 8.7
+  overlay/scrim/reacher inventory and surfaces-unclaimed: 0, the bg-black/60 per-surface row, the section 8.5
+  NavShell/Footer table cell precision, the section 8.3 logo proof and dump record, and the ii-5, ii-6, ii-7, ii-11,
+  ii-12 and ii-13 bindings. Zero files under apps/mouth/src.
+diff:
+  behaviour_change: >-
+    1. Section 8.7 overlay inventory (overlay_hits, parse_overlays) and surfaces-unclaimed: 0 line in the census output
+       and CI exit step, plus the section 8.7 scrim-shapes (6 shapes, 18 instances, 0 descendants) and reacher-elements
+       (8 shapes, 223 instances, 0 inside a scrim) subsections (ii-1, ii-10).
+    2. Section 8.1 per-surface bg-black/60 scrim row for the explorer mobile sidebar backdrop, cross-referenced with
+       section 5 (ii-2); moves opened-grounds-off-contract from 188 to 189 on live census and replay.
+    3. Section 8.5 NavShell and Footer cells pinned to exact walk counts and per-cell token families (ii-4).
+    4. Section 8.3 logo_proof (5 checks), png_rows, black_field, logo_corners and the JSONL logo record (skips until
+       W2''' ships the transparent asset).
+    5. Occlusion cause reduction and simultaneous occluder precedence: within() returns all qualifying reachers;
+       pointB() evaluates all reachers and main-stack occluders at p and returns the first non-exempt hit before any
+       exempt hit (ii-12 NEAR-FIRST); decode() and bring() select the first non-exempt occluded point before falling
+       back to an exempt one (ii-11 MIX-reach, MIX-main).
+    6. Paint receipts (paint-receipts.txt) report the 5 census-point stack relations and deltas separately from
+       whole-box max_delta (ii-13).
+receipts:
+  - claim: "The offline suite passes on the regenerated fixture (including overlay inventory, bg-black/60, section 8.5 cells, logo proof unit rows, and bring() fallback precedence)."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: "173 passed, 1 skipped, 113 deselected in 35.89s"
+    exit: 0
+    ts: "2026-10-16T10:08:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The browser e2e rows pass on M5, including ii-5 (G6 capture pass reduced motion), ii-6 (M10 drop-shadow within 1 blur radius), ii-11 (MIX-reach/MIX-main) and ii-12 (NEAR-FIRST)."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k e2e"
+    result: "113 passed, 174 deselected in 408.21s"
+    exit: 0
+    ts: "2026-10-16T10:22:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "The armed apps/mouth test reads the probe, pages and states through --export."
+    cmd: "cd apps/mouth && npm test -- r19-wrapper --run --reporter=dot"
+    result: "Test Files 1 passed (1); Tests 5 passed, 1 skipped (6) in 393.04s"
+    exit: 0
+    ts: "2026-10-16T10:15:00Z"
+    seat: claude-sonnet-5-5
+  - claim: "All 28 mutants in instrument_mutants.py (SPEC r1 table + G6, M10, ii-11a, ii-11b, ii-12a, ii-12b) are killed."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bii-1015-dc46d4d4/instrument_mutants.py (instrument-mutants.txt)"
+    result: "28 of 28 killed"
+    exit: 0
+    ts: "2026-10-16T09:17:18Z"
+    seat: claude-sonnet-5-5
+  - claim: "Plain Chrome paint receipts for all 26 rows that claim a paint relation, with per-census-point deltas and stack relations separated from whole-box max_delta (ii-13)."
+    cmd: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bii-1015-dc46d4d4/paint_receipts.py (paint-receipts.txt)"
+    result: "26 rows verified: box_unchanged=True on all 26; point relations and 5 census-point deltas [c,tl,tr,bl,br] reported alongside whole-box max_delta"
+    exit: 0
+    ts: "2026-10-16T09:15:36Z"
+    seat: claude-sonnet-5-5
+  - claim: "M5 live census regenerates the fixture with the logo record and K 189, and --replay matches live byte for byte."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --json scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl; --replay <fixture>; cmp"
+    result: "493 lines, byte-identical (sha256 63c0792754ee18c6). captures 54 ok, surfaces-unclaimed 0, opened 50 ok 0 failed, declared-not-judgeable 1, G 577, O 18, K 189, D 0, drift 0, M 741. phase-seconds: full capture 1156, walk 138, opened 1039, shared 556."
+    exit: 0
+    ts: "2026-10-16T10:07:20Z"
+    seat: claude-sonnet-5-5
+  - claim: "The fence: no file under apps/mouth/src."
+    cmd: "git diff --name-only origin/main...HEAD | grep -c '^apps/mouth/src'"
+    result: "0"
+    exit: 1
+    ts: "2026-10-16T10:23:00Z"
+    seat: claude-sonnet-5-5
+dissent:
+  - seat: claude-sonnet-5-5
+    objection: "Should B3 (composer card 'KBLI 2025 (Peraturan BPS 7/2025)' paragraph occlusion on /kbli-explorer) be declared away in section 8.1?"
+    status: RETRACTED
+    resolution: "No, per binding ii-7: B3 remains a real product finding (3 occluded keys) for the Track W surface remediation lot and is not declared away."

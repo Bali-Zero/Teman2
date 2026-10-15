@@ -38,10 +38,12 @@ import os
 import re
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import time
 import urllib.request
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -252,7 +254,9 @@ def parse_surfaces(text: str, contract: dict | None = None, states: dict | None 
             raise ContractError(f"{where}: empty or duplicate token {token!r}, or no surface / reason")
         if split_variant(token)[0]:
             raise ContractError(f"{where}: {token} carries a state variant; section 7 owns it")
-        if ("class", token) in (contract or {}) or token in (states or {}):
+        # A token with two roles (W0d-3): its section 5 row holds at rest, and an opened surface that paints it
+        # in another role carries its own row here, declared as such.
+        if token in (states or {}) or (("class", token) in (contract or {}) and "Per-surface row" not in reason):
             raise ContractError(f"{where}: {token} already has a section 5 or 7 row")
         hx = _value(value, reason, where)
         row = {"surface": surface, "ground": ground, "value": value, "hex": hx, "text": [], "reason": reason}
@@ -354,7 +358,7 @@ def verdict(census: dict, contract: dict, states: dict | None = None) -> list[st
 def dump(census: dict, path: Path) -> None:
     """JSON Lines: a header, then one read / colour per line, sorted by token."""
     head = {k: census[k] for k in ("schema", "pages", "states", "captures", "failed", "walks", "walk_failed",
-                                   "parts", "seconds") if k in census}
+                                   "parts", "seconds", "logo") if k in census}
     lines = [json.dumps(head, sort_keys=True)]
     lines += [json.dumps({"read": k, **census["reads"][k]}, sort_keys=True) for k in sorted(census["reads"])]
     lines += [json.dumps({"color": k, **census["colors"][k]}, sort_keys=True) for k in sorted(census["colors"])]
@@ -934,6 +938,8 @@ def capture_pages(browser, m, base: str, census: dict, units: list | None = None
             res = page.evaluate(PROBE_JS, core)
             if not res.get("root"):
                 raise RuntimeError("wrapper root not found")
+            if page_path == "/kbli-explorer" and state == "desktop/light":
+                census["logo"] = logo_corners(page)  # section 8.3, the fifth proof
         except Exception as exc:  # a failed capture must never read as clean
             census["failed"].append(f"{page_path} {state}: {exc}".splitlines()[0][:200])
             ctx.close()
@@ -1130,7 +1136,7 @@ RESOLVE_JS = r"""
   const within = (x, y, runEl) => {
     reachers = reachers || [...document.querySelectorAll("body *")]
       .filter((el) => overlay(el) && Math.max(...Object.values(reachOf(el))) > 0);
-    return reachers.find((el) => {
+    return reachers.filter((el) => {
       const r = el.getBoundingClientRect(), m = reachOf(el);
       if (el.contains(runEl) || !(r.width > 0 && r.height > 0
         && x >= r.left - m.left && x <= r.right + m.right && y >= r.top - m.top && y <= r.bottom + m.bottom)) return false;
@@ -1156,7 +1162,8 @@ RESOLVE_JS = r"""
   // the run's own layer (index < i): it already covers the run there, so what its children add is behind it too.
   // No style of the scrim or of its ancestors decides it; a scrim absent from the stack at p, or under the run at p,
   // never exempts. On the reach path `within` decides only THAT an overlay reaches the run, at its nearest point;
-  // the scrim test still reads this stack, p's own (SPEC-3b2bi r1).
+  // the scrim test still reads this stack, p's own (SPEC-3b2bi r1). At p, every reaching and main-stack occluder is
+  // collected, and a non-exempt one takes precedence over an exempt one (W0d-3b-2b-ii, ii-12).
   const exempt = (el, runEl, st, i) => scrims.some((s) => s.contains(el) && st.indexOf(s) >= 0 && st.indexOf(s) < i) ? "scrim"
     : roots.some((r) => r.contains(el) && !r.contains(runEl)) ? "surface" : null;
   const pointB = (x, y, runEl) => {
@@ -1164,11 +1171,11 @@ RESOLVE_JS = r"""
     let i = -1;
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
-    const near = within(x, y, runEl);
-    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl, st, i) };
+    const hits = within(x, y, runEl).map((near) => ({ occluded: path(near), fixed: true, exempt: exempt(near, runEl, st, i) }));
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
-        return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl, st, i) };
+        hits.push({ occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl, st, i) });
+    if (hits.length) return hits.find((h) => !h.exempt) || hits[0];
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
     const base = k >= 0 ? ls[k].rgb : canvasRgb();
@@ -1304,10 +1311,10 @@ RESOLVE_JS = r"""
       for (const i of this.current) {
         const r = runs[i], { pts, bs } = r.trial;
         const keep = pts.map((p, k) => [p, bs[k]]).filter(([, b]) => !b.occluded && !b.missed);
-        const occ = bs.find((b) => b.occluded);
+        const occ = bs.find((b) => b.occluded && !b.exempt) || bs.find((b) => b.occluded);
         // Under a fixed overlay, even at one point, the run waits to be read in the middle of the viewport:
         // a blur or a shadow reaches past the overlay's box onto the points that are left.
-        if (occ && occ.fixed && this.target !== i) continue;
+        if (bs.some((b) => b.occluded && b.fixed) && this.target !== i) continue;
         if (!keep.length) {
           if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           continue;
@@ -1330,7 +1337,7 @@ RESOLVE_JS = r"""
       while (this.pending.length) {
         const i = this.pending[0], r = runs[i];
         if (this.target === i) {
-          const occ = r.trial && r.trial.bs.find((b) => b.occluded);
+          const occ = r.trial && (r.trial.bs.find((b) => b.occluded && !b.exempt) || r.trial.bs.find((b) => b.occluded));
           r.state = occ ? "occluded" : "unreached";
           if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           this.pending.shift();
@@ -2003,6 +2010,201 @@ def page_verdict(census: dict) -> list[str]:
         f"page-grounds-off-contract: {len(off)}{tail}"]
 
 
+# Section 8.7 (W0d-3, SPEC-W0d section 1.a): every overlay the fence can mount, its own files and the local
+# files they import, is claimed by a scenario or declared unreachable, not-reached or decorative. A hit is keyed
+# file::pattern::ordinal, never by line, so the key survives an edit above it.
+# Section 8.3, Zero's Q11: the explorer logo is re-cut, and W2''' ships the transparent file (SPEC-W0d section 4).
+LOGO = ROOT / "apps/mouth/public/images/logo-zantara.png"
+LOGO_ALPHA_SRC = "/images/logo-zantara-transparent.png"
+LOGO_ALPHA = ROOT / "apps/mouth/public" / LOGO_ALPHA_SRC.lstrip("/")
+LOGO_PAGE = ROOT / "apps/mouth/src/app/kbli-explorer/page.tsx"
+LOGO_JS = """() => { const i = document.querySelector('img[src*="logo-zantara"]'); if (!i) return null;
+  const r = i.getBoundingClientRect(); return { src: i.getAttribute("src"), x: r.left, y: r.top, w: r.width, h: r.height }; }"""
+
+
+def png_rows(data: bytes) -> tuple[int, int, int, list[bytearray]]:
+    """An 8-bit, non-interlaced RGB or RGBA PNG: width, height, colour type and its unfiltered rows."""
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG")
+    pos, idat, head = 8, b"", None
+    while pos < len(data):
+        n, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        if kind == b"IHDR":
+            head = struct.unpack(">IIBBBBB", data[pos + 8:pos + 21])
+        elif kind == b"IDAT":
+            idat += data[pos + 8:pos + 8 + n]
+        pos += 12 + n
+    w, h, depth, ctype, _, _, interlace = head
+    if depth != 8 or ctype not in (2, 6) or interlace:
+        raise ValueError(f"PNG depth {depth}, colour type {ctype}, interlace {interlace}: not decoded")
+    bpp, raw, rows = 3 if ctype == 2 else 4, zlib.decompress(idat), []
+    stride, prev = w * bpp, bytearray(w * bpp)
+    for y in range(h):
+        kind, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride if kind else 0):
+            a, b, c = line[i - bpp] if i >= bpp else 0, prev[i], prev[i - bpp] if i >= bpp else 0
+            if kind == 1:
+                line[i] = (line[i] + a) & 255
+            elif kind == 2:
+                line[i] = (line[i] + b) & 255
+            elif kind == 3:
+                line[i] = (line[i] + (a + b) // 2) & 255
+            else:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append(line)
+        prev = line
+    return w, h, ctype, rows
+
+
+def black_field(w: int, h: int, rows: list[bytearray], bpp: int = 3, dark: int = 16) -> bytearray:
+    """The logo's black field: the near-black pixels a flood fill reaches from the four corners. The black disc
+    inside the ring is not reached, so it stays in the roundel mask."""
+    field, todo = bytearray(w * h), [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]
+    while todo:
+        x, y = todo.pop()
+        if 0 <= x < w and 0 <= y < h and not field[y * w + x] and max(rows[y][x * bpp:x * bpp + 3]) <= dark:
+            field[y * w + x] = 1
+            todo += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return field
+
+
+def logo_corners(page) -> dict:
+    """The explorer logo on its page: its src, and the pixels at the four corners of its box, 1px in."""
+    box = page.evaluate(LOGO_JS)
+    if not box or box["w"] < 4 or box["h"] < 4:
+        return {"src": box and box["src"], "corners": []}
+    shot = page.screenshot(clip={"x": box["x"], "y": box["y"], "width": box["w"], "height": box["h"]},
+                           animations="disabled")
+    w, h, ctype, rows = png_rows(shot)
+    n = 3 if ctype == 2 else 4
+    return {"src": box["src"], "corners": ["#%02X%02X%02X" % tuple(rows[y][x * n:x * n + 3])
+                                           for x, y in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2))]}
+
+
+def logo_proof(original: bytes, new: bytes, page_text: str, record: dict | None) -> list[str]:
+    """Section 8.3's five proofs of the re-cut logo; each one that fails is named."""
+    bad = []
+    ow, oh, _, orows = png_rows(original)
+    w, h, ctype, rows = png_rows(new)
+    if ctype != 6 or (w, h) != (ow, oh):
+        bad.append(f"IHDR: {w}x{h} colour type {ctype}, not {ow}x{oh} RGBA (6)")
+    else:
+        alpha = [rows[y][x * 4 + 3] for x, y in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))]
+        if any(alpha):
+            bad.append(f"corners: alpha {alpha}, not 0")
+        field = black_field(ow, oh, orows)
+        diff = sum(1 for y in range(h) for x in range(w)
+                   if not field[y * w + x] and rows[y][x * 4:x * 4 + 4] != orows[y][x * 3:x * 3 + 3] + b"\xff")
+        if diff:
+            bad.append(f"roundel: {diff} pixel(s) differ from the original inside the mask")
+    if f'src="{LOGO_ALPHA_SRC}"' not in page_text:
+        bad.append(f"img: the explorer does not point at {LOGO_ALPHA_SRC}")
+    corners = (record or {}).get("corners", [])
+    if (record or {}).get("src") != LOGO_ALPHA_SRC or len(corners) != 4 \
+            or not all(near(c, DIRECTION_A["paper"]) for c in corners):
+        bad.append(f"render: /kbli-explorer desktop/light read {record} at the logo's corners, not paper")
+    return bad
+
+
+FENCE = ("apps/mouth/src/components/kbli", "apps/mouth/src/app/kbli", "apps/mouth/src/app/kbli-explorer")
+OBEGIN, OEND = "<!-- overlays:begin -->", "<!-- overlays:end -->"
+OHEADER = ["key", "claim", "reason"]
+DECLARED = ("unreachable", "not-reached", "decorative")
+OVERLAY_PATTERNS = {
+    "Dialog.Portal": re.compile(r"<Dialog\.Portal\b"),
+    "createPortal(": re.compile(r"\bcreatePortal\("),
+    "<details": re.compile(r"<details\b"),
+    "role": re.compile(r"""role=["'{`]+(?:dialog|alertdialog|listbox|menu|tooltip)\b"""),
+    "aria-modal": re.compile(r"\baria-modal\b"),
+    "toast": re.compile(r"\btoast(?:\.\w+)?\("),
+}
+# A string or a comment, whichever starts first: a `//` inside a URL string is not a comment.
+CODE = re.compile(r'"(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\'|`(?:[^`\\]|\\.)*`|/\*.*?\*/|//[^\n]*', re.S)
+STRING = re.compile(r'"[^"\n]*"|\'[^\'\n]*\'|`[^`]*`')
+IMPORT = re.compile(r"""(?:from\s+|import\s*\(\s*|import\s+)["']([^"']+)["']""")
+
+
+def _uncomment(text: str) -> str:
+    """The source with its comments blanked, line numbers kept."""
+    return CODE.sub(lambda mt: re.sub(r"[^\n]", " ", mt.group(0)) if mt.group(0)[0] == "/" else mt.group(0), text)
+
+
+def _is_test(f: Path) -> bool:
+    return ".test." in f.name or ".spec." in f.name or "__tests__" in f.parts
+
+
+def _import_of(spec: str, here: Path, src: Path) -> Path | None:
+    base = src / spec[2:] if spec.startswith("@/") else (here.parent / spec).resolve() if spec.startswith(".") else None
+    if base is None:
+        return None
+    for f in (base, *(base.with_name(base.name + e) for e in (".tsx", ".ts")), base / "index.tsx", base / "index.ts"):
+        if f.is_file() and f.suffix in (".tsx", ".ts") and src in f.parents and not _is_test(f):
+            return f
+    return None
+
+
+def overlay_hits(root: Path = ROOT) -> dict[str, int]:
+    """Every overlay pattern in the fence and its transitive local imports, tests and comments excluded:
+    key -> line."""
+    src = root / "apps/mouth/src"
+    todo = [f for d in FENCE for f in (root / d).rglob("*") if f.suffix in (".tsx", ".ts") and not _is_test(f)]
+    seen: set[Path] = set()
+    while todo:
+        f = todo.pop()
+        if f not in seen:
+            seen.add(f)
+            todo += [g for g in (_import_of(x, f, src) for x in IMPORT.findall(f.read_text())) if g]
+    hits: dict[str, int] = {}
+    for f in sorted(seen):
+        text = _uncomment(f.read_text())
+        rel = f.relative_to(root).as_posix()
+        found = [(name, mt.start()) for name, rx in OVERLAY_PATTERNS.items() for mt in rx.finditer(text)]
+        for mt in STRING.finditer(text):  # a class string that positions, stacks and paints
+            toks = mt.group(0)[1:-1].split()
+            if {"fixed", "absolute"} & set(toks) and any(t.startswith("z-") for t in toks) \
+                    and any(t.startswith("bg-") for t in toks):
+                found.append(("overlay", mt.start()))
+        for name in {n for n, _ in found}:
+            for k, at in enumerate(sorted(at for n, at in found if n == name)):
+                hits[f"{rel}::{name}::{k}"] = text.count("\n", 0, at) + 1
+    return hits
+
+
+def parse_overlays(text: str, scenarios: set[str]) -> dict[str, tuple[str, str]]:
+    """The overlay inventory of section 8.7: key -> (claim, reason). Refused, never read as empty."""
+    if text.count(OBEGIN) != 1 or text.count(OEND) != 1:
+        raise ContractError("expected exactly one overlays:begin/end block")
+    lines = [ln.strip() for ln in text.split(OBEGIN)[1].split(OEND)[0].splitlines() if ln.strip()]
+    if len(lines) < 3 or [c.lower() for c in _cells(lines[0])] != OHEADER:
+        raise ContractError(f"overlays table: header must be {OHEADER}, with rows under it")
+    rows: dict[str, tuple[str, str]] = {}
+    for n, line in enumerate(lines[2:], start=3):
+        cells = [c.strip("`") for c in _cells(line)]
+        if len(cells) != 3 or not cells[0] or cells[0] in rows:
+            raise ContractError(f"overlay row {n}: expected a new key, a claim and a reason")
+        key, claim, reason = cells
+        if claim not in scenarios and claim not in DECLARED:
+            raise ContractError(f"overlay row {n}: {claim!r} is neither a census scenario nor one of {DECLARED}")
+        if claim in DECLARED and not reason:
+            raise ContractError(f"overlay row {n}: a {claim} overlay needs its reason")
+        rows[key] = (claim, reason)
+    return rows
+
+
+def unclaimed_verdict(hits: dict[str, int], rows: dict[str, tuple[str, str]]) -> list[str]:
+    """`surfaces-unclaimed: U`: each overlay the fence can mount with no section 8.7 row."""
+    lines = [f"  {k} (line {hits[k]}) has no section 8.7 row" for k in sorted(hits) if k not in rows]
+    return lines + [f"surfaces-unclaimed: {len(lines)}"]
+
+
+def floating_results_unreachable(page_text: str) -> bool:
+    """The explorer's floating search results are declared unreachable in section 8.7 because every
+    setSearchResults call empties them; a call that fills them makes the row false (G31)."""
+    calls = re.findall(r"setSearchResults\(([^()]*)\)", _uncomment(page_text))
+    return bool(calls) and all(c.strip() == "[]" for c in calls)
+
+
 PRINT = re.compile(r"^(#[0-9A-F]{6}) on (#[0-9A-F]{6}) (.*)$|^root (#[0-9A-F]{6})$")
 
 
@@ -2213,7 +2415,12 @@ def main(argv: list[str]) -> int:
     received = against_scenarios(census, [u for u in scenarios(*measure_literals()) if a.part in (None, u[0])])
     pin = json.loads(SHARED_PIN.read_text()) if SHARED_PIN.exists() else None
     touched = touched_files(a.diff_base)
-    print("\n".join(received + verdict(census, contract, states) + page_verdict(census)
+    try:
+        claims = unclaimed_verdict(overlay_hits(), parse_overlays(a.contract.read_text(),
+                                                                  {sc[0] for sc in SCENARIOS}))
+    except ContractError as exc:
+        claims = [f"overlays: REFUSED — {exc}", "surfaces-unclaimed: REFUSED (overlay table unreadable)"]
+    print("\n".join(received + verdict(census, contract, states) + page_verdict(census) + claims
                     + opened_verdict(census, surfaces, contract, pin, touched)))
     return 0
 
