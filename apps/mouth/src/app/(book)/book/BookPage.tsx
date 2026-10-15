@@ -20,6 +20,7 @@ import {
   CHAPTERS,
   CONTACTS,
   SERVICES,
+  localizeServiceHighlight,
   STATS,
   TRANSLATIONS,
   LOCALE_LABELS,
@@ -78,20 +79,22 @@ function ServicesSection({ locale }: { locale: Locale }) {
   const filtered = SERVICES.filter((s) => s.category === activeCategory);
 
   // Build translated service items with translated features when locale is not english
-  const translatedServices = filtered.map((s) => ({
-    ...s,
-    waMessage:
-      locale === "en"
-        ? s.waMessage
-        : `Hi, I am interested in ${s.title}. Can you give me more info? (${LOCALE_LABELS[locale]})`,
-    badge: s.badge
-      ? s.badge === "Most popular"
-        ? t.mostPopular
-        : s.badge === "For companies"
-          ? t.forCompanies
-          : t.forBusinessOwners
-      : undefined,
-  }));
+  const translatedServices = filtered
+    .map((s) => localizeServiceHighlight(s, locale))
+    .map((s) => ({
+      ...s,
+      waMessage:
+        locale === "en"
+          ? s.waMessage
+          : `Hi, I am interested in ${s.title}. Can you give me more info? (${LOCALE_LABELS[locale]})`,
+      badge: s.badge
+        ? s.badge === "Most popular"
+          ? t.mostPopular
+          : s.badge === "For companies"
+            ? t.forCompanies
+            : t.forBusinessOwners
+        : undefined,
+    }));
 
   return (
     <div className="px-6 md:px-16 py-12">
