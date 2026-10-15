@@ -277,7 +277,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Onshore process via Altus.",
         "icon_id": "kitas-investor"
       },
@@ -287,7 +287,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Offshore process for applicants outside Indonesia.",
         "icon_id": "kitas-investor"
       },
@@ -297,7 +297,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Onshore extension of an existing 2-year Investor KITAS for shareholders of a PT PMA.",
         "icon_id": "kitas-investor"
       },
