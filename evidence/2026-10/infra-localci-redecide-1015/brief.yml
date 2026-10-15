@@ -6,17 +6,21 @@ objective: >-
   LocalCI B30, must land before the phase F flip. triage() keys decided on
   (pr, head, base) and re-decides only gate_pending, so today a new base
   heals the key, but after the flip main moves only when LocalCI merges and a
-  queue of heads stuck on transient no-verdicts is a permanent stall. Rule: a
-  key whose newest non-replay decision is transient (no FAIL anywhere in
-  overall, contexts or checks; no policy-BLOCKED context; no gate_pending; no
-  context ERROR the host did not name; host_no_verdict, or overall ERROR whose
-  error text is the merger driver's own plan, no-seal, status or unreadable
-  status failure; never INTERRUPTED, a seal mismatch or a TickTimeout) is decided
-  again at the same base, at most REDECIDE_CAP (3) transient decisions,
-  REDECIDE_BACKOFF_S (600) times the count apart (counted from the newest
-  decision or eviction), EVICT_CAP applying, host_disk only while the tick's
-  measured host free GB is at least the start floor. The new row carries
-  redecide {reason, attempt}; a key past the cap is journalled once as
+  queue of heads stuck on transient no-verdicts is a permanent stall. Rule (D1
+  is an ALLOW-LIST after three reds of one cause, a deny-list let an unlisted
+  status re-roll a candidate's own no-verdict): a key whose newest non-replay
+  decision is transient, i.e. every term in an enumerated set (overall BLOCKED
+  or ERROR, an ERROR only with the merger driver's own plan, no-seal, status or
+  unreadable-status text; contexts the host did not name OK, UNCOVERED or
+  QUEUED; host-named contexts ERROR or BLOCKED; checks PASS, NOT_APPLICABLE,
+  BLOCKED, QUEUED, plus ERROR beside a host no-verdict; no gate_pending, no
+  non_executed) and the class is host_no_verdict or the driver text, is decided
+  again at the same base, at most REDECIDE_CAP (3) transient decisions within
+  REDECIDE_WINDOW_S (6 h), REDECIDE_BACKOFF_S (600) times the count apart
+  (counted from the newest decision or eviction), EVICT_CAP applying, host_disk
+  only while the tick's measured host free GB is at least the start floor. The
+  new row carries redecide {reason, attempt}; a key past the cap is journalled
+  once as
   skipped redecide_cap. HONESTY: the audit's 32 of 107 decisions since
   2026-10-09 is an upper bound, not what B30 re-decides. Applying the real
   classifier, 10 rows qualify (all overall ERROR "runner plan failed: timed
@@ -30,7 +34,7 @@ acceptance:
       non-executed mapping, a gate_pending and a verdict never are; the cap,
       the backoff and the host precondition hold; host_disk then a recovered
       floor gives exactly one more decision and the second stands.
-    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py
+    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py scripts/localci/tests/test_redecide_allowlist.py
   - text: >-
       The tick passes its measured host free GB to the triage, journals the
       redecide row and the cap skip once.
@@ -39,7 +43,7 @@ assumptions:
   - text: >-
       Every b30-* mutant is killed (the gate's B1, B2 and L1 mutants included).
     status: verified
-    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '$1 ~ /^b30-/ {print $1}')
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(python3 scripts/localci/tests/mutants/merger_mutants.py --list | awk '$1 ~ /^b30-/ {print $1}')
 residual:
   - text: >-
       Context ERRORs from the runner or driver (BrokenPipe on copy-in, driver
