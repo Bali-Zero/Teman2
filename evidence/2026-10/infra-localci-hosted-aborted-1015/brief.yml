@@ -9,7 +9,7 @@ objective: >-
   merged (hosted_required_green is in GATE), so it was a READY-liveness hole. B27 adds a hosted reading HOSTED_ABORTED
   ("no hosted verdict"): not compared, not AGREE, not FALSE_GREEN, counted and listed apart (pr, head, context,
   check_run_id, step). It applies only when the context's FULL attempt history on the sha has no non-cancelled red and
-  every cancelled attempt qualifies: B17 (no timeout annotation, answered by a later green run) or B27 (job timeout
+  every cancelled attempt qualifies: B17 (no timeout annotation, answered by any non-cancelled green run of the same app, in either order, as the real #8231 has it) or B27 (job timeout
   annotation alone, the job maps step for step onto ONE workflow job read at the job's head_sha, the cancelled step is a
   setup action by its uses repository, every earlier step succeeded and is a setup action or a run step that came
   before the first successful checkout, every later step is skipped or ran to success under an if that calls a
@@ -18,6 +18,11 @@ objective: >-
   GATE, hosted_required_green, hosted_side, the live B17 and the tick's merge criterion are untouched; the PR-level
   PENDING (spec A6) lives only in the report path. The gear-2 verdict is not asserted here; a fresh Opus gate reads the diff.
 residuals:
+  - >-
+    The B17 answer is order-free (gate G1): the real #8231 has the green first (15:18:52Z) and the concurrency cancel after (15:29:12Z),
+    so a "later green" requirement left its recorded FALSE_GREEN permanent. Order adds no safety: a failed re-run stays red outside the
+    qualified set, a hung one is a timeout only B27 clears, a pending one blocks. The hosted_compare CLI refuses an --out that is a
+    merger run dir (state/plan.json), since it has no annotation reader and its classes are not the tick's evidence.
   - >-
     compare() now restores a job-timeout cancel that a later green superseded as red for the comparison class (spec R3), through an
     injected annotation reader (one GET per superseded cancel at tick and report time; none or a failing read keeps it red).

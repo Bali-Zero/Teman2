@@ -229,6 +229,18 @@ def test_main_replays_a_bound_fixture_offline_and_writes_the_report(tmp_path, ca
     assert "LOCAL_BLIND" in capsys.readouterr().out
 
 
+def test_main_never_writes_over_a_merger_run_dirs_evidence(tmp_path, capsys):
+    argv = _fixture(tmp_path, {"a": _local("OK")})
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "plan.json").write_text("{}")
+    (tmp_path / "hosted_compare.json").write_text("tick evidence")
+    assert hc.main(argv) == 2 and (tmp_path / "hosted_compare.json").read_text() == "tick evidence"
+    assert hc.main([*argv, "--out", str(tmp_path)]) == 2 and (tmp_path / "hosted_compare.json").read_text() == "tick evidence"
+    elsewhere = tmp_path / "elsewhere"
+    assert hc.main([*argv, "--out", str(elsewhere)]) == 0 and (elsewhere / "hosted_compare.json").exists()
+    assert "tick evidence" == (tmp_path / "hosted_compare.json").read_text()
+
+
 @pytest.mark.parametrize("over", [{"sha": OTHER}, {"repo": "o/other"}, {"branch": "dev"}, {"sha": None},
                                   {"check_runs": [_run("a", head_sha=OTHER)]}, {"required_checks": []}, {"required_checks": [{}]}])
 def test_a_fixture_for_another_repo_branch_or_commit_is_refused(tmp_path, over):

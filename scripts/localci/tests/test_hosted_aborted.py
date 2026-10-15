@@ -449,10 +449,11 @@ def test_n2_the_answer_must_come_from_the_pinned_app(tmp_path, monkeypatch):
     assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(app=999)]) == {}
 
 
-def test_the_answer_must_be_later_than_the_cancel(tmp_path, monkeypatch):
+def test_the_answer_may_come_before_the_cancel_the_real_8231_order(tmp_path, monkeypatch):
     early = {**GREEN_AFTER(), "completed_at": "2026-10-14T18:00:00Z"}
-    assert r1(tmp_path, monkeypatch, [CANCEL(), early]) == {}
-    assert r1(tmp_path, monkeypatch, [CANCEL(), {**GREEN_AFTER(), "completed_at": None}]) == {}   # no timestamp is not later
+    assert r1(tmp_path, monkeypatch, [CANCEL(), early]) == {"stale_why": "cancelled_superseded", "superseded_cancelled": [11]}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), {**GREEN_AFTER(), "completed_at": None}]) == {"stale_why": "cancelled_superseded", "superseded_cancelled": [11]}
+    assert r1(tmp_path, monkeypatch, [CANCEL()]) == {}   # no green at all answers nothing
 
 
 def test_a_recorded_red_that_is_absent_from_the_history_keeps_the_row(tmp_path, monkeypatch):
@@ -467,7 +468,7 @@ def test_an_attempt_still_in_progress_keeps_the_row(tmp_path, monkeypatch):
 
 def test_a_failed_or_unqualified_attempt_beside_the_cancel_keeps_the_row(tmp_path, monkeypatch):
     assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), check_run(10, NAME, "failure", "2026-10-14T18:20:00Z")]) == {}
-    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), CANCEL("2026-10-14T19:15:00Z", 15)]) == {}   # a second cancel no later green answers
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), CANCEL("2026-10-14T19:15:00Z", 15)])["stale_why"] == "cancelled_superseded"   # a second concurrency cancel is answered by the same green
 
 
 def test_the_live_judge_aborts_only_when_every_latest_red_is_an_abort(tmp_path, monkeypatch):

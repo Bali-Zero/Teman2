@@ -112,13 +112,9 @@ def superseded_cancelled(entries: list, app_id) -> list:
     return [e for e in entries if decided and run(e) and e["conclusion"] == "cancelled" and same_app(e)]
 
 
-def _later(a, b) -> bool:
-    return isinstance(a, str) and isinstance(b, str) and bool(_TS_RE.match(a)) and bool(_TS_RE.match(b)) and a > b
-
-
 def b17_answered(entries: list, app_id) -> set:
-    """B27 R1: the ids of the cancelled CHECK-RUN entries (of the pinned app, as ``superseded_cancelled`` reads the pin) that a LATER
-    non-cancelled GREEN check run of the same app answers. A missing or unreadable timestamp is not later. The job-timeout test is the caller's."""
+    """B27 R1: the ids of the cancelled CHECK-RUN entries (of the pinned app, as ``superseded_cancelled`` reads the pin) that ANY
+    non-cancelled GREEN check run of the same app answers, in EITHER order (B17: the real #8231 has the green first). The job-timeout test is the caller's."""
     def run(e):
         return e["source"] != "commit-status" and e["conclusion"] is not None
 
@@ -127,7 +123,7 @@ def b17_answered(entries: list, app_id) -> set:
 
     greens = [g for g in entries if run(g) and g["verdict"] == "GREEN" and same_app(g)]
     return {e["id"] for e in entries if run(e) and e["conclusion"] == "cancelled" and same_app(e) and type(e.get("id")) is int
-            and any(_later(g.get("completed_at"), e.get("completed_at")) for g in greens)}
+            and bool(greens)}
 
 
 def history_cleared(entries: list, app_id, qualified: set, red_ids) -> tuple[bool, str]:
@@ -539,6 +535,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    out_dir = args.out if args.out is not None else args.status.parent
+    if (out_dir / "state" / "plan.json").exists():   # B27 R4: this CLI has no annotation reader; a merger run dir's hosted_compare.json is the tick's evidence
+        print(f"hosted_compare: refusing — {out_dir} is a merger run dir (state/plan.json); pass --out elsewhere", file=sys.stderr)
+        return EXIT_BAD_INPUT
     try:
         status = json.loads(args.status.read_text())
         if not isinstance(status, dict):
@@ -555,7 +555,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"hosted_compare: refusing — {exc}", file=sys.stderr)
         return EXIT_BAD_INPUT
     report.update(source="fixtures" if args.fixtures else "live", repo=args.repo, branch=args.branch)
-    out_dir = args.out if args.out is not None else args.status.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "hosted_compare.json").write_text(json.dumps(report, indent=2) + "\n")
     print(render(report))

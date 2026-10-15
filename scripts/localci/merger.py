@@ -2357,7 +2357,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                   + ", ".join(f"pr{x['pr']} {x['context']}: " + (
                       f"hosted ran {x['hosted_completed_at']}, before the gate post at {x['gate_posted_at']} the local run read (gate_posted_after_hosted)"
                       if x.get("stale_why") == "gate_posted_after_hosted" else
-                      f"hosted check runs {x['superseded_cancelled']} cancelled by concurrency, answered by a later run (cancelled_superseded)"
+                      f"hosted check runs {x['superseded_cancelled']} cancelled by concurrency, answered by another run (cancelled_superseded)"
                       if x.get("stale_why") == "cancelled_superseded" else f"main moved {', '.join(x['main_moved_paths'][:3])}"
                       + (", …" if x["main_moved_count"] > 3 else "") + f" after hosted ran {x['hosted_completed_at']}") for x in reclassified) + "]"
                   + f", kept={len(kept_fg)}: [" + ", ".join(f"pr{x['pr']} {x['context'] or 'all rows'}: {x['why']}"
@@ -2485,7 +2485,7 @@ def recorded_clearance(reads: HostedReads, abort: "AbortJudge | None", runs, sta
 
 
 def superseded_cleared(r: dict, h: dict) -> bool:
-    """B17: the red a recorded row stood on was only check runs cancelled by concurrency, each now answered by a later run (the hosted
+    """B17: the red a recorded row stood on was only check runs cancelled by concurrency, each answered by another run of the sha (the hosted
     verdict names them in ``superseded_cancelled``) and nothing else is red. A row journalling no ``hosted_red`` cannot be found again."""
     red = r.get("hosted_red")
     return (h["verdict"] == "GREEN" and isinstance(red, list) and bool(red)

@@ -427,7 +427,6 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # R (one predicate in hosted_compare decides every clearing of a red)
     "r1-statuses-dropped": (PY, "entries = hc.hosted_entries(runs, statuses).get(name, [])", "entries = hc.hosted_entries(runs, []).get(name, [])", (CS, *HA)),
     "r1-app-pin-dropped": (HC, 'and g["verdict"] == "GREEN" and same_app(g)]', 'and g["verdict"] == "GREEN"]', (CS, *HA)),
-    "r1-later-check-dropped": (HC, 'and any(_later(g.get("completed_at"), e.get("completed_at")) for g in greens)}', "and bool(greens)}", (CS, *HA)),
     "r1-pending-ignored": (HC, 'if any(e["verdict"] == "PENDING" for e in entries):', "if False:", (CS, *HA)),
     "r1-remainder-red-ignored": (HC, 'if any(e["verdict"] == "RED" for e in entries if not is_q(e)):', "if False:", (CS, *HA)),
     "r2-live-judge-statuses-dropped": (PY, "self.attempts(sha, name), list(statuses), name, app_id,", "self.attempts(sha, name), [], name, app_id,", HA),
@@ -440,6 +439,9 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "r3-report-reads-no-annotations": (PY, "cancel_timeout=lambda rid: any(ABORT_TIMEOUT in m for m in abort.failures(rid)))", "cancel_timeout=lambda rid: False)", HA),
     "r3-mergeability-loses-the-supersede": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o) for o in entries)', "decided = False", HA),
     "r3-hosted-side-reads-the-comparison": (PY, 'return {c["context"]: hc.hosted_verdict(by.get(c["context"], []), c.get("app_id"))["verdict"] for c in live["required_checks"]}', 'return {c["context"]: hc.comparison_view(hc.hosted_verdict(by.get(c["context"], []), c.get("app_id")), by.get(c["context"], []), None)["verdict"] for c in live["required_checks"]}', HA),
+    "r5-b17-requires-a-later-green": (HC, "            and bool(greens)}", "            and any((g.get(\"completed_at\") or \"\") > (e.get(\"completed_at\") or \"\") for g in greens)}", (*HA, CS)),
+    "r5-reread-lists-nothing-it-dropped": (PY, "            superseded.append(rid)", "            pass", (CS,)),
+    "r5-cli-overwrites-a-run-dirs-evidence": (HC, 'if (out_dir / "state" / "plan.json").exists():', "if False:", ("scripts/localci/tests/test_hosted_compare.py",)),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
