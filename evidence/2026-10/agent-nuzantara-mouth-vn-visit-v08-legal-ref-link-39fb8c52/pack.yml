@@ -37,6 +37,14 @@ results:
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
     result: "4 failed | 220 passed (224); reverted"
     ts: "2026-10-15T10:53:48Z"
+  - claim: "The whole visa-oracle mouth suite after the ambiguous-codes pin (gate cure)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 61 passed (61); Tests 1698 passed (1698)"
+    ts: "2026-10-15T11:07:24Z"
+  - claim: "Mutation: codes.size !== 1 weakened to codes.size < 1 turns the D-ambiguous-keeps-catalogue pin red."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t D-ambiguous
+    result: "1 failed | 224 skipped (225); reverted"
+    ts: "2026-10-15T11:07:24Z"
 decisions:
   - id: D-ambiguous-keeps-catalogue
     decision: "Zero or more than one in-scope candidate code keeps the catalogue URL; E33 and other codes are never rewritten."
@@ -44,4 +52,4 @@ dissent:
   - seat: "codex gpt-5.6-sol, rollout /Users/nuzantara/.codex/sessions/2026/10/15/rollout-2026-10-15T18-43-18-01a13f28-c4e6-7dd1-8823-7f01518c1e23.jsonl (red team, MED x1, no HIGH)"
     objection: "MED: rewrite did not check the source id, so any source with the same URL and locator would be altered."
     status: CONFIRMED
-    disposition: "CURED in 82f89b8067: the rewrite gates on the 6f5135f2- id prefix; a foreign-id pin was added."
+    disposition: "CURED in 82f87b8067: the rewrite gates on the 6f5135f2- id prefix; a foreign-id pin was added."

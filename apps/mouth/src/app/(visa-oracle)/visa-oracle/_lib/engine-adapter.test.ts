@@ -306,6 +306,19 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       },
     );
 
+    it("keeps the catalogue URL when candidates span two in-scope codes (D-ambiguous-keeps-catalogue)", () => {
+      const response = catalogueResponse("B1");
+      const second = structuredClone(response.display.candidates[0]);
+      second.product_code = "C1";
+      response.display.candidates.push(second);
+      const secondDecision = structuredClone(response.decision.candidates[0]);
+      secondDecision.product_code = "C1";
+      response.decision.candidates.push(secondDecision);
+      const url = buildEngineOutcome(response).sources[0].url;
+      expect(url).toBe(CATALOGUE);
+      expect(url).not.toMatch(/\/(B1|C1)$/);
+    });
+
     it("leaves other codes, other sources, and missing locators unchanged", () => {
       const foreignId = catalogueResponse("C1");
       foreignId.sources[0].source_record_id =
