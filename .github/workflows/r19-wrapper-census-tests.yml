@@ -93,7 +93,9 @@ jobs:
     # every page in six states) and the 10-walk state pass; `kbli` and `explorer` the 25 opened surfaces
     # of their pages; `shared` the 24 shared-component walks. A part that fails or runs out of time
     # dumps nothing, and the aggregate reads its scenarios as missing.
-    timeout-minutes: 40
+    # The `full` dispatch runs every scenario in one job: 39m06s measured on #8488's head, so 40 minutes left 54
+    # seconds. It gets 75; a sharded part stays at 40 (the longest took 20m03s).
+    timeout-minutes: ${{ matrix.part == 'full' && 75 || 40 }}
     strategy:
       fail-fast: false
       matrix:
@@ -198,7 +200,7 @@ jobs:
             echo "::error::wrapper-census-part concluded '$PARTS_RESULT': a part, or the browser tests, did not pass"
             fail=1
           fi
-          grep -E '^(scenarios-|read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|page-grounds|opened-|ground-resolver|shared-)' "$RUNNER_TEMP/census.txt" || true
+          grep -E '^(scenarios-|read-but-undefined|colors-outside|state-rows-unseen|state-colors-off|page-grounds|declared-|opened-|ground-resolver|shared-)' "$RUNNER_TEMP/census.txt" || true
           if [ "$fail" -ne 0 ]; then
             grep -E '^  (missing|twice|unexpected): ' "$RUNNER_TEMP/census.txt" || true
             grep -E '^  (capture-failed|walk-failed|shared-failed):|^  [a-z-]+ [a-z]+/[a-z-]+: failed:' "$RUNNER_TEMP/census.txt" || true

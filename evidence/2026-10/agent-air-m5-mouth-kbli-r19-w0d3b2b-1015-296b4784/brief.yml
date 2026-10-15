@@ -1,0 +1,37 @@
+task_id: kbli-r19-w0d3b2b-1015
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i (cure and bindings, tooling only): the
+  #8488 gate's bindings B1-B5 and the #8249 gate's bindings 2-4, and the composer-entrance cause
+  named (B3). No census growth, no apps/mouth/src file.
+    1. B1: the census opens every browser context from one place, new_context(), so reduced
+       motion cannot be dropped for one pass; a row pins it.
+    2. B2: a drop-shadow() in filter reaches nothing, pinned by a behavioural row and by the
+       contract sentence.
+    3. B3: the composer card's framer-motion JS entrance, named from a census-state versus
+       user-state read, then cured in the instrument or declared with a row.
+    4. B4: the full dispatch gets 75 minutes (it ran 39m06s against 40).
+    5. B5: the exit step lists the declared-not-judgeable line; contract 8.8 shows it.
+    6. #8249 binding 2: ground-resolver-disagree carries INCOMPLETE on a capture not read through.
+    7. #8249 binding 3: a child of a flat scrim is counted; a fixed scrim's child is not; the walk
+       line names the occluded runs behind the walk's own scrim.
+    8. #8249 binding 4: bring() keeps occludedBy and hides.
+constraints:
+  - "Zero files under apps/mouth/src."
+  - "Nothing of W0d-3b-2b-ii: the section 8.7 inventory, surfaces-unclaimed, bg-black/60, section 8.5 cells, the logo."
+  - "No npm install or npm ci."
+acceptance:
+  - text: "WHEN a cure is undone, THEN a row fails."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2b-1015-296b4784/instrument_mutants.py"
+  - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte."
+    probe: "python3 -m pytest scripts/mouth/tests -q -k 'not e2e'"
+  - text: "WHEN CI runs the sharded and the full census on the head, THEN the two verdicts are byte-identical."
+    probe: 'gh workflow run r19-wrapper-census-tests.yml (default parts, then -f parts=''["full"]''); cmp'
+consumer_map:
+  - "r19-wrapper-census-tests runs the new rows on every census PR (census-replay offline, the e2e rows in wrapper-census-part explorer)."
+risks:
+  - "A hides change can move K and M counts if a real flat-scrim child exists on the tree; the full M5 and CI runs report it."
+grader: |
+  A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.
