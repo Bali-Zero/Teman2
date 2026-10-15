@@ -138,7 +138,7 @@ def auto_mutants(rootdir: Path = ROOT) -> dict[str, tuple[str, str, str, tuple[s
         src = (rootdir / rel).read_text()
         for c in (c for c in conds if c.file == rel):
             text = src[c.start:c.end]
-            new = "ZeroDivisionError" if c.kind == "except" else f"(not ({text}))"
+            new = "ZeroDivisionError" if c.kind == "except" else ("False" if c.text == '__name__ == "__main__"' else f"(not ({text}))")   # a negated entry guard would run main() at import
             lo, hi = c.start, c.end
             while src.count(src[lo:hi]) > 1:
                 lo, hi = max(0, lo - 12), min(len(src), hi + 12)

@@ -52,7 +52,7 @@ def test_a_generated_mutant_changes_exactly_its_conditional():
     assert mutants
     for name, (rel, old, new, _tests) in mutants.items():
         assert (ROOT / rel).read_text().count(old) == 1 and old != new, name
-        assert "(not (" in new or "ZeroDivisionError" in new, name
+        assert "(not (" in new or new.rstrip().endswith(("ZeroDivisionError", "False")) or "ZeroDivisionError" in new or "False" in new, name
 
 
 # ---- the extractor's own tests: gate-b31p's python constructs. Every atom is a row, or the extractor raises (never silent).
