@@ -1,0 +1,62 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "Lane VO-E28-PRICING-TERMS-1015 (PR B of the E28 audit; Zero's rulings Q7 and Q11, 2026-10-15). Gear 2.
+  Implemented by a Claude Sonnet 5.5 implementer seat; the team lead reviews and ships."
+lanes:
+  - lane: vo-e28-pricing-terms
+    role: build
+    seat: "claude-sonnet-5-5 implementer (edits, tests, local commits only; no push, PR or arm)"
+
+seat_override: "R8 ground_truth: the figure IDR 10 billion own shareholding comes from the saved official E28A page text research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt (in the docs-vo-e28-audit-1015 worktree); no NotebookLM query was run, so no notebook id or query digest exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4 / SYMBIOSIS Law 2: code and catalogue text only; no client data reached any seat."
+pii_scan_note: "Diff holds public price rows, terms wording and synthetic assertions only."
+
+grounding:
+  origin_main: "c68ae57f15 (fetched 2026-10-15; branch base equals it)"
+  golden_visa_hrefs_seen: "Footer.tsx:22 (changed to the guide); (blog)/NewsPageClient.tsx TOPICS id golden is a rendered Link to /visas, a page link not a filter (changed to the guide); TopicPills.tsx /news?q=golden+visa is a search (left); all other Golden Visa hits are descriptive text, not links"
+  brochure: "generate_brochure.py does not read notes and no brochure script or template contains a government-fee sentence (grep clean); no brochure change"
+  tests_pinning_old_text: "no test pins the old terms sentence; no test pins the Investor KITAS rows' empty notes (brochure price parity reads name and price only)"
+
+verification:
+  green: "vitest 5 files / 20 passed (terms, Footer, services_data); pytest 46 passed (price parity, new row test, e28 family pricing); sync_frontend_prices.py --check exit 0; docs_sync.py no changes; tsc --noEmit ran in the pre-commit hook, exit 0"
+  mutation: "restored by cp from backups, never git checkout: footer href back to /services/visa (red), terms sentence back to the separate-fees wording (red, 2 tests), first Investor row notes emptied in the canonical file (1 failed, 1 passed: canonical red, mirror green); all three restored, git status clean"
+
+dissent: []
+
+out_of_scope_reported:
+  - "Visa Oracle i18n.ts still carries the E28A wording owned by other lanes of the E28 audit."
+
+bites:
+  consumer: "balizero.com /visa/terms, the site footer, the news topic pills, /services/visa requirements FAQ, and the PricingTool / MCP search_service_pricing"
+  observation: "after promote, a live curl of https://balizero.com/visa/terms shows the all-inclusive sentence and not the separate-government-fees one; the footer Golden Visa anchor href is /visas/golden-visa-indonesia-complete-guide; MCP search_service_pricing('investor KITAS') shows notes 'All-inclusive price.' on the three rows"
+
+receipts:
+  - claim: "New vitest files green with neighbours"
+    cmd: "cd apps/mouth && npx vitest run src/app/visa/terms src/app/v2/_components/Footer src/data/services_data"
+    result: "5 files, 20 passed"
+    exit: 0
+    ts: "2026-10-15T22:45Z"
+    seat: claude-sonnet-5-5
+  - claim: "Backend row test and neighbours green"
+    cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/crm/test_brochure_price_parity.py backend/tests/services/pricing/test_investor_kitas_all_inclusive_1015.py backend/tests/services/visa_engine/test_e28_family_pricing.py -p no:cacheprovider"
+    result: "46 passed"
+    exit: 0
+    ts: "2026-10-15T22:45Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mouth snapshot in sync with the canonical catalogue"
+    cmd: "python3 scripts/sync_frontend_prices.py --check"
+    result: "OK in sync"
+    exit: 0
+    ts: "2026-10-15T22:45Z"
+    seat: claude-sonnet-5-5
+  - claim: "Mutations (footer href, terms sentence, canonical notes) are convicted and restored"
+    cmd: "edit, vitest/pytest, restore by cp; git status --short"
+    result: "vitest 3 failed (2 files); pytest 1 failed, 1 passed; status showed only intended changes after restore"
+    exit: 1
+    ts: "2026-10-15T22:44Z"
+    seat: claude-sonnet-5-5
+
+spend:
+  adversarial_rounds: 0
