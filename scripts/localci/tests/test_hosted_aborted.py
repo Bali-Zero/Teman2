@@ -238,18 +238,18 @@ def test_compare_names_the_row_aborted_and_counts_it_in_no_compared_class(tmp_pa
 
 def test_compare_keeps_the_class_without_a_judge_or_when_the_judge_cannot_read_or_answers_wrong(tmp_path, monkeypatch):
     assert compare_one(None)["rows"][0]["class"] == "FALSE_GREEN"
-    def broken(name, hosted):
+    def broken(name, hosted, statuses=(), app_id=None):
         raise mg.MergerError("no workflow at that sha")
     row = compare_one(broken)["rows"][0]
     assert row["class"] == "FALSE_GREEN" and row["abort_check"].startswith("unknown (MergerError")
-    assert compare_one(lambda n, h: {"aborted": "yes"})["rows"][0]["class"] == "FALSE_GREEN"
-    assert compare_one(lambda n, h: {"aborted": True})["rows"][0]["class"] == "FALSE_GREEN"   # an abort that names no run proves nothing
-    assert compare_one(lambda n, h: {"aborted": False, "why": "x"})["rows"][0]["abort_check"] == "fresh (x)"
+    assert compare_one(lambda n, h, s=(), a=None: {"aborted": "yes"})["rows"][0]["class"] == "FALSE_GREEN"
+    assert compare_one(lambda n, h, s=(), a=None: {"aborted": True})["rows"][0]["class"] == "FALSE_GREEN"   # an abort that names no run proves nothing
+    assert compare_one(lambda n, h, s=(), a=None: {"aborted": False, "why": "x"})["rows"][0]["abort_check"] == "fresh (x)"
 
 
 def test_compare_never_asks_the_judge_about_a_green_or_a_red_that_is_not_in_a_compared_class(tmp_path, monkeypatch):
     asked = []
-    def spy(name, hosted):
+    def spy(name, hosted, statuses=(), app_id=None):
         asked.append(name)
         return {"aborted": True, "runs": [{"check_run_id": 1, "step": "x"}]}
     assert compare_one(spy, concl="success")["rows"][0]["class"] == "AGREE"
@@ -322,7 +322,7 @@ def test_a_recorded_row_is_cleared_only_by_the_contexts_whole_history(tmp_path, 
     monkeypatch.setattr(hc, "gh_get", Hub(sha))
     j = mg.AbortJudge(REPO, path, {})
     row = {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]}
-    clear = lambda r, runs: mg.recorded_clearance(j, j, lambda: runs, r)
+    clear = lambda r, runs, statuses=(): mg.recorded_clearance(j, j, lambda: runs, list(statuses), r)
     hung = check_run(11, NAME, "cancelled")
     assert clear(row, [hung])["stale_why"] == "hosted_aborted"
     assert clear({**row, "hosted_red": [{"id": 11, "conclusion": "failure"}]}, [hung]) == {}
@@ -385,7 +385,7 @@ def test_f2_a_failed_attempt_hidden_by_a_hung_re_run_is_not_laundered_live_or_re
     (row,) = compare_one(j)["rows"]   # the default listing shows only attempt 2, the hang
     assert row["class"] == "FALSE_GREEN" and row["abort_check"].startswith("fresh")
     rec = {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]}
-    assert mg.recorded_clearance(j, j, lambda: hub.attempts, rec) == {}
+    assert mg.recorded_clearance(j, j, lambda: hub.attempts, [], rec) == {}
     hub.attempts = [check_run(11, NAME, "cancelled")]   # innocence: with no failed attempt it is the abort (a fresh judge: the history is cached per report)
     assert compare_one(mg.AbortJudge(REPO, path, {}))["rows"][0]["class"] == "HOSTED_ABORTED"
 
@@ -404,7 +404,7 @@ def test_h1_the_history_is_read_once_per_sha_and_context_and_shared_across_paths
     monkeypatch.setattr(hc, "gh_get", hub)
     j = mg.AbortJudge(REPO, path, {})
     compare_one(j)
-    mg.recorded_clearance(j, j, lambda: j.attempts(sha, NAME), {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]})
+    mg.recorded_clearance(j, j, lambda: j.attempts(sha, NAME), [], {"context": NAME, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]})
     assert len([p for p in hub.paths if "filter=all" in p]) == 1
 
 
@@ -419,3 +419,79 @@ def test_h5_the_call_site_does_not_reread_a_row_with_per_entry_data(tmp_path, mo
 
 def FAILED_ATTEMPT_FOR(name):
     return {**FAILED_ATTEMPT, "name": name, "app": {"id": APP}}
+
+
+# ------------------------------------------------------------------ R1: one predicate, the hosted verdict's own view of the context
+CONCURRENCY = "Canceling since a higher priority waiting request exists"
+CANCEL = lambda at="2026-10-14T18:50:08Z", i=11: check_run(i, NAME, "cancelled", at)   # noqa: E731
+GREEN_AFTER = lambda app=APP, i=12: {**check_run(i, NAME, "success", "2026-10-14T19:10:00Z"), "app": {"id": app, "slug": "x"}}   # noqa: E731
+RED_STATUS = [{"context": NAME, "state": "failure", "updated_at": "2026-10-14T19:20:00Z"}]
+ROW11 = {"context": NAME, "app_id": APP, "hosted_red": [{"id": 11, "conclusion": "cancelled"}]}
+
+
+def r1(tmp_path, monkeypatch, runs, statuses=(), row=ROW11, annotations=(CONCURRENCY,)):
+    path, sha = mirror(tmp_path / f"repo{len(list(tmp_path.glob('repo*')))}.git")
+    monkeypatch.setattr(hc, "gh_get", Hub(sha, annotations=annotations, attempts=runs))
+    j = mg.AbortJudge(REPO, path, {})
+    return mg.recorded_clearance(j, j, lambda: runs, list(statuses), row)
+
+
+def test_innocence_a_concurrency_cancel_answered_by_a_later_green_of_the_same_app_is_cleared(tmp_path, monkeypatch):
+    got = r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER()])
+    assert got == {"stale_why": "cancelled_superseded", "superseded_cancelled": [11]}
+
+
+def test_n1_a_red_commit_status_of_the_same_name_keeps_the_row(tmp_path, monkeypatch):
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER()], RED_STATUS) == {}
+
+
+def test_n2_the_answer_must_come_from_the_pinned_app(tmp_path, monkeypatch):
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(app=999)]) == {}
+
+
+def test_the_answer_must_be_later_than_the_cancel(tmp_path, monkeypatch):
+    early = {**GREEN_AFTER(), "completed_at": "2026-10-14T18:00:00Z"}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), early]) == {}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), {**GREEN_AFTER(), "completed_at": None}]) == {}   # no timestamp is not later
+
+
+def test_a_recorded_red_that_is_absent_from_the_history_keeps_the_row(tmp_path, monkeypatch):
+    assert r1(tmp_path, monkeypatch, [CANCEL(i=13), GREEN_AFTER()]) == {}
+
+
+def test_an_attempt_still_in_progress_keeps_the_row(tmp_path, monkeypatch):
+    running = {**check_run(14, NAME, None, None), "status": "in_progress", "conclusion": None, "completed_at": None}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), running]) == {}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER()], [{"context": NAME, "state": "pending", "updated_at": "2026-10-14T19:30:00Z"}]) == {}
+
+
+def test_a_failed_or_unqualified_attempt_beside_the_cancel_keeps_the_row(tmp_path, monkeypatch):
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), check_run(10, NAME, "failure", "2026-10-14T18:20:00Z")]) == {}
+    assert r1(tmp_path, monkeypatch, [CANCEL(), GREEN_AFTER(), CANCEL("2026-10-14T19:15:00Z", 15)]) == {}   # a second cancel no later green answers
+
+
+def test_the_live_judge_aborts_only_when_every_latest_red_is_an_abort(tmp_path, monkeypatch):
+    path, sha = mirror(tmp_path / "repo.git")
+    monkeypatch.setattr(hc, "gh_get", Hub(sha, attempts=[CANCEL()]))
+    j = mg.AbortJudge(REPO, path, {})
+    two = {"verdict": "RED", "red": [{"id": 11, "conclusion": "cancelled"}, {"id": 13, "conclusion": "cancelled"}]}
+    assert j(NAME, two, [], APP)["aborted"] is False   # 13 is no attempt of the history
+    assert j(NAME, RED, [], APP)["aborted"] is True
+    assert j(NAME, RED, RED_STATUS, APP)["aborted"] is False   # a red status of the context is a red outside the abort
+
+
+def test_the_predicate_alone_is_the_hosted_verdicts_own_view():
+    es = lambda runs, st=(): hc.hosted_entries(runs, list(st)).get(NAME, [])   # noqa: E731
+    answered = hc.b17_answered(es([CANCEL(), GREEN_AFTER()]), APP)
+    assert answered == {11} and hc.history_cleared(es([CANCEL(), GREEN_AFTER()]), APP, answered, [11]) == (True, "")
+    assert not hc.history_cleared(es([CANCEL(), GREEN_AFTER()], RED_STATUS), APP, answered, [11])[0]
+    assert not hc.history_cleared(es([CANCEL(), GREEN_AFTER()]), APP, set(), [11])[0]
+    assert not hc.history_cleared(es([CANCEL(), GREEN_AFTER()]), APP, answered, [])[0]
+
+
+def test_a_mixed_decision_never_rereads(tmp_path, monkeypatch):
+    run_dir = tmp_path / "mixed"
+    run_dir.mkdir()
+    rows = [{"context": "a", "class": "FALSE_GREEN", "hosted_red": [{"id": 1, "conclusion": "cancelled"}]}, {"context": "b", "class": "FALSE_GREEN"}]
+    (run_dir / "hosted_compare.json").write_text(json.dumps({"rows": rows}))
+    assert mg.recorded_has_entries({"run_dir": str(run_dir)}) is True   # any row with per-entry data keeps the whole decision off the re-read

@@ -912,8 +912,8 @@ class AbortJudge(HostedReads):
         step, why = self.setup_step(self.job_steps(rid), self.workflow_steps(self.job_doc(rid)))
         return (step, "") if step is not None else (None, f"check run {rid}: {why}")
 
-    def __call__(self, name: str, hosted: dict) -> dict | None:
-        """Called with the hosted verdict of the LATEST listing; the judgement is on the context's full history on the job's own sha (H)."""
+    def __call__(self, name: str, hosted: dict, statuses: list = (), app_id=None) -> dict | None:
+        """Called with the hosted verdict of the LATEST listing; the judgement is ``context_cleared`` on the context's full history on the job's sha."""
         red = hosted.get("red") or []
         if hosted.get("verdict") != "RED" or not red:
             return None
@@ -922,42 +922,34 @@ class AbortJudge(HostedReads):
         sha = self.job_doc(red[0]["id"]).get("head_sha")
         if not is_sha(sha):
             raise MergerError(f"the actions job of check run {red[0]['id']} carries no head_sha")
-        got = history_clearance(self, self, self.attempts(sha, name))
-        if not got["clear"] or not got["aborted"] or not {e["id"] for e in red} <= {x["check_run_id"] for x in got["aborted"]}:
-            return {"aborted": False, "why": got.get("why") or "the red runs are not all setup aborts"}
+        got = context_cleared(self, self, self.attempts(sha, name), list(statuses), name, app_id, [e["id"] for e in red])
+        if not got["clear"] or not {e["id"] for e in red} <= {x["check_run_id"] for x in got["aborted"]}:
+            return {"aborted": False, "why": got["why"] or "the red runs are not all setup aborts"}
         return {"aborted": True, "runs": got["aborted"]}
 
 
-NON_CANCEL_RED = frozenset(hc.HOSTED_RED) - {"cancelled"}   # H2: a red that is no cancel
-
-
-def history_clearance(reads: HostedReads, abort: "AbortJudge | None", runs: list[dict]) -> dict:
-    """H, the one rule every path that removes a hosted red goes through. ``runs`` are EVERY attempt of one context on one sha. Clear only when
-    (H2) no attempt is a non-cancelled red or still running, and (H3) EVERY cancelled attempt qualifies on its own merits: B17 (no job-timeout
-    annotation, and a LATER non-cancelled non-red run of the context answers it) or B27 (``abort.run_aborted``: it died in a setup step). A timeout is
-    never B17-droppable (H4). ``{"clear", "stuck" (a red the history leaves standing), "aborted": [{check_run_id, step}], "superseded": [ids], "why"}``; anything unreadable raises."""
-    if any(r.get("status") != "completed" for r in runs):
-        return {"clear": False, "stuck": True, "why": "an attempt of the context has not completed"}
-    if any(r.get("conclusion") in NON_CANCEL_RED for r in runs):
-        return {"clear": False, "stuck": True, "why": "an attempt of the context is a red that is no cancel: the context stays RED over its history"}
-    greens = [r.get("completed_at") for r in runs if r.get("conclusion") in hc.HOSTED_GREEN and is_ts(r.get("completed_at"))]
-    aborted, superseded = [], []
-    for r in (r for r in runs if r.get("conclusion") == "cancelled"):
-        rid = r.get("id")
-        if type(rid) is not int:
-            return {"clear": False, "stuck": True, "why": "a cancelled attempt carries no id"}
-        if any(ABORT_TIMEOUT in m for m in reads.failures(rid)):
-            step, why = abort.run_aborted(rid) if abort is not None else (None, "no abort judge")
-            if step is None:
-                return {"clear": False, "stuck": True, "why": why}
-            aborted.append({"check_run_id": rid, "step": step})
-        elif is_ts(r.get("completed_at")) and any(g > r["completed_at"] for g in greens):   # answered by a LATER non-cancelled, non-red run
+def context_cleared(reads: HostedReads, abort: "AbortJudge | None", runs: list[dict], statuses: list, name: str, app_id, red_ids) -> dict:
+    """B27 R2, the one place a path asks whether a hosted red may be cleared: it builds the context's entries exactly as ``hosted_verdict`` does
+    (every attempt in ``runs`` plus the sha's commit ``statuses``, all sources and apps), qualifies the cancelled check runs on their own (B17:
+    ``hc.b17_answered`` and no job-timeout annotation; B27: ``abort.run_aborted``), and lets ``hc.history_cleared`` decide.
+    ``{"clear", "why", "aborted": [{check_run_id, step}], "superseded": [ids]}``; anything unreadable raises."""
+    entries = hc.hosted_entries(runs, statuses).get(name, [])
+    answered = hc.b17_answered(entries, app_id)
+    qualified, aborted, superseded = set(), [], []
+    for e in entries:
+        rid = e.get("id")
+        if e["source"] == "commit-status" or e.get("conclusion") != "cancelled" or type(rid) is not int:
+            continue
+        if any(ABORT_TIMEOUT in m for m in reads.failures(rid)):   # a timeout is no concurrency cancel: only a setup abort clears it
+            step, _ = abort.run_aborted(rid) if abort is not None else (None, "")
+            if step is not None:
+                qualified.add(rid)
+                aborted.append({"check_run_id": rid, "step": step})
+        elif rid in answered:
+            qualified.add(rid)
             superseded.append(rid)
-        else:
-            return {"clear": False, "stuck": True, "why": f"cancelled attempt {rid} is answered by no later run of the context"}
-    if not aborted and not superseded:
-        return {"clear": False, "stuck": False, "why": "the context has no cancelled attempt"}
-    return {"clear": True, "stuck": False, "aborted": aborted, "superseded": superseded}
+    ok, why = hc.history_cleared(entries, app_id, qualified, red_ids)
+    return {"clear": ok, "why": why, "aborted": aborted if ok else [], "superseded": superseded if ok else []}
 
 
 def plan_time(run_dir) -> str | None:
@@ -2472,23 +2464,22 @@ def recorded_gate(a, gate: GateJudge, head: str, r: dict, statuses: list) -> dic
     return hc.gate_reading(gate, name, {"verdict": "RED", "completed_at": at, "red": red}, statuses)
 
 
-def recorded_clearance(reads: HostedReads, abort: "AbortJudge | None", runs, r: dict) -> dict:
-    """H for a recorded FALSE_GREEN row whose reds were all check runs cancelled (``hosted_red``, found again by id among ``runs``, the context's
-    every attempt: ``HostedReads.attempts``, or a callable giving them). ``{}`` when the row cannot be cleared by it;
-    ``{"stale_why": "hosted_aborted"|"cancelled_superseded", ...}`` when it can."""
+def recorded_clearance(reads: HostedReads, abort: "AbortJudge | None", runs, statuses: list, r: dict) -> dict:
+    """R1 for a recorded FALSE_GREEN row whose reds were all check runs cancelled (``hosted_red``). ``runs`` gives the context's every attempt on
+    the judged sha; ``statuses`` are that sha's commit statuses. ``{}`` when the row is not cleared;
+    ``{"stale_why": "hosted_aborted"|"cancelled_superseded", ...}`` when it is."""
     red = r.get("hosted_red")
     if not (isinstance(red, list) and red and all(isinstance(e, dict) and type(e.get("id")) is int and e.get("conclusion") == "cancelled" for e in red)):
         return {}
     try:
-        got = history_clearance(reads, abort, runs())
+        got = context_cleared(reads, abort, runs(), statuses, r["context"], r.get("app_id"), [e["id"] for e in red])
     except Exception:  # noqa: BLE001 — an unreadable ground keeps the row
         return {}
-    ids = {e["id"] for e in red}
-    if not got["clear"] or not ids <= {x["check_run_id"] for x in got["aborted"]} | set(got["superseded"]):
+    if not got["clear"]:
         return {}
     if got["aborted"]:
         return {"stale_why": "hosted_aborted", "aborted_runs": got["aborted"]}
-    return {"stale_why": "cancelled_superseded", "superseded_cancelled": sorted(ids)}
+    return {"stale_why": "cancelled_superseded", "superseded_cancelled": sorted(e["id"] for e in red)}
 
 
 def superseded_cleared(r: dict, h: dict) -> bool:
@@ -2513,7 +2504,7 @@ def reclassify_replay_superseded(d: dict, live: dict, reads: HostedReads | None 
         out = []
         for r in rows:
             runs = (lambda r=r: reads.attempts(sha, r["context"])) if is_sha(sha) else (lambda r=r: [x for x in live["check_runs"] if x.get("name") == r["context"]])
-            if cleared := recorded_clearance(reads, abort, runs, r):
+            if cleared := recorded_clearance(reads, abort, runs, live["statuses"], r):
                 out.append({"pr": d.get("pr"), "context": r["context"], "head_sha": d.get("head_sha"), **cleared})
     except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
         return [], kept
@@ -2521,12 +2512,12 @@ def reclassify_replay_superseded(d: dict, live: dict, reads: HostedReads | None 
 
 
 def recorded_has_entries(d: dict) -> bool:
-    """H5: does the recorded decision journal per-entry hosted data (every recorded FALSE_GREEN row carries its ``hosted_red``)?"""
+    """R4: does the recorded decision journal per-entry hosted data (ANY recorded FALSE_GREEN row carries its ``hosted_red``)?"""
     try:
         rows = [r for r in json.loads((Path(str(d["run_dir"])) / "hosted_compare.json").read_text())["rows"] if r.get("class") == "FALSE_GREEN"]
     except Exception:  # noqa: BLE001 — no readable record is no per-entry data
         return False
-    return bool(rows) and all(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)
+    return any(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)
 
 
 def reclassify_by_reread(a, d: dict, lives: dict, raw: int, abort: "AbortJudge | None" = None) -> list[dict]:
@@ -2554,12 +2545,17 @@ def reclassify_by_reread(a, d: dict, lives: dict, raw: int, abort: "AbortJudge |
             if h["verdict"] == "RED":
                 stuck += 1
             elif h["verdict"] == "GREEN":
-                got = history_clearance(reads, abort, reads.attempts(sha, chk["context"]))
-                stuck += bool(got["stuck"])
-                if got["clear"]:
-                    flipped.append({"pr": d.get("pr"), "context": chk["context"], "head_sha": d.get("head_sha"),
-                                    **({"stale_why": "hosted_aborted", "aborted_runs": got["aborted"]} if got["aborted"] else
-                                       {"stale_why": "cancelled_superseded", "superseded_cancelled": got["superseded"]})})
+                runs = reads.attempts(sha, chk["context"])
+                reds = [e for e in hc.hosted_entries(runs, live["statuses"]).get(chk["context"], []) if e["verdict"] == "RED"]
+                if not reds:
+                    continue   # no red anywhere in its history: nothing to flip, nothing stuck
+                got = context_cleared(reads, abort, runs, live["statuses"], chk["context"], chk.get("app_id"), [e.get("id") for e in reds])
+                if not got["clear"]:
+                    stuck += 1
+                    continue
+                flipped.append({"pr": d.get("pr"), "context": chk["context"], "head_sha": d.get("head_sha"),
+                                **({"stale_why": "hosted_aborted", "aborted_runs": got["aborted"]} if got["aborted"] else
+                                   {"stale_why": "cancelled_superseded", "superseded_cancelled": got["superseded"]})})
         return flipped if not stuck and len(flipped) == raw else []
     except Exception:  # noqa: BLE001 — unreadable evidence keeps the recorded false green
         return []
@@ -2589,7 +2585,7 @@ def reclassify_recorded(a, d: dict, judge, gate: GateJudge | None = None, abort:
             continue
         gk = {"gate": g["gate_check"]} if g else {}
         h = hc.hosted_verdict(hosted.get(r["context"], []), r.get("app_id"))
-        cleared = recorded_clearance(reads, abort, lambda: reads.attempts(str(head), r["context"]), r)   # H: the context's full history decides, never the latest attempt alone
+        cleared = recorded_clearance(reads, abort, lambda: reads.attempts(str(head), r["context"]), live["statuses"], r)   # R1: the context's whole history decides
         if cleared:
             out.append({"pr": pr, "context": r["context"], "head_sha": head, **cleared})
             continue

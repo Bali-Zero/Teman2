@@ -161,10 +161,10 @@ def _no_live_github(monkeypatch):
     monkeypatch.setattr(mg.hc, "gh_get", _H())
 
 
-def _recorded(tmp_path, monkeypatch, attempts, notes=None, red=None):
+def _recorded(tmp_path, monkeypatch, attempts, notes=None, red=None, statuses=()):
     hub = _H(attempts, notes)
     monkeypatch.setattr(mg.hc, "gh_get", hub)
-    monkeypatch.setattr(mg.hc, "fetch_live", lambda *a, **k: _live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK))
+    monkeypatch.setattr(mg.hc, "fetch_live", lambda *a, **k: {**_live(_run(2, "success", "2026-10-10T15:31:00Z"), OTHER_OK), "statuses": list(statuses)})
     out, kept = mg.reclassify_recorded(_AS, _d(tmp_path, RED1 if red is None else red), lambda name, at: {"stale": False})
     return out, kept, hub
 
@@ -255,6 +255,16 @@ def test_h3_every_cancelled_attempt_must_qualify_one_answered_red_is_not_enough(
     monkeypatch.setattr(mg.hc, "gh_get", _H(attempts))
     red = [{"id": 1, "conclusion": "cancelled", "completed_at": "x"}, {"id": 3, "conclusion": "cancelled", "completed_at": "y"}]
     row = {"context": CTX, "hosted_red": red}
-    assert mg.recorded_clearance(reads, None, lambda: attempts, row) == {}   # attempt 3 came after the only green: nothing answers it
-    assert mg.recorded_clearance(reads, None, lambda: attempts[:2], {"context": CTX, "hosted_red": red[:1]})["stale_why"] == "cancelled_superseded"
-    assert mg.recorded_clearance(reads, None, lambda: attempts, {"context": CTX, "hosted_red": red[:1]}) == {}   # the unanswered attempt 3 stands even if the row never named it
+    assert mg.recorded_clearance(reads, None, lambda: attempts, [], row) == {}   # attempt 3 came after the only green: nothing answers it
+    assert mg.recorded_clearance(reads, None, lambda: attempts[:2], [], {"context": CTX, "hosted_red": red[:1]})["stale_why"] == "cancelled_superseded"
+    assert mg.recorded_clearance(reads, None, lambda: attempts, [], {"context": CTX, "hosted_red": red[:1]}) == {}   # the unanswered attempt 3 stands even if the row never named it
+
+
+def test_n1_n2_through_reclassify_recorded_a_red_status_or_another_apps_green_keeps_the_row(tmp_path, monkeypatch):
+    runs = [_run(1, "cancelled", "2026-10-10T15:29:12Z"), _run(2, "success", "2026-10-10T15:31:00Z")]
+    status = [{"context": CTX, "state": "failure", "updated_at": "2026-10-10T15:40:00Z"}]
+    out, kept, _ = _recorded(tmp_path, monkeypatch, runs, {1: ["Canceling since a higher priority waiting request exists"]}, statuses=status)
+    assert out == [] and len(kept) == 1
+    other = [runs[0], {**runs[1], "app": {"id": 999, "slug": "someone-else"}}]
+    out, kept, _ = _recorded(tmp_path, monkeypatch, other, {1: ["Canceling since a higher priority waiting request exists"]})
+    assert out == [] and len(kept) == 1

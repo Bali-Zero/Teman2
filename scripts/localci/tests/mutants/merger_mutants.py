@@ -420,15 +420,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # B17b (the context's full history; a timeout is no concurrency cancel)
     # H (the context's whole attempt history decides in every path that clears a red)
     "h1-history-read-latest": (PY, '&filter=all", "check_runs")\n            self._cache[("history"', '&filter=latest", "check_runs")\n            self._cache[("history"', (CS, *HA)),
-    "h2-non-cancel-red-ignored": (PY, 'if any(r.get("conclusion") in NON_CANCEL_RED for r in runs):', "if False:", (CS, *HA)),
-    "h3-an-unanswered-cancel-is-skipped": (PY, 'return {"clear": False, "stuck": True, "why": f"cancelled attempt {rid} is answered by no later run of the context"}', "continue", (CS, *HA)),
-    "h3-answer-need-not-be-later": (PY, 'any(g > r["completed_at"] for g in greens)', "bool(greens)", (CS, *HA)),
     "h4-timeout-cancel-droppable-by-b17": (PY, "if any(ABORT_TIMEOUT in m for m in reads.failures(rid)):", "if False:", (CS, *HA)),
     "h5-reread-on-rows-with-entries": (PY, "and not recorded_has_entries(d) and (flipped :=", "and (flipped :=", HA),
     "h5-reread-counts-only-the-flipped": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS, *HA)),
-    "h5-reread-history-stuck-uncounted": (PY, 'stuck += bool(got["stuck"])', "pass", (CS, *HA)),
-    "h-live-abort-judge-reads-the-latest-only": (PY, "history_clearance(self, self, self.attempts(sha, name))", 'history_clearance(self, self, [{"id": e["id"], "status": "completed", "conclusion": "cancelled", "completed_at": e.get("completed_at")} for e in red])', HA),
     "h-replay-reads-the-live-listing-only": (PY, "runs = (lambda r=r: reads.attempts(sha, r[\"context\"])) if is_sha(sha) else", "runs = (lambda r=r: [x for x in live[\"check_runs\"] if x.get(\"name\") == r[\"context\"]]) if is_sha(sha) else", (CS,)),
+    # R (one predicate in hosted_compare decides every clearing of a red)
+    "r1-statuses-dropped": (PY, "entries = hc.hosted_entries(runs, statuses).get(name, [])", "entries = hc.hosted_entries(runs, []).get(name, [])", (CS, *HA)),
+    "r1-app-pin-dropped": (HC, 'and g["verdict"] == "GREEN" and same_app(g)]', 'and g["verdict"] == "GREEN"]', (CS, *HA)),
+    "r1-later-check-dropped": (HC, 'and any(_later(g.get("completed_at"), e.get("completed_at")) for g in greens)}', "and bool(greens)}", (CS, *HA)),
+    "r1-pending-ignored": (HC, 'if any(e["verdict"] == "PENDING" for e in entries):', "if False:", (CS, *HA)),
+    "r1-remainder-red-ignored": (HC, 'if any(e["verdict"] == "RED" for e in entries if not is_q(e)):', "if False:", (CS, *HA)),
+    "r2-live-judge-statuses-dropped": (PY, "self.attempts(sha, name), list(statuses), name, app_id,", "self.attempts(sha, name), [], name, app_id,", HA),
+    "r4-all-for-any-per-entry": (PY, 'return any(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', 'return bool(rows) and all(isinstance(r.get("hosted_red"), list) and bool(r["hosted_red"]) for r in rows)', HA),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
