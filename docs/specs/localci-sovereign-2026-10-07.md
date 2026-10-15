@@ -307,6 +307,14 @@ re-execs, so the chain cap of 12 never stretches the per-tick bound above.
 which checks run, their order, their per-job `timeout-minutes` (kept as hosted's ceiling), the tolerance, the seal or the
 status binding changes. A run that really hangs is still cut, now at 7200 s, and reads INTERRUPTED as before.
 
+**A run that still exceeds 7200 s.** It is cut as before: the run step is SIGTERMed, the check in flight reads INTERRUPTED,
+the later ones never start, and the decision is not green. Post-flip an INTERRUPTED run is not re-decided on the same base
+(B30 excludes that class; gate-b30 verified it on the candidate tree), only when the base moves, about 90 minutes of lane each
+time. That is why the budget is sized on the need plus 28% rather than on the median: at p50 3848 s, p95 4878 s and a
+censored max of about 5600 s, a normal full-matrix run now has about 1600 s of headroom, and an INTERRUPTED means a hang or a
+host fault, not an honest slow run. The drift is watched, not assumed: if a full-matrix run reaches 6500 s (90% of the budget),
+the budget is re-derived from the new journal before it is hit, by the same table.
+
 **Why not an ordering change.** The sum of the checks is the same in any order; moving the long late checks first would only
 move which check is cut when the budget is short, not whether the run fits. The smaller safe change is the budget.
 
