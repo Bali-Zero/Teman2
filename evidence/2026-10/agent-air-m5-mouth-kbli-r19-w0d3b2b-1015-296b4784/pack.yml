@@ -73,5 +73,5 @@ dissent:
     resolution: "That dump was discarded. The fixture is the second run, at load 3 to 10, and its replay equals its live verdict byte for byte."
   - seat: claude-sonnet-5-5
     objection: "B3, the composer card: is the occlusion of the 'KBLI 2025 (Peraturan BPS 7/2025)' paragraph an artefact of the census state?"
-    status: REFUTED
+    status: RETRACTED
     resolution: "A plain user load (no reduced motion, no style tag) and the census state read the same on /kbli-explorer at 1440x900 after 2.5 s: card at y 1, height 142; the form input at y 40, height 66, covers the paragraph at y 62; opacity 1, transform none in both. The scroll container (flex-1 overflow-y-auto) sits at scrollTop 185 of 185 in both. The entrance has finished; the card is genuinely under the composer on desktop. A product finding outside this lot (no apps/mouth/src edit), not an instrument defect; the census reports it correctly as three occluded keys."
