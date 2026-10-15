@@ -121,11 +121,26 @@ _STEPS_FREELANCE: list[str] = [
     "Proof of accommodation in Indonesia",
 ]
 
+# Purpose-level list: shown for D12 (pre-investment visit visa, "before committing to PT PMA").
+# E28A has its own list in `_STEPS_EXCLUSIVE_BY_VISA`; none of its post-incorporation documents
+# belong here.
 _STEPS_INVESTOR: list[str] = [
+    "PT PMA incorporated (or plan ready to incorporate on arrival)",
+    "Investment plan document for the business you want to explore",
+    "Proposed business address in Indonesia",
+]
+
+# Official E28A page (imigrasi.go.id, 2026-10-15): base documents + special requirements.
+_STEPS_E28A: list[str] = [
+    "Application letter for the visa",
     "Passport valid \u2265 6 months",
-    "Company established with the Kemenkumham deed, acting as your sponsor",
-    "Proof of your own shareholding of at least IDR 10 billion in the sponsoring company",
-    "Company current-account statement for the last 2 months",
+    "Bank statement for the last 3 months, in your name or your sponsor's, of at least USD 2,000 or equivalent",
+    "Recent colour photo (taken within the last year)",
+    "Curriculum vitae (CV)",
+    "Travel itinerary",
+    "Proof of your own shareholding of at least IDR 10 billion in the sponsoring company, registered at the Investment Ministry / BKPM",
+    "Kemenkumham decision approving the establishment of the sponsoring company",
+    "Company current-account statement for the last 2 months (a company under 2 months old may file it within 90 days after the ITAS is issued)",
 ]
 
 _STEPS_EMPLOYEE: list[str] = [
@@ -206,6 +221,10 @@ _STEPS_BY_VISA: dict[VisaType, list[str]] = {
 }
 
 
+#: Visas whose checklist REPLACES the purpose-level list (it would be wrong for them).
+_STEPS_EXCLUSIVE_BY_VISA: dict[VisaType, list[str]] = {VisaType.E28A: _STEPS_E28A}
+
+
 def _steps_for(visa: VisaType | None, purpose: Purpose) -> list[str]:
     """Pre-arrival steps for the recommended VISA, not merely its purpose.
 
@@ -214,6 +233,8 @@ def _steps_for(visa: VisaType | None, purpose: Purpose) -> list[str]:
     checklist — so a purpose-level list cannot carry a product-level figure.
     """
     shared = _STEPS_BY_PURPOSE.get(purpose, [])
+    if visa in _STEPS_EXCLUSIVE_BY_VISA:
+        return list(_STEPS_EXCLUSIVE_BY_VISA[visa])
     if visa is None:
         return shared
     return _STEPS_BY_VISA.get(visa, []) + shared
@@ -296,10 +317,13 @@ def _reason(meta: VisaMeta, purpose: Purpose, months: int, band: BudgetBand) -> 
     if meta.min_budget_idr is not None and not meta.budget_gate_is_ranking_only:
         budget_note = f" (requires ≥ IDR {meta.min_budget_idr // 1_000_000}M)"
     total_days = meta.duration_days + meta.extensions[0] * meta.extensions[1]
-    if _duration_fits(meta, months):
+    if meta.coverage_total_unstated:
+        # Pack: 365 days per extension, no stated maximum total; page: extendable online by the sponsor.
+        duration_note = f" Stay of {meta.duration_days} days (2 years), extendable online by the sponsor."
+    elif _duration_fits(meta, months):
         duration_note = f" Covers {total_days} days total."
     else:
-        duration_note = f" Max stay {total_days} days — less than your {months}-month plan."
+        duration_note = f" Max stay {total_days} days \u2014 less than your {months}-month plan."
     stop = "" if (not budget_note and meta.notes.endswith(".")) else "."
     return f"{meta.name_en} — {meta.notes}{budget_note}{stop}{duration_note}".strip()
 

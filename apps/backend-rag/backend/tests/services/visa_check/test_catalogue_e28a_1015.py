@@ -25,11 +25,18 @@ NOTES = (
     "Requires a PT PMA sponsor and your own shareholding of at least IDR 10 billion in it "
     "(official E28A page)."
 )
-STEPS = [
-    "Passport valid ≥ 6 months",
-    "Company established with the Kemenkumham deed, acting as your sponsor",
-    "Proof of your own shareholding of at least IDR 10 billion in the sponsoring company",
-    "Company current-account statement for the last 2 months",
+# (step fragment, fragment of the saved page that states it)
+STEP_FRAGMENTS = [
+    ("Application letter", "surat permohonan"),
+    ("Passport valid \u2265 6 months", "paling singkat 6 bulan"),
+    ("last 3 months, in your name or your sponsor's, of at least USD 2,000", "rekening koran 3 bulan"),
+    ("Recent colour photo", "pasfoto berwarna"),
+    ("Curriculum vitae", "daftar riwayat hidup"),
+    ("Travel itinerary", "rincian perjalanan"),
+    ("own shareholding of at least IDR 10 billion in the sponsoring company", "Rp10.000.000.000"),
+    ("Kemenkumham decision approving", "pengesahan pendirian perusahaan"),
+    ("current-account statement for the last 2 months", "Rekening giro perusahaan 2 (dua) bulan"),
+    ("within 90 days after the ITAS is issued", "90 hari setelah ITAS terbit"),
 ]
 
 
@@ -67,33 +74,55 @@ def test_budget_gate_is_ranking_only_and_notes_cite_the_page() -> None:
     assert "~IDR 10bn capital" not in meta.notes and "investment plan" not in meta.notes
 
 
-def test_pre_arrival_steps_are_the_page_requirements() -> None:
-    r = recommend_visa(
-        nationality="USA", purpose=Purpose.INVESTOR, duration_months=24, budget_band=BudgetBand.OVER_500M
-    )
+def _investor(band: BudgetBand):
+    return recommend_visa(nationality="USA", purpose=Purpose.INVESTOR, duration_months=24, budget_band=band)
+
+
+def test_pre_arrival_steps_are_the_page_list() -> None:
+    r = _investor(BudgetBand.OVER_500M)
     assert r.recommended_visa is VisaType.E28A
-    assert r.pre_arrival_steps == STEPS
-    text = " ".join(r.pre_arrival_steps)
+    text = " | ".join(r.pre_arrival_steps)
+    page = _page_text()
+    for fragment, page_fragment in STEP_FRAGMENTS:
+        assert fragment in text, fragment
+        assert page_fragment in page, page_fragment
+    assert len(r.pre_arrival_steps) == len(STEP_FRAGMENTS) - 1  # the 90-day rule rides on the last step
     for dropped in ("plan ready to incorporate", "24 months", "Investment plan", "Share capital confirmation"):
         assert dropped not in text, dropped
-    page = _page_text()
-    assert "paling singkat 6 bulan" in page and "Rekening giro perusahaan 2 (dua) bulan" in page
-    assert "pengesahan pendirian perusahaan" in page
+
+
+def test_d12_keeps_its_own_list_without_the_e28a_post_incorporation_documents() -> None:
+    r = _investor(BudgetBand.MID_50_500M)
+    assert r.recommended_visa is VisaType.D12
+    text = " | ".join(r.pre_arrival_steps)
+    for forbidden in ("Company established", "Kemenkumham", "own shareholding", "current-account", "24 months"):
+        assert forbidden not in text, forbidden
+    assert "Investment plan document" in text and len(r.pre_arrival_steps) >= 3
+    # and E28A, when it is the recommendation, does show them
+    assert "Kemenkumham" in " | ".join(_investor(BudgetBand.OVER_500M).pre_arrival_steps)
 
 
 def test_reason_text_never_presents_the_budget_gate_as_a_requirement() -> None:
     for band in (BudgetBand.MID_50_500M, BudgetBand.OVER_500M):
-        r = recommend_visa(nationality="USA", purpose=Purpose.INVESTOR, duration_months=24, budget_band=band)
-        for x in (x for x in r.ranking if x.visa is VisaType.E28A):
+        for x in (x for x in _investor(band).ranking if x.visa is VisaType.E28A):
             assert "(requires" not in x.reason.lower() and "500M" not in x.reason, x.reason
-            assert "IDR" not in x.reason.replace("IDR 10 billion", ""), x.reason
             assert ".." not in x.reason
 
 
+def test_e28a_reason_states_the_stay_and_no_invented_total() -> None:
+    reason = next(x.reason for x in _investor(BudgetBand.OVER_500M).ranking if x.visa is VisaType.E28A)
+    import re
+
+    assert not re.search(r"Covers \d+ days total|Max stay \d+ days", reason), reason
+    assert "1095" not in reason and "1460" not in reason
+    assert "730 days" in reason and "extendable online by the sponsor" in reason
+    pack = _pack_e28a()
+    assert pack["stay_policy"]["maximum_days"] == 730
+    assert "diajukan secara online oleh sponsor" in _page_text() or "online oleh sponsor" in _page_text()
+
+
 def test_reason_text_carries_the_notes_innocence() -> None:
-    r = recommend_visa(
-        nationality="USA", purpose=Purpose.INVESTOR, duration_months=24, budget_band=BudgetBand.OVER_500M
-    )
-    reason = next(x.reason for x in r.ranking if x.visa is VisaType.E28A)
-    assert NOTES in reason and "your own shareholding of at least IDR 10 billion" in reason
-    assert reason.startswith("Investor Visa \u2014 ") and "Covers 1095 days total." in reason
+    reason = next(x.reason for x in _investor(BudgetBand.OVER_500M).ranking if x.visa is VisaType.E28A)
+    assert NOTES in reason and reason.startswith("Investor Visa \u2014 ")
+    d12 = next(x.reason for x in _investor(BudgetBand.OVER_500M).ranking if x.visa is VisaType.D12)
+    assert "Covers" in d12  # other visas keep the computed coverage

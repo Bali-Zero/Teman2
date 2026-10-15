@@ -54,49 +54,112 @@ def _page(code: str) -> str:
 # ── guilt checkers (entity based, so over- and under-match are both tested) ──
 
 E28G_RE = re.compile(r"\bE28G\b")
-# E28A named as a worker/employee permit inside ONE step or condition.
-E28A_WORKER_RE = re.compile(r"\b(worker|workers|employee|employees|employed|hire|hires|hiring)\b", re.I)
-E28A_WORKER_PAREN_RE = re.compile(r"\bE28A\s*\((?:Worker|Employee)", re.I)
-# Minimum / paid-up / subscribed capital stated as IDR 10 billion, either word order.
+# E28A named as a worker/employee/working permit inside ONE step or condition.
+WORKERISH_RE = re.compile(r"\b(work(?:er|ers|ing)?|employee|employees|employed|hire|hires|hiring|staff)\b", re.I)
+E28A_RE = re.compile(r"\bE28A?\b")
+# A bare "E28" (no letter) offered for actual work.
+BARE_E28_RE = re.compile(r"\bE28\b(?!\s*[A-G])")
+TEN_BN = r"(?:(?:IDR|Rp\.?)\s?10(?:\.000\.000\.000|\s?billion|\s?miliar)|10\s?billion\s?IDR)"
+CAPITAL_WORD = r"(?:capital|modal)"
+# 10 billion stated as capital / minimum capital / paid-up capital, in any word order.
 CAP_10BN_RE = re.compile(
-    r"(?:minimum|min\.?|paid-up|subscribed)\s+(?:paid-up\s+)?capital[^.;\n]{0,40}?"
-    r"(?:IDR|Rp)\s?10 billion|(?:IDR|Rp)\s?10 billion[^.;\n]{0,40}?"
-    r"(?:minimum|paid-up|subscribed)?\s*capital",
+    rf"{CAPITAL_WORD}[^.;\n]{{0,40}}?(?:is|of|:|=|minimum|at least|must be)?\s*{TEN_BN}"
+    rf"|{TEN_BN}[^.;\n]{{0,30}}?(?:paid-up|subscribed|{CAPITAL_WORD})",
     re.I,
 )
 PAID_UP_25_RE = re.compile(r"paid-up capital:?\s*minimum 25%", re.I)
+# Wording that makes a 10 billion sentence correct: shareholding, total investment value, or a denial.
+INNOCENT_10BN_RE = re.compile(
+    r"shareholding|shares worth|total investment value|is not paid-up capital|not paid-up",
+    re.I,
+)
 
 
 def e28g_offenders(strings: list[tuple[str, str]]) -> list[str]:
     return sorted({rid for rid, s in strings if E28G_RE.search(s)})
 
 
+def _e28a_worker_text(s: str) -> bool:
+    s = re.sub(r"work visa", "", s, flags=re.I)  # "a work visa is needed" names the remedy, not E28A
+    if re.search(r"\bE28A?\s*\((?:Worker|Employee|Working)", s, re.I):
+        return True
+    if BARE_E28_RE.search(s) and WORKERISH_RE.search(s):
+        return True
+    if E28A_RE.search(s) and WORKERISH_RE.search(s):
+        # "hands-on operational work needs a Working KITAS (E23)" and "foreign staff need a Working
+        # KITAS (E23)" name E23, not E28A, as the work permit: allowed only when E23 is the permit.
+        return "E23" not in s
+    return False
+
+
 def e28a_worker_offenders(strings: list[tuple[str, str]]) -> list[str]:
-    return [
-        s
-        for _, s in strings
-        if E28A_WORKER_PAREN_RE.search(s) or (re.search(r"\bE28A\b", s) and E28A_WORKER_RE.search(s))
-    ]
+    return [s for _, s in strings if _e28a_worker_text(s)]
+
+
+def _capital_text(s: str) -> bool:
+    if PAID_UP_25_RE.search(s):
+        return True
+    return bool(CAP_10BN_RE.search(s)) and not INNOCENT_10BN_RE.search(s)
 
 
 def capital_offenders(strings: list[tuple[str, str]]) -> list[str]:
-    return [s for _, s in strings if (CAP_10BN_RE.search(s) and "not paid-up" not in s) or PAID_UP_25_RE.search(s)]
+    return [s for _, s in strings if _capital_text(s)]
 
 
-# ── checker self-tests: each checker convicts the old text and acquits the new ──
+# ── checker self-tests: every mutant is caught, every correct sentence is acquitted ──
+
+MUTANT_E28G = ["Sponsor yourself for KITAS E28G (Investor)"]
+MUTANT_WORKER = [
+    "hire with KITAS E28A (Worker)",
+    "or E28A (Worker/Director)",
+    "E28A (Working KITAS)",
+    "E28A is the right visa for actual work",
+    "Worker enters Indonesia, converts to KITAS E28A at immigration office",
+    "For actual work: need KITAS E23/E28 instead",
+    "foreign staff on E28 can work in the company",
+]
+MUTANT_CAPITAL = [
+    "Minimum capital: IDR 10 billion",
+    "minimum IDR 10 billion capital",
+    "Paid-up capital: minimum 25%",
+    "PT PMA capital is IDR 10 billion",
+    "PT PMA must have Rp10.000.000.000 paid-up capital",
+    "Rp10.000.000.000 paid-up",
+    "10 billion IDR subscribed capital you commit to invest",
+    "modal minimum Rp10.000.000.000",
+]
+INNOCENT = [
+    "your own shareholding of at least IDR 10 billion in that company",
+    "total investment value of more than IDR 10 billion; IDR 10 billion is not paid-up capital",
+    "minimum placed/paid-up capital is Rp2.500.000.000 per limited company. The separate minimum total "
+    "investment value is more than Rp10.000.000.000 under its per-KBLI/location rules and exceptions.",
+    "Sponsor yourself for the E28A Investor KITAS",
+    "E28A lets you act as director or commissioner; hands-on operational work needs a Working KITAS (E23)",
+    "foreign staff need a Working KITAS (E23)",
+    "For actual work: need the Working KITAS (E23) instead",
+]
 
 
-def test_checkers_convict_the_old_text_and_acquit_the_new() -> None:
-    assert e28g_offenders([("r", "Sponsor yourself for KITAS E28G (Investor)")]) == ["r"]
-    assert e28g_offenders([("r", "Sponsor yourself for the E28A Investor KITAS")]) == []
-    assert e28a_worker_offenders([("r", "hire with KITAS E28A (Worker)")])
-    assert e28a_worker_offenders([("r", "or E28A (Worker/Director)")])
-    assert e28a_worker_offenders([("r", "E28A lets the shareholder act as director; hands-on operational work needs a Working KITAS (E23)")]) == []
-    assert capital_offenders([("r", "Minimum capital: IDR 10 billion")])
-    assert capital_offenders([("r", "minimum IDR 10 billion capital")])
-    assert capital_offenders([("r", "Paid-up capital: minimum 25%")])
-    assert capital_offenders([("r", "total investment value of more than IDR 10 billion; IDR 10 billion is not paid-up capital")]) == []
-    assert capital_offenders([("r", "your own shareholding of at least IDR 10 billion in that company")]) == []
+@pytest.mark.parametrize("text", MUTANT_E28G)
+def test_e28g_detector_catches_mutants(text: str) -> None:
+    assert e28g_offenders([("r", text)]) == ["r"]
+
+
+@pytest.mark.parametrize("text", MUTANT_WORKER)
+def test_worker_detector_catches_mutants(text: str) -> None:
+    assert e28a_worker_offenders([("r", text)]), text
+
+
+@pytest.mark.parametrize("text", MUTANT_CAPITAL)
+def test_capital_detector_catches_mutants(text: str) -> None:
+    assert capital_offenders([("r", text)]), text
+
+
+@pytest.mark.parametrize("text", INNOCENT)
+def test_detectors_acquit_correct_sentences(text: str) -> None:
+    assert e28g_offenders([("r", text)]) == []
+    assert e28a_worker_offenders([("r", text)]) == []
+    assert capital_offenders([("r", text)]) == []
 
 
 # ── guilt on the shipped routes ──
@@ -213,7 +276,8 @@ def test_visa_golden_pages_state_the_conditions() -> None:
     for code in ("E28B", "E28C", "E28D", "E28F"):
         assert "tidak membutuhkan penjamin" in _page(code)
     g = "\n".join(_strings(ROUTES["visa_golden"]))
-    assert "within 90 days" in g and "No sponsor" in g and "on consultation" in g
+    assert "within 90 days" in g and "No sponsor" in g and "Bali Zero price on consultation" in g
+    assert "no price is published" not in g and "Rp13" not in g and "PNBP" not in g
     assert "apartment worth at least USD 1,000,000" in g
 
 
@@ -221,3 +285,13 @@ def test_visa_golden_drops_claims_no_page_or_pack_supports() -> None:
     g = "\n".join(_strings(ROUTES["visa_golden"])).lower()
     for claim in ("talent", "designated areas", "threshold applies", "property investment", "sktt", "fast-track", "premium"):
         assert claim not in g, claim
+
+
+def test_investor_route_does_not_require_a_board_post_or_imta_for_the_investor() -> None:
+    route = "\n".join(_strings(ROUTES["investor_kitas_retirement"]))
+    assert "shareholder-director or shareholder-commissioner" not in route
+    assert "passive shareholder is admitted" in route and "allowed but not required" in route
+    assert "own shareholding of at least IDR 10 billion" in route
+    rest = "\n".join(_strings(ROUTES["restaurant_foreigner"]))
+    assert "investor/director" not in rest and "IMTA" not in rest
+    assert "E23/E28" not in "\n".join(s for _, s in _all_strings())

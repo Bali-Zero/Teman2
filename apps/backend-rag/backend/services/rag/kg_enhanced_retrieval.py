@@ -443,7 +443,6 @@ class KGEnhancedRetrieval:
                 "Apply for business licenses: Sertifikat Standar (medium risk) or Izin (high risk)",
                 "Obtain food safety certificate (Sertifikat Laik Higiene Sanitasi)",
                 "Apply for liquor license (SIUP-MB) if serving alcohol",
-                "Apply for TKA allocation and IMTA via SPKP for investor/director position",
                 "The PT PMA, as sponsor, applies online for your E28A Investor KITAS; you need your own shareholding of at least IDR 10 billion in that company (official E28A page)",
                 "Register for NPWP (tax number) and PKP if turnover > IDR 4.8 billion/year",
                 "Obtain location permit and building permit (IMB/PBG) if needed",
@@ -516,7 +515,7 @@ class KGEnhancedRetrieval:
             description="Obtain long-term stay permit for investors or retirees in Indonesia",
             path=[
                 "Choose the route: E28A Investor Visa (committed PT PMA) or Second Home Senior (E33E, 5 years; E33F Second Home Senior KITAS, 1 year)",
-                "E28A Investor: commit to a PT PMA in Indonesia as shareholder-director or shareholder-commissioner; the signed rules allow an initial stay of 2 years",
+                "E28A Investor: a PT PMA sponsors you and you hold your own shareholding of at least IDR 10 billion in it (official E28A page); the holder may act as director or commissioner of that company, and with less than that plus a board post a work visa is needed; the signed rules allow an initial stay of 2 years",
                 "E33F Second Home Senior KITAS: provide proof of income or allowance of at least USD 3,000/month",
                 "E33F: a sponsor (penjamin) is required; the sponsor applies online via evisa.imigrasi.go.id with a passport valid for at least 6 months",
                 "E33F: the Limited Stay Permit (KITAS, 1 year) and the Re-entry Permit are issued automatically once the officer admits you at the immigration checkpoint",
@@ -524,7 +523,7 @@ class KGEnhancedRetrieval:
                 "E33 Second Home (up to 5 years first grant): USD 130,000 deposit or USD 1,000,000 qualifying property route",
             ],
             key_conditions=[
-                "E28A Investor Visa requires a committed PT PMA (as shareholder-director or shareholder-commissioner)",
+                "E28A Investor Visa requires a sponsoring PT PMA in which you hold shares worth at least IDR 10 billion; a passive shareholder is admitted, and acting as director or commissioner is allowed but not required",
                 "E33F Second Home Senior KITAS: minimum age 55, proof of income or allowance of at least USD 3,000/month",
                 "E33 Second Home: USD 130,000 deposit in own name at a state-owned (BUMN) Indonesian bank, or USD 1,000,000 qualifying property",
                 "E33F Second Home Senior KITAS: the official page covers staying in Indonesia and activities related to business, meetings or shopping (including checking goods at an office, factory or production site), plus tourism and visiting friends or family; it prohibits overstaying, work not in line with the stay permit, and selling goods or services unless required for that work",
@@ -755,7 +754,7 @@ class KGEnhancedRetrieval:
                 "Requires sponsor (Indonesian company, organization, or government entity)",
                 "C2 extendable up to 180 days total",
                 "D2 valid 1-2 years with multiple entries",
-                "For actual work: need KITAS E23/E28 instead",
+                "For actual work: need the Working KITAS (E23) instead",
             ],
             estimated_timeline_months=None,
             estimated_cost_range_usd=None,
@@ -903,7 +902,7 @@ class KGEnhancedRetrieval:
                 "E28D branch or subsidiary of a foreign company: the foreign company commits to invest at least USD 25,000,000 for 5 years or USD 50,000,000 for 10 years, within 90 days of the date of entry; the applicant is director or commissioner of the company set up in Indonesia",
                 "E28F new capital (IKN) subsidiary: the same as E28D for a company set up in Ibu Kota Nusantara, at least USD 5,000,000 for 5 years or USD 10,000,000 for 10 years",
                 "No sponsor is needed for these routes; you apply online at evisa.imigrasi.go.id with an account of your own",
-                "Price: on consultation (no price is published for these codes)",
+                "Bali Zero price on consultation",
             ],
             key_conditions=[
                 "Stay of 5 or 10 years, extendable (official pages)",

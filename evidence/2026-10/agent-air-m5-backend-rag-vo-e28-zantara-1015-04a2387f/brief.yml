@@ -24,6 +24,7 @@ consumer_map:
   - "Zantara RAG: KGEnhancedRetrieval golden routes handed to the model; v3/v4 worked examples and the few-shot / WhatsApp persona examples in the prompt."
   - "Legacy /api/visa/match: catalogue.VISA_META and match_tree pre-arrival steps."
 risks:
+  - "Red team C (codex) cures: D12 keeps its own list, E28A prints no computed total, the investor route does not require a board post, the detectors catch Working/bare E28/numeric 10 bn forms."
   - "E28A keeps min_budget_idr=500_000_000 as an internal ranking-only band boundary (orchestrator decision 2026-10-15); the reason text no longer prints it, so ranking is unchanged and nothing presents it as a requirement."
 grader: "Fresh Opus 5.5 final gate commissioned by the team lead."
 brief_ref: evidence/brief.yml

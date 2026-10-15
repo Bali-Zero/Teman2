@@ -11,7 +11,7 @@ no E28A as a worker permit, no IDR 10 billion as minimum or paid-up capital, Gol
 bound per code to the saved page, E28A extension 365 days and the page's document list.
 
 Runs the three guilt-and-innocence files under apps/backend-rag with the backend venv when the
-checkout carries one. Exit 0 only on a pure pass (no failed, skipped or error) of at least 28 tests.
+checkout carries one. Exit 0 only on a pure pass (no failed, skipped or error) of at least 60 tests.
 """
 
 # bites-observable - no arguments; one literal program, literal test files.
@@ -31,7 +31,7 @@ TESTS = [
     "backend/tests/services/visa_check/test_catalogue_e28a_1015.py",
     "backend/tests/unit/prompts/test_prompts_e28_1015.py",
 ]
-MIN_TESTS = 28
+MIN_TESTS = 60
 TIMEOUT_SECONDS = 300
 
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [\d.]+s(?: \(.*\))?\s*=*$")
