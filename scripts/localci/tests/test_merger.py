@@ -656,7 +656,7 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
     origin.rename(tmp_path / "gone.git")
     dead = wrap(env)
     assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2 --code-sha\n"
-    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(g(src, "rev-parse", "main")[:12])
+    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(f"code={g(src, 'rev-parse', 'main')[:12]} depth=0")
 
 
 def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
