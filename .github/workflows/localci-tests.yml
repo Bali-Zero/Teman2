@@ -28,13 +28,6 @@ on:
     paths:
       - "scripts/localci/**"
       - ".github/workflows/localci-tests.yml"
-      # B31: the merge-intent helper, its probe, its shell suite and the callers whose behaviour scripts/localci/tests pins (label_census, predicate_census)
-      - "scripts/signal_merge_intent.sh"
-      - "scripts/merge_queue_rule.sh"
-      - "scripts/tests/test_signal_merge_intent.sh"
-      - "scripts/docs_guardian.sh"
-      - "scripts/ci/queue_rearm_population.sh"
-      - "apps/bali-intel-scraper/scripts/post_publish_poller.py"
       # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
       - "pytest.ini"
       - ".pytest.ini"
@@ -70,13 +63,6 @@ on:
     paths:
       - "scripts/localci/**"
       - ".github/workflows/localci-tests.yml"
-      # B31: the merge-intent helper, its probe, its shell suite and the callers whose behaviour scripts/localci/tests pins (label_census, predicate_census)
-      - "scripts/signal_merge_intent.sh"
-      - "scripts/merge_queue_rule.sh"
-      - "scripts/tests/test_signal_merge_intent.sh"
-      - "scripts/docs_guardian.sh"
-      - "scripts/ci/queue_rearm_population.sh"
-      - "apps/bali-intel-scraper/scripts/post_publish_poller.py"
       # pytest searches ancestor configuration and loads ancestor conftests, even outside scripts/localci
       - "pytest.ini"
       - ".pytest.ini"
