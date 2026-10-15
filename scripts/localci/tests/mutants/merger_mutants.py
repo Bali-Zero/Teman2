@@ -1047,6 +1047,11 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b28-defers-before-a-first-decision": (PY, 'and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', '):   # B28', (PF, *PENDING)),
     "b28-forced-none-no-reset": (PY, "if forced and pick is None:", "if False:", (PF,)),
     "b28-count-never-resets-on-replay": (PY, '''(r.get("kind") == "decision" and r.get("replay")) or (r.get("kind") == "skipped" and r.get("why") == "replay_none"):''', '(r.get("kind") == "skipped" and r.get("why") == "replay_none"):', (PF,)),
+    "b28-any-decision-resets-the-count": (PY, '(r.get("kind") == "decision" and r.get("replay")) or', '(r.get("kind") == "decision") or', (PF,)),
+    "b28-replay-none-every-turn": (PY, "if forced and pick is None:", "if pick is None:", (PF,)),
+    "b28-age-from-the-newest-deferral": (PY, "else min(first, _epoch", "else max(first, _epoch", (PF,)),
+    "b28-skip-bound-60": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 60, 43200", (PF,)),
+    "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
 }
 
 
