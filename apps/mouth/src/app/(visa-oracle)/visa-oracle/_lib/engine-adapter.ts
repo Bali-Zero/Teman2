@@ -771,9 +771,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "You told us the pay for this activity comes from an Indonesian source. The remote-work route does not allow compensation paid from Indonesia.",
     "Anda menyampaikan bahwa bayaran untuk aktivitas ini berasal dari sumber di Indonesia. Jalur kerja jarak jauh tidak mengizinkan kompensasi yang dibayarkan dari Indonesia.",
   ),
+  // Official list: the pack's own source record for hf.a1.not-bvk-nationality
+  // (seq-29, Permen Imipas 10/2026) carries this canonical_url. The list is
+  // named, not counted: the number and members belong to the signed pack.
   BVK_NATIONALITY_ONLY: text(
-    "Visa-free entry is open only to a fixed list of nationalities, and the passport you gave is not on that list.",
-    "Bebas visa hanya terbuka untuk daftar kewarganegaraan tertentu, dan paspor yang Anda berikan tidak termasuk dalam daftar tersebut.",
+    "Visa-free entry (Bebas Visa Kunjungan) is open only to passports on the official Immigration list (https://www.imigrasi.go.id/wna/daftar-negara-voa-bvk-calling-visa/daftar-negara-bebas-visa-kunjungan), and the passport you gave is not on that list.",
+    "Bebas Visa Kunjungan hanya terbuka untuk paspor yang tercantum dalam daftar resmi Imigrasi (https://www.imigrasi.go.id/wna/daftar-negara-voa-bvk-calling-visa/daftar-negara-bebas-visa-kunjungan), dan paspor yang Anda berikan tidak termasuk dalam daftar tersebut.",
   ),
   D12_CUMULATIVE_STAY_ADVISOR_CHECK: text(
     "Long or repeated stays are counted cumulatively. A Bali Zero advisor can check your total against the limit with you.",
@@ -1504,6 +1507,24 @@ const FACT_DERIVED_NO_PATH_CODES: ReadonlySet<string> = new Set([
   "PAID_ACTIVITY_WITHOUT_INDONESIAN_SPONSOR",
   "RETIREMENT_INCOME_BELOW_THRESHOLD",
 ]);
+
+/**
+ * `hf.active-overstay` (any overstay) and `hf.overstay-exceeds-60-days` both
+ * fire for an overstay past 60 days (seq-29, `immigration.overstay_days` gt 0
+ * and gt 60). The 60-day sentence already says everything the any-overstay one
+ * does, so showing both stacks two overstay reasons on one dead end: keep the
+ * one that names the limit.
+ */
+function deStackOverstayReasons<T extends { readonly code: string }>(
+  items: readonly T[],
+): T[] {
+  const namesLimit = items.some(
+    (item) => item.code === "OVERSTAY_EXCEEDS_60_DAYS",
+  );
+  return items.filter(
+    (item) => !(namesLimit && item.code === "ACTIVE_OVERSTAY_SETTLE_FIRST"),
+  );
+}
 
 function reason(
   code: string,
@@ -2889,7 +2910,9 @@ function buildValidatedOutcome(
         }),
         candidates: [],
         pathsRemaining: 0,
-        noPathReasons: response.decision.no_path_reasons.map((item) => {
+        noPathReasons: deStackOverstayReasons(
+          response.decision.no_path_reasons,
+        ).map((item) => {
           // A3'-M (M1): the narrow exemption. A listed code with a
           // non-empty ref still goes through the normal decisive-ref gate —
           // only the actually-sourceless shape skips it.
