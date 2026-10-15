@@ -1512,3 +1512,24 @@ def test_b26_u5_the_thirty_day_rule_is_unchanged_a_gz_goes_like_the_original_did
     week = aged(runs, 9 * 24 + 1)
     pm.trim_runs(runs, NOW, dry=False)
     assert (week / RES / "taint-output.json.gz").exists() and gunzip(week / RES / "taint-output.json.gz") == b"receipts/pysa/base/results/taint-output.json"
+
+
+def test_b26_u5_a_stale_part_that_cannot_be_removed_is_reported_and_the_prune_goes_on(tmp_path):
+    runs = tmp_path / "runs"
+    bad, other = aged(runs, 25), aged(runs, 26)
+    (bad / RES / "x.gz.part").mkdir()
+    (bad / RES / "x.gz.part" / "inner").write_text("a directory is not a part file")
+    (bad / RES / "y.gz.part").write_bytes(b"torn")
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert not (bad / RES / "y.gz.part").exists() and (bad / RES / "x.gz.part").is_dir()
+    assert out["errors"] and out["errors"][0].startswith(f"{RES}/x.gz.part: ") and len(out["errors"]) == 1
+    assert sorted(out["trimmed_bulk"]) == sorted(out["compressed"]) == sorted([bad.name, other.name])
+    assert not (other / RES / "call-graph.json").exists() and (other / RES / "taint-output.json.gz").exists()
+
+
+def test_b26_u5_a_dry_run_never_removes_a_stale_part_and_reports_no_error_for_it(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "y.gz.part").write_bytes(b"torn")
+    out = pm.trim_runs(runs, NOW, dry=True)
+    assert (run / RES / "y.gz.part").exists() and out["errors"] == [] and out["freed_gb"] >= 0

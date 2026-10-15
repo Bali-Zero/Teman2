@@ -13,6 +13,7 @@ free GB of the docker VM and of the host before and after.
 from __future__ import annotations
 
 import calendar
+import errno
 import fcntl
 import gzip
 import importlib.util
@@ -333,11 +334,12 @@ class _Count:
         pass
 
 
-def compress_receipts(run: Path, skip: set, dry: bool) -> tuple[int, bool]:
+def compress_receipts(run: Path, skip: set, dry: bool, errors: list | None = None) -> tuple[int, bool]:
     """B26 U5: gzip COMPRESS under `receipts/pysa/*/results/` in place, atomically (`.gz.part`, fsync, rename, then the original goes).
     Returns (bytes freed, whether a receipt was compressed). A `.gz.part` is never valid: it is removed. A file with its `.gz` beside it
     only loses its original; no symlink is followed (a linked directory is not entered, a linked file is not read); `skip` is what the
-    trim already doomed. An OSError on one file leaves that file whole."""
+    trim already doomed. An OSError on one file leaves that file whole and is appended to ``errors`` (run-relative path, errno name):
+    one entry that cannot be handled never stops the prune."""
     freed, hit = 0, False
     base = run / "receipts" / "pysa"
     if run.is_symlink() or (run / "receipts").is_symlink() or base.is_symlink() or not base.is_dir():
@@ -347,9 +349,14 @@ def compress_receipts(run: Path, skip: set, dry: bool) -> tuple[int, bool]:
         if side.is_symlink() or res.is_symlink() or not res.is_dir():
             continue
         for stale in sorted(res.glob("*.gz.part")):
-            freed += stale.lstat().st_size
-            if not dry:
-                stale.unlink()
+            try:
+                size = stale.lstat().st_size
+                if not dry:
+                    stale.unlink()
+                freed += size
+            except OSError as exc:
+                if errors is not None:
+                    errors.append(f"{stale.relative_to(run).as_posix()}: {errno.errorcode.get(exc.errno, type(exc).__name__)}")
         for name in COMPRESS:
             src, gz, part = res / name, res / f"{name}.gz", res / f"{name}.gz.part"
             if src in skip or src.is_symlink() or not src.is_file() or gz.is_symlink():
@@ -375,8 +382,9 @@ def compress_receipts(run: Path, skip: set, dry: bool) -> tuple[int, bool]:
                     src.unlink()
                 freed += before - after
                 hit = True
-            except OSError:
-                continue
+            except OSError as exc:
+                if errors is not None:
+                    errors.append(f"{src.relative_to(run).as_posix()}: {errno.errorcode.get(exc.errno, type(exc).__name__)}")
     return freed, hit
 
 
@@ -385,7 +393,7 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
     loses a tree pack its `finally` never removed, whatever its age. B26: from BULK_KEEP_H on a run loses the Pysa call graphs
     (`trimmed_bulk`) and has COMPRESS gzipped in place (`compressed`); the verdict and the rest keep their retention. Symlinks are
     removed as links."""
-    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "compressed": [], "freed_gb": 0.0}
+    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "compressed": [], "errors": [], "freed_gb": 0.0}
     if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
         return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
@@ -421,7 +429,7 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
                     out["trimmed_bulk"].append(run.name)
             else:
                 out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
-        saved, hit = compress_receipts(run, set(doomed), dry)
+        saved, hit = compress_receipts(run, set(doomed), dry, out["errors"])
         freed += saved
         if hit:
             out["compressed"].append(run.name)
