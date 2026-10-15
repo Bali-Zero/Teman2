@@ -2058,6 +2058,7 @@ def xdist_dead_worker(log: Path) -> tuple[str, int] | None:
 
 SANDBOX_SAMPLER_ENV = "LOCALCI_SANDBOX_SAMPLER"   # "0": no `docker stats` / `docker ps -s` (B33 S2); the host-side phase times stay
 SANDBOX_SAMPLE_EVERY_S = 2.0
+SANDBOX_STATS_TIMEOUT_S, SANDBOX_PS_TIMEOUT_S = 20, 60
 _SIZE_UNITS = {"B": 1, "KB": 10**3, "MB": 10**6, "GB": 10**9, "TB": 10**12, "KIB": 2**10, "MIB": 2**20, "GIB": 2**30, "TIB": 2**40}
 
 
@@ -2101,12 +2102,12 @@ class _MemSampler:
 
     def _once(self) -> None:
         try:
-            r = subprocess.run([self.docker, "stats", "--no-stream", "--format", "{{.MemUsage}}", self.ctr], capture_output=True, text=True, timeout=20,
-                               env=self.denv)
+            r = subprocess.run([self.docker, "stats", "--no-stream", "--format", "{{.MemUsage}}", self.ctr], capture_output=True, text=True,
+                               timeout=SANDBOX_STATS_TIMEOUT_S, env=self.denv)
             used = parse_size_bytes(r.stdout.split("/")[0]) if r.returncode == 0 else None
             if used is None:
                 _probe_error(self.probe, f"docker stats rc={r.returncode} unparsable")
-            elif self.probe["mem_peak_bytes"] is None or used > self.probe["mem_peak_bytes"]:
+            elif used > 0 and (self.probe["mem_peak_bytes"] is None or used > self.probe["mem_peak_bytes"]):   # 0B: not running yet
                 self.probe["mem_peak_bytes"] = used
         except Exception as e:   # noqa: BLE001 — a sampler failure is data in the receipt, never a verdict
             _probe_error(self.probe, f"docker stats {type(e).__name__}")
@@ -2134,7 +2135,8 @@ def _probe_layer(docker: str, ctr: str, denv: dict, probe: dict | None) -> None:
     if probe is None or probe["sampler"] != "on":
         return
     try:
-        r = subprocess.run([docker, "ps", "-a", "-s", "--filter", f"name=^{ctr}$", "--format", "{{.Size}}"], capture_output=True, text=True, timeout=60, env=denv)
+        r = subprocess.run([docker, "ps", "-a", "-s", "--filter", f"name=^{ctr}$", "--format", "{{.Size}}"], capture_output=True, text=True,
+                           timeout=SANDBOX_PS_TIMEOUT_S, env=denv)
         size = parse_size_bytes(r.stdout.split("(")[0]) if r.returncode == 0 else None
         if size is None:
             _probe_error(probe, f"docker ps -s rc={r.returncode} unparsable")
@@ -2207,7 +2209,7 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
             fh.write(f"# isolation=container image={image_id or iso['image_id']} network={network} user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
             fh.flush()
             try:
-                with _timed(probe, "t_start_to_exit"), _MemSampler(docker, ctr, denv, probe):
+                with _MemSampler(docker, ctr, denv, probe), _timed(probe, "t_start_to_exit"):   # the sampler's join is after the clock stops
                     rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
             except subprocess.TimeoutExpired:
                 subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
@@ -2225,10 +2227,12 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 fh.write(f"# junit: {why}\n")
         return rc, None
     finally:
-        if made:
-            _probe_layer(docker, ctr, denv, probe)
-        with _timed(probe, "t_remove"):
-            _remove_verified(docker, ctr, denv)
+        try:
+            if made:
+                _probe_layer(docker, ctr, denv, probe)
+        finally:   # a signal inside the layer read must still reach the removal
+            with _timed(probe, "t_remove"):
+                _remove_verified(docker, ctr, denv)
 
 
 class ContainerCleanupError(RuntimeError):
