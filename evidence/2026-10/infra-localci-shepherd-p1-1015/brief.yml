@@ -6,7 +6,7 @@ objective: >-
   LocalCI B34 P1, the PR shepherd observe core. Three classes of stranded PR
   have no owner after the phase F flip: a gear >= 2 head with no
   harness/fable-gate (4), a PR whose author cannot label (7), a required hosted
-  context cancelled (10). P1 lists the open PRs with one bounded GraphQL query,
+  context cancelled (10). P1 lists the open PRs with one bounded paginated GraphQL query (<= 5 pages),
   classifies classes 4 and 7, and journals would_* rows; it has NO write verb. Budget:
   core < 1500 observe-only, < 800 skip, 60 REST calls per tick (the 61st never
   made), a second live tick exits on the lease. NEVER predicates are entities:

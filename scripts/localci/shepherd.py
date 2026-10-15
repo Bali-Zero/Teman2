@@ -1,6 +1,6 @@
 """B34 P1 - the LocalCI PR shepherd, OBSERVE core (docs/specs/localci-sovereign-2026-10-07.md, B34).
 
-One tick: take the lease, read the rate limits, list the open PRs with ONE bounded GraphQL query, classify each by the stranded
+One tick: take the lease, read the rate limits, list the open PRs with one bounded paginated GraphQL query (<= 5 pages), classify each by the stranded
 class it belongs to (4 gate missing, 7 label candidate by author class; class 10, the hosted setup-abort, is P2's) and journal what a later
 PR would do as ``would_*`` rows. P1 has NO write verb: GitHub is read, nothing else; a static test pins that. The budget is
 the account's, shared with the merger and every session: under 1500 core calls left the tick only observes, under 800 it skips,
@@ -49,7 +49,7 @@ SAFE_PATH = re.compile(r"[\w./@+-]+")
 
 LIST_QUERY = """query($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){pullRequests(states:OPEN,first:%d,after:$after){
 pageInfo{hasNextPage endCursor} nodes{number isDraft isCrossRepository baseRefName headRefName headRefOid reviewDecision
-author{login __typename} labels(first:30){nodes{name}} files(first:100){totalCount nodes{path}}
+author{login __typename} labels(first:30){totalCount nodes{name}} files(first:100){totalCount nodes{path}}
 commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){totalCount nodes{__typename
 ... on CheckRun{name conclusion status} ... on StatusContext{context state}}}}}}}}}}}""" % PAGE
 
@@ -155,36 +155,47 @@ def author_class(pr: dict, role: str | None) -> str:
     return "unknown_role" if role is None else "collaborator"
 
 
+def label_names(pr: dict) -> tuple[set, bool]:
+    labels = pr.get("labels") or {}
+    nodes = labels.get("nodes") or []
+    return {lb.get("name") for lb in nodes if isinstance(lb, dict)}, (labels.get("totalCount") or 0) > len(nodes)
+
+
 def classify(pr: dict, brief: dict | None, role: str | None) -> dict:
     """{classes, action, reason, ...} for one open PR. Every NEVER predicate is checked before any would_* action."""
-    row = {"pr": pr.get("number"), "head": pr.get("headRefOid"), "classes": [], "action": "none", "reason": None}
+    row = {"pr": pr.get("number"), "head": pr.get("headRefOid"), "classes": [], "actions": [], "reason": None}
     if pr.get("isDraft") or pr.get("baseRefName") != "main":
         return {**row, "reason": "draft" if pr.get("isDraft") else "base_not_main"}
     if pr.get("isCrossRepository"):
-        return {**row, "action": "never_auto", "reason": "fork"}
+        return {**row, "actions": ["never_auto"], "reason": "fork"}
     files = pr.get("files") or {}
     if (files.get("totalCount") or 0) > len(files.get("nodes") or []):
-        return {**row, "action": "never_auto", "reason": "files_truncated"}   # a path beyond the first 100 could be off-limits
+        return {**row, "actions": ["never_auto"], "reason": "files_truncated"}   # a path beyond the first 100 could be off-limits
     paths = [f.get("path") for f in (pr.get("files") or {}).get("nodes") or [] if isinstance(f.get("path"), str)]
     if any(off_limits(p) for p in paths):
-        return {**row, "action": "never_auto", "reason": "off_limits"}
+        return {**row, "actions": ["never_auto"], "reason": "off_limits"}
     if pr.get("reviewDecision") == "CHANGES_REQUESTED":
-        return {**row, "action": "never_auto", "reason": "changes_requested"}
+        return {**row, "actions": ["never_auto"], "reason": "changes_requested"}
     nodes, truncated = rollup(pr)
     gear = brief.get("gear") if isinstance(brief, dict) else None
     has_gate = any(n.get("context") == GATE_CONTEXT for n in nodes)
     if type(gear) is int and gear >= 2 and not has_gate and not truncated:
         row["classes"].append("gate_missing")
-        row["action"] = "would_gate_manual" if brief.get("gate_class") == "fable" else "would_gate"
+        row["actions"].append("would_gate_manual" if brief.get("gate_class") == "fable" else "would_gate")
         row["gate_class"] = brief.get("gate_class")
-    if mg.ARM_LABEL not in {lb.get("name") for lb in (pr.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
+    names, labels_cut = label_names(pr)
+    if mg.ARM_LABEL in names:
+        pass
+    elif labels_cut:
+        row["classes"].append("labels_truncated")   # the arm label may sit beyond the first 30: absence is not shown, so no label candidate
+    else:
         who = author_class(pr, role)
         if who == "admin":
             row["classes"].append("own_lane")
         else:
             row["classes"].append("label_candidate")
             row["author_class"] = who
-            row["action"] = row["action"] if row["action"] != "none" else "would_label"
+            row["actions"].append("would_label")
     return row
 
 
@@ -196,8 +207,8 @@ def roles_for(repo: str, prs: list[dict], rest) -> tuple[dict[str, str | None], 
     for p in prs:
         author = p.get("author") or {}
         login = author.get("login")
-        labels = {lb.get("name") for lb in (p.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}
-        if (p.get("isDraft") or mg.ARM_LABEL in labels or str(p.get("headRefName") or "").startswith("codex/") or author.get("__typename") != "User"
+        labels, labels_cut = label_names(p)
+        if (p.get("isDraft") or mg.ARM_LABEL in labels or labels_cut or str(p.get("headRefName") or "").startswith("codex/") or author.get("__typename") != "User"
                 or not isinstance(login, str) or login in roles or not mg._LOGIN_RE.fullmatch(login)):
             continue
         try:
@@ -232,7 +243,9 @@ def tick(state: Path, repo: str, node: str, *, get=None, gql=None) -> dict:
         journal(state, {"event": "skipped_lease", "holder": {k: lease.get(k) for k in ("host", "pid", "ts")}})
         return {"status": "ok", "note": "lease held by a live tick"}
     try:
-        res = get("rate_limit").get("resources") or {}
+        rest = Rest(repo, get, CallCap())
+        # counted: the 60 REST calls of a tick are every GET, this one first
+        res = rest("rate_limit").get("resources") or {}
         core, graphql = ((res.get(k) or {}).get("remaining") for k in ("core", "graphql"))
         if any(type(x) is not int for x in (core, graphql)):
             raise mg.MergerError("rate_limit carries no integer remaining for core and graphql: the budget is unread, so no tick")
@@ -242,18 +255,18 @@ def tick(state: Path, repo: str, node: str, *, get=None, gql=None) -> dict:
             return {"status": "warning", "note": f"skipped_quota core={core} graphql={graphql}"}
         prs = list_open(repo, gql)
         briefs = read_briefs(repo, prs, gql)
-        rest = Rest(repo, get, CallCap())
         roles, capped = {}, False
         if mode == "act":   # S-B4: the REST lane exists only above the floor
             roles, capped = roles_for(repo, prs, rest)
         rows = [classify(p, briefs.get(p["number"]), roles.get((p.get("author") or {}).get("login"))) for p in prs]
         counts: dict[str, int] = {}
         for r in rows:
-            for key in r["classes"] + ([f"never:{r['reason']}"] if r["action"] == "never_auto" else []):
+            for key in r["classes"] + ([f"never:{r['reason']}"] if "never_auto" in r["actions"] else []):
                 counts[key] = counts.get(key, 0) + 1
         if mode == "act":
-            for r in (r for r in rows if r["action"].startswith("would_") or r["action"] == "never_auto"):
-                journal(state, {"event": r["action"], **r})
+            for r in rows:
+                for action in r["actions"]:
+                    journal(state, {"event": action, **{k: v for k, v in r.items() if k != "actions"}})
         if capped:
             journal(state, {"event": "budget_cap", "rest_calls": rest.cap.used, "cap": REST_CAP})
         journal(state, {"event": "observe", "mode": mode, "open": len(prs), "classes": counts,

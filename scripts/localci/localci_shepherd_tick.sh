@@ -26,13 +26,16 @@ fi
 CODE=""
 SHA=""
 OUT=""
+HB_NEW=""
 STATUS="ok"
 NOTE=""
 # shellcheck disable=SC2329  # invoked indirectly, by `trap finish EXIT`
 finish() {
   local rc=$?
-  if [ -n "$CODE" ]; then rm -rf "$CODE"; fi
-  if [ -n "$OUT" ]; then rm -f "$OUT"; fi
+  # a failed cleanup must never end the trap before the heartbeat: `|| true` here, on the cleanup only
+  if [ -n "$CODE" ]; then rm -rf "$CODE" || true; fi
+  if [ -n "$OUT" ]; then rm -f "$OUT" || true; fi
+  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi
   local code="${SHA:0:12}"
   if [ "$rc" -ne 0 ]; then heartbeat error "tick rc=$rc code=${code:-none}"
   elif [ "$STATUS" = "disabled" ]; then heartbeat disabled "$NOTE"

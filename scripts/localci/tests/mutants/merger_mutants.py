@@ -1113,7 +1113,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-env-substring": ("scripts/localci/shepherd.py", "base.startswith(OFF_LIMITS_ENV_PREFIX)", '"env" in path', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-fly-toml-top-level-only": ("scripts/localci/shepherd.py", "base in OFF_LIMITS_BASENAMES", "path in OFF_LIMITS_BASENAMES", ("scripts/localci/tests/test_shepherd.py",)),
     "b34-lease-ignored": ("scripts/localci/shepherd.py", "if fh is None:", "if False:", ("scripts/localci/tests/test_shepherd.py",)),
-    "b34-ratelimit-error-acts": ('scripts/localci/shepherd.py', '        res = get("rate_limit").get("resources") or {}\n', '        try:\n            res = get("rate_limit").get("resources") or {}\n        except Exception:\n            res = {"core": {"remaining": 5000}, "graphql": {"remaining": 5000}}\n', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-ratelimit-error-acts": ('scripts/localci/shepherd.py', '        res = rest("rate_limit").get("resources") or {}\n', '        try:\n            res = rest("rate_limit").get("resources") or {}\n        except Exception:\n            res = {"core": {"remaining": 5000}, "graphql": {"remaining": 5000}}\n', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-ratelimit-missing-acts": ('scripts/localci/shepherd.py', '.get("remaining") for k in ("core", "graphql"))', '.get("remaining", 5000) for k in ("core", "graphql"))', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-state-is-the-mergers": ('scripts/localci/shepherd.py', '"local-ci" / "shepherd"', '"local-ci" / "merger"', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-wrapper-state-is-the-mergers": ('scripts/localci/localci_shepherd_tick.sh', 'local-ci/shepherd}', 'local-ci/merger}', ('scripts/localci/tests/test_shepherd.py',)),
@@ -1127,6 +1127,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-brief-truncation-ignored": ('scripts/localci/shepherd.py', '        return None   # a truncated file list', '        pass   # a truncated file list', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-files-truncation-ignored": ('scripts/localci/shepherd.py', 'if (files.get("totalCount") or 0) > len(files.get("nodes") or []):\n        return {**row, "action": "never_auto"', 'if False:\n        return {**row, "action": "never_auto"', ('scripts/localci/tests/test_shepherd.py',)),
     "b34-role-failure-retried": ('scripts/localci/shepherd.py', '            roles[login] = None\n            continue\n', '            continue\n', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-rate-limit-uncounted": ('scripts/localci/shepherd.py', 'rest("rate_limit").get', 'get("rate_limit").get', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-labels-total-ignored": ('scripts/localci/shepherd.py', '(labels.get("totalCount") or 0) > len(nodes)', 'False', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-labels-truncated-is-candidate": ('scripts/localci/shepherd.py', '    elif labels_cut:', '    elif False:', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-roles-read-for-truncated-labels": ('scripts/localci/shepherd.py', 'mg.ARM_LABEL in labels or labels_cut or', 'mg.ARM_LABEL in labels or', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-gate-suppresses-label": ('scripts/localci/shepherd.py', 'row["actions"].append("would_label")', 'row["actions"] = row["actions"] or ["would_label"]', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-journal-first-action-only": ('scripts/localci/shepherd.py', 'for action in r["actions"]:', 'for action in r["actions"][:1]:', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-code-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -rf "$CODE" || true', 'rm -rf "$CODE"', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-out-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$OUT" || true', 'rm -f "$OUT"', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
 }
 
 
