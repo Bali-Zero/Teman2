@@ -1,16 +1,20 @@
-task_id: kbli-r19-w0d3b2b-1015
+task_id: kbli-r19-w0d3b2bi2-1016
 gear: 3
 l_level: L1
 gate_class: opus
 objective: |
-  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i (cure and bindings, tooling only): the
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-i' (cure and bindings, tooling only), the successor of #8560 (gate BLOCK on
+  binding 3 alone, comment 6195761173): the
   #8488 gate's bindings B1-B5 and the #8249 gate's bindings 2-4, and the composer-entrance cause
   named (B3). No census growth, no apps/mouth/src file.
     1. B1: the census opens every browser context from one place, new_context(), so reduced
        motion cannot be dropped for one pass; a row pins it.
     2. B2: a drop-shadow() in filter reaches nothing, pinned by a behavioural row and by the
        contract sentence.
-    3. B3: the composer card's framer-motion JS entrance, named from a census-state versus
+    3. #8560 gate: hides() tests the scrim ITSELF for a stacking context (position, filter, backdrop-filter,
+       transform, opacity) and carries the exempt cause (scrim or surface) to the walk line, which counts
+       each cause apart; guilt A1 and innocence rows kill G1, G2, G3; N1, N2 of its non-blocking notes.
+    3b. B3: the composer card's framer-motion JS entrance, named from a census-state versus
        user-state read, then cured in the instrument or declared with a row.
     4. B4: the full dispatch gets 75 minutes (it ran 39m06s against 40).
     5. B5: the exit step lists the declared-not-judgeable line; contract 8.8 shows it.
@@ -24,7 +28,7 @@ constraints:
   - "No npm install or npm ci."
 acceptance:
   - text: "WHEN a cure is undone, THEN a row fails."
-    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2b-1015-296b4784/instrument_mutants.py"
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bi2-1016-6b4ad585/instrument_mutants.py"
   - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte."
     probe: "python3 -m pytest scripts/mouth/tests -q -k 'not e2e'"
   - text: "WHEN CI runs the sharded and the full census on the head, THEN the two verdicts are byte-identical."
@@ -32,6 +36,6 @@ acceptance:
 consumer_map:
   - "r19-wrapper-census-tests runs the new rows on every census PR (census-replay offline, the e2e rows in wrapper-census-part explorer)."
 risks:
-  - "A hides change can move K and M counts if a real flat-scrim child exists on the tree; the full M5 and CI runs report it."
+  - "The only verdict line that moves against #8560 is the explorer-answer-inspector mobile/system-dark walk line (23 occluded: 6 behind the scrim, 17 under another opened surface); K, M and G are unchanged."
 grader: |
   A fresh Opus 5.5 gate session commissioned by the imperator signs harness/fable-gate on the head sha.

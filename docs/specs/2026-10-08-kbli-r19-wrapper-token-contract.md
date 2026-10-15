@@ -1004,11 +1004,15 @@ by the painters (`SPEC-W0d-census.md` §2).
 - **An occluded run that its reader cannot see is counted.** A run whose points stay under an
   occluder, once read in the middle of the viewport, gets its own line,
   `occluded '<text>' at <path>, under <occluder>`: under G at rest, under K on an opened surface. It is not counted
-  when the occluder is a scrim of the walk, or a descendant of a scrim that makes a stacking
-  context (fixed or sticky), or lies inside another surface the walk opened, which is the surface
-  order working. A descendant of a flat scrim can sit above the surface, so it is counted (W0d-3b-2b);
-  the walk line names the occluded runs behind the walk's own scrim. A run brought to the middle
-  and still occluded keeps its occluder and whether it hides (`bring()`, W0d-3b-2b). A run under a fixed badge on a page that cannot scroll is
+  when the occluder is a scrim of the walk, or a descendant of a scrim that ITSELF makes a stacking
+  context (its own `position` is fixed or sticky, or it has a `filter`, a `backdrop-filter`, a
+  `transform` or an `opacity` below 1: its ancestors do not count), or lies inside another surface
+  the walk opened, which is the surface order working. A descendant of a flat scrim can sit above the
+  surface, even when the scrim sits inside a fixed wrapper, so it is counted (W0d-3b-2b-i').
+  The walk line names each exempt cause apart: `N of them behind the walk's own scrim` and
+  `N of them under another opened surface`; the walk line is the whole count, no second line
+  repeats it. A run brought to the middle and still occluded keeps its occluder and why it is
+  exempt, if it is (`bring()`). A run under a fixed badge on a page that cannot scroll is
   therefore K, never a clean 0. Text that is not rendered, such as the content of a closed
   `<details>`, is not a run at all: its box is laid out under the section after it, and it
   would read as occluded.
