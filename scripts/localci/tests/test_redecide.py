@@ -161,3 +161,11 @@ def test_the_newest_eviction_anchors_the_backoff_not_the_oldest():
     recs = [dec(), ev("2026-10-09T11:00:00Z"), ev("2026-10-09T11:50:00Z")]
     assert run(recs, now_s=mg._epoch("2026-10-09T11:50:00Z") + mg.REDECIDE_BACKOFF_S - 1)[0] == []
     assert len(run(recs, now_s=mg._epoch("2026-10-09T11:50:00Z") + mg.REDECIDE_BACKOFF_S)[0]) == 1
+
+
+def test_a_replay_row_after_a_transient_decision_neither_hides_nor_counts_it():
+    replay = dec(ts="2026-10-09T11:00:00Z", replay=True, merge_commit="e" * 40)
+    todo, _ = run([dec(), replay])
+    assert [p["_redecide"]["attempt"] for p in todo] == [2]
+    todo, capped = run([dec(), dec(), replay, replay])
+    assert [p["_redecide"]["attempt"] for p in todo] == [3] and capped == []
