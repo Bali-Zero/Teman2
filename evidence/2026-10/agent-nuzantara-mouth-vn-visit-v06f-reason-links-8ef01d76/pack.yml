@@ -8,6 +8,14 @@ lanes:
   - lane: v06f-reason-links
     role: build
     seat: claude-sonnet-5-5 implementer, worktree mouth-vn-visit-v06f-reason-links.
+  - lane: v06f-ground-truth
+    role: ground_truth
+    seat: >-
+      claude-sonnet-5-5. The linked URL is the one already shipped in engine-adapter.ts BVK_NATIONALITY_ONLY (V06, canonical_url
+      of source record 808d691c, Permen Imipas 10/2026); this PR renders it and changes no copy, rule or pack.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "6bf0f486e1d964eb7748fb3fca656b6ac00474ede180c506f25ce1667df81f65" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base 3d94f56a4c (unchanged by this PR).
 pii_scan: clean
 bites: >-
   Consumer: the public Visa Oracle result page (ReasonList in OutcomeSheet.tsx) and the OutcomeSheet.reason-links tests on
