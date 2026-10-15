@@ -58,10 +58,12 @@ bites:
     ~/.nuzantara-pilots/local-ci/shepherd/journal.jsonl carries an observe row with rest_calls <= 60 and armed false on every row, and no
     would_* row is ever followed by a write on GitHub. This host-only Pro observation is posted later as a PR comment; it is not made here.
 ground:
-  ts: "2026-10-15T13:50:58Z"
+  ts: "2026-10-15T15:44:29Z"
   siblings: >-
-    Rebased onto origin/main 57bb4d83ad (base was 8dbaf0aa25). A merge-tree of origin/main with the head is clean, and so is one with
-    origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 (B32, queued next). PR #8558 holds the same code at f258a46075 and is frozen; this branch supersedes it.
+    Rebuilt on a new branch after #8569 (head 374933a216, armed) went red on the hosted "prettier --check (changed files)": the B34 spec block was glued
+    to the B25-prime D2 bullet. Cherry-picked onto origin/main 577cc69a13 (B32 c68ae57f15 is in main now; base was 57bb4d83ad). A merge-tree of origin/main
+    with the head is clean, and so is one with origin/agent/air-m5/infra/infra-localci-redecide-1015 (B30 #8570) and agent/air-m5/infra/localci-mutant-rows-1015 (B36).
+    PR #8569 holds the same code at 374933a216 and is frozen; this branch supersedes it.
 spend:
   adversarial_rounds: 2
   wall_clock_hours: 1.2
@@ -176,6 +178,24 @@ receipts:
     exit: 0
     ts: "2026-10-15T13:52:32Z"
     seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
+  - claim: "R16 — prettier, exactly as the hosted check runs it (repo prettier 3.9.9 from the root checkout, read-only, --check --ignore-unknown) on every changed .md/.yml/.yaml/.json file of this PR."
+    cmd: "prettier --check --ignore-unknown <git diff --name-only origin/main HEAD filtered to ts|js|json|md|ya?ml> (five files: organs_registry.yaml, the spec, brief.yml, pack.yml, declared-pairs.json)"
+    result: "All matched files use Prettier code style; the spec block now stands before '## 2b.' with a blank line on each side"
+    exit: 0
+    ts: "2026-10-15T15:44:29Z"
+    seat: Claude Sonnet 5.5 (impl-b34p, M5)
+  - claim: "R17 — every code path is blob-identical to the armed head 374933a216 except merger_mutants.py, whose B34 hunks are identical and whose only difference is main's own B32 change."
+    cmd: git rev-parse HEAD:<path> vs 374933a216:<path> for the registry, the declared pair, the plist, the wrapper, shepherd.py and test_shepherd.py; the merger_mutants.py hunk lines compared between 57bb4d83ad..374933a216 and origin/main..HEAD
+    result: "six paths identical blob for blob; merger_mutants.py B34 hunks identical (B34-ONLY-SAME), 33 b34- rows"
+    exit: 0
+    ts: "2026-10-15T15:44:29Z"
+    seat: Claude Sonnet 5.5 (impl-b34p, M5)
+  - claim: "R18 — Mini, rebuilt head: test_shepherd.py, test_mutant_anchors.py and every b34-* mutant; merge-trees; the organs registry validator."
+    cmd: "ssh mini: venv311 python -m pytest -q test_shepherd.py test_mutant_anchors.py; merger_mutants.py --only <every b34-*> (archive under /tmp/gate-tmp-impl-b34p); git merge-tree --write-tree against origin/main, origin/agent/air-m5/infra/infra-localci-redecide-1015, agent/air-m5/infra/localci-mutant-rows-1015; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry"
+    result: "68 passed; 33/33 killed, survivors none, errors none, stale none; all three merge-trees rc 0; organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-10-15T15:44:29Z"
+    seat: Claude Sonnet 5.5 (impl-b34p, M5; run on Mini)
 dissent:
   - seat: codex-gpt-5.6-sol (DEFECT, round 1)
     objection: >-
