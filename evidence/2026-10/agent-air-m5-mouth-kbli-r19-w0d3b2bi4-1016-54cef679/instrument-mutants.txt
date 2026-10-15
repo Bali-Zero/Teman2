@@ -7,7 +7,10 @@ N1f M7: a trigger list without backdrop-filter replaces the index test | KILLED 
 N1g M8: a trigger list without fixed replaces the index test | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-fixed-scrim-chil
 N1h M9: a flat scrim is itself never exempt | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-flat-scrim-itsel
 N1i S anywhere in the stack, even under the run | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-flat-scrim-in-fi
-N1j the reach path reads the stack at p, not at the nearest point | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-reach-reads-the-
+r1-NEAR the reach path reads the nearest-point stack (r0, #8581's head) | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-glow-scrim
+r1-MEM the same, as membership only on the reach path | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-glow-scrim
+r1-NOSCRIM the reach path never returns scrim | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-reach-scrim-cove
+r1-ABSENT a scrim absent from the stack exempts | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[G-reach-shadow-scr
 N1k G3: the scrim clause never prints | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion[the wal
 N1l a surface-covered run is counted as behind the scrim | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion[a surfa
 N2 a drop-shadow reaches | KILLED | scripts/mouth/tests/test_r19_wrapper_token_census.py::test_e2e_guilt_and_innocence_through_the_real_walk[I-drop-shadow-no-r

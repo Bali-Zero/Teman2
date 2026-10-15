@@ -1009,6 +1009,14 @@ CANVAS = ('<canvas id="cv" width="400" height="80" style="position:absolute;inse
           "</canvas>")
 # id: body, css, opener (JS, or None to click a selector that is not there), selectors,
 #     expected (P, K at least, M exactly or at least as ">=n", walk state, an excerpt every walk prints)
+MENU_TOP = ('<div id="d" style="position:fixed;left:0;top:0;width:100%;height:64px;background:#FFFCF7;z-index:40">'
+            + p(INK, "Menu") + "</div>")
+STRIP = "position:absolute;left:7px;top:calc(100vh - 36px);padding:8px;background:#FFFCF7;z-index:10;"
+STRIP_SCRIM = ('<div style="position:absolute;left:0;top:0;width:100%;height:calc(100vh - 40px);'
+               'background:rgba(29,44,59,.45)"><div style="position:fixed;left:0;right:0;bottom:40px;height:4px;'
+               'background:#25D366;z-index:30;{}"></div></div>' + MENU_TOP)
+
+
 def faded_a1(wrapper_style: str) -> str:
     """A1: a flat absolute scrim in a wrapper, its child bar above the surface; the wrapper style is the variable."""
     return ('<div style="' + wrapper_style + '">'
@@ -1200,13 +1208,37 @@ CASES = [
     ("G-flat-scrim-faded-abs-wrapper", faded_a1("position:absolute;inset:0;z-index:5;opacity:.99"), "", REVEAL, ["#s"],
      (0, 1, None, "ok", "  occluded 'Villa' at ")),
     # Its innocence: the scrim covers the run itself, by whatever it is that puts it above the surface.
-    # SPEC-3b2bi, the reach path: the blurred bar is a child of the scrim; at the run's point the surface is above
-    # the scrim, but at the bar's nearest point the scrim is above the run's page, so the bar is behind the scrim.
-    ("I-reach-reads-the-nearest-point", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+    # SPEC-3b2bi r1, the reach path. within() decides THAT an overlay reaches; whether a scrim exempts is read at p, where
+    # the run is. R-A: the bar's glow changes the run's pixels while the flat scrim lies UNDER the run at p: counted.
+    ("G-reach-glow-scrim-under-run", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;"
+                                             "background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
      appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
               '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px);'
-              'z-index:30"></div></div><div id="d" style="position:fixed;left:0;top:0;width:100%;height:64px;'
-              f'background:#FFFCF7;z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
+              'z-index:30"></div></div>' + MENU_TOP), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # R-D / R-C: the scrim ends 40px above the bottom and the run sits below it, so the scrim is absent at p; its
+    # child bar's shadow (R-D) or blur (R-C) still lands on the run: counted.
+    ("G-reach-shadow-scrim-absent", surface(STRIP, p(INK, "Villa")), "",
+     appended(STRIP_SCRIM.format('box-shadow:0 24px 8px 8px rgba(0,0,0,.85)')), ["#s", "#d"],
+     (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-reach-blur-scrim-absent", surface(STRIP, p(INK, "Villa")), "",
+     appended(STRIP_SCRIM.format('filter:blur(16px)')), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # R-E / R-E2: the scrim covers the run at p and holds the reaching bar: behind the scrim, exempt.
+    ("I-reach-scrim-covers-run-fixed", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(8px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    ("I-reach-scrim-covers-run-flat", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(8px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    # R-B, DECLARED: a bar confined under the run's surface, in a fixed z5 scrim. within() says it reaches (its own,
+    # older nearest-point rule) and the scrim is under the run at p, so it is counted: an accepted over-count that errs
+    # in the fail-closed direction (SPEC-3b2bi section 2). The paint is unchanged (delta 0), see the receipts.
+    ("D-reach-bar-confined-under-surface", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;"
+                                                   "background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:5;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
     ("I-scrim-own-opacity", *scrim_over_static("opacity:.99")),
     ("I-scrim-zindex", *scrim_over_static("z-index:30")),
     ("I-scrim-isolate", *scrim_over_static("isolation:isolate")),

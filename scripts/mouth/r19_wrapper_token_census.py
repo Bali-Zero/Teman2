@@ -1126,7 +1126,6 @@ RESOLVE_JS = r"""
     for (const k in side) side[k] = Math.min(64, Math.max(0, side[k]));
     return side;
   };
-  let nearStack = null;  // the stack at the nearest point of the overlay `within` last returned
   let reachers = null;  // found at the first point, once the roots and the census style exist
   const within = (x, y, runEl) => {
     reachers = reachers || [...document.querySelectorAll("body *")]
@@ -1141,9 +1140,7 @@ RESOLVE_JS = r"""
       const py = Math.min(Math.max(y, r.top + 1, 0), r.bottom - 1, innerHeight - 1);
       const st = document.elementsFromPoint(px, py);
       const over = st.findIndex((e) => el.contains(e)), under = st.findIndex((e) => e.contains(runEl));
-      if (!(over >= 0 && (under < 0 || over < under))) return false;
-      nearStack = { st, i: under < 0 ? st.length : under };
-      return true;
+      return over >= 0 && (under < 0 || over < under);
     });
   };
   const canvasRgb = () => {
@@ -1155,9 +1152,11 @@ RESOLVE_JS = r"""
   };
   // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
   // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
-  // A scrim, or a descendant of one, is exempt when the scrim itself is in the stack at that point above the run's
-  // own layer (index < i): it already covers the run there, so what its children add is behind it too. No style of
-  // the scrim or of its ancestors decides it; a scrim absent from the stack, or under the run, never exempts.
+  // A scrim, or a descendant of one, is exempt when the scrim itself is in the stack at p, where the run is, above
+  // the run's own layer (index < i): it already covers the run there, so what its children add is behind it too.
+  // No style of the scrim or of its ancestors decides it; a scrim absent from the stack at p, or under the run at p,
+  // never exempts. On the reach path `within` decides only THAT an overlay reaches the run, at its nearest point;
+  // the scrim test still reads this stack, p's own (SPEC-3b2bi r1).
   const exempt = (el, runEl, st, i) => scrims.some((s) => s.contains(el) && st.indexOf(s) >= 0 && st.indexOf(s) < i) ? "scrim"
     : roots.some((r) => r.contains(el) && !r.contains(runEl)) ? "surface" : null;
   const pointB = (x, y, runEl) => {
@@ -1166,7 +1165,7 @@ RESOLVE_JS = r"""
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
     const near = within(x, y, runEl);
-    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl, nearStack.st, nearStack.i) };
+    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl, st, i) };
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
         return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl, st, i) };

@@ -1010,10 +1010,14 @@ by the painters (`SPEC-W0d-census.md` §2).
   children add is behind it too. This is a hit-test fact. No style of the scrim or of any ancestor
   decides it, so no list of stacking triggers exists: a flat scrim inside a fixed or fading
   wrapper whose child rises above the surface is not exempt, because the scrim is under the run.
-  A scrim absent from the stack, or under the run, never exempts: that direction fails closed and
-  the occlusion is counted. For an overlay that reaches the run by a blur or a shadow, the stack
-  is the one at the overlay's nearest point. A run is also not counted when it lies inside
-  another surface the walk opened, which is the surface order working (W0d-3b-2b-i'').
+  The point is the run's own, p, on every path. For an overlay that reaches the run by a blur or a
+  shadow, `within()` decides only whether it reaches, at the overlay's nearest point; the scrim
+  test still reads the stack at p, where the run is. A scrim absent from the stack at p, or under
+  the run at p, never exempts: that direction fails closed and the occlusion is counted. A bar
+  confined under the run's surface that `within()` still takes to reach it is counted too, an
+  accepted over-count of that older reach rule (`D-reach-bar-confined-under-surface`). A run is
+  also not counted when its occluder lies inside another surface the walk opened that does not
+  hold the run, which is the surface order working (W0d-3b-2b-i''').
   The walk line names each exempt cause apart: `N of them behind the walk's own scrim` and
   `N of them under another opened surface`; the walk line is the whole count, no second line
   repeats it. A run brought to the middle and still occluded keeps its occluder and why it is
