@@ -37,8 +37,10 @@ done
 CFG_DIR="$(mktemp -d)" || missing "no temp dir"
 trap 'rm -rf "$CFG_DIR"' EXIT
 # the repo vitest.config.ts needs @vitejs/plugin-react, absent from the shared root node_modules;
-# the claim ratchet scans every article and ran into the 5 s default under host load (a false red)
-echo 'export default { test: { include: ["src/**/*.test.ts"], testTimeout: 60000 } };' >"$CFG_DIR/vitest.guard.config.mjs"
+# the claim ratchet scans every article and ran into the 5 s default under host load (a false red);
+# cache:false because vitest's results cache lands in apps/mouth/node_modules, which in a worktree
+# is the SHARED symlinked node_modules — a guard run must write nothing outside its temp dir
+echo 'export default { test: { include: ["src/**/*.test.ts"], testTimeout: 60000, cache: false } };' >"$CFG_DIR/vitest.guard.config.mjs"
 
 (cd "$WT/apps/mouth" && "$VITEST" run --root . --config "$CFG_DIR/vitest.guard.config.mjs" "${GUARDS[@]}") >&2
 rc=$?

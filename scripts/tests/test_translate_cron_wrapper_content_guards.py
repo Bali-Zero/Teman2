@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 import shutil
 import subprocess
@@ -59,6 +60,7 @@ if args[:2] == ["pr", "create"]:
 # red on any BAD article; FAKE_MAIN_RED = red everywhere; FAKE_PAIR_RED = red only when alpha AND beta coexist
 FAKE_VITEST = """\
 #!/bin/bash
+cat "$5" >> "$HOME/vitest-config.seen"
 [ -n "${FAKE_MAIN_RED:-}" ] && exit 1
 d=src/content/articles
 grep -rqs BAD "$d" && exit 1
@@ -206,3 +208,78 @@ def test_a_final_set_that_is_red_though_each_group_is_green_promotes_nothing(hom
     assert _promoted(home) == set()
     assert not any(c[:2] == ["pr", "create"] for c in _gh_calls(home))
     assert _heartbeat(home).startswith("degraded")
+
+
+def _escalate(home: Path, slugs: list[str], age_s: float) -> None:
+    row = {"ts": time.time() - age_s, "type": "mouth_content_guard_hold", "slugs": slugs}
+    path = home / "nuzantara" / "shared" / "escalations_pro.jsonl"
+    path.write_text(path.read_text() + json.dumps(row) + "\n")
+
+
+def test_the_generated_vitest_config_disables_the_results_cache(home: Path) -> None:
+    # vitest's results cache lands in apps/mouth/node_modules, the SHARED symlink in a Pro worktree
+    _run(home, ALPHA)
+
+    seen = (home / "vitest-config.seen").read_text()
+    assert "cache: false" in seen and "testTimeout" in seen
+
+
+def test_a_slug_set_already_escalated_within_24h_adds_no_row(home: Path) -> None:
+    _escalate(home, ["badslug"], age_s=3600)
+
+    result = _run(home, ALPHA + BAD)
+
+    assert result.returncode == 0
+    assert len(_escalations(home)) == 1
+    assert "badslug" in _pr_body(home)  # the PR body and heartbeat still say it
+
+
+@pytest.mark.parametrize(("slugs", "age_s"), [(["other"], 3600), (["badslug"], 90000)])
+def test_a_different_slug_set_or_a_stale_row_gets_a_new_row(home: Path, slugs: list[str], age_s: float) -> None:
+    _escalate(home, slugs, age_s=age_s)
+
+    _run(home, ALPHA + BAD)
+
+    assert [r["slugs"] for r in _escalations(home)] == [slugs, ["badslug"]]
+
+
+def _stub_guard(home: Path, rc: int) -> None:
+    """The real guard, except it reports a tooling error when only the alpha group is on the tree."""
+    guard = home / "nuzantara" / "scripts" / "mouth_content_guard.sh"
+    shutil.copy(guard, guard.with_name("mouth_content_guard.real.sh"))
+    guard.write_text(f"""#!/bin/bash
+wt="${{@: -1}}"; a="$wt/apps/mouth/src/content/articles"
+if [ "$1" != "--base" ] && [ -n "$(find "$a" -name 'alpha*')" ] && [ -z "$(find "$a" -name 'beta*')" ]; then exit {rc}; fi
+exec bash "$(dirname "$0")/mouth_content_guard.real.sh" "$@"
+""")
+
+
+@pytest.mark.parametrize(("guard_rc", "wrapper_rc"), [(3, 3), (64, 4)])
+def test_a_tooling_error_while_trying_one_group_is_never_read_as_green(home: Path, guard_rc: int, wrapper_rc: int) -> None:
+    _stub_guard(home, guard_rc)
+
+    result = _run(home, ALPHA + BETA, FAKE_PAIR_RED="1")  # full set red -> each group is tried alone
+
+    assert result.returncode == wrapper_rc
+    assert _promoted(home) == set()
+    assert not any(c[:2] == ["pr", "create"] for c in _gh_calls(home))
+    assert _heartbeat(home).startswith("degraded")
+
+
+def _many(n: int) -> list[str]:
+    return [f"{ART}/business/g{i}.id.mdx" for i in range(n)]
+
+
+def test_more_than_60_slug_groups_cannot_be_bisected_and_promote_nothing(home: Path) -> None:
+    result = _run(home, _many(60) + BAD)  # 61 groups, the full set red
+
+    assert result.returncode == 4
+    assert _promoted(home) == set()
+    assert not any(c[:2] == ["pr", "create"] for c in _gh_calls(home))
+
+
+def test_exactly_60_slug_groups_are_still_bisected(home: Path) -> None:
+    result = _run(home, _many(59) + BAD[:1])  # 60 groups, one of them bad
+
+    assert result.returncode == 0, (home / "logs" / "translate-hourly-wrapper.log").read_text()
+    assert _promoted(home) == set(_many(59))
