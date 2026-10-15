@@ -1,5 +1,7 @@
 # Gear-3 evidence pack — LocalCI B34 P1, the PR shepherd observe core (organ pro.localci_shepherd).
 # Written 2026-10-15 by an implementer/dossier session (Claude Sonnet 5.5, M5) for code head a24504f6b5 (local, not pushed; the builder was Claude Opus 5.5).
+# REBASED 2026-10-15 onto origin/main 57bb4d83ad (the spec file conflicted with B25-prime #8561; union kept, no code change). Shas in this pack and in
+# council-journal.jsonl name the pre-rebase commits: af081b6c68 = 14c900f11c, c202caec6f = 1a7a76b634, a24504f6b5 = 71ac0f63ac; the code blobs are identical (R13).
 # Every receipt is a command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts: council-verbatim.txt.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -56,10 +58,10 @@ bites:
     ~/.nuzantara-pilots/local-ci/shepherd/journal.jsonl carries an observe row with rest_calls <= 60 and armed false on every row, and no
     would_* row is ever followed by a write on GitHub. This host-only Pro observation is posted later as a PR comment; it is not made here.
 ground:
-  ts: "2026-10-15T13:08:13Z"
+  ts: "2026-10-15T13:50:58Z"
   siblings: >-
-    Branch base origin/main 8dbaf0aa25; origin/main has since moved and a merge-tree of origin/main with the head is clean (R9). PR #8558 holds the
-    same code at f258a46075 and is frozen; this branch supersedes it.
+    Rebased onto origin/main 57bb4d83ad (base was 8dbaf0aa25). A merge-tree of origin/main with the head is clean, and so is one with
+    origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 (B32, queued next). PR #8558 holds the same code at f258a46075 and is frozen; this branch supersedes it.
 spend:
   adversarial_rounds: 2
   wall_clock_hours: 1.2
@@ -76,6 +78,9 @@ decisions:
     decision: >-
       The row carries actions (a list); each action is journaled as its own event with the row's fields, so a PR in classes 4 and 7 yields would_gate
       and would_label. The single-valued action field is gone; nothing else read it.
+  - id: D-rebase-union
+    decision: >-
+      The only conflict of the rebase was docs/specs/localci-sovereign-2026-10-07.md, where B25-prime (#8561) appends a section at the same spot as the B34 section; both are kept.
   - id: D-wrapper-notes-accepted
     decision: >-
       Wrapper clone/fetch before the Python host guard and the stderr fallback of a missing heartbeat library mirror the production merger wrapper and
@@ -153,6 +158,24 @@ receipts:
     exit: 0
     ts: "2026-10-15T13:06:22Z"
     seat: agy-gemini-4-argon
+  - claim: "R13 — after the rebase every file the B34 mandate owns is blob-identical to the pre-rebase head ffc0658460 (code, wrapper, plist, registry with its checksum, declared pair, tests, mutants, pack)."
+    cmd: git diff --quiet backup/b34g3-ffc0658460 HEAD -- <each B34 file>; git diff --quiet 8dbaf0aa25 origin/main -- organs_registry.yaml declared-pairs.json merger_mutants.py
+    result: "same for all eight files; main touched none of the registry, the declared pair or the mutants file since the old base"
+    exit: 0
+    ts: "2026-10-15T13:50:58Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R14 — merge-tree against origin/main 57bb4d83ad and against origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 (B32), and the organs registry validator."
+    cmd: git merge-tree --write-tree origin/main HEAD; git merge-tree --write-tree origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 HEAD; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml
+    result: "both merge-trees exit 0; organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-10-15T13:51:25Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R15 — Mini, rebased head: test_shepherd.py and every b34-* mutant."
+    cmd: "ssh mini: venv311 python -m pytest -q scripts/localci/tests/test_shepherd.py; merger_mutants.py --only <every b34-*> (archive under /tmp/gate-tmp-impl-b34g3/run4)"
+    result: "64 passed; 33/33 killed, survivors none, errors none, stale none"
+    exit: 0
+    ts: "2026-10-15T13:52:32Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
 dissent:
   - seat: codex-gpt-5.6-sol (DEFECT, round 1)
     objection: >-
@@ -213,6 +236,7 @@ dissent:
       Stale words, no behaviour. Not edited after the council: the registry edit would recompute the file's checksum and the docstring edit would move a reviewed
       head for a comment. Carried as residuals.
 residuals:
+  - "Final-gate LOWs, P2 prerequisites, deliberately not folded here: the mirror's refs/heads cleanup, fence L1, tests for SAFE_PATH and is_sha, and RENAMED files under never_auto."
   - "R11/R12 NOTE: the classify docstring says singular action (shepherd.py:165); registry notes say one GraphQL query. Fix with the next shepherd change."
   - "Accepted NOTE: wrapper clone/fetch runs before the Python host guard, and a missing heartbeat library falls back to stderr (same as the merger wrapper)."
   - "roles_for spends counted reads on PRs classify will reject on a NEVER predicate (agy NOTE); bounded by the 60 cap; revisit when a role read feeds an action (P2)."
