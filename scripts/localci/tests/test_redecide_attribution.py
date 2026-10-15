@@ -94,3 +94,14 @@ def test_host_measured_is_total_and_reads_the_class_before_the_first_space_or_co
     assert not mg.host_measured(None) and not mg.host_measured(7) and not mg.host_measured(["host_disk_below_floor"])
     assert mg.host_measured("host_disk_unmeasured: docker df failed") and mg.host_measured("host_disk_below_floor 3GB<12GB")
     assert not mg.host_measured("not host_disk_below_floor") and not mg.host_measured("host_disk_below_floors 1GB")
+
+
+def test_the_tick_journals_the_checks_the_host_pre_empted_and_never_a_candidate_one(world):  # noqa: F811
+    world.gh.prs = [pr(1, world.head1)]
+    world.runner.doc = {"checks": {"ctx.e2e-tests": {"status": "BLOCKED", "reason": FLOOR},
+                                   "tests.scripts_impacted": {"status": "ERROR", "reason": "crashed (signal 9)"},
+                                   "policy.change_map": {"status": "PASS", "reason": "ok"}}}
+    assert world.tick() == 0
+    rows = [r for r in world.journal() if r["kind"] == "decision"]
+    assert len(rows) == 1 and rows[0]["host_checks"] == ["ctx.e2e-tests"]
+    assert rows[0]["checks"]["tests.scripts_impacted"] == "ERROR"
