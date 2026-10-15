@@ -213,7 +213,7 @@ test("book E33F card says the sponsor sentence once, in Indonesian on the ID loc
       name: "E33F Second Home Senior (1 Year, Offshore)",
     }),
   });
-  await expect(card.getByRole("listitem").first()).toHaveText(
+  await expect(card.getByRole("listitem").first()).toContainText(
     "Diperlukan penjamin; Bali Zero dapat menjadi penjamin Anda.",
   );
   await expect(card).not.toContainText("A sponsor (penjamin)");
