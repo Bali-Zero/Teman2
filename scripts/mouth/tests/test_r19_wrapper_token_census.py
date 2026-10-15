@@ -1165,6 +1165,26 @@ CASES = [
      appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
               '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B">'
               '</div></div>'), ["#s"], (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # W0d-3b-2b-i' (the #8560 gate's A1): the flat scrim sits inside a FIXED wrapper. The scrim's own ancestors do
+    # not make it a stacking context, so its child still rises above the surface and is counted.
+    ("G-flat-scrim-in-fixed-wrapper", '<div style="position:fixed;inset:0;z-index:5">'
+     '<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+     '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B"></div></div>'
+     + surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+               p(INK) + p(INK, "Villa", "margin-top:40px")) + '</div>', "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # Its innocence twins: a scrim that is itself fixed, or that blurs its backdrop, holds its child.
+    ("I-fixed-scrim-child", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;background:rgba(29,44,59,.45)">'
+              '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;background:#1D2C3B"></div></div>'
+              '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;height:64px;background:#FFFCF7;'
+              f'z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    ("I-blur-scrim-child", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45);backdrop-filter:blur(4px)"><div style="position:absolute;left:0;'
+              'top:70px;width:100%;height:60px;background:#1D2C3B"></div></div>'
+              '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;height:64px;background:#FFFCF7;'
+              f'z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
     # W0d-3b-2: a surface that fades in and holds its end state is read at its end state, not at opacity 0.
     ("I-surface-entrance-held", surface("background:#FFFCF7;padding:16px", p(INK)),
      "#s{opacity:0;animation:fade .3s forwards}@keyframes fade{to{opacity:1}}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
@@ -1202,6 +1222,10 @@ CASES = [
     ("I-drop-shadow-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
      appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
               'filter:drop-shadow(0 12px 2px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
+    # The #8560 gate's N1: a fixed element whose only paint is a drop-shadow() cast toward the run reaches nothing.
+    ("I-drop-shadow-only-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;'
+              'filter:drop-shadow(0 0 8px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
     # A transparent shadow paints nothing, so it reaches nothing.
     ("I-transparent-shadow", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "",
      appended('<div style="position:fixed;left:0;bottom:0;width:10px;height:10px;'
@@ -1680,10 +1704,10 @@ def test_the_drop_shadow_statement_is_in_the_contract_and_the_code_reads_only_bl
     assert "blur\\(" in reach and "drop-shadow" not in reach
 
 
-def test_the_bring_fallback_keeps_the_occluder_and_whether_it_hides():
-    """The #8249 gate's binding 4: a run still pending after it was brought keeps occludedBy and hides."""
+def test_the_bring_fallback_keeps_the_occluder_and_why_it_is_exempt():
+    """The #8249 gate's binding 4: a run still pending after it was brought keeps occludedBy and why it is exempt, if it is."""
     fallback = census_mod.RESOLVE_JS.split("bring() {", 1)[1].split("return true;", 1)[0]
-    assert "r.occludedBy = occ.occluded" in fallback and "r.hides = occ.hides" in fallback
+    assert "if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }" in fallback
 
 
 def test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree_incomplete(census):
@@ -1699,3 +1723,22 @@ def test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_declared_lin
     """The #8488 gate's B4 and B5: `full` ran 39m06s against a 40-minute timeout; a declared walk is printed."""
     assert "timeout-minutes: ${{ matrix.part == 'full' && 75 || 40 }}" in WORKFLOW
     assert "|declared-|opened-|" in WORKFLOW
+
+
+MENU = '<div id="d" hidden style="position:absolute;left:0;top:0;width:100%;height:64px;background:#FFFCF7;z-index:20">' \
+       + p(INK, "Menu") + "</div>"
+
+
+@needs_browser
+@pytest.mark.parametrize("body, selectors, clause, absent", [
+    (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")) + MENU, ["#s", "#d"],
+     "of them under another opened surface", "behind the walk's own scrim"),
+    (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")) + SCRIM.format("rgba(29,44,59,.45)"), ["#s"],
+     "of them behind the walk's own scrim", "under another opened surface"),
+], ids=["a surface over a surface", "the walk's own scrim"])
+def test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion(tmp_path, monkeypatch, body, selectors, clause, absent):
+    """The #8560 gate's (b): an occluded run is counted under the cause that exempts it, never under the other."""
+    opener = "document.getElementById('s').hidden = false; const d = document.getElementById('d'); if (d) d.hidden = false"
+    out = verdict_of(open_case(tmp_path, monkeypatch, body, "", opener, selectors))
+    walks = [ln for ln in out if ln.startswith("  case ")]
+    assert walks and all(clause in ln and absent not in ln for ln in walks), walks

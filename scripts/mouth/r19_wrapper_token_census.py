@@ -1152,20 +1152,23 @@ RESOLVE_JS = r"""
   };
   // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
   // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
-  // A descendant of a scrim is exempt only when the scrim makes a stacking context (fixed or sticky): a flat
-  // scrim cannot hold a child above the surface, so a child that is above it is a real occluder (W0d-3b-2b).
-  const hides = (el, runEl) => !scrims.some((s) => s === el || (position(s) && s.contains(el)))
-    && !roots.some((r) => r.contains(el) && !r.contains(runEl));
+  // A descendant of a scrim is exempt only when the scrim ITSELF makes a stacking context (it is fixed or sticky,
+  // or it filters, blurs its backdrop, transforms or fades): a flat scrim cannot hold a child above the surface,
+  // wherever its ancestors sit, so a child that is above it is a real occluder (W0d-3b-2b-i').
+  const stacks = (s) => ["fixed", "sticky"].includes(cs(s).position) || cs(s).filter !== "none"
+    || (cs(s).backdropFilter || "none") !== "none" || cs(s).transform !== "none" || opacity(s) < 1;
+  const exempt = (el, runEl) => scrims.some((s) => s === el || (stacks(s) && s.contains(el))) ? "scrim"
+    : roots.some((r) => r.contains(el) && !r.contains(runEl)) ? "surface" : null;
   const pointB = (x, y, runEl) => {
     const st = document.elementsFromPoint(x, y);
     let i = -1;
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
     const near = within(x, y, runEl);
-    if (near) return { occluded: path(near), fixed: true, hides: hides(near, runEl) };
+    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl) };
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
-        return { occluded: path(st[k]), fixed: position(st[k]), hides: hides(st[k], runEl) };
+        return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl) };
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
     const base = k >= 0 ? ls[k].rgb : canvasRgb();
@@ -1306,7 +1309,7 @@ RESOLVE_JS = r"""
         // a blur or a shadow reaches past the overlay's box onto the points that are left.
         if (occ && occ.fixed && this.target !== i) continue;
         if (!keep.length) {
-          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.hides = occ.hides; }
+          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           continue;
         }
         const A = sample(keep.map(([p]) => p)), B = keep.map(([, b]) => b);
@@ -1329,7 +1332,7 @@ RESOLVE_JS = r"""
         if (this.target === i) {
           const occ = r.trial && r.trial.bs.find((b) => b.occluded);
           r.state = occ ? "occluded" : "unreached";
-          if (occ) { r.occludedBy = occ.occluded; r.hides = occ.hides; }
+          if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           this.pending.shift();
           continue;
         }
@@ -1342,10 +1345,10 @@ RESOLVE_JS = r"""
     result() {
       return {
         runs: runs.map(({ text, path: p, fg, fa, clip, state: s, a, spread, b, image, approx, painter, action, occludedBy,
-                          hides }) =>
+                          exempt }) =>
           ({ text, path: p, fg, fa, clip, state: s === "pending" ? "unreached" : s, a: a || null, spread: spread ?? null,
              b: b || null, image: image || null, approx: !!approx, painter: painter || p, action: action || null,
-             occludedBy: occludedBy || null, hides: !!hides })),
+             occludedBy: occludedBy || null, hides: !!occludedBy && !exempt, exempt: exempt || null })),
         rootGround: this.rootGround,
       };
     },
@@ -2101,8 +2104,10 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
                    + "".join(f", {n} {what}" for n, what in (
                        (sum(bool(over_image(r)) for r in measured), "over an image"),
                        (sum(r["state"] == "occluded" for r in runs), "occluded"),
-                       (sum(r["state"] == "occluded" and r.get("hides") is False for r in runs),
+                       (sum(r["state"] == "occluded" and r.get("exempt") == "scrim" for r in runs),
                         "of them behind the walk's own scrim"),
+                       (sum(r["state"] == "occluded" and r.get("exempt") == "surface" for r in runs),
+                        "of them under another opened surface"),
                        (sum(r["state"] == "unreached" for r in runs), "unreached")) if n)
                    + f", {o.get('positions', 0)} position(s)" + (", INCOMPLETE" if o.get("incomplete") else ""))
     tail = (f" (INCOMPLETE: {len(failed)} walks failed, {len(short)} over the scroll cap, not a verdict)"
