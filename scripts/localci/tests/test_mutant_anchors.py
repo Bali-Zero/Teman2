@@ -44,6 +44,12 @@ def rules(directory: Path = _DIR) -> list[tuple[str, str, str, str, str]]:
                 label = f"{path.stem}.{attr}:{name}"
                 f, old, new = _rule(mod, label, value)
                 out.append((f"{path.stem}.{attr}", name, f, old, new))
+    for path in sorted((directory / "rows").glob("*.py")):   # B36: the append-only fragments, each defining ROWS
+        if path.name.startswith("_"):
+            continue
+        for name, value in getattr(_load(path), "ROWS", {}).items():
+            f, old, new = _rule(None, f"rows/{path.stem}:{name}", value)
+            out.append((f"rows.{path.stem}", name, f, old, new))
     return out
 
 
@@ -82,3 +88,16 @@ def test_a_short_rule_with_no_target_fails_loudly(tmp_path):
     (tmp_path / "bad_mutants.py").write_text("MUTANTS = {'a': ('x', 'y')}\n")
     with pytest.raises(AssertionError, match="bad_mutants.MUTANTS:a.*ANCHOR_TARGET"):
         rules(tmp_path)
+
+
+def test_a_rows_file_is_discovered_and_a_broken_anchor_in_it_goes_red(tmp_path):
+    (tmp_path / "rows").mkdir()
+    (tmp_path / "rows" / "x.py").write_text("ROWS = {'ok': ('t.py', 'a = 1', 'a = 2', ('q',)), 'moved': ('t.py', 'c = 3', 'c = 4', ('q',))}\n")
+    (tmp_path / "t.py").write_text("a = 1\n")
+    got = rules(tmp_path)
+    assert [(r[0], r[1]) for r in got] == [("rows.x", "ok"), ("rows.x", "moved")]
+    assert [b.split(" ")[0] for b in stale(got, tmp_path)] == ["rows.x:moved"]
+
+
+def test_the_real_rows_directory_is_part_of_the_discovered_rules():
+    assert any(r[0] == "rows.b36" for r in rules())
