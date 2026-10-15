@@ -241,5 +241,7 @@ residuals:
   - "Accepted NOTE: wrapper clone/fetch runs before the Python host guard, and a missing heartbeat library falls back to stderr (same as the merger wrapper)."
   - "roles_for spends counted reads on PRs classify will reject on a NEVER predicate (agy NOTE); bounded by the 60 cap; revisit when a role read feeds an action (P2)."
   - "The arm label that predates the head (B2a) is not evaluated in P1; P5 adds the check-suite time comparison (brief residual)."
+  - "P2 prerequisite (gate-b34g3b LOW-2): the shepherd journal ~/.nuzantara-pilots/local-ci/shepherd/journal.jsonl has no rotation; P1 appends one row per tick and P2 must bound its growth before the write verbs land."
+  - "P2 prerequisite (gate-b34g3b LOW-2): hc.gh_get at scripts/localci/hosted_compare.py:373 runs subprocess.run without a timeout; P2 reads the required-set through it and must add one."
   - "Live proof is owed after merge, the declared pair installed on Pro and the plist loaded; it is a Pro-only observation (bites) and is not made here."
 appetite_exceeded: false
