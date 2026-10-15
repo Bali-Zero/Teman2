@@ -277,6 +277,17 @@ def test_a_runner_past_its_timeout_is_terminated_before_it_is_killed(tmp_path):
     assert res.returncode == 124 and "cleaned up" in res.stdout and "timed out" in res.stderr and time.monotonic() - t0 < 20
 
 
+def test_a_guarded_runner_is_given_the_whole_budget_it_was_handed(tmp_path, monkeypatch):
+    """B35: the guarded wait loop's deadline is the timeout it is handed, not a constant of its own. On a clock that jumps to RUN_TIMEOUT_S - 1
+    after the deadline is set, the budget still has a second left and the runner finishes; a loop that caps itself anywhere below it times out."""
+    ticks = iter([0.0])
+    fake = type("T", (), {"monotonic": staticmethod(lambda: next(ticks, mg.RUN_TIMEOUT_S - 1.0)), "__getattr__": lambda self, n: getattr(time, n)})()
+    monkeypatch.setattr(mg, "time", fake)
+    res = mg.runner_exec([sys.executable, "-c", "import time; time.sleep(0.3); print('done')"], tmp_path, dict(os.environ), mg.RUN_TIMEOUT_S,
+                         guard=mg.HostGuard(90.0, tmp_path, "/bin/false", measure=lambda: 300.0))
+    assert res.returncode == 0 and res.stdout.strip() == "done"
+
+
 def test_the_plan_step_outlasts_a_cold_deps_build(world, monkeypatch):
     """2026-10-11: a cold e2e-tests deps build took 3552 s on Pro while the plan step was capped at 900 s, so it was cancelled
     on every tick and every e2e candidate was ERROR for good. The plan step now gets --plan-timeout (default PLAN_TIMEOUT_S)."""
@@ -285,6 +296,7 @@ def test_the_plan_step_outlasts_a_cold_deps_build(world, monkeypatch):
     assert world.tick() == 0
     by_sub = {c["sub"]: c["timeout"] for c in mg.runner_exec.calls}
     assert by_sub["plan"] == mg.PLAN_TIMEOUT_S and by_sub["status"] == 900
+    assert by_sub["run"] == mg.RUN_TIMEOUT_S   # B35: the run step gets the budget, not a literal
 
 
 def test_the_timeouts_hold_a_cold_build_inside_one_tick():
@@ -317,7 +329,11 @@ def test_the_timeouts_hold_a_cold_build_inside_one_tick():
     finally:
         mg.argparse.ArgumentParser.parse_args = real
     assert ap_defaults["plan_timeout"] == mg.PLAN_TIMEOUT_S and ap_defaults["tick_timeout"] == mg.TICK_TIMEOUT_S
-    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 300
+    assert ap_defaults["run_timeout"] == mg.RUN_TIMEOUT_S
+    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 600
+    # B35: the run step is the sum of the checks, measured on Pro 2026-10-08..15: p95 4878 s, and #8523 needed ~5600 s (5486 s
+    # at the old 5400 s cap, the last check SIGTERMed). A budget under 1.25x that need turns a normal full-matrix run INTERRUPTED.
+    assert mg.RUN_TIMEOUT_S >= int(5600 * 1.25)
     # The heartbeat is written when the wrapper exits: the healer calls the organ dead past expected_hb_seconds x DEAD_MULTIPLIER
     # (3), so the longest legal tick plus one StartInterval must stay under it, or a slow cold tick opens a spurious cure session.
     reg = (_MODULE.parents[2] / "apps" / "organism" / "organism" / "organs_registry.yaml").read_text()
