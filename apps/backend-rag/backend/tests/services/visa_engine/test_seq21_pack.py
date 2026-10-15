@@ -157,6 +157,13 @@ NAMED_CAUSE_WALKS: dict[str, str] = {
 #: E28 products. Its no-path reason code therefore moves too.
 _T06_EXPLORER_361 = "offshore/business/exploring/offshore_application/stay_361"
 
+#: PR-13 (2026-10-15): the three onshore overstay walks, held for review on seq-20..22.
+_PR13_OVERSTAY_WALKS = (
+    "onshore/work/overstay_30",
+    "onshore/work/overstay_61",
+    "onshore/work/sponsor_government/trade_office_only/overstay_61",
+)
+
 #: PR-12 (2026-10-13): the work-tile walks whose no-path reason codes MOVE from
 #: seq-20 to seq-21 beyond `NAMED_CAUSE_WALKS`. Four swap the generic sentence
 #: for a named cause; `offshore/work/sponsor_individual/employer_no` instead
@@ -195,6 +202,11 @@ EXPECTED_SEQ21_GAINS: dict[str, tuple[str, ...]] = {
     "offshore/business/exploring": ("E28B", "E28D", "E28F"),
     # T06: the explorer past D12's 360-day bound asks the investor route questions.
     _T06_EXPLORER_361: ("E28B", "E28D", "E28F"),
+    # PR-13: the criminal-record and paid-medical walks are engine-SUPPORTED walks that
+    # answer the government-collaboration question (E33B) from seq-21; their holds come
+    # from the disclosure flag at funnel level, not from the engine.
+    "offshore/work/disclosed_criminal": ("E33B",),
+    "offshore/other/paid/medical": ("E33B",),
     "offshore/invest/capital_market": ("E28B", "E28D", "E28F"),
     "offshore/invest/capital_market/capital_market_only": ("E28C",),
     "offshore/invest/family": ("E28B", "E28D", "E28F"),
@@ -1257,19 +1269,35 @@ class TestCensusReplay:
         walks are left out with the rest of that family): 21 answer
         SUPPORTED_CANDIDATES and the four past a stay bound (tourism 181 with and
         without MULTIPLE, business 181, other 181) end NO_SUPPORTED_PATH, none of
-        them reading a qualification fact: 131 / 25 / 8 / 1."""
+        them reading a qualification fact: 131 / 25 / 8 / 1.
+
+        PR-13 (2026-10-15) adds the nine global-filter walks, none reading a
+        qualification fact: the two flagged walks (criminal record, paid medical) are
+        engine-SUPPORTED, the Indonesian-citizen walk is a no-path, the work-tile minor
+        needs the family sponsor answer, and on seq-21 the calling-visa, the three
+        overstay walks and the no-guardian minor are held for review: 133 / 26 / 9 / 6."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 131
-        assert census["NO_SUPPORTED_PATH"] == 25
-        assert census["NEEDS_INPUT"] == 8
-        assert census["HUMAN_REVIEW_REQUIRED"] == 1
+        assert census["SUPPORTED_CANDIDATES"] == 133
+        assert census["NO_SUPPORTED_PATH"] == 26
+        assert census["NEEDS_INPUT"] == 9
+        assert census["HUMAN_REVIEW_REQUIRED"] == 6
         held = [
             label
             for label, actual in replayed.items()
             if actual["state"] == "HUMAN_REVIEW_REQUIRED"
         ]
-        assert held == ["offshore/family/PARENT/spNat=IT/minor/guardian=no"]
+        # PR-13: on seq-21 the calling-visa and the three overstay walks are held for review
+        # (the named no-path causes arrive at seq-23), and so is the work-tile minor with no
+        # guardian.
+        assert sorted(held) == sorted(
+            [
+                "offshore/family/PARENT/spNat=IT/minor/guardian=no",
+                "offshore/work/minor/guardian_no",
+                "offshore/work/nationality_calling_visa",
+                *_PR13_OVERSTAY_WALKS,
+            ]
+        )
         needs_input = [
             label for label, actual in replayed.items() if actual["state"] == "NEEDS_INPUT"
         ]
