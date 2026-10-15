@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,46 @@ def test_the_census_reads_every_page(monkeypatch):
     seen = []
     monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: seen.append(v.get("after")) or {"repository": {"pullRequests": pages[len(seen) - 1]}})
     assert [p["number"] for p in lc.open_prs("o/r")] == [1, 2] and seen == [None, "c1"]
+
+
+def test_the_first_page_carries_no_cursor_key(monkeypatch):
+    """GitHub answers a literal "None" cursor with INVALID_CURSOR_ARGUMENTS: the first request must not name `after` at all."""
+    keys = []
+    monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: keys.append(sorted(v)) or {"repository": {"pullRequests": {"pageInfo": {"hasNextPage": False}, "nodes": []}}})
+    lc.open_prs("o/r")
+    assert keys == [["name", "owner"]]
+
+
+@pytest.mark.parametrize("repo_doc", [{}, {"repository": None}])
+def test_a_response_without_a_repository_is_a_graphql_error_not_a_crash(monkeypatch, repo_doc):
+    monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: repo_doc)
+    with pytest.raises(mg.GraphQLError):
+        lc.open_prs("o/r")
+    with pytest.raises(mg.GraphQLError):
+        lc.verify("o/r", 1)
+
+
+def test_a_page_without_nodes_or_page_info_is_an_empty_last_page(monkeypatch):
+    monkeypatch.setattr(mg, "gh_graphql", lambda q, **v: {"repository": {"pullRequests": {"nodes": None}}})
+    assert lc.open_prs("o/r") == []
+
+
+def test_census_of_an_empty_list_reads_nothing(monkeypatch):
+    monkeypatch.setattr(mg, "gh_graphql", lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not read")))
+    assert lc.census("o/r", []) == []
+
+
+def test_census_tolerates_missing_or_malformed_label_data():
+    bare = pr(3, label=False)
+    del bare["labels"]
+    nodes_none = pr(4, label=False)
+    nodes_none["labels"] = {"nodes": None}
+    junk = pr(5, label=True)
+    junk["labels"] = {"nodes": [None, "x", {"name": mg.ARM_LABEL}]}
+    notitle = pr(6, label=False)
+    notitle["title"] = None
+    rows = lc.census("o/r", [bare, nodes_none, junk, notitle])
+    assert {r["pr"]: r["label"] for r in rows} == {3: False, 4: False, 6: False} and [r["title"] for r in rows if r["pr"] == 6] == [""]
 
 
 def _graphql(monkeypatch, node):
@@ -153,14 +194,22 @@ def test_verify_quiet_writes_the_invalid_line_to_stderr(monkeypatch, capsys):
 
 
 def test_the_poller_outlives_the_helpers_deadline_with_margin():
-    """B31 L5: the helper's wall-clock deadline plus one in-flight call must end before the poller kills it."""
+    """B31 L5: the helper's wall-clock deadline plus the arm must end before the poller kills it (its subprocess timeout)."""
     root = Path(__file__).resolve().parents[3]
-    helper = (root / "scripts/signal_merge_intent.sh").read_text()
+    cfg = subprocess.run(["bash", str(root / "scripts/signal_merge_intent.sh"), "7"], capture_output=True, text=True, timeout=30,
+                         env={"PATH": "/usr/bin:/bin", "SIGNAL_INTENT_SHOW_CONFIG": "1"}).stdout
+    deadline = int(re.search(r"deadline=(\d+)", cfg)[1])
     poller = (root / "apps/bali-intel-scraper/scripts/post_publish_poller.py").read_text()
-    deadline = int(re.search(r'DEADLINE="\$\{SIGNAL_INTENT_DEADLINE_S:-(\d+)\}"', helper)[1])
-    window = poller[poller.index("signal_merge_intent"):]
-    timeout = int(re.search(r"timeout=(\d+)", window)[1])
-    assert timeout >= deadline + 15, (timeout, deadline)
+    timeout = int(re.search(r"\[str\(intent\), number\],[^\n]*timeout=(\d+)", poller)[1])
+    assert deadline <= 45 and timeout >= deadline + 15, (timeout, deadline)
+
+
+def test_the_script_runs_as_a_program():
+    """The entry guard: run as a script, with no gh to read from, the verdict is unreadable (rc 2) and loud, not a silent 0."""
+    root = Path(__file__).resolve().parents[3]
+    run = subprocess.run([sys.executable, str(root / "scripts/localci/label_census.py"), "verify", "--repo", "o/r", "--pr", "1"],
+                         capture_output=True, text=True, timeout=60, env={"PATH": "/nonexistent"})
+    assert run.returncode == 2 and "LABEL_UNREADABLE" in run.stderr
 
 
 def test_census_exit_code_and_json(monkeypatch, capsys):
@@ -189,20 +238,22 @@ def test_no_caller_swallows_the_helpers_exit():
     assert not swallowed, swallowed
 
 
-def _run_docs_guardian_tail(tmp_path, helper_rc, script=None):
+def _run_docs_guardian_tail(tmp_path, helper_rc, script=None, broken=0, pr_url="https://github.com/o/r/pull/12", helper=True, gh_rc=0):
     """Run docs_guardian.sh from its auto-merge block to the end with a fake helper, a fake git and a recording notify."""
     root = Path(__file__).resolve().parents[3]
     text = (script or root / "scripts/docs_guardian.sh").read_text()
     tail = text[text.index("# Enable auto-merge only if"):]
     (tmp_path / "scripts").mkdir()
-    helper = tmp_path / "scripts/signal_merge_intent.sh"
-    helper.write_text(f"#!/bin/sh\necho 'SIGNAL_INTENT_FAIL fake' >&2\nexit {helper_rc}\n")
-    helper.chmod(0o755)
+    hp = tmp_path / "scripts/signal_merge_intent.sh"
+    hp.write_text(f"#!/bin/sh\necho \"$@\" >> helper.log\necho 'SIGNAL_INTENT_FAIL fake' >&2\nexit {helper_rc}\n")
+    hp.chmod(0o755 if helper else 0o644)
     (tmp_path / "bin").mkdir()
+    (tmp_path / "bin/gh").write_text(f"#!/bin/sh\necho \"$@\" >> gh.log\nexit {gh_rc}\n")
+    (tmp_path / "bin/gh").chmod(0o755)
     (tmp_path / "bin/git").write_text("#!/bin/sh\nexit 0\n")
     (tmp_path / "bin/git").chmod(0o755)
     harness = tmp_path / "h.sh"
-    harness.write_text("set -euo pipefail\nBROKEN=0; PR_URL=https://github.com/o/r/pull/12; L1_COMMITTED=0; L25_COMMITTED=0; L25_SUMMARY=''; ORPHANS=0; PR_BODY_FILE=''\n"
+    harness.write_text(f"set -euo pipefail\nBROKEN={broken}; PR_URL={pr_url}; L1_COMMITTED=0; L25_COMMITTED=0; L25_SUMMARY=''; ORPHANS=0; PR_BODY_FILE=''\n"
                        "notify() { printf '%s|%s\\n' \"$1\" \"$2\" >> notified; }\n" + tail)
     env = {"PATH": f"{tmp_path / 'bin'}:/usr/bin:/bin", "HOME": str(tmp_path)}
     run = subprocess.run(["bash", str(harness)], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=60)
@@ -224,44 +275,31 @@ def test_docs_guardian_is_quiet_when_the_helper_succeeds(tmp_path):
     assert "MERGE INTENT FAILED" not in notified and "ERROR" not in run.stderr
 
 
+def _called(tmp_path, name):
+    f = tmp_path / name
+    return f.read_text() if f.exists() else ""
+
+
+@pytest.mark.parametrize("kw", [{"broken": 1}, {"pr_url": ""}, {"pr_url": "https://example.com/o/r/pull/12"}, {"pr_url": "https://github.com/o/r/pull/x"}])
+def test_docs_guardian_arms_only_a_clean_run_with_a_pull_request_url(tmp_path, kw):
+    """B31 prime: each operand of the arm gate (no broken links, a URL, a github pull URL) holds the helper back on its own."""
+    run, notified = _run_docs_guardian_tail(tmp_path, 0, **kw)
+    assert run.returncode == 0 and _called(tmp_path, "helper.log") == "" and _called(tmp_path, "gh.log") == ""
+
+
+def test_docs_guardian_passes_the_pull_number_to_the_helper(tmp_path):
+    run, _ = _run_docs_guardian_tail(tmp_path, 0)
+    assert _called(tmp_path, "helper.log").split() == ["12"] and _called(tmp_path, "gh.log") == ""
+
+
+def test_docs_guardian_without_the_helper_falls_back_to_a_bare_arm_that_cannot_fail_the_run(tmp_path):
+    run, notified = _run_docs_guardian_tail(tmp_path, 0, helper=False, gh_rc=1)
+    assert run.returncode == 0 and _called(tmp_path, "helper.log") == ""
+    assert _called(tmp_path, "gh.log").split() == ["pr", "merge", "12", "--auto"] and "MERGE INTENT FAILED" not in notified
+
+
 def test_the_signal_merge_intent_shell_suite_passes():
     """B31 L1: the guilt/innocence table of the helper (valid left alone, stale refreshed, bounded retry, read-back, exit 2) lives in shell."""
     root = Path(__file__).resolve().parents[3]
     run = subprocess.run(["bash", str(root / "scripts/tests/test_signal_merge_intent.sh")], capture_output=True, text=True, timeout=300)
     assert run.returncode == 0, run.stdout[-1500:] + run.stderr[-500:]
-
-
-_SH_COND = re.compile(r"^\s*(if|elif|case|for|while)\b|&&|\|\||^\s*(\d+|\*|'')\S*\)")
-_PY_COND = re.compile(r"^\s*(if|elif|for|while)\b|\bif\b.*\belse\b|\b(and|or)\b")
-
-
-def _conditional_lines(path, rx):
-    return sum(1 for line in path.read_text().splitlines() if not line.lstrip().startswith("#") and rx.search(line))
-
-
-def test_the_predicate_census_is_complete():
-    """B31 round 3: a predicate of the helper or the read-back cannot land without a row, a mutant and a killing test."""
-    root = Path(__file__).resolve().parents[3]
-    readme = (root / "scripts/localci/README.md").read_text()
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("b31_mm", root / "scripts/localci/tests/mutants/merger_mutants.py")
-    mm = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mm)
-    b31 = {n: v for n, v in mm.MUTANTS.items() if n.startswith("b31-")}
-    listed, rows = set(), 0
-    for line in readme.splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) != 5 or not cells[0].isdigit():
-            continue
-        rows += 1
-        mutant = cells[3].strip("`")
-        if mutant == "\u2014":
-            assert cells[4].startswith("equivalent:"), f"row {cells[0]}: no mutant and no equivalence argument"
-            continue
-        assert mutant in b31, f"row {cells[0]} names a mutant that does not exist: {mutant}"
-        assert b31[mutant][0].endswith(cells[1].strip("`")), f"row {cells[0]}: mutant {mutant} turns another file"
-        assert cells[4], f"row {cells[0]}: no killing test"
-        listed.add(mutant)
-    assert listed == set(b31), sorted(set(b31) ^ listed)
-    sh, py = _conditional_lines(root / "scripts/signal_merge_intent.sh", _SH_COND), _conditional_lines(root / "scripts/localci/label_census.py", _PY_COND)
-    assert f"`signal_merge_intent.sh` = {sh}, `label_census.py` = {py}." in readme, (sh, py, rows)

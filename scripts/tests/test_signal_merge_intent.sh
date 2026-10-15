@@ -18,6 +18,7 @@ PROBE_SRC="$SCRIPTS/merge_queue_rule.sh"
 
 failures=0
 check() { if [ "$2" = "1" ]; then printf '  ok   %s\n' "$1"; else printf '  FAIL %s\n' "$1"; failures=$((failures + 1)); fi; }
+sumsleeps() { paste -sd+ "$SLEEPLOG" | awk -F+ '{ s = 0; for (i = 1; i <= NF; i++) s += $i; print s }'; }
 has() { case "$2" in *"$1"*) echo 1 ;; *) echo 0 ;; esac; }
 
 SANDBOX="$(mktemp -d "${TMPDIR:-/tmp}/signal_intent_test.XXXXXX")"
@@ -27,10 +28,11 @@ cat > "$SANDBOX/bin/gh" <<'FAKEGH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 case "$1 $2" in
-  "pr view") [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "${FAKE_LABEL_NAME:-localci:merge-shadow-ok}"; exit 0 ;;
+  "pr view") [ -z "${FAKE_VIEW_SLEEP:-}" ] || /bin/sleep "$FAKE_VIEW_SLEEP"; [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "${FAKE_LABEL_NAME:-localci:merge-shadow-ok}"; exit 0 ;;
   "pr edit")
     case "$*" in
       *--add-label*)
+        [ -z "${FAKE_ADD_SLEEP:-}" ] || /bin/sleep "$FAKE_ADD_SLEEP"
         n="$(cat "$FAKE_COUNT" 2>/dev/null || echo 0)"
         if [ "$n" -lt "${FAKE_ADD_FAILS:-0}" ]; then echo $((n + 1)) > "$FAKE_COUNT"; echo "502 bad gateway" >&2; exit 1; fi ;;
     esac
@@ -44,6 +46,8 @@ FAKEGH
 cat > "$SANDBOX/bin/verify" <<'FAKEVERIFY'
 #!/usr/bin/env bash
 printf 'VERIFY %s\n' "$*" >> "$FAKE_GH_LOG"
+# FAKE_FIRST_VERIFY_SLEEP=N: the very first read takes N real seconds
+if [ -n "${FAKE_FIRST_VERIFY_SLEEP:-}" ] && [ ! -e "$FAKE_COUNT.s" ]; then : > "$FAKE_COUNT.s"; /bin/sleep "$FAKE_FIRST_VERIFY_SLEEP"; fi
 # FAKE_VERIFY_UNREADABLE=N: the first N reads are unreadable (rc 2), then the FAKE_VERIFY mode applies
 u="$(cat "$FAKE_COUNT.v" 2>/dev/null || echo 0)"
 if [ "$u" -lt "${FAKE_VERIFY_UNREADABLE:-0}" ]; then echo $((u + 1)) > "$FAKE_COUNT.v"; echo "LABEL_UNREADABLE: 502" >&2; exit 2; fi
@@ -56,12 +60,12 @@ esac
 FAKEVERIFY
 REAL_PY="$(command -v python3)"
 printf '#!/usr/bin/env bash\nif [ -n "${FAKE_PY_LOG:-}" ]; then echo "PY $*" >> "$FAKE_PY_LOG"; exit 0; fi\nexec %s "$@"\n' "$REAL_PY" > "$SANDBOX/bin/python3"
-printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n' > "$SANDBOX/bin/sleep"
+printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n[ "${FAKE_REAL_SLEEP:-0}" = 1 ] && exec /bin/sleep "$1"\nexit 0\n' > "$SANDBOX/bin/sleep"
 chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep" "$SANDBOX/bin/python3"
 
 run() {  # run <PR> [ENV=VAL...]
   local pr="$1"; shift
-  LOG="$SANDBOX/log"; : > "$LOG"; rm -f "$SANDBOX/count" "$SANDBOX/count.v"
+  LOG="$SANDBOX/log"; : > "$LOG"; rm -f "$SANDBOX/count" "$SANDBOX/count.v" "$SANDBOX/count.s"
   SLEEPLOG="$SANDBOX/sleeps"; : > "$SLEEPLOG"
   OUT="$(env FAKE_SLEEP_LOG="$SLEEPLOG" FAKE_GH_LOG="$LOG" FAKE_COUNT="$SANDBOX/count" SIGNAL_INTENT_VERIFY="$SANDBOX/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 PATH="$SANDBOX/bin:$PATH" "$@" bash "$HELPER" "$pr" 2>"$SANDBOX/err")"
   RC=$?
@@ -140,10 +144,10 @@ check "read-back bound follows SIGNAL_INTENT_TRIES (3 calls with 2)" "$([ "$(pri
 
 # L1: the backoff restarts for the read-back — worst case stays under the poller's 60 s helper timeout
 run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
+total="$(sumsleeps)"
 check "backoff restarts per phase: write 14s + read-back 14s = 28s, under 60 (got ${total}s)" "$([ "$total" = 28 ] && [ "$total" -lt 60 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
+total="$(sumsleeps)"
 check "worst case across all three phases is 42s, under 60 (got ${total}s)" "$([ "$total" -lt 60 ] && echo 1 || echo 0)"
 
 # C3: a read-back that is UNREADABLE after the write is not a success
@@ -152,24 +156,52 @@ check "read-back unreadable after the write: exit 2, 'read-back' on stderr, VERI
 
 # L5: the default backoff (variable unset or empty) and the wall-clock deadline
 run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
+total="$(sumsleeps)"
 check "default backoff (empty): worst-case sleep is exactly 42s (got ${total}s)" "$([ "$total" = 42 ] && echo 1 || echo 0)"
-run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=0
-check "deadline spent: the write loop stops at once, exit 2, the deadline is named" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 1 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never SIGNAL_INTENT_DEADLINE_S=0
-check "deadline spent: the read-back stops after one try, exit 2, the deadline is named" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 2 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
-run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99 SIGNAL_INTENT_DEADLINE_S=0
-check "deadline spent: the first read stops after one try, nothing written, exit 2" "$([ $RC = 2 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 SIGNAL_INTENT_DEADLINE_S=0
+check "deadline 0: no network call of the label phase at all, exit 2, the deadline is named" "$([ $RC = 2 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(has 'pr view' "$CALLS")" = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 0 ] && [ "$(has 'deadline 0s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+# the REAL clock: sleeps are real, 1-2 s, against a 2 s deadline
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 FAKE_REAL_SLEEP=1 SIGNAL_INTENT_DEADLINE_S=2 SIGNAL_INTENT_BACKOFF_S=1
+# bash counts SECONDS in whole wall seconds, so a 2 s deadline is 1 to 2 real seconds: every bound below holds for both
+adds="$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')"; shortest="$(sort -n "$SLEEPLOG" | head -1)"; longest="$(sort -n "$SLEEPLOG" | tail -1)"
+check "real clock, write: a 2 s deadline stops the adds at 1 to 3 (not 4), exit 2, named, no empty sleep and none past the time left" "$([ $RC = 2 ] && [ "$adds" -ge 1 ] && [ "$adds" -le 3 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && [ "$shortest" -ge 1 ] && [ "$longest" -le 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never FAKE_REAL_SLEEP=1 SIGNAL_INTENT_DEADLINE_S=2 SIGNAL_INTENT_BACKOFF_S=1
+reads="$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')"
+check "real clock, read-back: the first read and 1 to 2 read-backs (not 4), label left applied, exit 2, named" "$([ $RC = 2 ] && [ "$reads" -ge 2 ] && [ "$reads" -le 4 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99 FAKE_REAL_SLEEP=1 SIGNAL_INTENT_DEADLINE_S=2 SIGNAL_INTENT_BACKOFF_S=1
+reads="$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')"
+check "real clock, first read: 1 to 3 reads (not 4), nothing written, exit 2, named" "$([ $RC = 2 ] && [ "$reads" -ge 1 ] && [ "$reads" -le 3 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+# the deadline falls INSIDE a network call: the next call is refused (every call is asked, not only the loops)
+run 7 FAKE_RULES_COUNT=0 FAKE_FIRST_VERIFY_SLEEP=2 SIGNAL_INTENT_DEADLINE_S=2
+check "deadline spent during the first read: no view, no write, no read-back, exit 2, named" "$([ $RC = 2 ] && [ "$(has 'pr view' "$CALLS")" = 0 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 1 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VIEW_SLEEP=2 SIGNAL_INTENT_DEADLINE_S=2
+check "deadline spent during the view (no label): no add, exit 2, named" "$([ $RC = 2 ] && [ "$(has 'pr view' "$CALLS")" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VIEW_SLEEP=2 SIGNAL_INTENT_DEADLINE_S=2
+check "deadline spent during the view (label stale): neither remove nor add, exit 2, named" "$([ $RC = 2 ] && [ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_SLEEP=2 SIGNAL_INTENT_DEADLINE_S=2
+check "deadline spent during the add: no read-back (one VERIFY only), exit 2, named, the add was made" "$([ $RC = 2 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 1 ] && [ "$(has 'deadline 2s reached' "$ERR")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 SIGNAL_INTENT_DEADLINE_S=08
+check "a zero-padded deadline (08) is decimal, not an octal error: exit 0" "$([ $RC = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 SECONDS=1000
+check "an exported SECONDS does not eat the deadline: exit 0, label applied" "$([ $RC = 0 ] && [ "$(has 'label=applied' "$OUT")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=99 SIGNAL_INTENT_TRIES=00
+check "SIGNAL_INTENT_TRIES=00 is not zero tries: falls back to 4 adds" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 4 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=99 SIGNAL_INTENT_TRIES=08
+check "SIGNAL_INTENT_TRIES=08 is eight, not an octal error" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 8 ] && echo 1 || echo 0)"
+for scenario in "FAKE_RULES_COUNT=1" "FAKE_RULES_COUNT=0" "FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY=valid" "FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=2"; do
+  run 7 $scenario
+  check "a successful run ($scenario) prints no SIGNAL_INTENT_FAIL and says label=applied" "$([ $RC = 0 ] && [ -z "$ERR" ] && [ "$(has 'label=applied' "$OUT")" = 1 ] && echo 1 || echo 0)"
+done
 run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=3 SIGNAL_INTENT_BACKOFF_S=2
 longest="$(sort -n "$SLEEPLOG" | tail -1)"
 check "no sleep runs past the deadline (longest ${longest}s, cap 3s)" "$([ "$longest" -le 3 ] && [ "$longest" -ge 2 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=1 SIGNAL_INTENT_DEADLINE_S=garbage SIGNAL_INTENT_BACKOFF_S=2
 check "a garbage deadline falls back to the default: the retry still happens, one sleep of exactly 2s, exit 0" "$([ $RC = 0 ] && [ "$(cat "$SLEEPLOG")" = 2 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_BACKOFF_S=2
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
+total="$(sumsleeps)"
 check "write never succeeds: pauses between tries only, 2+4+8 = 14s (got ${total}s)" "$([ "$total" = 14 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99 SIGNAL_INTENT_BACKOFF_S=2
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
+total="$(sumsleeps)"
 check "first read never readable: pauses between tries only, 14s (got ${total}s)" "$([ "$total" = 14 ] && echo 1 || echo 0)"
 
 # Predicate census (README, B31): every remaining conditional of the helper, guilt and innocence
@@ -196,6 +228,31 @@ done
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1 "FAKE_MERGE_MSG=GraphQL: something else"
 check "arm refused with an unknown message: exit 3" "$([ $RC = 3 ] && echo 1 || echo 0)"
 
+# The effective configuration (SIGNAL_INTENT_SHOW_CONFIG=1): defaults and sanitisers, pinned as values
+cfg() { run 7 SIGNAL_INTENT_SHOW_CONFIG=1 SIGNAL_INTENT_TRIES= SIGNAL_INTENT_DEADLINE_S= SIGNAL_INTENT_BACKOFF_S= "$@"; }
+cfg
+check "config: defaults are tries=4 deadline=45 backoff=2, silently" "$([ "$OUT" = "tries=4 deadline=45 backoff=2" ] && [ -z "$ERR" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=abc SIGNAL_INTENT_DEADLINE_S=x SIGNAL_INTENT_BACKOFF_S=y
+check "config: garbage falls back to the defaults, silently" "$([ "$OUT" = "tries=4 deadline=45 backoff=2" ] && [ -z "$ERR" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=3 SIGNAL_INTENT_DEADLINE_S=9 SIGNAL_INTENT_BACKOFF_S=1
+check "config: explicit values are kept" "$([ "$OUT" = "tries=3 deadline=9 backoff=1" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=08 SIGNAL_INTENT_DEADLINE_S=08 SIGNAL_INTENT_BACKOFF_S=08
+check "config: zero-padded values are decimal" "$([ "$OUT" = "tries=8 deadline=8 backoff=8" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=00
+check "config: tries 00 is not zero tries" "$([ "$OUT" = "tries=4 deadline=45 backoff=2" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=0 SIGNAL_INTENT_DEADLINE_S=0 SIGNAL_INTENT_BACKOFF_S=0
+check "config: tries 0 -> 4, deadline 0 and backoff 0 are kept" "$([ "$OUT" = "tries=4 deadline=0 backoff=0" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_TRIES=-3
+check "config: a negative tries is garbage" "$([ "$OUT" = "tries=4 deadline=45 backoff=2" ] && echo 1 || echo 0)"
+cfg SIGNAL_INTENT_SHOW_CONFIG=0
+check "config: SHOW_CONFIG=0 runs the helper" "$([ "$(has 'tries=' "$OUT")" = 0 ] && [ "$(has 'SIGNAL_INTENT' "$OUT")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0
+check "no SHOW_CONFIG in the environment: the helper runs" "$([ "$(has 'tries=' "$OUT")" = 0 ] && [ "$(has 'SIGNAL_INTENT' "$OUT")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0
+check "the base branch defaults to main and the repo to Bali-Zero/Teman2 in the queue probe" "$([ "$(has 'rules/branches/main' "$CALLS")" = 1 ] && [ "$(has 'repos/Bali-Zero/Teman2/' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 SIGNAL_INTENT_REPO=o/r SIGNAL_INTENT_BASE=dev
+check "SIGNAL_INTENT_REPO and SIGNAL_INTENT_BASE reach the probe and the writes" "$([ "$(has 'repos/o/r/rules/branches/dev' "$CALLS")" = 1 ] && [ "$(has '--repo o/r' "$CALLS")" = 1 ] && echo 1 || echo 0)"
+
 # L4: an unreadable verify is unknown, never a reason to remove the label
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1 FAKE_VERIFY=valid
 check "unreadable once on a valid label: re-read, exit 0, no remove, no add" "$([ $RC = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 0 ] && echo 1 || echo 0)"
@@ -206,36 +263,6 @@ check "never readable, queue present: arm attempted, exit still 2" "$([ $RC = 2 
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1
 check "unreadable once then invalid: refresh (remove, then add) as for any stale label" "$([ $RC = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 1 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 
-# Mutants for the three above
-mutate() { sed "$1" "$HELPER_REAL" > "$SANDBOX/mut/signal_merge_intent.sh"; HELPER="$SANDBOX/mut/signal_merge_intent.sh"; }
-mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; break/'
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
-check "mutant (single read-back try) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" != 5 ] && echo 1 || echo 0)"
-mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; [ "$i" -ge "$TRIES" ] \&\& [ "$i" -lt 25 ] \&\& TRIES=$((TRIES + 1))/'
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=never
-check "mutant (unbounded read-back) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" != 5 ] && echo 1 || echo 0)"
-mutate '/^  BACKOFF="\${SIGNAL_INTENT_BACKOFF_S:-2}"$/d'
-run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=2
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
-check "mutant (backoff not reset) is caught" "$([ "$total" -ge 60 ] && echo 1 || echo 0)"
-mutate 's/^  \*) label=failed; why=.*$/  *) apply_label || label=failed ;;/'
-run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=99
-check "mutant (unreadable treated as invalid) is caught" "$([ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
-mutate 's/^    out="\$(verify_label)" \&\& return 0$/    out="$(verify_label)" \&\& return 0; [ $? -ge 2 ] \&\& return 0/'
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY=unreadable-after-write
-check "mutant (read-back accepts unreadable) is caught" "$([ $RC = 0 ] && echo 1 || echo 0)"
-mutate 's/\${SIGNAL_INTENT_BACKOFF_S:-2}/${SIGNAL_INTENT_BACKOFF_S:-5}/g'
-run 7 FAKE_RULES_COUNT=0 FAKE_VERIFY_UNREADABLE=3 FAKE_ADD_FAILS=3 FAKE_VERIFY=never SIGNAL_INTENT_BACKOFF_S=
-total="$(paste -sd+ "$SLEEPLOG" | bc)"
-check "mutant (default backoff 5) is caught" "$([ "$total" != 42 ] && echo 1 || echo 0)"
-mutate 's/^  if \[ "\$left" -le 0 \]; then deadline_hit=1; return 1; fi$/  :/'
-run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=0
-check "mutant (deadline never checked) is caught" "$([ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" != 1 ] && echo 1 || echo 0)"
-mutate 's/^  if \[ "\$BACKOFF" -lt "\$left" \]; then sleep "\$BACKOFF"; else sleep "\$left"; fi$/  sleep "$BACKOFF"/'
-run 7 FAKE_RULES_COUNT=0 FAKE_ADD_FAILS=9 SIGNAL_INTENT_DEADLINE_S=3 SIGNAL_INTENT_BACKOFF_S=2
-longest="$(sort -n "$SLEEPLOG" | tail -1)"
-check "mutant (sleep not capped by the deadline) is caught" "$([ "$longest" -gt 3 ] && echo 1 || echo 0)"
-HELPER="$HELPER_REAL"
 
 run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
 check "arm failure with queue: exit 3" "$([ $RC = 3 ] && echo 1 || echo 0)"

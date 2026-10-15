@@ -14,9 +14,11 @@
 #      (an add of a present label makes no event);
 #   3. the add is retried with bounded backoff, then READ BACK again with the same bound (each phase
 #      starts its backoff afresh: the SLEEP budget is 3 phases x (2+4+8)s = 42s) under a WALL-CLOCK deadline
-#      (SIGNAL_INTENT_DEADLINE_S, default 45) checked before every sleep and retry; hitting it is the same
-#      FATAL exit 2 with the reason named. The poller kills the helper at 60s: deadline + one in-flight call
-#      must stay below it (pinned by test);
+#      (SIGNAL_INTENT_DEADLINE_S, default 45) checked before EVERY network call of the label phase
+#      (the first read, the view, the remove, the add, every read-back) and before every sleep, which is
+#      itself capped at the time left; hitting it is the same FATAL exit 2 with the deadline named. The
+#      poller kills the helper at 60s: the 45s deadline, one in-flight call and the arm must stay below it
+#      (pinned by test);
 #   4. a label that is not shown valid at the end is FATAL: exit 2, SIGNAL_INTENT_FAIL on stderr,
 #      whatever the queue state (while the queue rule exists the arm is still attempted first —
 #      it is what merges until the flip — and the exit stays 2).
@@ -26,25 +28,34 @@
 # Env: SIGNAL_INTENT_REPO (default Bali-Zero/Teman2), SIGNAL_INTENT_BASE (default main),
 #      SIGNAL_INTENT_TRIES (default 4), SIGNAL_INTENT_BACKOFF_S (default 2, doubled each try),
 #      SIGNAL_INTENT_DEADLINE_S (default 45),
+#      SIGNAL_INTENT_SHOW_CONFIG=1 (print the effective tries/deadline/backoff and exit 0: how the defaults are pinned),
 #      SIGNAL_INTENT_VERIFY (a command run as `<cmd> <repo> <pr>`: 0 valid, other not; default label_census.py verify).
 set -uo pipefail
 
+SECONDS=0   # bash imports SECONDS from the environment: the deadline counts from HERE, whatever the caller exported
 REPO="${SIGNAL_INTENT_REPO:-Bali-Zero/Teman2}"
 BASE="${SIGNAL_INTENT_BASE:-main}"
 LABEL="localci:merge-shadow-ok"
-TRIES="${SIGNAL_INTENT_TRIES:-4}"
-DEADLINE="${SIGNAL_INTENT_DEADLINE_S:-45}"
-START=$SECONDS
+DEADLINE_DEFAULT=45
+TRIES="${SIGNAL_INTENT_TRIES:-}"
+DEADLINE="${SIGNAL_INTENT_DEADLINE_S:-}"
+BACKOFF_START="${SIGNAL_INTENT_BACKOFF_S:-}"
 deadline_hit=0
-BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 
 PR="${1:-}"
 case "$PR" in
   ''|*[!0-9]*) echo "usage: signal_merge_intent.sh <PR-number>" >&2; exit 1 ;;
 esac
-case "$TRIES" in ''|*[!0-9]*|0) TRIES=4 ;; esac
-case "$DEADLINE" in ''|*[!0-9]*) DEADLINE=45 ;; esac
+case "$TRIES" in *[!0-9]*) TRIES=0 ;; esac
+TRIES=$((10#${TRIES:-0}))
+[ "$TRIES" -ge 1 ] || TRIES=4
+case "$DEADLINE" in ''|*[!0-9]*) DEADLINE=$DEADLINE_DEFAULT ;; esac
+DEADLINE=$((10#$DEADLINE))
+case "$BACKOFF_START" in ''|*[!0-9]*) BACKOFF_START=2 ;; esac
+BACKOFF_START=$((10#$BACKOFF_START))
+if [ "${SIGNAL_INTENT_SHOW_CONFIG:-}" = 1 ]; then echo "tries=$TRIES deadline=$DEADLINE backoff=$BACKOFF_START"; exit 0; fi
+BACKOFF=$BACKOFF_START
 
 queue="$(SIGNAL_INTENT_REPO="$REPO" SIGNAL_INTENT_BASE="$BASE" "$HERE/merge_queue_rule.sh")"
 
@@ -58,37 +69,42 @@ verify_label() {   # 0 valid; otherwise the reason is on stdout/stderr
 
 deadline_note() { if [ "$deadline_hit" = 1 ]; then printf ' (deadline %ss reached)' "$DEADLINE"; fi; }
 
-pause() {   # 1 when the wall-clock deadline is spent; the sleep never runs past it
-  local left=$((DEADLINE - (SECONDS - START)))
-  if [ "$left" -le 0 ]; then deadline_hit=1; return 1; fi
+budget_ok() {   # 1 once the wall-clock deadline is spent; asked before every network call of the label phase
+  if [ $((DEADLINE - SECONDS)) -le 0 ]; then deadline_hit=1; return 1; fi
+}
+
+pause() {   # no sleep once the deadline is spent, and none past it; every call after it is refused by budget_ok anyway
+  budget_ok || return 0
+  local left=$((DEADLINE - SECONDS))
   if [ "$BACKOFF" -lt "$left" ]; then sleep "$BACKOFF"; else sleep "$left"; fi
   BACKOFF=$((BACKOFF * 2))
 }
 
 apply_label() {   # sets $why on failure
-  local has=0 i out rc
-  BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"
-  if gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF "$LABEL"; then has=1; fi
+  local has=0 i out="" rc=1
+  BACKOFF=$BACKOFF_START
+  if budget_ok && gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' 2>/dev/null | grep -qxF "$LABEL"; then has=1; fi
   for ((i = 1; i <= TRIES; i++)); do
     rc=0; out=""
     if [ "$has" = 1 ]; then
-      out="$(gh pr edit "$PR" --repo "$REPO" --remove-label "$LABEL" 2>&1)"; rc=$?
+      if budget_ok; then out="$(gh pr edit "$PR" --repo "$REPO" --remove-label "$LABEL" 2>&1)"; rc=$?; else rc=1; fi
       [ "$rc" -eq 0 ] && has=0
     fi
     if [ "$rc" -eq 0 ]; then
-      out="$(gh pr edit "$PR" --repo "$REPO" --add-label "$LABEL" 2>&1)"; rc=$?
+      if budget_ok; then out="$(gh pr edit "$PR" --repo "$REPO" --add-label "$LABEL" 2>&1)"; rc=$?; else rc=1; fi
     fi
     [ "$rc" -eq 0 ] && break
-    if [ "$i" -lt "$TRIES" ]; then pause || break; fi
+    if [ "$i" -lt "$TRIES" ]; then pause; fi
   done
   if [ "$rc" -ne 0 ]; then
-    why="the label write failed $i time(s)$(deadline_note) (rc=$rc): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
+    why="the label write failed (rc=$rc)$(deadline_note): $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
     return 1
   fi
-  BACKOFF="${SIGNAL_INTENT_BACKOFF_S:-2}"
+  BACKOFF=$BACKOFF_START
   for ((i = 1; i <= TRIES; i++)); do
+    budget_ok || break
     out="$(verify_label)" && return 0
-    if [ "$i" -lt "$TRIES" ]; then pause || break; fi
+    if [ "$i" -lt "$TRIES" ]; then pause; fi
   done
   why="read-back after the write does not show a valid label$(deadline_note): $(printf '%s' "$out" | tail -2 | tr '\n' ' ')"
   return 1
@@ -96,16 +112,17 @@ apply_label() {   # sets $why on failure
 
 label=applied
 why=""
-vrc=1
+vrc=2
 for ((i = 1; i <= TRIES; i++)); do
+  budget_ok || break
   verify_label >/dev/null; vrc=$?
   [ "$vrc" -eq 0 ] || [ "$vrc" -eq 1 ] && break
-  if [ "$i" -lt "$TRIES" ]; then pause || break; fi
+  if [ "$i" -lt "$TRIES" ]; then pause; fi
 done
 case "$vrc" in
   0) ;;
   1) apply_label || label=failed ;;
-  *) label=failed; why="the label could not be read $i time(s)$(deadline_note) (rc=$vrc): nothing was changed" ;;
+  *) label=failed; why="the label could not be read (rc=$vrc)$(deadline_note): nothing was changed" ;;
 esac
 if [ "$label" = failed ]; then
   echo "SIGNAL_INTENT_FAIL pr=$PR label=failed queue=$queue: $why" >&2
