@@ -1,7 +1,7 @@
 brief_ref: evidence/brief.yml
 plan_ref:
   "Lane VO-E28-PRICING-TERMS-1015 (PR B of the E28 audit; Zero's rulings Q7 and Q11, 2026-10-15). Gear 2.
-  Implemented by a Claude Sonnet 5.5 implementer seat; the team lead reviews and ships."
+  Implemented by a Claude Sonnet 5 implementer seat; the team lead reviews and ships."
 lanes:
   - lane: vo-e28-pricing-terms
     role: build
@@ -37,32 +37,32 @@ receipts:
     cmd: "cd apps/mouth && npx vitest run src/app/visa/terms src/app/v2/_components/Footer src/data/services_data"
     result: "5 files, 20 passed"
     exit: 0
-    ts: "2026-10-15T22:45Z"
+    ts: "2026-10-15T14:45Z"
     seat: claude-sonnet-5
   - claim: "Backend row test and neighbours green"
     cmd: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/crm/test_brochure_price_parity.py backend/tests/services/pricing/test_investor_kitas_all_inclusive_1015.py backend/tests/services/visa_engine/test_e28_family_pricing.py -p no:cacheprovider"
     result: "46 passed"
     exit: 0
-    ts: "2026-10-15T22:45Z"
+    ts: "2026-10-15T14:45Z"
     seat: claude-sonnet-5
   - claim: "Mouth snapshot in sync with the canonical catalogue"
     cmd: "python3 scripts/sync_frontend_prices.py --check"
     result: "OK in sync"
     exit: 0
-    ts: "2026-10-15T22:45Z"
+    ts: "2026-10-15T14:45Z"
     seat: claude-sonnet-5
   - claim: "Mutations (footer href, terms sentence, canonical notes) are convicted and restored"
     cmd: "edit, vitest/pytest, restore by cp; git status --short"
     result: "vitest 3 failed (2 files); pytest 1 failed, 1 passed; status showed only intended changes after restore"
     exit: 1
-    ts: "2026-10-15T22:44Z"
+    ts: "2026-10-15T14:44Z"
     seat: claude-sonnet-5
 
   - claim: "Gate residuals R1/R2: /visa/match result and /terms no longer split the visa price; guard convicts the old sentence"
     cmd: "npx vitest run src/app/fee-split-sentences.guard.test.ts src/app/visa/terms/page.all-inclusive.test.tsx; mutation: match page sentence back to 'Bali Zero fee. Government fees billed at cost.' then restore by cp"
     result: "6 passed; mutated: 2 failed of 4; restored: 4 passed"
     exit: 0
-    ts: "2026-10-15T23:33Z"
+    ts: "2026-10-15T15:33Z"
     seat: claude-opus-5-5
 
 spend:
