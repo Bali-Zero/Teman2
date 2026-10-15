@@ -16,7 +16,7 @@ constraints:
 acceptance:
   - text: "The section states the predicate inputs, each term with its reason, and the oracle as executable-shaped text."
     probe: "grep -n '^### 2b.1' docs/specs/localci-sovereign-2026-10-07.md"
-  - text: "The provenance rule, the 7-tier oracle table, the MC/DC meta-test and per-PR acceptance (P1-P5) are all present."
+  - text: "The provenance rule, the 8-tier oracle table, the MC/DC meta-test and per-PR acceptance (P1-P5) are all present."
     probe: "grep -n '^### 2b.[2-5]' docs/specs/localci-sovereign-2026-10-07.md"
   - text: "Residuals and owner actions D1 and D2 are named."
     probe: "grep -n 'D1 (Zero)' docs/specs/localci-sovereign-2026-10-07.md"
