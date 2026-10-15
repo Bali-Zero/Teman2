@@ -259,7 +259,13 @@ MERGE_ATTEMPT = ("merged", "merge_error")   # B19: the rows phase_f_merge always
 LOCAL_TERMS = ("local_checks_clean", "review_independent", "executed_contexts_ok", "same_repo")
 GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
 REDECIDE_CAP = 3          # B30: transient local no-verdicts of one (pr, head, base) before it stays decided
-REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times its transient decisions so far after the last decision
+REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times its transient decisions (of the window) so far after the last decision
+REDECIDE_WINDOW_S = 6 * 3600   # B30: a transient decision older than this stops counting toward the cap and the backoff: the cap is a RATE, so an outage cannot cap every head for good
+# B30 D1: the allow-list. Every status of a re-decidable row must be named here; the runner's STATUSES and the contexts' verdicts are open-ended
+REDECIDE_OVERALL = ("BLOCKED", "ERROR")
+REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")   # a context the host did not name
+REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")       # a context named in host_no_verdict (the pair local_side maps it from)
+REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")   # plus ERROR when a host no-verdict is on the row
 
 
 # B30: the texts of the merger's OWN driver failing (gate_run); the seal/binding mismatch (tamper evidence) and a TickTimeout also write overall ERROR and are not here
@@ -267,21 +273,22 @@ DRIVER_ERRORS = ("runner plan failed", "the runner printed no seal", "runner sta
 
 
 def transient_reasons(r: dict) -> list:
-    """B30 D1: why a non-replay decision is a TRANSIENT local no-verdict (the host or the driver, never the candidate), else []. A FAIL
-    anywhere (overall, context or check), a gate_pending BLOCKED, a context BLOCKED by policy (a rewritten judge, a non-executed mapping)
-    and a context ERROR the host did not name are verdicts or candidate-attributable: the runner maps a candidate's crash, hang and
-    collection error to ERROR too, and the row carries no per-check attribution, so retrying them would be retry-until-green. INTERRUPTED
-    is not transient either: its only source is the merger's run budget, which a hanging late check exhausts. An overall ERROR counts only
-    for the driver's own failure texts: a seal mismatch is tamper evidence and a TickTimeout is not a no-verdict of the host."""
-    ctx = r.get("contexts") if isinstance(r.get("contexts"), dict) else {}
-    host = r.get("host_no_verdict") if isinstance(r.get("host_no_verdict"), dict) else {}
-    rest = [v for k, v in ctx.items() if k not in host]
-    checks = r.get("checks") if isinstance(r.get("checks"), dict) else {}
-    if (r.get("replay") or r.get("gate_pending") is True or r.get("overall") == "FAIL" or r.get("non_executed")
-            or any(v in ("FAIL", "BLOCKED", "ERROR") for v in rest) or "FAIL" in checks.values()):
+    """B30 D1, an ALLOW-LIST: why a non-replay decision is a TRANSIENT local no-verdict (the host or the driver, never the candidate), else [].
+    A row is re-decidable only when EVERY term is in an enumerated set (REDECIDE_*): anything not listed, a status the runner adds later
+    included, is NOT re-decidable. A deny-list failed three rounds running, each time on a status nobody had listed (INTERRUPTED, RUNNING,
+    STALE beside a host no-verdict): a candidate's own hang or crash decided again is retry-until-green. The runner maps a candidate's
+    crash, hang and collection error to ERROR and the run budget leaves INTERRUPTED, and the row carries no per-check attribution."""
+    ctx, host, checks = (r.get(k) if r.get(k) is not None else {} for k in ("contexts", "host_no_verdict", "checks"))
+    if not (isinstance(ctx, dict) and isinstance(host, dict) and isinstance(checks, dict)):
         return []
     err = r.get("error")
-    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR" and isinstance(err, str) and err.startswith(DRIVER_ERRORS))) if hit]
+    driver = isinstance(err, str) and err.startswith(DRIVER_ERRORS)
+    if (r.get("replay") or r.get("gate_pending") is True or r.get("non_executed") or r.get("overall") not in REDECIDE_OVERALL
+            or (r.get("overall") == "ERROR" and not driver)
+            or any(v not in (REDECIDE_HOST_CTX if k in host else REDECIDE_CTX) for k, v in ctx.items())
+            or any(v not in (REDECIDE_CHECK + (("ERROR",) if host else ())) for v in checks.values())):
+        return []
+    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR")) if hit]
 
 
 def gh_pages(path: str, key: str | None = None) -> list:
@@ -358,7 +365,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     ``gate_ready`` says its verdict is posted (a failed read, or no callable, defers it); it is appended to ``deferred``.
 
     B30: a key whose NEWEST non-replay decision is a transient local no-verdict (``transient_reasons``) is decided again at the same
-    base: at most ``REDECIDE_CAP`` transient decisions per key (past it: appended to ``redecide_capped``), not before
+    base: at most ``REDECIDE_CAP`` transient decisions per key within ``REDECIDE_WINDOW_S`` (past it: appended to ``redecide_capped``), not before
     ``REDECIDE_BACKOFF_S`` times the count since the last decision, and a ``host_disk`` one only when ``host_free_gb`` is measured and at
     least ``start_floor_gb``. The PR comes back as a copy carrying ``_redecide = {reason, attempt}`` and sorts as an attempted head."""
     now = time.time() if now_s is None else now_s
@@ -378,7 +385,9 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
         if r.get("kind") == "decision" and not r.get("replay"):
             k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))
             why = transient_reasons(r)
-            redec[k] = [redec.get(k, [0])[0] + bool(why), why, r.get("ts")]
+            ts = r.get("ts")
+            counts = bool(why) and (not is_ts(ts) or now - _epoch(ts) <= REDECIDE_WINDOW_S)   # an unreadable ts counts: it fails closed toward the cap
+            redec[k] = [redec.get(k, [0])[0] + counts, why, ts]
     last: dict = {}
     evictions: Counter = Counter()
     evicted_ts: dict = {}   # B30: key -> its newest readable eviction ts (the backoff counts from it too)
