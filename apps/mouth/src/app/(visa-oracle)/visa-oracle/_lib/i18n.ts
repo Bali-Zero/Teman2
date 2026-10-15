@@ -1481,7 +1481,8 @@ const id: Record<Keys, string> = {
     "Untuk jalur perusahaan, cabang, atau anak perusahaan, halaman resmi meminta komitmen dalam 90 hari sejak masuk ke Indonesia; untuk investasi pasar modal, halaman resmi meminta bukti bahwa Anda sudah memilikinya. Jika Anda tidak mengetahui batas minimum tersebut, jawab tidak: Oracle tidak pernah menganggapnya terpenuhi.",
   "why.investment_meets_threshold":
     "Hanya jawaban ya atau tidak Anda yang dipakai di sini. Tidak ada jumlah yang ditampilkan atau diasumsikan di sini.",
-  "q.unit.idr": "Rp",
+  // Rendered AFTER the number (QuestionScreen suffix span): "Rp" would read "10.000.000.000 Rp".
+  "q.unit.idr": "IDR",
   "q.unit.usd": "USD",
   "q.unit.usd_month": "USD per bulan",
   "q.unit.usd_year": "USD per tahun",

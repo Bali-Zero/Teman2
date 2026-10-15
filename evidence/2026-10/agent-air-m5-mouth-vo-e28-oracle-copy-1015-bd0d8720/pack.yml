@@ -8,7 +8,7 @@ mission: >-
 lanes:
   - lane: oracle-copy
     role: build
-    seat: claude-sonnet-5-5 implementer (worktree mouth-vo-e28-oracle-copy-1015; commit trailers carry the roster label Claude Opus 5.5 required by the task).
+    seat: claude-sonnet-5 implementer (worktree mouth-vo-e28-oracle-copy-1015; commit trailers carry the roster label Claude Opus 5.5 required by the task).
 pii_scan: clean
 bites:
   consumer: >-
@@ -22,21 +22,26 @@ spend:
   adversarial_rounds: 0
   paid_api: none
 results:
-  - claim: "Whole visa-oracle mouth suite."
+  - claim: "Whole visa-oracle mouth suite on the first commits (BEFORE the red-team fix commit)."
     cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
-    result: "Test Files 62 passed (62); Tests 1740 passed (1740) after the red-team fix commit (run at loadavg 13.99, over the quiet-window bound, no vitest of another seat running)"
+    result: "Test Files 62 passed (62); Tests 1738 passed (1738)"
     exit: 0
-    ts: "2026-10-15T23:26:28Z"
+    ts: "2026-10-15T15:26:28Z"
+  - claim: "Whole visa-oracle mouth suite after the red-team fix commit (run at loadavg 13.99, over the quiet-window bound; no vitest of another seat running)."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 62 passed (62); Tests 1740 passed (1740)"
+    exit: 0
+    ts: "2026-10-15T15:49:00Z"
   - claim: "Mutation: STAY_PERMIT_LENGTH_DAYS without 730 turns the E28A length tests red (cp backup, restored)."
     cmd: cd apps/mouth && npx vitest run OutcomeSheet.duration.test.tsx engine-adapter.test.ts
     result: "3 failed, 238 passed (E28A EN, E28A ID, adapter guilt row)"
     exit: 1
-    ts: "2026-10-15T23:30:00Z"
+    ts: "2026-10-15T15:30:00Z"
   - claim: "Mutation 2 (red-team fix): the 90-day commitment put back onto the E28C reason turns the E28C test red (cp backup, restored)."
     cmd: cd apps/mouth && npx vitest run copy-truth.test.ts
     result: "1 failed, 93 passed"
     exit: 1
-    ts: "2026-10-15T23:55:00Z"
+    ts: "2026-10-15T15:55:00Z"
 decisions:
   - id: D-no-figures
     decision: "Golden Visa reasons name no US dollar figure and point to the per-code official page; the figures wait for source records in the pack."
@@ -45,5 +50,7 @@ decisions:
   - id: D-e28c-no-90-days
     decision: "The E28C page asks proof of ownership of the instruments; its 90 days is the visa validity. The threshold question is route-neutral and the 90-day commitment sits in the hint for the company, branch and subsidiary routes only."
   - id: D-lint-brief-ref
-    decision: "evidence_pack_lint reports brief_ref evidence/brief.yml unresolved locally; CI stages that file. Run as CI does by copying brief.yml to evidence/brief.yml temporarily, then removing the copy."
+    decision: "evidence_pack_lint reports brief_ref evidence/brief.yml unresolved locally; CI stages that file. Linted with brief.yml copied to evidence/brief.yml temporarily (copy removed): clean when run without the changed-files inputs. With them, the ground_truth check (rules 9b-c) is not exercised here; CI lints the pack only at gear 3, and this PR stays gear 2 (floor 2)."
+  - id: D-process-amend
+    decision: "One unpushed commit was amended once (an observer test-title match fixed after the red-team fix commit); nothing had been pushed."
 dissent: []

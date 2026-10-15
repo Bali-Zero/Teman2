@@ -1219,7 +1219,7 @@ describe("natural Bahasa Indonesia in the investor interview and confirmation sc
       "q.investment_amount_usd.hint",
       "Masukkan jumlah dolar bulat yang tepat dan dapat Anda dukung dengan bukti.",
     ],
-    ["q.unit.idr", "Rp"],
+    ["q.unit.idr", "IDR"],
     ["confirmation.group.details", "Detail rencana Anda"],
   ] as const)("%s reads %j", (key, expected) => {
     expect(dict.id[key]).toBe(expected);

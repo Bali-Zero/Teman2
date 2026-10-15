@@ -210,8 +210,8 @@ describe("OutcomeSheet — stay-permit duration under the price", () => {
 
   // F6 (2026-10-15): E28A is a pack FIXED_DAYS 730..730 product with no
   // duration options; its card names the 2-year permit (sold as 2 years only)
-  // and, because the pack's 365x100 extension is unsourced, says nothing of
-  // renewal.
+  // and, for a plan beyond 730 days, the longer-stay renewal line (the E28A
+  // page states the permit is extendable).
   describe("E28A: a fixed 730-day stay_policy names the 2-year permit, with the renewal line for a longer plan", () => {
     const e28a = {
       stay_policy: {

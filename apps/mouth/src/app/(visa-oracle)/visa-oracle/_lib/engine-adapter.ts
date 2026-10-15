@@ -2422,9 +2422,10 @@ function documents(candidate: VisaOracleCandidateDisplay): OutcomeDocument[] {
   return result;
 }
 
-// 730 = E28A, sold as a 2-year permit only (owner ruling 2026-10-15). The pack's
-// 365x100 extension for it is unsourced, so no renewal line follows (see
-// STAY_PERMIT_RENEWAL_COPY, keyed by 365:5 alone).
+// 730 = E28A, sold as a 2-year permit only (owner ruling 2026-10-15). It gets no
+// per-extension sentence (STAY_PERMIT_RENEWAL_COPY is keyed by 365:5 alone), but
+// a plan beyond 730 days gets the longer-stay renewal line, true because the
+// E28A page states the permit is extendable.
 const STAY_PERMIT_LENGTH_DAYS = new Set([365, 730, 1825]);
 
 export const STAY_PERMIT_RENEWAL_COPY: Readonly<Record<string, LocalizedText>> =

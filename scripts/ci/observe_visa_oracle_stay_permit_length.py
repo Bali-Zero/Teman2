@@ -6,7 +6,7 @@
 # can name a program to run, a file to write, or a database to reach (the bar
 # `scripts/ci/bites_parse.py::_guard_observable_script` sets).
 
-The consumer is the public Visa Oracle result page. The observation runs three
+The consumer is the public Visa Oracle result page. The observation runs four
 Vitest files from `apps/mouth` and requires every test in each to pass:
 
 * engine-response.test.ts — the runtime guard reads `stay_policy` on every display
@@ -16,6 +16,8 @@ Vitest files from `apps/mouth` and requires every test in each to pass:
   extension, the longer-stay sentence only inside the pack's renewal coverage, and the
   signed-pack E28A (730) renders its 2-year length and the longer-stay renewal line (page: extendable); E30A, BRIDGING and A1
   render no length, renewal or raw code;
+* OutcomeSheet.duration.test.tsx — E28A's fixed 730-day stay renders the 2-year permit, and the
+  longer-stay renewal line for a 1000-day plan, EN and ID;
 * OutcomeSheet.test.tsx — the sheet and the share summary carry the same wording, EN and ID.
 
 Exit 0 only if Vitest reports each file passed with zero failures and every required
