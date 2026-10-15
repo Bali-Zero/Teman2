@@ -47,6 +47,8 @@ B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "t
         "no_candidate_image_means_unknown_and_todays_rule", "an_exception_in_the_keeper_is_unknown_never_a_crash",
         "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones",
         "a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown", "the_python_prefix_of_the_job_is_part_of_the_recomputed_tag")
+# B30: a transient local no-verdict is decided again at the same base
+RD = ("scripts/localci/tests/test_redecide.py",)
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -255,6 +257,23 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
     "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
     "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"] or im["tag"] in main:', 'elif top is None or im["created"] is None or im["tag"] in main:', (PRUNE_T,)),
+    "b30-fail-overall-redecided": (PY, 'or r.get("overall") == "FAIL" or r.get("non_executed")', 'or r.get("non_executed")', RD),
+    "b30-fail-context-redecided": (PY, 'any(v in ("FAIL", "BLOCKED") for v in rest)', 'any(v in ("BLOCKED",) for v in rest)', RD),
+    "b30-policy-blocked-redecided": (PY, 'any(v in ("FAIL", "BLOCKED") for v in rest)', 'any(v in ("FAIL",) for v in rest)', RD),
+    "b30-non-executed-redecided": (PY, 'or r.get("non_executed") or', 'or', RD),
+    "b30-gate-pending-redecided": (PY, 'if r.get("replay") or r.get("gate_pending") is True or', 'if r.get("replay") or', RD),
+    "b30-cap-off": (PY, "            if st[0] >= REDECIDE_CAP:", "            if False:", RD),
+    "b30-cap-not-reported": (PY, "                    redecide_capped.append(pr)", "                    pass", RD),
+    "b30-backoff-ignored": (PY, "if not is_ts(st[2]) or now - _epoch(st[2]) < REDECIDE_BACKOFF_S * st[0]:", "if not is_ts(st[2]):", RD),
+    "b30-backoff-flat": (PY, "REDECIDE_BACKOFF_S * st[0]:", "REDECIDE_BACKOFF_S:", RD),
+    "b30-host-precondition-ignored": (PY, 'if "host_disk" in st[1] and not (host_free_gb is not None and host_free_gb >= start_floor_gb):', "if False:", RD),
+    "b30-unmeasured-host-due": (PY, "not (host_free_gb is not None and host_free_gb >= start_floor_gb)", "not (host_free_gb is None or host_free_gb >= start_floor_gb)", RD),
+    "b30-floor-exclusive": (PY, "host_free_gb >= start_floor_gb)", "host_free_gb > start_floor_gb)", RD),
+    "b30-older-reasons-carry": (PY, 'redec[k] = [redec.get(k, [0])[0] + bool(why), why, r.get("ts")]', 'redec[k] = [redec.get(k, [0, []])[0] + bool(why), why or redec.get(k, [0, []])[1], r.get("ts")]', RD),
+    "b30-attempt-off-by-one": (PY, '"attempt": st[0] + 1}', '"attempt": st[0]}', RD),
+    "b30-redecide-not-journalled": (PY, '        rec["redecide"] = redecide', "        pass", RD),
+    "b30-redecide-not-passed-to-decide": (PY, 'redecide=todo[0].get("_redecide"))', "redecide=None)", RD),
+    "b30-host-not-passed-to-triage": (PY, "host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)", "host_free_gb=None, start_floor_gb=a.min_host_free_gb)", RD),
     "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
     # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
     "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),

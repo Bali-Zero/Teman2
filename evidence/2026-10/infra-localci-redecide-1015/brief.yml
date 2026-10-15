@@ -1,0 +1,48 @@
+task_id: infra-localci-redecide-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B30, must land before the phase F flip. Measured on Pro's journal
+  since 2026-10-09: 32 of 107 PR decisions (about 5 a day) ended in a
+  TRANSIENT local no-verdict (host_disk 21 decisions / 15 PRs, overall ERROR
+  10 / 5, runner or driver context ERROR 7, deps build 1, run-budget
+  INTERRUPTED 1). triage() keys decided on (pr, head, base) and re-decides
+  only gate_pending, so today a new base heals the key, but after the flip
+  main moves only when LocalCI merges and a queue of heads stuck on
+  transient no-verdicts is a permanent stall. Rule: a key whose newest
+  non-replay decision is transient (no FAIL anywhere, no policy-BLOCKED
+  context, no gate_pending; host_no_verdict, ERROR or INTERRUPTED) is decided
+  again at the same base, at most REDECIDE_CAP (3) transient decisions,
+  REDECIDE_BACKOFF_S (600) times the count apart, host_disk only while the
+  tick's measured host free GB is at least the start floor. The new row
+  carries redecide {reason, attempt}; a key past the cap is journalled once
+  as skipped redecide_cap.
+acceptance:
+  - text: >-
+      Each transient class is decided again; a FAIL, a policy BLOCKED, a
+      non-executed mapping, a gate_pending and a verdict never are; the cap,
+      the backoff and the host precondition hold; host_disk then a recovered
+      floor gives exactly one more decision and the second stands.
+    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py
+  - text: >-
+      The tick passes its measured host free GB to the triage, journals the
+      redecide row and the cap skip once.
+    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py -k tick
+assumptions:
+  - text: >-
+      The 17 b30 mutants are all killed.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '$1 ~ /^b30-/ {print $1}')
+residual:
+  - text: >-
+      The deps-image build failure (1 of the 32) is journalled as a context
+      BLOCKED with free text, which the row cannot tell from a policy BLOCKED;
+      it stays out of the class. Audit class 11 (decide again once when
+      code_sha changes, for keys whose no-verdict a since-merged cure
+      explains) needs a per-cure attribution the journal does not carry:
+      documented follow-up, not part of B30.
+  - text: >-
+      B28 (PR-first in the gate) is not in this tree. A key due again sorts as
+      an attempted head, behind every head never decided, and leaves the
+      replay alternation alone, so it competes like any attempted PR.
