@@ -694,7 +694,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
-    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("deprecated_flag"))] + (["images"] if errors else [])
+    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("deprecated_flag"))] + (["images"] if errors else []) \
+        + (["runs"] if rec.get("runs", {}).get("errors") else [])   # B26: a prune that keeps failing to compress or clean is not green
     if rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:
         rec["failed"].append("vm_discard")
     return rec
