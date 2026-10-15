@@ -262,11 +262,17 @@ REDECIDE_CAP = 3          # B30: transient local no-verdicts of one (pr, head, b
 REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times its transient decisions so far after the last decision
 
 
+# B30: the texts of the merger's OWN driver failing (gate_run); the seal/binding mismatch (tamper evidence) and a TickTimeout also write overall ERROR and are not here
+DRIVER_ERRORS = ("runner plan failed", "the runner printed no seal", "runner status failed", "status.json unreadable")
+
+
 def transient_reasons(r: dict) -> list:
     """B30 D1: why a non-replay decision is a TRANSIENT local no-verdict (the host or the driver, never the candidate), else []. A FAIL
     anywhere (overall, context or check), a gate_pending BLOCKED, a context BLOCKED by policy (a rewritten judge, a non-executed mapping)
     and a context ERROR the host did not name are verdicts or candidate-attributable: the runner maps a candidate's crash, hang and
-    collection error to ERROR too, and the row carries no per-check attribution, so retrying them would be retry-until-green."""
+    collection error to ERROR too, and the row carries no per-check attribution, so retrying them would be retry-until-green. INTERRUPTED
+    is not transient either: its only source is the merger's run budget, which a hanging late check exhausts. An overall ERROR counts only
+    for the driver's own failure texts: a seal mismatch is tamper evidence and a TickTimeout is not a no-verdict of the host."""
     ctx = r.get("contexts") if isinstance(r.get("contexts"), dict) else {}
     host = r.get("host_no_verdict") if isinstance(r.get("host_no_verdict"), dict) else {}
     rest = [v for k, v in ctx.items() if k not in host]
@@ -274,8 +280,8 @@ def transient_reasons(r: dict) -> list:
     if (r.get("replay") or r.get("gate_pending") is True or r.get("overall") == "FAIL" or r.get("non_executed")
             or any(v in ("FAIL", "BLOCKED", "ERROR") for v in rest) or "FAIL" in checks.values()):
         return []
-    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR"),
-                                 ("interrupted", (r.get("overall") == "INTERRUPTED" or "INTERRUPTED" in checks.values()) and "ERROR" not in checks.values())) if hit]
+    err = r.get("error")
+    return [why for why, hit in (("host_disk", bool(host)), ("error", r.get("overall") == "ERROR" and isinstance(err, str) and err.startswith(DRIVER_ERRORS))) if hit]
 
 
 def gh_pages(path: str, key: str | None = None) -> list:

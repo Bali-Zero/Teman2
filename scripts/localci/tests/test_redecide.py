@@ -13,7 +13,7 @@ HOST = {"host_no_verdict": {"ctx.e2e-tests": "host_disk_below_floor"}, "contexts
 
 
 def dec(head=H1, base=B1, ts=T0, **kw):
-    return {"kind": "decision", "pr": 1, "head_sha": head, "base_sha": base, "ts": ts, "overall": "ERROR", **kw}
+    return {"kind": "decision", "pr": 1, "head_sha": head, "base_sha": base, "ts": ts, "overall": "ERROR", "error": "runner plan failed (merger.log)", **kw}
 
 
 def run(recs, prs=None, **kw):
@@ -24,8 +24,9 @@ def run(recs, prs=None, **kw):
 
 @pytest.mark.parametrize("rec,reason", [
     (dec(), "error"),                                                                   # overall ERROR
-    (dec(overall="INTERRUPTED"), "interrupted"),                                        # the run budget
-    (dec(overall="BLOCKED", checks={"x": "INTERRUPTED"}), "interrupted"),
+    (dec(error="the runner printed no seal (merger.log): nothing vouches for its status"), "error"),
+    (dec(error="runner status failed (merger.log)"), "error"),
+    (dec(error="status.json unreadable: [Errno 2]"), "error"),
     (dec(**HOST), "host_disk"),
 ])
 def test_each_transient_class_is_decided_again_at_the_same_base(rec, reason):
@@ -52,8 +53,16 @@ def test_each_transient_class_is_decided_again_at_the_same_base(rec, reason):
     dec(overall="BLOCKED", checks={"x": "INTERRUPTED", "y": "ERROR"}),                  # a candidate timeout beside a run-budget interruption
     dec(overall="ERROR", contexts={"ctx.a": "FAIL"}),                                   # a FAIL context under a transient overall
     dec(overall="INTERRUPTED", contexts={"ctx.a": "FAIL"}),
-    dec(overall="BLOCKED", gate_pending=True, gate_pending_contexts=["x"], host_no_verdict={"ctx.e2e-tests": "host_disk_below_floor"}, contexts={"ctx.e2e-tests": "ERROR"}),     # gate_pending beside a host no-verdict
-    dec(overall="INTERRUPTED", gate_pending=True),
+    dec(overall="BLOCKED", gate_pending=True, host_no_verdict={"ctx.e2e-tests": "host_disk_below_floor"}, contexts={"ctx.e2e-tests": "ERROR"}),     # gate_pending beside a host no-verdict
+    dec(overall="INTERRUPTED"),                                                         # the run budget: a hanging late check exhausts it, so it is not a host no-verdict
+    dec(overall="BLOCKED", checks={"x": "INTERRUPTED"}),
+    dec(overall="BLOCKED", contexts={"ctx.visa-oracle-smoke": "BLOCKED", "ctx.b": "PASS"}, checks={"smoke": "INTERRUPTED", "a": "PASS"}),   # the #8523 shape: the late check SIGTERMed at the budget
+    dec(overall="BLOCKED", checks={"a": "PASS", "smoke": "INTERRUPTED"}, contexts={"ctx.a": "PASS", "ctx.smoke": "INTERRUPTED"}),
+    dec(error="status.json is bound to ('a', 'b', 'c'), not to this candidate, base and seal"),   # a seal mismatch is tamper evidence
+    dec(error="tick exceeded --tick-timeout 3600s"),                                    # a TickTimeout is not a host no-verdict
+    dec(error=None),
+    dec(error="some other MergerError"),
+    dec(error=42),
     dec(overall="ERROR", checks={"x": "FAIL"}),                                         # L1: a FAIL check is a verdict
     dec(overall="INTERRUPTED", checks={"x": "FAIL", "y": "INTERRUPTED"}),
     dec(overall="BLOCKED", **{"host_no_verdict": {"ctx.a": "host_disk_full"}, "contexts": {"ctx.a": "ERROR", "ctx.b": "ERROR"}}),   # host plus a candidate-side ERROR
@@ -176,3 +185,9 @@ def test_a_replay_row_after_a_transient_decision_neither_hides_nor_counts_it():
     assert [p["_redecide"]["attempt"] for p in todo] == [2]
     todo, capped = run([dec(), dec(), replay, replay])
     assert [p["_redecide"]["attempt"] for p in todo] == [3] and capped == []
+
+
+def test_a_plan_timeout_is_a_driver_no_verdict_and_a_seal_mismatch_is_not():
+    assert run([dec(error="runner plan failed (merger.log)")])[0] != []
+    assert run([dec(error="status.json is bound to (None, None, None), not to this candidate, base and seal")])[0] == []
+    assert run([dec(error="tick exceeded --tick-timeout 3600s")])[0] == []
