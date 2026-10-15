@@ -1231,12 +1231,18 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
     # B31: the label read-back and the pre-flip census
-    "lc-census-lists-valid": ("scripts/localci/label_census.py", "        if reason:\n            rows.append", "        if True:\n            rows.append", ("scripts/localci/tests/test_label_census.py",)),
-    "lc-census-includes-unarmed": ("scripts/localci/label_census.py", 'not (p.get("autoMergeRequest") or p.get("isInMergeQueue") or has_label)', "False", ("scripts/localci/tests/test_label_census.py",)),
-    "lc-census-lists-drafts": ("scripts/localci/label_census.py", 'if p.get("isDraft") or not (', "if not (", ("scripts/localci/tests/test_label_census.py",)),
-    "lc-verify-invalid-exits-zero": ("scripts/localci/label_census.py", 'if a.quiet else sys.stdout)\n                return 1', 'if a.quiet else sys.stdout)\n                return 0', ("scripts/localci/tests/test_label_census.py",)),
-    "lc-unreadable-exits-zero": ("scripts/localci/label_census.py", 'file=sys.stderr)\n        return 2', 'file=sys.stderr)\n        return 0', ("scripts/localci/tests/test_label_census.py",)),
-    "lc-census-first-page-only": ("scripts/localci/label_census.py", 'if not info.get("hasNextPage"):', "if True:", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-census-lists-valid": ("scripts/localci/label_census.py", "        if reason:\n            rows.append", "        if True:\n            rows.append", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-census-includes-unarmed": ("scripts/localci/label_census.py", 'not (p.get("autoMergeRequest") or p.get("isInMergeQueue") or has_label)', "False", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-census-lists-drafts": ("scripts/localci/label_census.py", 'if p.get("isDraft") or not (', "if not (", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-verify-invalid-exits-zero": ("scripts/localci/label_census.py", 'if a.quiet else sys.stdout)\n                return 1', 'if a.quiet else sys.stdout)\n                return 0', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-unreadable-exits-zero": ("scripts/localci/label_census.py", 'file=sys.stderr)\n        return 2', 'file=sys.stderr)\n        return 0', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-lc-census-first-page-only": ("scripts/localci/label_census.py", 'if not info.get("hasNextPage"):', "if True:", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-valid-label-rewritten": ("scripts/signal_merge_intent.sh", 'if ! verify_label >/dev/null; then', 'if true; then', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-no-readback-after-write": ("scripts/signal_merge_intent.sh", '    out="$(verify_label)" && return 0\n', '    return 0\n', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-no-retry": ("scripts/signal_merge_intent.sh", 'for ((i = 1; i <= TRIES; i++)); do\n    rc=0', 'for ((i = 1; i <= 1; i++)); do\n    rc=0', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-failed-label-exit-0-queue-absent": ("scripts/signal_merge_intent.sh", '  [ "$label" = applied ] && exit 0\n  exit 2', '  exit 0', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-sh-failed-label-exit-0-queue-present": ("scripts/signal_merge_intent.sh", 'arm=armed"\n[ "$label" = applied ] && exit 0\nexit 2', 'arm=armed"\nexit 0', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-docs-guardian-swallows-helper": ("scripts/docs_guardian.sh", 'if ! INTENT_OUT=$(scripts/signal_merge_intent.sh "$PR_NUM" 2>&1); then', 'scripts/signal_merge_intent.sh "$PR_NUM" || true\n    if false; then', ("scripts/localci/tests/test_label_census.py",)),
 }
 
 
@@ -1245,6 +1251,8 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh"):   # B31: the helper, its probe and its shell table
+        shutil.copy2(ROOT / rel, dest / rel)
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)

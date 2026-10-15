@@ -11,7 +11,7 @@ objective: >-
   SIGNAL_INTENT_FAIL when the label is not shown valid, queue or no queue; docs_guardian.sh no longer swallows it
   (|| true, now stderr, notification and exit 1) and a test refuses that spelling in any caller; the poller alerts on
   exit 2. label_census.py census lists, read-only, every open armed PR without a valid label (live on 2026-10-15: 7,
-  incl. #8530 and #8540). label_privileged is untouched. The auto-publish PRs (#8530-#8532) never reached the helper:
+  incl. #8530 and #8542 at the last run). label_privileged is untouched. The auto-publish PRs (#8530-#8532) never reached the helper:
   backend-rag's GitHubPublisher creates the PR and calls enablePullRequestAutoMerge only.
 residuals:
   - >-
@@ -19,4 +19,4 @@ residuals:
     /repos/{o}/{r}/issues/{n}/labels after the PR exists, with its own token (actor Balizero1987, admin) and read the B2a
     condition back. Not in this PR, because a backend-rag merge is a Fly deploy. Until then the census names those PRs.
   - queue_shepherd.py deliberately never labels after the flip (an admin's label removal must stay a stop); not changed.
-  - The live census and the helper are exercised by fakes in tests; the live read was one census call.
+  - The live census and the helper are exercised by fakes in tests; the live read was one census call. Mutants b31-lc-* (census) and b31-sh-* / b31-docs-guardian-* (helper, caller) are replayable in merger_mutants.py: 12/12 killed.

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -98,3 +99,10 @@ def test_no_caller_swallows_the_helpers_exit():
             if "signal_merge_intent.sh" in line and not line.lstrip().startswith("#") and re.search(r"\|\|\s*(true|:)\b", line):
                 swallowed.append(f"{path.relative_to(root)}:{i}")
     assert not swallowed, swallowed
+
+
+def test_the_signal_merge_intent_shell_suite_passes():
+    """B31 L1: the guilt/innocence table of the helper (valid left alone, stale refreshed, bounded retry, read-back, exit 2) lives in shell."""
+    root = Path(__file__).resolve().parents[3]
+    run = subprocess.run(["bash", str(root / "scripts/tests/test_signal_merge_intent.sh")], capture_output=True, text=True, timeout=300)
+    assert run.returncode == 0, run.stdout[-1500:] + run.stderr[-500:]
