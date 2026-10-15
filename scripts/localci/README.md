@@ -805,6 +805,14 @@ healthy for ever.
 - `merger.py`, `runner.py`, `prune.py`, the plist, the lease, the gate and every verdict are untouched. Deploy: the wrapper is a declared home-fork pair; replace the live copy with temp file + `mv`, then `cmp -s` against `origin/main`. The predicate needs no deploy.
 - Observation (Bites): consecutive work ticks whose next `merger_tick:` start line comes under 120 s after the previous tick's end, each printing `chain depth=N`, and decisions a day against the 10-15 baseline (10-15).
 
+### B33 S2 — what each sandbox costs, in the receipt
+
+Every candidate container the runner starts leaves a probe in the check's receipt (`result.sandbox`, or `sandbox` on each `result.jobs[]` row): `t_create`, `t_copy_in`, `t_start_to_exit`, `t_junit`, `t_remove` (host monotonic seconds), `mem_peak_bytes` (the trusted side runs `docker stats --no-stream` every 2 s while the container runs and keeps the maximum; the candidate never writes it), `disk_rw_bytes` (`docker ps -s` before the removal) and `sampler_error`. It is data: no verdict function reads it, and a sampler failure is a `null` plus a string, never a status. `LOCALCI_SANDBOX_SAMPLER=0` in the environment turns the `docker stats` / `docker ps -s` reads off (the phase times stay).
+
+    python3 scripts/localci/capacity_report.py ~/.nuzantara-pilots/local-ci/merger/runs     # per context: n, p95 mem, p95 disk, p95 setup, p95 copy-in
+
+Consumer: whoever sizes B33 S3's `resources:` declarations (p95 + 25 %) and prices S4 from the copy-in. Spec: `docs/specs/localci-sovereign-2026-10-07.md` (B33 S2, M1-M7).
+
 The merger runs the BASE runner with its OWN coordinator venv, `~/.nuzantara-pilots/local-ci/merger/venv` (the plist's
 `MERGER_PYTHON`): the runner fingerprints the coordinator's `pip freeze` into every receipt, and a shared venv that another job
 updates mid-run turns every PASS receipt STALE at `status` time (measured on the backend-rag venv, 2026-10-07). Install
