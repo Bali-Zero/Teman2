@@ -57,6 +57,34 @@ def _iter_service_rows(
                 yield category, key, row
 
 
+LEGACY_COMPANY_ICON_PREFIX = "company-"
+
+
+def build_legacy_company_services(
+    company_services: dict[str, Any],
+) -> dict[str, Any]:
+    """Legacy ``company_services`` map keyed by ``icon_id``.
+
+    Only ``company-*`` icons belong here (the convention the mouth reader
+    ``getCompanyServicePrice`` relies on); rows that share another icon
+    (``other-domicile``, ``other-skck``) are reachable through
+    ``services_by_category`` and would otherwise overwrite each other.
+    """
+    legacy: dict[str, Any] = {}
+    for name, svc in company_services.items():
+        icon = svc.get("icon_id")
+        if not icon or not icon.startswith(LEGACY_COMPANY_ICON_PREFIX):
+            continue
+        if icon in legacy:
+            raise ValueError(f"duplicate legacy company_services icon_id: {icon}")
+        legacy[icon] = {
+            "name": svc.get("name", name),
+            "price": svc.get("price"),
+            "icon_id": icon,
+        }
+    return legacy
+
+
 def build_payload() -> dict[str, Any]:
     src = json.loads(SRC.read_text(encoding="utf-8"))
     company_services = src["services"]["company_services"]
@@ -73,15 +101,7 @@ def build_payload() -> dict[str, Any]:
         "company_services": {},
         "services_by_category": {},
     }
-    for name, svc in company_services.items():
-        icon = svc.get("icon_id")
-        if not icon:
-            continue
-        out["company_services"][icon] = {
-            "name": svc.get("name", name),
-            "price": svc.get("price"),
-            "icon_id": icon,
-        }
+    out["company_services"] = build_legacy_company_services(company_services)
     for category, key, svc in _iter_service_rows(src["services"]):
         category_rows = out["services_by_category"].setdefault(category, {})
         if key in category_rows:
