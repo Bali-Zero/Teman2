@@ -75,7 +75,7 @@ ogImage: "/static/insights/business/nib-oss-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "id"
-source_sha256: "11b3f881129285db32ae2067a617fedaefae640002911cca93362506f854d16d"
+source_sha256: "6580187321af7e46c4c1e3536994892f6bf31b35e43f5f8b9953bc6c3314aa3c"
 ---
 
 # NIB & Sistem OSS Indonesia 2026: Panduan Pendaftaran Lengkap
@@ -90,8 +90,8 @@ NIB (Nomor Induk Berusaha) melalui OSS (Online Single Submission) adalah gerbang
 - Nomor identifikasi bisnis Anda
 - Pengenal unik 13 digit
 - Menggantikan berbagai izin lama
-- Fondasi untuk semua perizinan lainnya
-- Diterbitkan seketika melalui OSS
+- Fondasi untuk semua izin lainnya
+- Diterbitkan secara instan melalui OSS
 
 NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses bea cukai dalam satu.
 
@@ -107,7 +107,7 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
   items={[
     {
       name: "Pendaftaran Perusahaan",
-      subtitle: "Masa lalu TDP",
+      subtitle: "Dulu TDP",
       values: {
         "Function": "Identitas bisnis",
         Previous: "Sertifikat TDP",
@@ -116,7 +116,7 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
     },
     {
       name: "ID Importir",
-      subtitle: "Masa lalu API",
+      subtitle: "Dulu API",
       values: {
         "Function": "Kelayakan impor",
         Previous: "API-U/API-P",
@@ -125,7 +125,7 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
     },
     {
       name: "Akses Bea Cukai",
-      subtitle: "Masa lalu NIK Kepabeanan",
+      subtitle: "Dulu NIK Kepabeanan",
       values: {
         "Function": "Penyederhanaan bea cukai",
         Previous: "Pendaftaran terpisah",
@@ -163,8 +163,8 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
         "Akta Pendirian Perusahaan",
         "SK Menkumham (Persetujuan Kementerian)",
         "KTP/Paspor Direktur dan NPWP",
-        "NPWP Perusahaan (jika sudah diterbitkan)",
-        "Kode KBLI ditentukan",
+        "NPWP Perusahaan (jika sudah terbit)",
+        "Kode KBLI yang ditentukan",
       ],
     },
     {
@@ -202,7 +202,7 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
       tips: [
         "Sesuaikan dengan aktivitas nyata",
         "Periksa pembatasan DNI",
-        "Mungkin memiliki beberapa kode",
+        "Mungkin menggunakan beberapa kode",
         "Utama vs sekunder",
       ],
     },
@@ -222,12 +222,12 @@ NIB berfungsi sebagai TDP (Pendaftaran Perusahaan), API (ID Importir), dan akses
       id: "submit",
       title: "Kirim & Dapatkan NIB",
       description: "Sistem menerbitkan NIB",
-      duration: "Seketika",
+      duration: "Instan",
       status: "final",
       tips: [
         "Periksa semua informasi",
         "Kirim aplikasi",
-        "NIB diterbitkan seketika",
+        "NIB diterbitkan secara instan",
         "Unduh sertifikat NIB",
       ],
     },
@@ -279,10 +279,10 @@ Setelah memasukkan KBLI, OSS menentukan tingkat risiko:
 
 | Level       | Persyaratan               | Pemrosesan      |
 | ----------- | -------------------------- | --------------- |
-| Rendah         | NIB saja                   | Seketika         |
-| Sedang-Rendah  | NIB + Sertifikat Standar   | Deklarasi sendiri    |
-| Sedang-Tinggi | NIB + Sertifikat Standar   | Verifikasi    |
-| Tinggi        | NIB + Izin                 | Penilaian penuh |
+| Rendah         | Hanya NIB                   | Instan          |
+| Sedang-Rendah  | NIB + Sertifikat Standar    | Deklarasi sendiri |
+| Sedang-Tinggi | NIB + Sertifikat Standar    | Verifikasi      |
+| Tinggi        | NIB + Izin                  | Penilaian penuh |
 
 ### Apa yang Menentukan Risiko?
 
@@ -290,7 +290,7 @@ Setelah memasukkan KBLI, OSS menentukan tingkat risiko:
 - Skala bisnis
 - Dampak lingkungan
 - Kesehatan dan keselamatan publik
-- Pertimbangan keamanan
+ Pertimbangan keamanan
 
 ---
 
@@ -332,14 +332,14 @@ Setelah memasukkan KBLI, OSS menentukan tingkat risiko:
     {
       id: "company-npwp",
       label: "NPWP Perusahaan",
-      description: "Jika sudah diterbitkan",
+      description: "Jika sudah terbit",
       required: false,
       category: "tax",
     },
     {
       id: "domicile",
       label: "Surat Domisili",
-      description: "Dari pemilik bangunan/kantor",
+      description: "Dari pemilik gedung/bangunan",
       required: true,
       category: "location",
     },
@@ -369,14 +369,14 @@ Setelah memasukkan KBLI, OSS menentukan tingkat risiko:
 1. **Unduh sertifikat NIB** - Simpan PDF
 2. **Periksa komitmen** - Tinjau kondisi apa pun
 3. **Ajukan izin sektoral** - Jika diperlukan oleh KBLI
-4. **Selesaikan lingkungan** - Jika ada komitmen yang ditunjukkan
+4. **Selesaikan aspek lingkungan** - Jika ada komitmen yang ditunjukkan
 5. **Aktifkan fungsi impor** - Jika diperlukan
 
 ### Kewajiban Berkelanjutan
 
 - **Pelaporan LKPM** - Laporan investasi kuartalan/semesteran
 - **Pembaruan data** - Ketika informasi berubah
-- **Perpanjangan izin** - Sebelum ada yang kadaluarsa
+- **Perpanjangan izin** - Sebelum ada yang kedaluwarsa
 - **Kepatuhan** - Dengan semua kondisi izin
 
 ---
@@ -390,16 +390,16 @@ Setelah memasukkan KBLI, OSS menentukan tingkat risiko:
 | AHU tidak sinkron   | Tunggu atau hubungi AHU        |
 | KBLI tidak ditemukan   | Gunakan kata kunci pencarian yang benar   |
 | Alamat ditolak    | Periksa format/koordinat   |
-| Error sistem     | Coba browser/waktu berbeda |
+| Kesalahan sistem     | Coba browser/waktu lain        |
 | Data tidak cocok    | Pastikan akta sesuai dengan input  |
 
 ### Cara Memperbaiki Kesalahan
 
-<InfoCard variant="tip" title="Mengganti NIB">
+<InfoCard variant="tip" title="Mendapatkan NIB Baru">
 Jika Anda melakukan kesalahan:
 
 1. **Perubahan kecil** - Perbarui melalui OSS
-2. **Perubahan KBLI** - Mungkin memerlukan amandemen akta terlebih dahulu
+2. **Perubahan KBLI** - Mungkin perlu amandemen akta terlebih dahulu
 3. **Perubahan alamat** - Perbarui dengan domisili baru
 4. **Perubahan kepemilikan** - Membutuhkan proses hukum terlebih dahulu
 
@@ -416,7 +416,7 @@ Selalu perbarui OSS ketika data perusahaan berubah.
 | Fitur              | Tujuan                   |
 | -------------------- | ------------------------- |
 | Pendaftaran NIB     | Pendaftaran bisnis baru   |
-| Aplikasi izin        | Izin sektoral             |
+| Ajukan izin          | Izin sektoral             |
 | Pelacakan komitmen  | Pantau persyaratan        |
 | Pelaporan LKPM      | Laporan investasi         |
 | Amandemen data      | Perbarui informasi        |
@@ -429,9 +429,9 @@ Selalu perbarui OSS ketika data perusahaan berubah.
 1. **Siapkan dokumen terlebih dahulu** - Pastikan semuanya siap
 2. **Gunakan browser Chrome** - Kompatibilitas terbaik
 3. **Internet stabil** - Hindari masalah timeout
-4. **Simpan progres** - Sistem bisa mengalami timeout
-5. **Screenshot semua hal** - Untuk arsip
-6. **Periksa ulang KBLI** - Pilihan yang sangat penting
+4. **Simpan progres** - Sistem bisa timeout
+5. **Screenshot semua** - Untuk arsip
+6. **Periksa KBLI dua kali** - Pilihan yang sangat penting
 7. **Baca komitmen** - Pahami kewajiban
 
 ---
@@ -443,8 +443,8 @@ Selalu perbarui OSS ketika data perusahaan berubah.
   placeholder="Tanya tentang NIB dan OSS..."
   suggestedQuestions={[
     "Berapa lama waktu yang dibutuhkan untuk mendapatkan NIB?",
-    "Bisakah saya mengubah KBLI setelah NIB?",
-    "Bagaimana jika sistem OSS mengalami kesalahan?",
+    "Apakah saya bisa mengubah KBLI setelah NIB?",
+    "Bagaimana jika sistem OSS memiliki kesalahan?",
     "Apakah saya perlu agen untuk OSS?",
   ]}
 />
@@ -453,6 +453,6 @@ Selalu perbarui OSS ketika data perusahaan berubah.
 
 ## Artikel Terkait
 
-- [Ringkasan Izin Usaha](/insights/business/business-licenses-overview)
+- [Ringkasan Izin Bisnis](/insights/business/business-licenses-overview)
 - [Panduan Setup PT PMA](/business/pt-pma-registration-guide)
-- [Izin Lingkungan](/insights/business/environmental-permits)
+- [Izin Lingkungan Hidup](/insights/business/environmental-permits)
