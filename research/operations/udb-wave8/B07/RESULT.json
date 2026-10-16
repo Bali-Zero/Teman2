@@ -1,113 +1,172 @@
 {
   "block_id": "B07",
   "campaign_id": "universal-db-wave8-20261015",
-  "dimensions": [
-    "D02",
-    "D11",
-    "D13"
-  ],
+  "dimensions": ["D02", "D11", "D13"],
   "status": "PARTIAL",
   "block_closed": false,
   "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "base_commit_time": "2026-10-15T07:06:22Z",
   "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
   "proofs": [
     {
-      "claim": "DR-B07-01 receipt keys: 199 SQL migrations_v2 files and 138 Python migrations (asserted by test_b07_lineage_invariants.py:142-143), plus alembic.ini pointing to script_location = backend/db/migrations where versions/ is absent on disk.",
-      "file": ".agent-receipts/udb-wave8-inputs/dux-requests/DR-B07-01.out",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "claim": "DR-B07-01 metadata fixture: 199 migrations_v2 SQL rows (unique numbers, full_sha256 and forward_sha256) and 138 Python migration rows. Every SQL full_sha256 and every Python sha256 equals the sha256 of the file at the base commit; at least one SQL row with a rollback section has full_sha256 != forward_sha256. Asserted by test_dux_receipts_dr01_and_dr05_pro_invariants. Disk-side only: says nothing about either production ledger.",
+      "file": "research/operations/udb-wave8/B07/fixtures/dr01.json",
+      "sha256": "9f92dddb911159d272d6bbc5fd88fd67a84cdbc4215249bf18566db755be211b",
+      "timestamp": "2026-10-15T08:55:00.474686Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "DR-B07-05.pro.out proves Mini and Pro launchctl states: com.nuzantara.outbox-prune and com.balizero.visa-retention-worker are NOT_LOADED on both Mini and Pro; only com.nuzantara.postgres-backup is loaded on Pro (exit 0).",
-      "file": ".agent-receipts/udb-wave8-inputs/dux-requests/DR-B07-05.pro.out",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "claim": "DR-B07-05 Pro projection (counts only, projected from source receipt sha256 58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3; symlink target redacted): host Nuzantara; ~/nuzantara is a DIRECTORY; ~/Desktop/nuzantara is a SYMLINK; crontab_lines_referencing_retention_worker=0; launchagent_plists_referencing_retention_worker=0; launchagent_plists_referencing_outbox_prune=2. Plist presence counts only: no load or run state is claimed.",
+      "file": "research/operations/udb-wave8/B07/fixtures/dr05-pro.txt",
+      "sha256": "fe38207f0b667d60556ce3815560516517d0621eb0bb7eaa7e998e2056b17b7e",
+      "timestamp": "2026-10-15T08:55:09Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "Static counterexample CE-01: fly-deploy.yml release_command runs python -m backend.db.migrate apply (consumer_id src_e98bb23501189d64 -> src_c8f206461cd9bf69), executing only SQL migrations and leaving Python MigrationManager (src_058ad32e4ad2e6a8) outside automatic release_command.",
-      "file": ".github/workflows/fly-deploy.yml",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "claim": "Consumer-id membership: the 6029 consumer_id values projected from the campaign consumer matrix (source sha256 c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118, all ids preserved). Every one of the 16 B07 operation instances carries a member consumer_id (test_operation_instances_conform_to_contract_conventions_and_matrix_membership).",
+      "file": "research/operations/udb-wave8/B07/fixtures/consumer-ids.csv",
+      "sha256": "a2ce570361dabb9fe63a8d9f290bb25966e610ae028a0935928bcb111c2bf7b7",
+      "timestamp": "2026-10-15T07:06:22Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "Static counterexample CE-02 & CE-05: migrate.py (src_c8f206461cd9bf69) hashes full file bytes into schema_versions without populating applied_from_sha/applied_by/migration_source, whereas schema_audit.py (src_697f237385fbe9eb) hashes stripped forward SQL into schema_migrations and stamps 'manual-apply' on bootstrap.",
-      "file": "apps/backend-rag/backend/db/migrate.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "claim": "Fixture provenance: kind FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS; source and output sha256 for each fixture; limitation: fixtures preserve dated metadata and all membership assertions, they are not a fresh native observation or a full consumer-census copy.",
+      "file": "research/operations/udb-wave8/B07/fixtures/PROVENANCE.json",
+      "sha256": "d388e1d5c66a3654ae6afbf8a0083a78ab2ccd9e5a284087c4e132bbb1dbc572",
+      "timestamp": "2026-10-15T08:55:09Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "Static counterexample CE-03: Olympus DatabaseGuardian (src_fcca1b3652b56e72) and OlympusPulse (src_5726ef98e1124f67) are gated behind settings.enable_olympus (False by default in config.py:423) inside service_initializer.py (src_33d3066a868d2df3).",
-      "file": "apps/backend-rag/backend/app/setup/service_initializer.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
-      "status": "EVIDENCED"
+      "claim": "STATIC_SOURCE_ONLY (test_static_counterexample_invariants_ce01_to_ce08): migrate.py calls manager.apply_all_pending and has no sql_file.read_bytes(); migration_manager.py reads migrations_v2; migration_base.py reads SQL with read_text(encoding=\"utf-8\"), logs it with self._log_migration(conn, sql, ...) and computes checksum = self._calculate_checksum(sql) via hashlib.sha256(sql.encode(\"utf-8\")). Base-commit sha256: migrate.py 591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b; migration_manager.py 8e0afb54e3727d3b5935687e78f832589fa25e73e42c96f24b78e289c7a5ed03.",
+      "file": "apps/backend-rag/backend/db/migration_base.py",
+      "sha256": "3bb9b20b2503f207f77f82187048fb07e71cbaa3d634584f6f18ced2424f7626",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
     },
     {
-      "claim": "Static counterexample CE-04 & CE-08: Guardian maintenance tasks (src_fcca1b3652b56e72) hardcode 5 tables for dead-tuple autovacuum checks, hardcode 3 logs tables for 90d cleanup, and catch partition ensure_future_partitions() errors as warning without failing readiness.",
+      "claim": "STATIC_SOURCE_ONLY: reconcile migrations 165, 184 and 194 each mention checksum and none contains the 'manual_apply' sentinel; 194 contains COALESCE(NULLIF(sv.checksum, ''), 'legacy-107-bridge-outbox'). Base-commit sha256: 165 158ae027ee046684a6bd0ee70dd7ec7e54904b9540e3e3b4f1bd33e76aec8763; 184 46608278bf888f6d69ff2401f7149caa16b1011ccc4bbb6b8a81ab4d9adf0cba; 194 as listed.",
+      "file": "apps/backend-rag/backend/db/migrations_v2/194_reconcile_107_bridge_outbox_tracking.sql",
+      "sha256": "13d6e0a8d23d81a449733ccd8dc13cd98828f7d3c077c9500b9892061e02a7af",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "claim": "STATIC_SOURCE_ONLY: Olympus guardian async stop() sets self._running = False and calls task.cancel() without awaiting the cancelled task.",
       "file": "apps/backend-rag/backend/services/olympus/guardian.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
-      "status": "EVIDENCED"
+      "sha256": "87750c12eea0d768f5d2b21567de1e2a3fb9980c5ac93e3956347cb7ce0c1728",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
     },
     {
-      "claim": "B07 canonical lineage adapter implementing CONTRACT-CONVENTIONS.md 19-key envelope, x_ extension namespace, consumer-matrix.csv membership guard, and file-vs-ledger SHA-256 drift detection.",
+      "claim": "STATIC_SOURCE_ONLY: scripts/outbox-prune.sh (sha256 316314201094a5660418b493596be6a7d7451463bbcf0284b4e17d77e47a49dd) imports and awaits prune_consumed; outbox.prune_consumed deletes from events_outbox rows with consumed_at IS NOT NULL and does not reference dead_letter.",
+      "file": "apps/backend-rag/backend/services/events/outbox.py",
+      "sha256": "fdf8f48cadf3fdd72b9393dc27ac385b9be489772c6931f7a9e453fb0f413269",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "claim": "STATIC_SOURCE_ONLY: the run-migrations job is named 'Run DB migrations via flyctl console', runs backend.db.migrate apply-all and carries no continue-on-error; the deploy job needs run-migrations. Separately (not test-asserted) apps/backend-rag/fly.toml (sha256 f71ac5a08506a7b24e6efecaded48fe574414d31f84f1fbf94ead29f7b4243dc) declares release_command python -m backend.db.migrate apply-all && python -m backend.db.schema_audit.",
+      "file": ".github/workflows/fly-deploy.yml",
+      "sha256": "99dafef69dd8e99fe9f937e3e43ae9b92ce41188dfcb3676875ef581bf0486d1",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "claim": "STATIC_SOURCE_ONLY: scripts/pg-restore-drill.sh is absent at the base commit. The historical restore instance src_def7a4c288a552af keeps that entry point with status BLOCKED and x_successor_lineage_status UNPROVEN (test_historical_restore_fields_are_unknown_despite_current_successor).",
+      "file": "research/operations/udb-wave8/B07/b07-operation-instances.json",
+      "sha256": "2709a29092ea8c88fc01c7ab028cd98b09bfe238266a7e18690cbb51796548e3",
+      "timestamp": "2026-10-15T07:06:22Z",
+      "status": "STATIC_SOURCE_ONLY"
+    },
+    {
+      "claim": "Adapter: load_consumer_matrix_index, validate_operation_instance, reconcile_migration_checksums (CHECKSUM_DRIFT_FILE_VS_LEDGER, FORWARD_VS_FULL_HASH_MISMATCH, MANUAL_APPLY_SENTINEL_BYPASS, DUAL_LEDGER_SPLIT_BRAIN; only the positive control is EVIDENCED), load_dr01_manifest, parse_dr05_pro_kv, build_b07_operation_instances.",
       "file": "research/operations/udb-wave8/B07/b07_lineage_adapter.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "sha256": "68a290df5975491a0a3326ccbf2ae212a620ec0452e757c418ee3e842ba261fb",
+      "timestamp": "2026-10-15T17:13:36Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "Read-only boolean/hash/count probe for schema_versions, schema_migrations, and partition bounds (conn.transaction(readonly=True), zero PII/actor strings).",
+      "claim": "Probe (never executed against any database): rejects a malformed or non-admitted expected observer hash before manifest load, env read, asyncpg import or connect; admits only the pinned md5('nuzantara_readonly'); requires a dedicated B07_OBSERVER_DSN distinct from DATABASE_URL; opens a read-only transaction and proves current_user = session_user with no superuser/createrole/createdb/replication/bypassrls attribute before any metadata read; emits only integers, booleans and counts for _schema_versions, schema_migrations and the olympus_heartbeats partitions.",
       "file": "research/operations/udb-wave8/B07/b07_ledger_boolean_probe.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "sha256": "57d16232d1e9e49ecb5931a25e8918d8e700c5889e8cae721e03ee2ce587ad4e",
+      "timestamp": "2026-10-15T17:43:15Z",
       "status": "EVIDENCED"
     },
     {
-      "claim": "Deterministic pytest suite verifying CONTRACT-CONVENTIONS.md compliance, negative checksum-drift detection (B07-F2), consumer-matrix.csv IDs (B07-F4), DR-B07-01/DR-B07-05.pro.out invariants (B07-F1), and static counterexamples CE-01..CE-08.",
+      "claim": "16 offline tests over the committed fixtures and base-commit sources, including the four negative ledger cases, matrix membership, DR-B07-01/DR-B07-05 fixture invariants, static invariants, and the G6 observer pin (well-formed non-admitted hashes refused with zero connects).",
       "file": "research/operations/udb-wave8/B07/test_b07_lineage_invariants.py",
-      "sha256": "PENDING_DUX_HASHER",
-      "timestamp": "2026-10-15T00:00:00Z",
+      "sha256": "ef28790bb23b074c4a91dc758593ed5ff11bb9b2ed8276eddc6285e95e2c747d",
+      "timestamp": "2026-10-15T17:43:15Z",
       "status": "EVIDENCED"
     }
   ],
   "missing": [
-    "UN-01 (DUX-REQ-B07-10): Live Fly PostgreSQL read-only boolean/hash execution of research/operations/udb-wave8/B07/b07_ledger_boolean_probe.py against nuzantara-postgres to reconcile live schema_versions (199 SQL files per DR-B07-01) and schema_migrations checksums against disk SHA-256s.",
-    "UN-02 (DUX-REQ-B07-11): Live Fly nuzantara-rag verification of ENABLE_OLYMPUS runtime value and numeric row/aggregates from olympus_heartbeats, olympus_action_audit, and pg_stat_user_tables (n_dead_tup, last_vacuum, last_autovacuum, last_analyze).",
-    "UN-03 (DUX-REQ-B07-10): Live Fly PostgreSQL partition existence and child count for audit_events, security_events, and olympus_Metrics via pg_inherits.",
-    "UN-04 (DUX-REQ-B07-12): Latest restore drill receipt and Pro backup log tail from ~/.Nuzantara_backups/postgres/backup.log and scripts/pg-restore-drill.sh (consumer_id src_def7a4c288a552af)."
+    "UN-01: no live read-only run of b07_ledger_boolean_probe.py against the Fly PostgreSQL ledgers (_schema_versions, schema_migrations). It requires a credential for the pinned observer role nuzantara_readonly delivered as B07_OBSERVER_DSN; that is an owner credential decision, not provisioned here.",
+    "UN-02: live ENABLE_OLYMPUS runtime value and olympus_heartbeats / olympus_action_audit / pg_stat_user_tables figures are unobserved.",
+    "UN-03: partition coverage of audit_events, security_events and olympus_metrics is UNKNOWN. The probe covers only the olympus_heartbeats monthly partitions and its default partition.",
+    "UN-04: no restore drill receipt and no Pro backup log (~/.nuzantara_backups/postgres/backup.log) were read. scripts/pg-restore-drill.sh is absent at the base commit; any successor drill lineage is UNPROVEN.",
+    "G6: the observer identity is pinned in source only. The probe is NOT native-admitted: no database call ran, and the server-side check proves the session role, never who holds the credential.",
+    "DISCREPANCY (disclosed, not corrected in the tested code): adapter constant DR05_EVIDENCE_TIMESTAMP equals the DR-B07-01 time 2026-10-15T08:55:00.474686Z, while the DR-B07-05 receipt ran at 2026-10-15T08:55:09.894520Z (fixture observed_at 08:55:09Z). Adapter constant DR05_STDOUT_SHA256 69e746095c59620db1b7da09bc52992532aa43faeed72678350f3a51f8d47b7b matches neither the DR-B07-05 Pro source 58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3 nor the fixture; its source receipt is unverified.",
+    "UNVERIFIED and withdrawn: earlier text claiming alembic.ini / versions lineage, launchctl NOT_LOADED or loaded states, a read_bytes checksum path, a 'manual-apply' stamp written by schema_audit, an enable_olympus default at config.py:423, hard-coded guardian table counts or partition-warning behaviour, and a 'migrate apply' release command. No receipt or test supports them.",
+    "R1: the parent's scoped document review covers seven blocks and does not include B07 at the f56373bc scope; no adversarial review of this candidate is claimed."
   ],
   "tests": [
     {
-      "command": "pytest research/operations/udb-wave8/B07/test_b07_lineage_invariants.py -q",
-      "result": "PASS: 12 passed, exit 0 (Mini original worktree, after the Dux-applied parent bounded patch); before it 1 passed / 4 failed, receipt retained",
+      "command": "pytest research/operations/udb-wave8/B07/test_b07_lineage_invariants.py",
+      "result": "History: 1 passed / 4 failed (original); 12 passed after parent patch c8c0b6ba; 14 passed, exit 0 after reproducibility patch 7dd96de0 (2026-10-15T17:09:35Z, output sha256 295cf16624b75cb32ea6312c14885e9811618c6ff9f2aaf3801face8cf3a99ab); 16 passed, exit 0 after the G6 pin (about 2026-10-15T17:43Z, output sha256 605e092a3699653b87fc5dfc13479c0ff834d682aef23127b8c6f297b18ec664). The committed-head run is recorded in the evidence pack.",
       "evidence_file": "research/operations/udb-wave8/B07/test_b07_lineage_invariants.py"
     }
   ],
   "dux_correction": {
     "executed": true,
-    "prepared_by": "parent coordinator isolated scratch worktree; applied by Dux after pin check",
-    "patch_sha256": "c8c0b6ba58f89ebbf6203ea4df174b0438fc2ff5a20de5d8e74ba5e358caa1a3",
-    "files": {
-      "b07_lineage_adapter.py": {
-        "pre_sha256": "9bc149e58a22bafea463b68400df79cca3c9c91557ea43de3966d82010a90b9e",
-        "post_sha256": "ac0879e2f4200a0989e8a920776700e5f0d3d058328ad964e6245d138374b178"
+    "entries": [
+      {
+        "patch_sha256": "c8c0b6ba58f89ebbf6203ea4df174b0438fc2ff5a20de5d8e74ba5e358caa1a3",
+        "prepared_by": "parent coordinator isolated scratch worktree; applied by Dux after pin check",
+        "files": {
+          "b07_lineage_adapter.py": {
+            "pre_sha256": "9bc149e58a22bafea463b68400df79cca3c9c91557ea43de3966d82010a90b9e",
+            "post_sha256": "ac0879e2f4200a0989e8a920776700e5f0d3d058328ad964e6245d138374b178"
+          },
+          "test_b07_lineage_invariants.py": {
+            "pre_sha256": "f0d79f26882bf59bb3a7fec9c14ab95bdc18ee66b479b39a06f30db61ad60def",
+            "post_sha256": "dcd5460c616e7d97c2b36de65f2897b57059a1eb2ba62872333b829c386249d9"
+          },
+          "b07_ledger_boolean_probe.py": {
+            "pre_sha256": "c0da81b1b3d490638f1e6626bd70297271fe211435febad0c7ae77021c259e90",
+            "post_sha256": "47255638648b4691d655cec7894156f47885ee8c2acc3f46caea6011c3fabde4"
+          }
+        },
+        "tests_before": "1 passed / 4 failed",
+        "tests_after": "12 passed, exit 0"
       },
-      "test_b07_lineage_invariants.py": {
-        "pre_sha256": "f0d79f26882bf59bb3a7fec9c14ab95bdc18ee66b479b39a06f30db61ad60def",
-        "post_sha256": "dcd5460c616e7d97c2b36de65f2897b57059a1eb2ba62872333b829c386249d9"
+      {
+        "patch_sha256": "7dd96de0e632109a01185a5ded19b6c40b3b4d89fce34094fa37934fd368326b",
+        "prepared_by": "parent coordinator isolated reproduction (base f56373bc6f87cb835f05b6215a7825f165e55e21); applied by Dux",
+        "bytes": 253131,
+        "paths": 7,
+        "applied_at": "2026-10-15T17:09:02Z",
+        "secret_digest_findings": 545,
+        "secret_baseline_proposal_sha256": "45052c41baf1626888d6e8e491af24ea7266a2114fe674c1f5bae5b8805dd425",
+        "old_assertions_unchanged": 82,
+        "default_output_parity": "16 records identical to the pre-patch output",
+        "tests_after": "14 passed, exit 0"
       },
-      "b07_ledger_boolean_probe.py": {
-        "pre_sha256": "c0da81b1b3d490638f1e6626bd70297271fe211435febad0c7ae77021c259e90",
-        "post_sha256": "47255638648b4691d655cec7894156f47885ee8c2acc3f46caea6011c3fabde4"
+      {
+        "change": "G6 observer pin (spec written before the correction, after the synthetic counterexample receipt sha256 4a8eb2f381430ad8cdab44980f33fd3a59132055fc9fd10260e59642acd56393)",
+        "files": {
+          "b07_ledger_boolean_probe.py": {
+            "pre_sha256": "e2a0637de9769b90e724a92583889e7d0b68cacb8160be7173b634dd464165b5",
+            "post_sha256": "57d16232d1e9e49ecb5931a25e8918d8e700c5889e8cae721e03ee2ce587ad4e"
+          },
+          "test_b07_lineage_invariants.py": {
+            "pre_sha256": "ca989176b3669ae9e222aa87d2c551c31bd6058a727ddfa4bc04054328772f51",
+            "post_sha256": "ef28790bb23b074c4a91dc758593ed5ff11bb9b2ed8276eddc6285e95e2c747d"
+          }
+        },
+        "tests_after": "16 passed, exit 0"
       }
-    },
-    "tests_before": "1 passed / 4 failed",
-    "tests_after": "12 passed, exit 0",
+    ],
     "native_probe_executed": false,
     "live_pg_probed": false,
     "runtime_unknowns_retained": true

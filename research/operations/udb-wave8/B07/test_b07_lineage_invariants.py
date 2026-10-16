@@ -23,6 +23,7 @@ import pytest
 
 B07_DIR = Path(__file__).resolve().parent
 REPO_ROOT = B07_DIR.parents[3]
+FIXTURES = B07_DIR / "fixtures"
 
 
 def _load_b07_module(module_filename: str, module_name: str):
@@ -40,7 +41,7 @@ adapter = _load_b07_module("b07_lineage_adapter.py", "b07_lineage_adapter")
 
 def test_negative_case_migration_file_sha256_differs_from_ledger_checksum() -> None:
     """Required negative case (ADVERSARY-FINDINGS.md:281): flag SHA-256 drift between file and ledger."""
-    dr01 = adapter.load_dr01_manifest(B07_DIR / "dux-requests" / "DR-B07-01.out")
+    dr01 = adapter.load_dr01_manifest(FIXTURES / "dr01.json")
     actual_row = dr01["migrations_v2"][0]
     mig_107 = dict(actual_row, num=int(actual_row["file"].split("_", 1)[0]))
 
@@ -106,11 +107,11 @@ def test_negative_case_migration_file_sha256_differs_from_ledger_checksum() -> N
 
 def test_operation_instances_conform_to_contract_conventions_and_matrix_membership() -> None:
     """Verify X1..X5, X10, and B07-F4 across all emitted B07 operation instances."""
-    csv_path = REPO_ROOT / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
+    csv_path = FIXTURES / "consumer-ids.csv"
     valid_cids, _ = adapter.load_consumer_matrix_index(csv_path)
     assert len(valid_cids) >= 6000
 
-    instances = adapter.build_b07_operation_instances(REPO_ROOT)
+    instances = adapter.build_b07_operation_instances(REPO_ROOT, consumer_matrix_path=FIXTURES / "consumer-ids.csv", dr05_pro_path=FIXTURES / "dr05-pro.txt")
     assert len(instances) == 16
 
     seen_cids = set()
@@ -137,7 +138,7 @@ def test_operation_instances_conform_to_contract_conventions_and_matrix_membersh
 
 def test_dux_receipts_dr01_and_dr05_pro_invariants() -> None:
     """Verify the admitted producer schema and actual on-disk source hashes."""
-    dr01 = adapter.load_dr01_manifest(B07_DIR / "dux-requests/DR-B07-01.out")
+    dr01 = adapter.load_dr01_manifest(FIXTURES / "dr01.json")
     assert set(dr01) == {"migrations_v2", "py_migrations"}
     assert len(dr01["migrations_v2"]) == 199
     assert len(dr01["py_migrations"]) == 138
@@ -155,7 +156,7 @@ def test_dux_receipts_dr01_and_dr05_pro_invariants() -> None:
         assert "num" not in row
         source = REPO_ROOT / "apps/backend-rag/backend/migrations" / row["file"]
         assert hashlib.sha256(source.read_bytes()).hexdigest() == row["sha256"]
-    dr05_pro = adapter.parse_dr05_pro_kv(B07_DIR / "dux-requests/DR-B07-05.pro.out")
+    dr05_pro = adapter.parse_dr05_pro_kv(FIXTURES / "dr05-pro.txt")
     assert dr05_pro["host"] == "Nuzantara"
     assert dr05_pro["observed_at"] == "2026-10-15T08:55:09Z"
     assert dr05_pro["home_nuzantara_exists"] == "DIRECTORY"
@@ -201,7 +202,7 @@ def test_static_counterexample_invariants_ce01_to_ce08() -> None:
     assert "dead_letter" not in body
     # Historical absence is explicit, never filled with a successor's contents.
     assert not (REPO_ROOT / "scripts/pg-restore-drill.sh").exists()
-    historical = next(r for r in adapter.build_b07_operation_instances(REPO_ROOT) if r["consumer_id"] == "src_def7a4c288a552af")
+    historical = next(r for r in adapter.build_b07_operation_instances(REPO_ROOT, consumer_matrix_path=FIXTURES / "consumer-ids.csv", dr05_pro_path=FIXTURES / "dr05-pro.txt") if r["consumer_id"] == "src_def7a4c288a552af")
     assert historical["x_entry_point"] == "scripts/pg-restore-drill.sh"
     assert historical["status"] == "BLOCKED"
     assert historical["x_successor_lineage_status"] == "UNPROVEN"
@@ -245,7 +246,7 @@ def test_actual_dr05_does_not_invent_unobserved_filesystem_facts(tmp_path: Path)
 
 def test_historical_restore_fields_are_unknown_despite_current_successor() -> None:
     assert (REPO_ROOT / "scripts/restore_drill/run_drill.sh").is_file()
-    records = adapter.build_b07_operation_instances(REPO_ROOT)
+    records = adapter.build_b07_operation_instances(REPO_ROOT, consumer_matrix_path=FIXTURES / "consumer-ids.csv", dr05_pro_path=FIXTURES / "dr05-pro.txt")
     row = next(r for r in records if r["consumer_id"] == "src_def7a4c288a552af")
     assert row["x_historical_source_available"] is False
     assert "SUCCESSOR_LINEAGE_UNPROVEN" in row["unknowns"]
@@ -254,7 +255,7 @@ def test_historical_restore_fields_are_unknown_despite_current_successor() -> No
 
 def test_probe_normalizes_actual_sql_filenames_without_inventing_python_versions() -> None:
     probe = _load_b07_module("b07_ledger_boolean_probe.py", "b07_manifest_probe")
-    rows = probe.load_sql_manifest(B07_DIR / "dux-requests/DR-B07-01.out")
+    rows = probe.load_sql_manifest(FIXTURES / "dr01.json")
     assert len(rows) == 199
     assert all(isinstance(number, int) and entry["num"] == number and entry["file"].endswith(".sql") for number, entry in rows.items())
 
@@ -272,8 +273,8 @@ def test_probe_rejects_wrong_or_duplicate_manifest_before_database_connection(tm
 
 
 def test_store_id_vocabulary_rejects_legacy_engine_and_platform_aliases() -> None:
-    ids, _ = adapter.load_consumer_matrix_index(REPO_ROOT / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv")
-    original = adapter.build_b07_operation_instances(REPO_ROOT)[0]
+    ids, _ = adapter.load_consumer_matrix_index(FIXTURES / "consumer-ids.csv")
+    original = adapter.build_b07_operation_instances(REPO_ROOT, consumer_matrix_path=FIXTURES / "consumer-ids.csv", dr05_pro_path=FIXTURES / "dr05-pro.txt")[0]
     for invalid in ("fs:pro:store", "pg:external:store", "object:external:cloudflare-r2"):
         with pytest.raises(ValueError, match="store_id"):
             adapter.validate_operation_instance(dict(original, store_id=invalid), ids)
@@ -283,7 +284,91 @@ def test_store_id_vocabulary_rejects_legacy_engine_and_platform_aliases() -> Non
 
 
 def test_static_source_never_proves_live_role_or_tenant_binding() -> None:
-    for record in adapter.build_b07_operation_instances(REPO_ROOT):
+    for record in adapter.build_b07_operation_instances(REPO_ROOT, consumer_matrix_path=FIXTURES / "consumer-ids.csv", dr05_pro_path=FIXTURES / "dr05-pro.txt"):
         for field in ("role", "tenant", "authorization"):
             assert record[field]["status"] == "UNKNOWN"
         assert "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED" in record["unknowns"]
+
+PINNED_OBSERVER_MD5 = hashlib.md5(b"nuzantara_readonly").hexdigest()
+
+
+def test_probe_pins_the_canonical_readonly_observer_only() -> None:
+    probe = _load_b07_module("b07_ledger_boolean_probe.py", "b07_observer_pin")
+    assert probe.ADMITTED_OBSERVER_PRINCIPAL_MD5S == frozenset({PINNED_OBSERVER_MD5})
+
+
+def test_probe_rejects_caller_supplied_non_admitted_principal_before_connection(monkeypatch) -> None:
+    """G6 counterexample: renamed app DSN, DATABASE_URL unset, caller-supplied app principal md5."""
+    import asyncio
+    import sys
+    import types
+    probe = _load_b07_module("b07_ledger_boolean_probe.py", "b07_observer_not_admitted")
+    called = []
+    async def forbidden_connect(**kwargs):
+        called.append(True)
+        raise AssertionError("connection must not happen")
+    monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=forbidden_connect))
+    monkeypatch.setenv("B07_OBSERVER_DSN", "synthetic-app-dsn-renamed")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    for caller_md5 in (hashlib.md5(b"nuzantara_app").hexdigest(), "a" * 32):
+        with pytest.raises(ValueError, match="OBSERVER_PRINCIPAL_NOT_ADMITTED"):
+            asyncio.run(probe.run_boolean_probe(FIXTURES / "dr01.json", expected_observer_principal_md5=caller_md5))
+    assert called == []
+
+
+def test_probe_refuses_missing_observer_admission_before_import_or_connection(monkeypatch) -> None:
+    import asyncio
+    import sys
+    import types
+    probe = _load_b07_module("b07_ledger_boolean_probe.py", "b07_observer_refusal")
+    called = []
+    async def forbidden_connect(**kwargs):
+        called.append(True)
+        raise AssertionError("connection must not happen")
+    monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=forbidden_connect))
+    monkeypatch.delenv("B07_OBSERVER_DSN", raising=False)
+    with pytest.raises(ValueError, match="DEDICATED_OBSERVER_DSN_REQUIRED"):
+        asyncio.run(probe.run_boolean_probe(FIXTURES / "dr01.json", expected_observer_principal_md5=PINNED_OBSERVER_MD5))
+    monkeypatch.setenv("B07_OBSERVER_DSN", "synthetic-app-dsn")
+    monkeypatch.setenv("DATABASE_URL", "synthetic-app-dsn")
+    with pytest.raises(ValueError, match="APPLICATION_DSN_FORBIDDEN"):
+        asyncio.run(probe.run_boolean_probe(FIXTURES / "dr01.json", expected_observer_principal_md5=PINNED_OBSERVER_MD5))
+    with pytest.raises(ValueError, match="EXPECTED_OBSERVER_PRINCIPAL_REQUIRED"):
+        asyncio.run(probe.run_boolean_probe(FIXTURES / "dr01.json", expected_observer_principal_md5=""))
+    assert called == []
+
+
+def test_probe_rejects_wrong_observer_before_metadata_and_closes(monkeypatch) -> None:
+    import asyncio
+    import sys
+    import types
+    probe = _load_b07_module("b07_ledger_boolean_probe.py", "b07_observer_identity")
+    events = []
+    class ReadOnlyTransaction:
+        async def __aenter__(self):
+            events.append("begin_readonly")
+        async def __aexit__(self, *exc):
+            events.append("end_readonly")
+    class FakeConnection:
+        def transaction(self, *, readonly):
+            assert readonly is True
+            return ReadOnlyTransaction()
+        async def fetchval(self, query, expected):
+            assert "md5(current_user) = $1" in query
+            assert expected == PINNED_OBSERVER_MD5
+            events.append("identity")
+            return False
+        async def fetch(self, *args):
+            raise AssertionError("metadata must not be read before identity")
+        async def close(self):
+            events.append("close")
+    async def connect(**kwargs):
+        assert kwargs["dsn"] == "synthetic-observer-dsn"
+        events.append("connect")
+        return FakeConnection()
+    monkeypatch.setitem(sys.modules, "asyncpg", types.SimpleNamespace(connect=connect))
+    monkeypatch.setenv("B07_OBSERVER_DSN", "synthetic-observer-dsn")
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(PermissionError, match="ADMITTED_OBSERVER_IDENTITY_NOT_PROVED"):
+        asyncio.run(probe.run_boolean_probe(FIXTURES / "dr01.json", expected_observer_principal_md5=PINNED_OBSERVER_MD5))
+    assert events == ["connect", "begin_readonly", "identity", "end_readonly", "close"]

@@ -1,79 +1,68 @@
 mandate: universal-db-wave8-20261015-B07
-brief_ref: evidence/2026-10/agent-mini-pro2-db-udb-b07-lineage-6ee4a53b/brief.yml
+brief_ref: evidence/brief.yml
 status: PARTIAL_PREPARED_NOT_CLOSED
 receipts:
-  - claim:
-      Corrected B07 isolated candidate:12tests passed; five checksum/sentinel/split-ledger/positive
-      assertion ASTs retained.
+  - claim: B07 invariant suite passes offline over committed fixtures and base-commit sources.
     cmd:
-      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
-      --rootdir=<scratch-worktree>/research/operations/udb-wave8/B07 --basetemp=<scratch-worktree>/pytest-owned-v3
-      --color=no -q <scratch-worktree>/research/operations/udb-wave8/B07/test_b07_lineage_invariants.py
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null
+      --noconftest -p no:cacheprovider --color=no -q -rA --tb=short
+      research/operations/udb-wave8/B07/test_b07_lineage_invariants.py
     exit: 0
-    ts: "2026-10-15T15:41:45.288368+00:00"
-    seat: codex-coordinator
-    execution_context:
-      Mini broker scratch db-udb-deadline-parent-b07 at8061c88; see
-      pinned parent TESTS-FINAL.json
-    evidence_ref: research/operations/udb-wave8/B07/test_b07_lineage_invariants.py:41
+    ts: "2026-10-16T00:47:25Z"
+    seat: claude-opus-5-5
+    stdout_sha256: bcafb43dab76e0e288c0e16ced6e91d26331b24aa48f6467acc69c9a89d3b251
+    result: 16 passed
     source_pins:
-      b07_lineage_adapter.py: ac0879e2f4200a0989e8a920776700e5f0d3d058328ad964e6245d138374b178
-      test_b07_lineage_invariants.py: dcd5460c616e7d97c2b36de65f2897b57059a1eb2ba62872333b829c386249d9
-      b07_ledger_boolean_probe.py: 47255638648b4691d655cec7894156f47885ee8c2acc3f46caea6011c3fabde4
-  - claim: Prepared four-file patch applies against then-unchanged original B07 source.
-    cmd: git -C <original-b07-worktree> apply --check --whitespace=error <scratch-worktree>/B07-prepared.patch
-    exit: 0
-    ts: "2026-10-15T15:41:45.288368+00:00"
-    seat: codex-coordinator
-    patch_sha256: c8c0b6ba58f89ebbf6203ea4df174b0438fc2ff5a20de5d8e74ba5e358caa1a3
-    evidence_ref: research/operations/udb-wave8/B07/b07_lineage_adapter.py:246
-  - claim:
-      Dux applied the same patch to the original B07 worktree after the three pre-pins matched;
-      the original-worktree suite then ran 12 passed (before it 1 passed / 4 failed, receipt retained).
+      b07_lineage_adapter.py: 68a290df5975491a0a3326ccbf2ae212a620ec0452e757c418ee3e842ba261fb
+      b07_ledger_boolean_probe.py: 57d16232d1e9e49ecb5931a25e8918d8e700c5889e8cae721e03ee2ce587ad4e
+      test_b07_lineage_invariants.py: ef28790bb23b074c4a91dc758593ed5ff11bb9b2ed8276eddc6285e95e2c747d
+      b07-operation-instances.json: 2709a29092ea8c88fc01c7ab028cd98b09bfe238266a7e18690cbb51796548e3
+  - claim: All five B07 Markdown files carry a scoped Codex adversarial review attribution.
     cmd:
-      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
-      --rootdir=<original-b07-worktree> --color=no -q -rA --tb=short research/operations/udb-wave8/B07/test_b07_lineage_invariants.py
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B scripts/check_adversarial_review.py
+      --files research/operations/udb-wave8/B07/ANALYSIS.md research/operations/udb-wave8/B07/BATTLE.md
+      research/operations/udb-wave8/B07/DEFINITIVE-SYNTHESIS.md research/operations/udb-wave8/B07/PROPOSAL.md
+      research/operations/udb-wave8/B07/PR_BODY.md
     exit: 0
-    ts: "2026-10-15T16:00:00+00:00"
-    seat: claude-opus-5-5-dux
-    execution_context: Mini original worktree db-udb-b07-lineage at8061c88, uncommitted candidate
-    evidence_ref: research/operations/udb-wave8/B07/test_b07_lineage_invariants.py:142
-    patch_sha256: c8c0b6ba58f89ebbf6203ea4df174b0438fc2ff5a20de5d8e74ba5e358caa1a3
+    ts: "2026-10-16T00:46:06Z"
+    seat: claude-opus-5-5
+    evidence_ref: research/operations/udb-wave8/B07/R1-DOCUMENT-REVIEW.json:1
 dissent:
-  - seat: campaign-independent-adversary
+  - seat: codex
     objection:
-      "B07-F2/F3: installed bytes,execution identity and live ledger checksums
-      are unproved; unsafe raw ledger/actor output is not admitted. See frozen ADVERSARY-FINDINGS.md
-      B07section. Native probe is not executed by this preparation."
+      "Scoped document review REVIEWED_PARTIAL_WITH_BLOCKERS: the old drill consumer is
+      historical, native PG and Olympus observations are absent, and the B16 consumer was
+      unproved. The addendum and PR body apply these findings; no live lineage closure."
     status: CONFIRMED
+    evidence_ref: research/operations/udb-wave8/B07/R1-DOCUMENT-REVIEW.json:1
+  - seat: parent-coordinator
+    objection:
+      "G6: a caller-supplied observer hash let a renamed application DSN reach metadata in a
+      synthetic harness. Source now pins md5('nuzantara_readonly') before connect; this is
+      not native admission."
+    status: ADDRESSED_IN_SOURCE_NOT_NATIVE
+    evidence_ref: research/operations/udb-wave8/B07/RESULT.json:1
 pii_scan: clean
-block_closed: false
-native_probe_executed: false
-final_gate: PENDING_EXACT_COMMITTED_HEAD
-production_adoption: false
-limitations:
-  - All runtime unknowns remain (roles, tenant scope, installed bytes, live ledger checksums,
-    historical restore successor lineage).
-  - R1 adversarial-review metadata, secret-scan baseline decisions and the exact-head final gate
-    are checked by the Dux before arming.
-  - This pack does not authorize changing any armed branch or starting successors.
 lanes:
   - lane: B07-original
     role: build
     seat: gemini-4-argon-high
-  - lane: B07-bounded-prepare
-    role: build
-    seat: codex-coordinator
-  - lane: B07-dux-apply
-    role: build
-    seat: claude-opus-5-5-dux
-  - lane: B07-campaign-adversary
+  - lane: B07-document-R1
     role: review
-    seat: campaign-independent-adversary
+    seat: codex
+  - lane: B07-dux-correction
+    role: build
+    seat: claude-opus-5-5
 seat_override:
-  The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh
-  support and Opus5.5/xhigh support, with one adversarial pass then synthesis. This
-  model assignment supersedes the legacy two-seat council whitelist; no legacy Sol/Kimi/TP1
-  reviewer is invoked or claimed. Actual source-pinned modern-seat evidence is retained.
-  The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
-  and PENDING; this override does not sign a gate or grant block closure.
+  The explicit owner mandate selects Gemini Argon/high builders, one adversarial pass
+  and a fresh BLUE Opus5.5/xhigh exact-head final gate. This model assignment supersedes
+  the legacy two-seat council whitelist; no legacy Sol/Kimi/TP1 reviewer is invoked or
+  claimed. The final gate remains mandatory and PENDING; this override does not sign a
+  gate or grant block closure.
+block_closed: false
+native_probe_executed: false
+final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
+production_adoption: false
+limitations:
+  - Fixtures are frozen dated metadata, not new native observations.
+  - Live ledgers, Olympus runtime state and restore lineage remain UNKNOWN.

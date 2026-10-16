@@ -1,0 +1,33 @@
+{
+  "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+  "consumer_ids": {
+    "source_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+    "source_rows": 6029,
+    "output_sha256": "a2ce570361dabb9fe63a8d9f290bb25966e610ae028a0935928bcb111c2bf7b7",
+    "projection": [
+      "consumer_id"
+    ],
+    "all_ids_preserved": true
+  },
+  "dr01": {
+    "source_sha256": "9f92dddb911159d272d6bbc5fd88fd67a84cdbc4215249bf18566db755be211b",
+    "output_sha256": "9f92dddb911159d272d6bbc5fd88fd67a84cdbc4215249bf18566db755be211b",
+    "sql": 199,
+    "python": 138
+  },
+  "dr05": {
+    "source_sha256": "58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3",
+    "output_sha256": "fe38207f0b667d60556ce3815560516517d0621eb0bb7eaa7e998e2056b17b7e",
+    "projection": [
+      "host",
+      "observed_at",
+      "crontab_lines_referencing_retention_worker",
+      "launchagent_plists_referencing_retention_worker",
+      "launchagent_plists_referencing_outbox_prune",
+      "home_nuzantara_exists",
+      "desktop_nuzantara_exists"
+    ],
+    "symlink_target": "REDACTED"
+  },
+  "limitation": "Fixtures preserve dated metadata and all membership assertions. They are not a fresh native observation or full consumer-census copy."
+}

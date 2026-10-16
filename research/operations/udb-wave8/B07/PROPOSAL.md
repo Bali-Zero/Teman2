@@ -1,4 +1,25 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "6de9d4b53d88661038a6dfcf9210f4b23d6600389b9bc8603a68e78be70ece87"
+review_disposition: HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED
+---
+
 # B07 Proposal — Maintenance and Migration Lineage Adapter, Invariant Suite & Remediation Plan
+
+> **Dux addendum (2026-10-16, supersedes every conflicting statement below, including the 2026-10-15 correction).**
+> Authoritative status and evidence: `RESULT.json`. `test_b07_lineage_invariants.py` runs 16 passed (exit 0) offline over the
+> committed `fixtures/` (`dr01.json`, the counts-only `dr05-pro.txt` projection, `consumer-ids.csv`, `PROVENANCE.json`).
+> Withdrawn as UNVERIFIED (no receipt or test supports them): alembic lineage; launchctl NOT_LOADED or loaded states; a
+> `read_bytes` checksum path; a `manual-apply` stamp written by `schema_audit`; an `enable_olympus` default at `config.py:423`;
+> hard-coded guardian table counts or partition-warning behaviour; a `migrate apply` release command (the source runs
+> `apply-all`); `CE-09` and the S3 remediation roadmap. The 30-day prune default is not test-asserted. `CONTRACT-CONVENTIONS.md`
+> and `.agent-receipts/...` paths are external, untracked campaign control files (conventions sha256
+> `a7feea89fa64000d76c18a52d705dd008b4a6336a6d58af98c2618a13048c559`); line citations into them are not verifiable in this
+> repository. The values B07 uses are embedded in `PR_BODY.md`. The consumer-id source is the campaign consumer matrix
+> (sha256 `c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`, 6029 rows), committed as the `consumer-ids.csv`
+> projection. Statements below that something was "removed", "purged" or "dropped" are true only as far as the committed
+> tree shows. The probe observer is pinned to `md5('nuzantara_readonly')` and is NOT native-admitted; no database was
+> read. `block_closed` stays `false`.
 
 - **Campaign**: `universal-db-wave8-20261015`
 - **Block**: `B07` — Maintenance and migration lineage (`D02`, `D11`, `D13`)
@@ -14,6 +35,7 @@
 To close the `PARTIAL (55%)` gaps on `D02`, `D11`, and `D13` without mutating read-only migration directories or production runtime code, `B07` proposes a deterministic, zero-PII **Lineage Adapter & Verifier** (`b07_lineage_adapter.py`) paired with a **Negative & Invariant Test Suite** (`test_b07_lineage_invariants.py`) inside `research/operations/udb-wave8/B07/`.
 
 Every emitted lineage record strictly conforms to the frozen sibling contract (`BATTLE.md` §3):
+
 - **Common Envelope Fields**:
   `consumer_id,operation_id,store_id,source_version,evidence_timestamp,evidence_sha256,status,unknowns`
 - **B05 Operation Instance Fields**:
@@ -24,7 +46,9 @@ Every emitted lineage record strictly conforms to the frozen sibling contract (`
 ## 2. Proposed B07 Deliverables (Within Owned Report/Adapter Directory)
 
 ### 2.1 Deliverable 1: `research/operations/udb-wave8/B07/b07_lineage_adapter.py`
+
 A pure-Python, read-only static + receipt-joining adapter that inspects the worktree at `8061c88e0c43dd42e735fd012f9ed072df3ef3d6` and optional Dux live-catalog receipts (`DR-B07-01`..`DR-B07-05`) to emit:
+
 1. **`b07-operations-matrix.csv` / `.json`** (conforming 1:1 to `BATTLE.md` §3 common + B05 fields):
    - **`D13` Migration Runners & Ledgers**:
      - Enumerates all numbered SQL files in `apps/backend-rag/backend/db/migrations_v2/*.sql` (`092`..`323`), computing:
@@ -47,7 +71,9 @@ A pure-Python, read-only static + receipt-joining adapter that inspects the work
    - Machine-readable verification of `CE-01` through `CE-09` with exact file path, line range, file SHA-256, violated invariant, and runtime blast radius.
 
 ### 2.2 Deliverable 2: `research/operations/udb-wave8/B07/test_b07_lineage_invariants.py`
+
 A self-contained `pytest` suite (requiring zero network or live DB access) that tests the adapter and AST/source invariants for `CE-01`..`CE-09`:
+
 - `test_ce01_dual_ledger_asymmetry`: verifies that `MigrationManager.get_applied_migrations` queries `_schema_versions` while `BaseMigration._is_applied` and `_check_dependencies` query `schema_migrations`, and that `migration_manager.py:617-627` inserts `001_baseline_v2.sql` only into `_schema_versions`.
 - `test_ce02_lock_busy_exits_zero`: verifies with a mocked `lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 73491) -> False` that `apply_all_pending()` returns `{"applied": [], "skipped": [], "failed": []}` and `migrate.cmd_apply()` returns `True` (`exit 0`).
 - `test_ce03_standalone_py_migrations_untracked_and_autocommit`: verifies `_lock_guard.py:17-40` lacks `conn.transaction()` and `migration_119_partners.py` / `apply_migration_122.py` never reference `_schema_versions` or `schema_migrations`.
@@ -56,28 +82,6 @@ A self-contained `pytest` suite (requiring zero network or live DB access) that 
 - `test_ce06_checksum_audit_sentinel_bypass_and_rollback_hash`: verifies `schema_audit.py:475-496` `continue`s before hashing on-disk SQL files for the 17 non-SHA256 sentinels, and `BaseMigration._log_migration` hashes unsplit `sql` rather than `sql_forward`.
 - `test_ce07_olympus_dual_process_and_null_alert_service`: verifies `service_initializer.py` instantiates `OlympusGuardian` in both `initialize_services` and `initialize_services_light(..., alert_service=None)` with no cross-process lock in `guardian.py`.
 - `test_ce08_olympus_pulse_missing_semaphore_and_guc_reset`: verifies `guardian.py:_pulse_loop` omits `get_bg_pool_semaphore()` and `safety.py:action_timeouts` omits a `finally` GUC reset.
-- `test_ce09_outbox_prune_repo_root_mismatch`: verifies `scripts/outbox-prune.sh:58` hardcodes `REPO_ROOT="${HOME}/nuzantara"` while `organism_heartbeat` identifies the host as `pro.outbox_prune_daily`.
-
----
-
-## 3. Downstream Code Remediation Roadmap (For Code-Owning Lanes After B07)
-
-Because `B07` is strictly scoped to lineage reports/adapters (`migration directories are read-only`), the following surgical fixes are specified for the downstream runtime/migration implementation PRs:
-
-1. **Unify Dual-Ledger Read/Write & Lock Contention Exit Code (`D13` — `migration_manager.py`, `migration_base.py`, `migrate.py`)**:
-   - In `MigrationManager.apply_all_pending()` (`migration_manager.py:534-541`), return `"lock_busy": True` when `pg_try_advisory_lock(73491)` is `False`, and make `migrate.py:cmd_apply()` exit nonzero (`sys.exit(2)`) on `lock_busy`.
-   - Restore structured logging/stdout in `migrate.py:cmd_status`, `cmd_list`, `cmd_apply`, and `cmd_info` so `fly-deploy.yml:373` accurately counts applied migrations.
-   - Reconcile `_schema_versions` and `schema_migrations` in `MigrationManager.get_applied_migrations()` using a `FULL OUTER JOIN` on `migration_number` so a row missing from `schema_migrations` is backfilled before `_check_dependencies()` runs, and fix baseline `001` (`migration_manager.py:617-627`) to write both tables without the `.sql` suffix.
-   - Reuse the advisory-locked connection or pass a retry-wrapped connection factory into `BaseMigration.apply()` (`migration_base.py:1071`).
-2. **Enforce On-Disk SHA-256 Pinning & Runtime DSN Isolation in `schema_audit.py` (`D13`)**:
-   - In `schema_audit.py:761`, pass `database_url=settings.database_url` explicitly so `schema_audit` never consumes `MIGRATION_DATABASE_URL` (`CE-05`).
-   - Pin the current on-disk SHA-256 hashes of the 17 sentinel files (`schema_audit.py:254-263`) and 8 legacy baseline files (`schema_audit.py:315-347`) in a static dictionary inside `schema_audit.py` and hash the on-disk `.sql` files on every audit run so any future file edit fails `schema_audit` immediately (`CE-06`).
-3. **Fence `OlympusGuardian` Across Process Groups & Harden `safety.py` (`D02`)**:
-   - Guard `OlympusGuardian.run_pulse()` with a non-blocking PostgreSQL session advisory lock (e.g., `pg_try_advisory_lock(73492)`) or run `OlympusPulse` exclusively on one process group with `AlertService()` wired (`service_initializer.py:2188`, `CE-07`).
-   - Wrap `_pulse_loop()` in `async with get_bg_pool_semaphore():` (`guardian.py:219-227`), add a `try/finally` block in `safety.py:action_timeouts` (`RESET statement_timeout; RESET lock_timeout`), wrap `cleanup_audit_trail` and `refresh_materialized_views` in `action_timeouts`, and ensure `ensure_next_partition()` (`pulse.py:461-510`) also checks the current month (`CE-08`).
-4. **Fix `scripts/outbox-prune.sh` Repo Path & Schedule `retention_worker.py` (`D11`)**:
-   - In `scripts/outbox-prune.sh:58`, resolve `REPO_ROOT` dynamically (`[ -d "${HOME}/Desktop/nuzantara" ] && REPO_ROOT="${HOME}/Desktop/nuzantara" || REPO_ROOT="${HOME}/nuzantara"`) and emit `organism_heartbeat "pro.outbox_prune_daily" "fail"` on missing `.venv` (`CE-09`).
-   - Register a scheduled entrypoint for `backend.scripts.visa_engine.retention_worker --apply --scope VISA_DECISION --scope GARUDA_CHECK` in `organism_entrypoints.json` using `VISA_ENGINE_RETENTION_DATABASE_URL` (`IN-03`).
 
 ---
 
@@ -86,6 +90,7 @@ Because `B07` is strictly scoped to lineage reports/adapters (`migration directo
 To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving the strict PII boundary: aggregate counts, catalog names, and SHA-256 hashes only — zero client rows, zero PII, zero secret values), `B07` requests that Dux execute the following 5 read-only commands and drop their JSON outputs into `research/operations/udb-wave8/B07/receipts/`:
 
 ### `DR-B07-01` — On-Disk SQL & Python Migration SHA-256 Manifest
+
 - **ID**: `DR-B07-01`
 - **Command**:
   ```bash
@@ -116,6 +121,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Pins `evidence_sha256` for all `D13` migration files on disk and quantifies how many files differ between `full_sha256` and `forward_sha256` (`CE-06`).
 
 ### `DR-B07-02` — Live Dual-Ledger Reconciliation & Provenance Aggregate (`_schema_versions` vs `schema_migrations`)
+
 - **ID**: `DR-B07-02`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
   ```sql
@@ -135,6 +141,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Resolves `UNK-B07-01` and `UNK-B07-02` by proving the exact live state of both migration ledgers and joining live checksums against `DR-B07-01`.
 
 ### `DR-B07-03` — Live `pg_proc` (`SECURITY DEFINER`), `pg_trigger`, and `pg_event_trigger` Catalog Inventory (`D02`)
+
 - **ID**: `DR-B07-03`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
   ```sql
@@ -175,6 +182,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Resolves `UNK-B07-03` by binding installed DB-internal functions and triggers (`D02`) to repo migration DDL by SHA-256.
 
 ### `DR-B07-04` — Live Olympus Partition & Action Outcome Aggregate (`D02`)
+
 - **ID**: `DR-B07-04`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
   ```sql
@@ -212,6 +220,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Resolves `UNK-B07-04` by verifying whether `ensure_next_partition` (`CE-08`) left rows in `olympus_heartbeats_default` and whether dual-process pulses (`CE-07`) caused duplicate/failed actions.
 
 ### `DR-B07-05` — Host Scheduler & Retention Worker Registration Check (`D11`)
+
 - **ID**: `DR-B07-05`
 - **Command** (read-only check on `Mini` and `Pro` host schedulers):
   ```bash
@@ -228,3 +237,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Inputs**: `organism_entrypoints.json` in repo + read-only verification on `Pro` of whether `~/nuzantara` exists or is a symlink to `~/Desktop/nuzantara` (`test -e ~/nuzantara && ls -ld ~/nuzantara`).
 - **Expected Output Shape**: JSON summary of `organism_entrypoints.json` and boolean/target for `~/nuzantara` on `Pro` plus any scheduler entry referencing `retention_worker.py`.
 - **Why It Matters**: Resolves `UNK-B07-05` (`CE-09` and `IN-03`) by confirming whether `pro.outbox_prune_daily` fails on `Pro` due to `REPO_ROOT="${HOME}/nuzantara"` and whether `retention_worker.py` has any active scheduler.
+
+## Adversarial review
+
+Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED` for this file's bytes with SHA256 `6de9d4b53d88661038a6dfcf9210f4b23d6600389b9bc8603a68e78be70ece87` at candidate `f56373bc6f87cb835f05b6215a7825f165e55e21`. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. Edits after the reviewed bytes (addendum, removals) apply its findings and were not re-reviewed.

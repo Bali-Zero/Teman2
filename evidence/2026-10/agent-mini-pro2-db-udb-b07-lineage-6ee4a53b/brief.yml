@@ -2,13 +2,15 @@ mandate: universal-db-wave8-20261015-B07
 gear: 3
 colour: BLUE
 intent:
-  Prepare truthful migration,maintenance and retention lineage evidence; runtime
-  reconciliation remains unproved.
+  Deliver a truthful partial B07 migration and maintenance lineage dossier with an
+  offline adapter, a read-only probe whose observer identity is source-pinned, and
+  fixture-backed invariant tests.
 scope:
   - research/operations/udb-wave8/B07/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b07-lineage-6ee4a53b/
+  - .secrets.baseline
 constraints:
-  - One PR for B07; original Gemini conversation retained.
-  - No client rows,live mutation,credential creation,application changes,or unadmitted
-    native probe.
-  - Fresh independent Opus5.5/xhigh exact-head final gate required; Dux alone releases.
-  - S1 cannot start before all8actual block closures.
+  - Exactly one B07 PR; no production code, migration, configuration or runtime change.
+  - The probe is not executed; native admission needs an owner-provisioned observer credential.
+  - Historical restore lineage and live ledger state remain UNKNOWN.
+  - Fresh independent BLUE Opus5.5/xhigh exact-head final gate remains mandatory.

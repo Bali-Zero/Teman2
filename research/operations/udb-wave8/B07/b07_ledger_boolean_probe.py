@@ -22,6 +22,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# Canonical agent read-only PostgreSQL role (INDEX.md:73, AGENTS.md:95): md5("nuzantara_readonly").
+# Pinned here, never caller-supplied; every other expected principal is refused before connect.
+ADMITTED_OBSERVER_PRINCIPAL_MD5S = frozenset({"b2c7eae2c3068e64c60902ef0ee59882"})
+
 
 def load_sql_manifest(path: Path) -> dict[int, dict[str, Any]]:
     """Normalize actual DR01 SQL filenames before any database connection."""
@@ -48,16 +52,40 @@ def load_sql_manifest(path: Path) -> dict[int, dict[str, Any]]:
     return result
 
 
-async def run_boolean_probe(dr01_manifest_path: Path, dsn_env_var: str = "DATABASE_URL") -> dict[str, Any]:
-    """Execute read-only boolean-only reconciliation against `_schema_versions` and `schema_migrations`."""
-    import asyncpg  # Imported lazily only when Dux executes the probe
-
+async def run_boolean_probe(
+    dr01_manifest_path: Path, *, expected_observer_principal_md5: str,
+) -> dict[str, Any]:
+    """Use only a separately admitted observer; metadata stays read-only and boolean-only."""
+    import re
+    if not re.fullmatch(r"[0-9a-f]{32}", str(expected_observer_principal_md5)):
+        raise ValueError("EXPECTED_OBSERVER_PRINCIPAL_REQUIRED")
+    if expected_observer_principal_md5 not in ADMITTED_OBSERVER_PRINCIPAL_MD5S:
+        raise ValueError("OBSERVER_PRINCIPAL_NOT_ADMITTED")
     disk_by_num = load_sql_manifest(dr01_manifest_path)
-
-    dsn = os.environ[dsn_env_var]
+    dsn = os.environ.get("B07_OBSERVER_DSN")
+    if not dsn:
+        raise ValueError("DEDICATED_OBSERVER_DSN_REQUIRED")
+    if dsn == os.environ.get("DATABASE_URL"):
+        raise ValueError("APPLICATION_DSN_FORBIDDEN")
+    import asyncpg  # Lazy: no DB dependency or connection before admission inputs validate.
     conn = await asyncpg.connect(dsn=dsn, timeout=15.0)
     try:
         async with conn.transaction(readonly=True):
+            observer_ok = await conn.fetchval(
+                """
+                SELECT md5(current_user) = $1
+                    AND current_user = session_user
+                    AND NOT EXISTS (
+                        SELECT 1 FROM pg_catalog.pg_roles
+                        WHERE rolname = current_user AND
+                            (rolsuper OR rolcreaterole OR rolcreatedb
+                             OR rolreplication OR rolbypassrls)
+                    )
+                """,
+                expected_observer_principal_md5,
+            )
+            if observer_ok is not True:
+                raise PermissionError("ADMITTED_OBSERVER_IDENTITY_NOT_PROVED")
             # Select ONLY integer version and boolean predicates — zero strings or actor columns
             sv_rows = await conn.fetch(
                 """
@@ -204,6 +232,7 @@ async def run_boolean_probe(dr01_manifest_path: Path, dsn_env_var: str = "DATABA
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "readonly_transaction": True,
         "pii_or_actor_strings_exported": False,
+        "observer_identity_verified": True,
         "summary_counts": counts,
         "olympus_heartbeats_partitions": {
             "monthly_partition_count": int(
@@ -217,9 +246,24 @@ async def run_boolean_probe(dr01_manifest_path: Path, dsn_env_var: str = "DATABA
     }
 
 
+def main() -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description="Requires independent source review and native observer admission before use.")
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--expected-observer-principal-md5", required=True)
+    args = parser.parse_args()
+    try:
+        result = asyncio.run(run_boolean_probe(
+            args.manifest,
+            expected_observer_principal_md5=args.expected_observer_principal_md5,
+        ))
+    except Exception:
+        # Never expose a driver exception, DSN, role, or database response.
+        print(json.dumps({"status": "CANNOT-VERIFY", "reason": "OBSERVER_PROBE_FAILED"}))
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 if __name__ == "__main__":
-    default_dr01 = (
-        Path(__file__).resolve().parent / "dux-requests" / "DR-B07-01.out"
-    )
-    output = asyncio.run(run_boolean_probe(default_dr01))
-    print(json.dumps(output, indent=2, sort_keys=True))
+    raise SystemExit(main())

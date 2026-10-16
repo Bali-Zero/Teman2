@@ -279,12 +279,18 @@ def parse_dr05_pro_kv(dr05_pro_path: Path) -> dict[str, str]:
     return result
 
 
-def build_b07_operation_instances(repo_root: Path) -> list[dict[str, Any]]:
-    """Build B07 operation instances for D02, D11, D13 with strict consumer-matrix membership."""
-    csv_path = repo_root / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
-    dr05_pro_path = (
-        repo_root / "research/operations/udb-wave8/B07/dux-requests/DR-B07-05.pro.out"
+def build_b07_operation_instances(
+    repo_root: Path, *, consumer_matrix_path: Path | None = None,
+    dr05_pro_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Build instances from explicit inputs; defaults retain admitted real-input behavior."""
+    csv_path = consumer_matrix_path if consumer_matrix_path is not None else (
+        repo_root / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
     )
+    if dr05_pro_path is None:
+        dr05_pro_path = (
+            repo_root / "research/operations/udb-wave8/B07/dux-requests/DR-B07-05.pro.out"
+        )
     dr05_pro_sha256 = sha256_file(dr05_pro_path)
 
     valid_cids, _ = load_consumer_matrix_index(csv_path)
