@@ -257,6 +257,8 @@ PENDING_RETRY_S = 900      # B19: a key is retried at most this often
 PENDING_TTL_S = 86400      # B19: a pending merge older than this (from its decision) is never retried
 MERGE_ATTEMPT = ("merged", "merge_error")   # B19: the rows phase_f_merge always leaves
 LOCAL_TERMS = ("local_checks_clean", "review_independent", "executed_contexts_ok", "same_repo")
+DEAD_READ_CAP = 5   # B38: keys that need a REST read to be classified dead or alive, per tick
+DEAD_RED = frozenset({"failure", "timed_out", "startup_failure", "error"})   # B38: a COMPLETED hosted red; "cancelled" is B17/B27's and never dead
 GATE_PENDING_CAP = 3   # B12: decisions of one (pr, head, base) that found no gate verdict posted yet
 REDECIDE_CAP = 3          # B30: transient local no-verdicts of one (pr, head, base) before it stays decided
 REDECIDE_BACKOFF_S = 600  # B30: a transient key is due again this long times its transient decisions (of the window) so far after the last decision
@@ -358,9 +360,52 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
     return posted is not None and all(hosted_rerun_after(repo, head, nm, posted) for nm in names)
 
 
+def dead_by_journal(recs: list[dict]) -> tuple[dict, dict]:
+    """B38 (c) and (d), from the journal alone: ``({(pr, head): True} where the newest non-replay decision at that head is a FAIL whose
+    hosted comparison agreed red, {pr: True} where the PR's newest non-replay decision at any head was gate_pending)``. A FAIL agreed red
+    has a compared local FAIL context (not in ``drift.stale_locally``), a comparison without an error whose compared contexts match
+    ``counts.AGREE``, and every compared context AGREE: the local red is then a hosted red."""
+    failed, needs_gate = {}, {}
+    for r in recs:
+        if r.get("kind") != "decision" or r.get("replay"):
+            continue
+        hc_ = r.get("hosted_compare") if isinstance(r.get("hosted_compare"), dict) else {}
+        counts = hc_.get("counts") if isinstance(hc_.get("counts"), dict) else None
+        drift = hc_.get("drift") if isinstance(hc_.get("drift"), dict) else None
+        stale = drift.get("stale_locally") if isinstance(drift, dict) else None
+        ctx = r.get("contexts") if isinstance(r.get("contexts"), dict) else {}
+        compared = {k: v for k, v in ctx.items() if k not in stale} if (isinstance(stale, list) and all(isinstance(x, str) for x in stale)) else {}
+        failed[(r.get("pr"), r.get("head_sha"))] = (r.get("overall") == "FAIL" and "error" not in hc_ and counts is not None
+                                                     and type(counts.get("AGREE")) is int and counts["AGREE"] > 0
+                                                     and len(compared) == counts["AGREE"]
+                                                     and all(v == 0 for k, v in counts.items() if k != "AGREE")
+                                                     and any(v == "FAIL" for v in compared.values()))
+        needs_gate[r.get("pr")] = r.get("gate_pending") is True and r.get("overall") == "BLOCKED"
+    return failed, needs_gate
+
+
+def hosted_dead(live: dict) -> bool:
+    """B38 (b): a REQUIRED context of the hosted document has COMPLETED red (every red entry in ``DEAD_RED``) and none of its entries is
+    pending. A cancelled red is B17/B27's and never dead; a pending context is not dead. Validates the required set and lists first."""
+    if not isinstance(live, dict):
+        raise hc.CompareError("hosted document is not an object")
+    hc.required_names(live.get("required_checks"))
+    runs, statuses = live.get("check_runs"), live.get("statuses")
+    if not isinstance(runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in runs + statuses):
+        raise hc.CompareError("check_runs / statuses are not lists of objects")
+    by = hc.hosted_entries(runs, statuses)
+    for c in live["required_checks"]:
+        entries = by.get(c["context"], [])
+        v = hc.hosted_verdict(entries, c.get("app_id"))
+        if v["verdict"] == "RED" and v["red"] and all(x["conclusion"] in DEAD_RED for x in v["red"]) and not any(e["verdict"] == "PENDING" for e in entries):
+            return True
+    return False
+
+
 def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_ready=None, capped: list | None = None,
            evict_capped: list | None = None, now_s: float | None = None, deferred: list | None = None, redecide_capped: list | None = None,
-           host_free_gb: float | None = None, start_floor_gb: float = 0.0) -> tuple[list[dict], list[dict]]:
+           host_free_gb: float | None = None, start_floor_gb: float = 0.0, dead_probes: dict | None = None,
+           dead: dict | None = None) -> tuple[list[dict], list[dict]]:
     """(same-repo PRs to decide, in order; fork PRs to journal). Drafts and PRs that ask for no merge are not the merger's.
 
     Order: a head never decided at any base first, then the head whose last decision is oldest, then created_at —
@@ -383,7 +428,14 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     B30: a key whose NEWEST non-replay decision is a transient local no-verdict (``transient_reasons``) is decided again at the same
     base: at most ``REDECIDE_CAP`` transient decisions per key within ``REDECIDE_WINDOW_S`` (past it: appended to ``redecide_capped``), not before
     ``REDECIDE_BACKOFF_S`` times the count since the last decision, and a ``host_disk`` one only when ``host_free_gb`` is measured and at
-    least ``start_floor_gb``. The PR comes back as a copy carrying ``_redecide = {reason, attempt}`` and sorts as an attempted head."""
+    least ``start_floor_gb``. The PR comes back as a copy carrying ``_redecide = {reason, attempt}`` and sorts as an attempted head.
+
+    B38: a selectable key that cannot yield a mergeable row whatever the local verdict is DEAD and sorts after every other key of its group
+    (labelled-first stays first), never dropped. (a) ``dead_probes["review"](n, head)``: B29's changes-requested block; (b) ``["hosted"]``:
+    a required hosted context completed red; (c) the journal: the newest decision at the head is a FAIL the hosted side agreed on; (d)
+    ``["gate_missing"]``: the PR's newest decision was gate_pending and the head carries no gate status. A probe that raises or is absent is
+    "not dead". Keys are classified in the sorted order and the REST probes stop at the first alive key or after ``DEAD_READ_CAP`` keys.
+    ``dead`` receives ``{(n, head): [reasons]}``."""
     now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))
                or r.get("why") == "head_in_base"}
@@ -475,8 +527,53 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
             if "host_disk" in st[1] and not (host_free_gb is not None and host_free_gb >= start_floor_gb):
                 continue
             todo.append({**pr, "_redecide": {"reason": "+".join(st[1]), "attempt": st[0] + 1}})
-    todo.sort(key=lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"]))
+    order = lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in last, last.get((p["number"], head_of(p)), ""), str(p.get("created_at")), p["number"])   # noqa: E731
+    todo.sort(key=order)
+    if dead_probes is not None and todo:
+        dead_keys = classify_dead(todo, recs, dead_probes)
+        if dead is not None:
+            dead.update(dead_keys)
+        todo.sort(key=lambda p: (not has_arm_label(p), (p["number"], head_of(p)) in dead_keys, *order(p)[1:]))
     return todo, forks
+
+
+def classify_dead(todo: list[dict], recs: list[dict], probes: dict) -> dict:
+    """B38: ``{(pr, head): [reasons]}`` for the dead keys of ``todo`` (already in B23/B28 order). The free tiers, the journal (c) and the
+    one batched review read (a), see every key; the REST tiers, the gate status (d) and the hosted check runs (b), run in that order of the
+    list and stop at the first key found alive, or when ``DEAD_READ_CAP`` keys have used a REST read. A probe that raises is no answer."""
+    failed, needs_gate = dead_by_journal(recs)
+    out: dict = {}
+    reads, stop = 0, False
+
+    def ask(name, n, head) -> bool:
+        probe = probes.get(name)
+        if probe is None:
+            return False
+        try:
+            return bool(probe(n, head))
+        except (Stopped, TickTimeout):
+            raise
+        except Exception as exc:  # noqa: BLE001 — an unreadable fact is "not dead": the key keeps its normal place
+            print(f"merger: B38 #{n} {name} not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+            return False
+
+    for p in todo:
+        n, head = p["number"], head_of(p)
+        why = []
+        if failed.get((n, head)):
+            why.append("fail_agreed")
+        elif ask("review", n, head):
+            why.append("review")
+        elif not stop:
+            if needs_gate.get(n) and ask("gate_missing", n, head):
+                why.append("gate_missing")
+            elif ask("hosted", n, head):
+                why.append("hosted_red")
+            reads += 1
+            stop = not why or reads >= DEAD_READ_CAP   # the first alive key settles the head of its group: the tail is best-effort
+        if why:
+            out[(n, head)] = why
+    return out
 
 
 # ------------------------------------------------------------------ candidate + gate
@@ -1182,6 +1279,7 @@ def label_postdates_head(repo: str, head, labelled_at, number=None) -> str | Non
 
 
 REVIEW_STATES = ("APPROVED", "CHANGES_REQUESTED", "DISMISSED", "COMMENTED", "PENDING")
+REVIEW_CR = "a review requests changes"   # B38: review_block's changes-requested answer, the one that makes a key dead
 
 
 def review_block(p: dict) -> str | None:
@@ -1201,7 +1299,7 @@ def review_block(p: dict) -> str | None:
     if any(st not in REVIEW_STATES for st in states):
         return f"a review state is unreadable: {sorted({str(st) for st in states if st not in REVIEW_STATES})}"
     if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:
-        return f"a review requests changes (reviewDecision {decision}, {states.count('CHANGES_REQUESTED')} reviewer(s) with changes requested)"
+        return f"{REVIEW_CR} (reviewDecision {decision}, {states.count('CHANGES_REQUESTED')} reviewer(s) with changes requested)"
     return None
 
 
@@ -1225,6 +1323,47 @@ def pr_side(a, state: Path, n: int, head: str, why: dict) -> dict:
              "bites": isinstance(p.get("body"), str) and BITES_RE.search(p["body"]) is not None}   # a flag: the body's text is never kept
     why["label_privileged"], facts["label_actor"] = label_arm(a.repo, p)
     return facts
+
+
+REVIEWS_QUERY = ("query($owner: String!, $name: String!, $base: String!) { repository(owner: $owner, name: $name) {"
+                 " pullRequests(states: OPEN, baseRefName: $base, first: 100) { pageInfo { hasNextPage } nodes { number headRefOid reviewDecision"
+                 " latestOpinionatedReviews(writersOnly: true, first: 100) { totalCount nodes { state } } } } } }")
+
+
+def review_dead(p: dict) -> bool:
+    """B38 (a): B29's own predicate, true only for its changes-requested answer — an unreadable review is B29's block, not a dead key."""
+    reason = review_block(p)
+    return reason is not None and reason.startswith(REVIEW_CR)
+
+
+def open_review_dead(repo: str, base: str) -> dict:
+    """B38 (a): ``{(number, head): bool}`` for the first 100 open PRs of ``base`` in ONE GraphQL query; a PR past them is simply absent."""
+    owner, name = repo.split("/")
+    prs = (gh_graphql(REVIEWS_QUERY, owner=owner, name=name, base=base).get("repository") or {}).get("pullRequests")
+    nodes = prs.get("nodes") if isinstance(prs, dict) else None
+    if not isinstance(nodes, list):
+        raise GraphQLError("the open pull requests' reviews are unreadable")
+    return {(x.get("number"), x.get("headRefOid")): review_dead(x) for x in nodes if isinstance(x, dict)}
+
+
+def dead_probes(a, repo_dir: Path, base_sha: str) -> dict:
+    """B38: the three reads triage may make to class a key dead, each ``(n, head) -> bool``. The review map is read once per tick (a failed
+    read is kept as empty, not retried per key); the other two are one key's REST reads."""
+    cache: dict = {}
+    matrix = base_matrix(repo_dir, base_sha)
+
+    def review(n, head):
+        if "r" not in cache:
+            try:
+                cache["r"] = open_review_dead(a.repo, a.base)
+            except (GraphQLError, OSError, subprocess.SubprocessError, ValueError) as exc:
+                cache["r"] = {}
+                print(f"merger: B38 reviews not read — {redact(f'{type(exc).__name__}: {exc}')}", file=sys.stderr)
+        return cache["r"].get((n, head), False)
+
+    return {"review": review,
+            "hosted": lambda n, head: hosted_dead(hc.fetch_live(a.repo, a.base, head, matrix)),
+            "gate_missing": lambda n, head: gate_posted_at(a.repo, head) is None}
 
 
 # the criterion and the one write
@@ -1981,12 +2120,21 @@ def tick(a, state: Path, lease_id: str) -> int:
     evict_capped: list = []
     redecide_capped: list = []
     deferred: list = []
+    dead: dict = {}
     prs = open_prs(a.repo, a.base)
     if retry_pending_merges(a, state, repo_dir, lease_id, recs, base_sha, prs):
         return 0
     check_watchdog()
     todo, forks = triage(prs, a.repo, recs, base_sha, lambda n, head, names: gate_ready(a.repo, head, names), capped, evict_capped,
-                         deferred=deferred, redecide_capped=redecide_capped, host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)
+                         deferred=deferred, redecide_capped=redecide_capped, dead_probes=dead_probes(a, repo_dir, base_sha), dead=dead,
+                         host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)
+    for (n, head), reasons in dead.items():   # B38: once per (pr, head, base), whatever the tick count
+        key = {"pr": n, "head_sha": head, "base_sha": base_sha}
+        if not any(r.get("kind") == "skipped" and r.get("why") == "dead_last" and all(r.get(k) == v for k, v in key.items()) for r in recs):
+            journal(state, {"kind": "skipped", "why": "dead_last", **key, "reasons": reasons, "lease_id": lease_id})
+    if dead:
+        print(f"merger: B38 {len(dead)} dead key(s) sorted last: " + ", ".join(f"#{n}({'+'.join(r)})" for (n, _), r in sorted(dead.items()))
+              + (f"; first in order #{todo[0]['number']}" if todo else ""))
     for why, prs in (("gate_pending_cap", capped), ("evicted_cap", evict_capped), ("redecide_cap", redecide_capped)):   # B12, B15: journalled once per key, however many ticks pass
         for pr in prs:
             key = {"pr": pr["number"], "head_sha": head_of(pr), "base_sha": base_sha}

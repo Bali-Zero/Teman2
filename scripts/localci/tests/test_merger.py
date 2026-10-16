@@ -91,6 +91,13 @@ class FakeGraphQL:
             if self.fail:
                 raise mg.GraphQLError(self.fail)
             return {"enqueuePullRequest": {"mergeQueueEntry": self.entry}}
+        if query == mg.REVIEWS_QUERY:   # B38: the open PRs' reviews, in one read; `reviews[n] = (reviewDecision, [states])` overrides the clean default
+            assert f"{variables['owner']}/{variables['name']}" == REPO and variables["base"] == "main", (query, variables)
+            reviews = getattr(self, "reviews", {})
+            return {"repository": {"pullRequests": {"pageInfo": {"hasNextPage": False}, "nodes": [
+                {"number": p["number"], "headRefOid": p["head"]["sha"], "reviewDecision": reviews.get(p["number"], (None, []))[0],
+                 "latestOpinionatedReviews": {"totalCount": len(reviews.get(p["number"], (None, []))[1]),
+                                              "nodes": [{"state": st} for st in reviews.get(p["number"], (None, []))[1]]}} for p in self.gh.prs]}}}
         assert query == mg.PR_QUERY and f"{variables['owner']}/{variables['name']}" == REPO, (query, variables)
         (p,) = [x for x in self.gh.prs if x["number"] == variables["number"]]
         names = [lb["name"] for lb in p["labels"]]
@@ -603,7 +610,7 @@ def test_every_github_call_is_a_get_or_the_graphql_read_and_unarmed_no_mutation_
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(9, "9" * 40, fork=True)]
     assert world.tick() == 0
     assert world.gh.paths and all(not re.search(r"/(merge|labels|comments|reviews)\b", p) for p in world.gh.paths)
-    assert [q for q, _ in world.gql.calls] == [mg.PR_QUERY] and world.gql.mutations() == []
+    assert [q for q, _ in world.gql.calls] == [mg.REVIEWS_QUERY, mg.PR_QUERY] and world.gql.mutations() == []   # B38: one batched reviews read, then the PR's
 
 
 def test_merge_refuses_with_exit_2_whatever_it_is_given(capsys):
