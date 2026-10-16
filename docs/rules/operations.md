@@ -27,10 +27,14 @@ a mission Zero declared ORANGE, which releases that one mission under PARABELLUM
    `lane_ship.sh`) applies the label `localci:merge-shadow-ok` first, then arms GitHub auto-merge
    only while `rules/branches/main` still carries a `merge_queue` rule; with no such rule it sets
    the label and skips the arm (not an error). While the rule exists the GitHub arm is what
-   merges: a label failure only WARNs and the arm still runs, and a labelled-but-unarmed PR is
-   still a re-arm candidate. **After any push to an open PR, re-run the helper**: on a PR that already
-   carries the label it refreshes it (remove, then add), and the merger accepts the label only if
-   its event postdates the head's first check suite. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
+   merges: the arm still runs after a label failure, but a label that is not read back valid is
+   FATAL (exit 2, `SIGNAL_INTENT_FAIL` on stderr) in every queue state, and a labelled-but-unarmed PR is
+   still a re-arm candidate. **After any push to an open PR, re-run the helper**: it reads the label back
+   first (`scripts/localci/label_census.py verify`, the merger's own check) and leaves a valid one alone;
+   a label that is absent is added, one that is present but stale is refreshed (remove, then add); an
+   unreadable read is retried and never triggers a remove. The add and the read-back are each bounded
+   (`SIGNAL_INTENT_TRIES`, default 4). The merger accepts the label only if its event postdates the head's
+   first check suite. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
    merges only labelled PRs, so the label is the arm: `queue_rearm`, `queue_shepherd` and
    `queue_rearm_population.sh` count it as armed, a failed label is fatal, and their re-arms
    call the helper (label, no GitHub arm) instead of `gh pr merge`.

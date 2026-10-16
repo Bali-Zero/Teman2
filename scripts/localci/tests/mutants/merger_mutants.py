@@ -1230,6 +1230,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-trap-out-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$OUT" || true', 'rm -f "$OUT"', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
+    # B31: the label read-back and the pre-flip census
+    # B31 round 3: the predicate census — every conditional of the helper and label_census.py has a mutant (README table)
 }
 
 
@@ -1238,6 +1240,10 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh"):   # B31: the helper, its probe and its shell table
+        shutil.copy2(ROOT / rel, dest / rel)
+    (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
+    shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)

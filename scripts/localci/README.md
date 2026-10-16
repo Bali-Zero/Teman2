@@ -227,6 +227,21 @@ recipe: 394 s cold at plan (download, install, export), then a cache hit while t
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
+### The merge label is read back (B31)
+
+`scripts/signal_merge_intent.sh <PR>` no longer trusts a write. It first asks `scripts/localci/label_census.py verify` (the merger's own `label_arm`:
+the label on the PR, the last `LabeledEvent` by an admin or maintain user, stamped no earlier than the head's push). Valid: nothing is written. Absent:
+add. Present but stale: remove, then add. The add retries with bounded backoff (`SIGNAL_INTENT_TRIES`, `SIGNAL_INTENT_BACKOFF_S`, under the `SIGNAL_INTENT_DEADLINE_S` wall clock), then the label is read
+back again; a label not shown valid is exit 2 and `SIGNAL_INTENT_FAIL` on stderr, queue or no queue (with the queue rule present the arm is still
+attempted first). An unreadable read (rc other than 0 and 1, including a check-suites read that failed) is unknown, never invalid: it is retried and never removes a label. The whole helper runs under a wall-clock deadline (`SIGNAL_INTENT_DEADLINE_S`, default 45 s; the poller kills it at 60 s, pinned by test). No caller swallows it (`docs_guardian.sh` used `|| true`; a test now refuses that spelling). Before the flip run
+`python3 scripts/localci/label_census.py census --repo Bali-Zero/Teman2` (read-only; exit 1 and a list when open armed PRs lack a valid label; on
+2026-10-15 it named 7, among them the auto-publish article PR #8530) and re-run the helper on each. Auto-publish article PRs are opened by
+backend-rag's `GitHubPublisher`, which enables auto-merge but never labels; that change belongs to a backend-rag PR (its merge is a deploy).
+
+#### Predicate census (B31'')
+
+`scripts/signal_merge_intent.sh` has no decision in it: it is `exec python3 scripts/localci/label_intent.py`, whose pure `plan()` is the whole logic, compared with an independent oracle over the entire finite domain by `tests/test_label_intent.py`. The census is Python only and generated: `python3 scripts/localci/predicate_census.py` prints every conditional of `label_intent.py` and `label_census.py` (and raises on a construct it does not model); `predicate_census.jsonl` has one row each, naming its generated mutant (`b31-ast-*`); `python3 scripts/localci/predicate_census.py --draft` rewrites it; `tests/test_predicate_census.py` fails on a missing or stale row. Spec: `docs/specs/localci-sovereign-2026-10-07.md` (B31'').
+
 ### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
 
 Eight FAIL decisions of Pro's journal (2026-10-09 to 10-14) were environment, not candidate: the container had no `.git` (`git rev-parse
