@@ -6,9 +6,13 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # research(udb-wave8): B06 business-domain paths — full source inventory, actual B05 submissions, explicit coverage gaps
 
+## Historical source context on current main (2026-10-16)
+
+The21 operation records remain tied to base8061c88e and now consume a hash-pinned source-identity projection verified against those exact local Git objects. The6029-row inventory remains tied to its declared5f2e0ad9 source revision; source-integrity verification uses matching working-tree bytes or exact, hash-checked local Git objects for that revision. Missing context or a wrong object fails; no network fetch or native query is performed. These historical artifacts do not establish current runtime behavior. Original18 tests retain their full byte prefix. All38 focused tests now pass without skips; no new lint findings were introduced. Current-main merge execution and independent final source review remain pending. The prior source review does not cover this delta; final review remains pending.
+
 ## Current package status (2026-10-16)
 
-Current source tests: 27 passed (18 preserved legacy tests plus 9 inventory tests). All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent source execution is recorded; document and final commit gates remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+Current source tests:38 passed (the prior27 plus11 source-context cases); the original18-test file prefix remains intact. All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent execution covers the prior27-test source phase. The current38-test delta is coordinator-verified; document and final committed-head review remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
 
 Block **B06** (`D04`–`D10`) of campaign `universal-db-wave8-20261015`. Status `PARTIAL`, `block_closed: false`. Authoritative evidence: [`RESULT.json`](RESULT.json).
 

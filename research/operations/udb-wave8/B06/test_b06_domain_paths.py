@@ -632,3 +632,30 @@ def test_clean_checkout_fixture_cli_labels_both_byte_identities(
     assert output["processed_csv_sha256"] != output["source_csv_sha256"]
     assert output["raw_source_csv_read"] is False
     assert output["input_kind"] == "FROZEN_METADATA_PROJECTION"
+
+
+@pytest.mark.parametrize("failure", ["missing", "tampered"])
+def test_historical_source_projection_requires_exact_pin(b06_mod, tmp_path, monkeypatch, failure):
+    path = tmp_path/"source-evidence-hashes.json"
+    if failure == "tampered":
+        path.write_bytes(b06_mod.SOURCE_EVIDENCE_PATH.read_bytes() + b"\n")
+    monkeypatch.setattr(b06_mod, "SOURCE_EVIDENCE_PATH", path)
+    with pytest.raises(ValueError, match="B06_HISTORICAL_SOURCE_HASHES_"):
+        b06_mod._compute_ref_file_sha256(tmp_path, "scripts/ci/restore_drill_verify.py:1")
+
+
+def test_historical_source_projection_rejects_wrong_declared_version(b06_mod, tmp_path, monkeypatch):
+    data = json.loads(b06_mod.SOURCE_EVIDENCE_PATH.read_text())
+    data["source_version"] = "a"*40
+    path = tmp_path/"source-evidence-hashes.json"
+    path.write_text(json.dumps(data))
+    monkeypatch.setattr(b06_mod, "SOURCE_EVIDENCE_PATH", path)
+    monkeypatch.setattr(b06_mod, "PINNED_SOURCE_EVIDENCE_SHA256",
+                        b06_mod.hashlib.sha256(path.read_bytes()).hexdigest())
+    with pytest.raises(ValueError, match="B06_HISTORICAL_SOURCE_VERSION_MISMATCH"):
+        b06_mod._compute_ref_file_sha256(tmp_path, "scripts/ci/restore_drill_verify.py:1")
+
+
+def test_historical_source_projection_rejects_unrecorded_reference(b06_mod, tmp_path):
+    with pytest.raises(FileNotFoundError, match="B06_HISTORICAL_SOURCE_REF_UNAVAILABLE"):
+        b06_mod._compute_ref_file_sha256(tmp_path, "apps/unrecorded.py:1")

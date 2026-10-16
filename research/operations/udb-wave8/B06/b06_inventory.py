@@ -194,6 +194,35 @@ def operation_submissions(data):
             result.append(record)
     return result
 
+def read_captured_source_bytes(root, row, source_version):
+    """Verify the recorded revision, using local Git objects only after tree drift."""
+    path = Path(row["source_path"])
+    root = Path(root).resolve()
+    if (path.is_absolute() or ".." in path.parts or not path.parts
+            or path.parts[0] not in {"apps", "scripts", "packages", "libs"}):
+        raise ValueError("B06_CAPTURE_SOURCE_PATH_REJECTED")
+    if not re.fullmatch(r"[a-f0-9]{40}", source_version):
+        raise ValueError("B06_CAPTURE_SOURCE_VERSION_REJECTED")
+    expected = row["source_sha256"]
+    if not isinstance(expected, str) or not re.fullmatch(r"[a-f0-9]{64}", expected):
+        raise ValueError("B06_CAPTURE_SOURCE_IDENTITY_REJECTED")
+    current = root/path
+    if current.is_file() and current.resolve().is_relative_to(root):
+        raw = current.read_bytes()
+        if hashlib.sha256(raw).hexdigest() == expected:
+            return raw
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "show", source_version + ":" + path.as_posix()],
+            capture_output=True,
+        )
+    except OSError:
+        raise ValueError("B06_CAPTURE_SOURCE_CONTEXT_UNAVAILABLE") from None
+    if result.returncode or hashlib.sha256(result.stdout).hexdigest() != expected:
+        raise ValueError("B06_CAPTURE_SOURCE_CONTEXT_UNAVAILABLE")
+    return result.stdout
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--capture", action="store_true")

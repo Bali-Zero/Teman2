@@ -6,9 +6,13 @@ review_disposition: MANDATE_RECORDED_NO_IMPLEMENTATION_APPROVAL
 
 # B06: Business-domain paths
 
+## Current source-context verification (2026-10-16)
+
+Current suite:38 tests passed,0 skipped. This supersedes the earlier27-test package count while retaining its6029 IDs,1566 traced rows,4463 untraced rows and21001 syntax signals as historical source observations. The21 operation artifacts remain tied to8061c88e; the inventory remains tied to5f2e0ad9. Current source bytes are used only when their hash matches the recorded revision; otherwise exact local Git objects must match. No current runtime closure is inferred. The earlier INVENTORY-FREEZE.json adapter-byte claim is historical; this source-context delta awaits independent final review.
+
 ## Current package and historical preparation boundary (2026-10-16)
 
-Current package evidence records 27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
+Earlier package evidence records27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
 
 The preparation sections below preserve the earlier18-test scope and its corrected historical claims. They do not supersede the current inventory evidence or establish operational closure. References to raw untracked inputs, ungranted execution or pending synthesis describe that earlier preparation phase unless explicitly repeated in current RESULT.json. Current source files and their tests are unchanged by this document reconciliation.
 

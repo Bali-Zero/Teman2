@@ -32,6 +32,8 @@ from pathlib import Path
 from typing import Any
 
 BASE_COMMIT_SHA = "8061c88e0c43dd42e735fd012f9ed072df3ef3d6"
+SOURCE_EVIDENCE_PATH = Path(__file__).resolve().parent / "fixtures/source-evidence-hashes.json"
+PINNED_SOURCE_EVIDENCE_SHA256 = "7bcfa1a07ebd2537049a839bd06de41e1a9a17ef35e2d1af16134ad3b777aa7b"
 STATIC_EVIDENCE_TIMESTAMP = "2026-10-15T07:06:22Z"
 
 CONSUMER_MATRIX_REL_PATH = ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
@@ -373,10 +375,20 @@ def _field_obj(
 
 
 def _compute_ref_file_sha256(repo_root: Path, x_evidence_ref: str) -> str:
-    """Compute SHA-256 of the repository file named in ``x_evidence_ref``."""
+    """Read verified historical source identities for the declared BASE_COMMIT_SHA."""
+    if not SOURCE_EVIDENCE_PATH.is_file():
+        raise ValueError("B06_HISTORICAL_SOURCE_HASHES_MISSING")
+    raw = SOURCE_EVIDENCE_PATH.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != PINNED_SOURCE_EVIDENCE_SHA256:
+        raise ValueError("B06_HISTORICAL_SOURCE_HASHES_PIN_MISMATCH")
+    data = json.loads(raw)
+    if data.get("source_version") != BASE_COMMIT_SHA:
+        raise ValueError("B06_HISTORICAL_SOURCE_VERSION_MISMATCH")
     rel_file = x_evidence_ref.split(":", 1)[0]
-    file_path = repo_root / rel_file
-    return hashlib.sha256(file_path.read_bytes()).hexdigest()
+    value = data.get("source_files", {}).get(rel_file)
+    if not isinstance(value, str) or not re.fullmatch(r"[a-f0-9]{64}", value):
+        raise FileNotFoundError("B06_HISTORICAL_SOURCE_REF_UNAVAILABLE")
+    return value
 
 
 def _build_canonical_record(

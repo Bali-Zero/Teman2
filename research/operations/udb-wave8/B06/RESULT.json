@@ -190,5 +190,17 @@
     "B06_OBSERVER_DSN": "UNSET",
     "B07_OBSERVER_DSN": "UNSET",
     "native_query_executed": false
+  },
+  "current_main_source_context": {
+    "current_suite_passed": 38,
+    "legacy_suite_tests_preserved": 18,
+    "previous_27_test_phase_is_historical": true,
+    "source_review_current": "PENDING_NEW_SOURCE_DELTA_REVIEW",
+    "inventory_freeze": "Historical receipt at08:11; current adapter byte identity superseded by source-context fix",
+    "historical_operation_source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "historical_inventory_source_version": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
+    "receipt": "integration-20261016/CURRENT-MAIN-SOURCE-CONTEXT.json",
+    "native_queries": 0,
+    "operational_block_closed": false
   }
 }

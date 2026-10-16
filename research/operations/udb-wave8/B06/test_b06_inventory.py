@@ -75,9 +75,9 @@ def test_all_captured_source_hashes_and_line_anchors_match():
         if row["source_path"] is None:
             assert "SOURCE_NOT_PUBLIC_TRACKED_CODE" in row["unknowns"]
             continue
-        p = root/row["source_path"]
-        assert inventory.sha(p) == row["source_sha256"]
-        count = len(p.read_text(encoding="utf-8",errors="replace").splitlines())
+        raw = inventory.read_captured_source_bytes(root, row, data["source_version"])
+        assert hashlib.sha256(raw).hexdigest() == row["source_sha256"]
+        count = len(raw.decode("utf-8", errors="replace").splitlines())
         for trace in row["traces"]:
             assert 1 <= trace["entry_line"] <= trace["operation_line"] <= count
             assert trace["operation_line"] <= trace["operation_end_line"] <= count
@@ -102,3 +102,48 @@ def test_decorator_call_is_anchored_outside_function_body():
     assert error is None
     assert traces[0]["entry_line"] == 1
     assert traces[0]["operation_line"] == 1
+
+
+def _captured_source_row(raw):
+    return {"source_path": "apps/example.py",
+            "source_sha256": hashlib.sha256(raw).hexdigest()}
+
+
+def test_matching_capture_needs_no_git_context(tmp_path, monkeypatch):
+    raw = b"print('fixture')\n"
+    p = tmp_path/"apps/example.py"
+    p.parent.mkdir()
+    p.write_bytes(raw)
+    def forbidden(*args, **kwargs):
+        pytest.fail("matching source attempted Git access")
+    monkeypatch.setattr(inventory.subprocess, "run", forbidden)
+    assert inventory.read_captured_source_bytes(tmp_path, _captured_source_row(raw), "a"*40) == raw
+
+
+def test_drifted_tree_uses_exact_recorded_git_revision(tmp_path, monkeypatch):
+    raw = b"print('captured')\n"
+    p = tmp_path/"apps/example.py"
+    p.parent.mkdir()
+    p.write_bytes(b"print('later')\n")
+    seen = []
+    def local_git(args, **kwargs):
+        seen.append(args)
+        return type("Result", (), {"returncode": 0, "stdout": raw})()
+    monkeypatch.setattr(inventory.subprocess, "run", local_git)
+    assert inventory.read_captured_source_bytes(tmp_path, _captured_source_row(raw), "a"*40) == raw
+    assert seen == [["git", "-C", str(tmp_path.resolve()), "show", "a"*40+":apps/example.py"]]
+
+
+@pytest.mark.parametrize("exit_code,blob", [(1, b""), (0, b"wrong revision")])
+def test_unavailable_or_wrong_revision_is_rejected(tmp_path, monkeypatch, exit_code, blob):
+    def local_git(*args, **kwargs):
+        return type("Result", (), {"returncode": exit_code, "stdout": blob})()
+    monkeypatch.setattr(inventory.subprocess, "run", local_git)
+    with pytest.raises(ValueError, match="B06_CAPTURE_SOURCE_CONTEXT_UNAVAILABLE"):
+        inventory.read_captured_source_bytes(tmp_path, _captured_source_row(b"expected"), "a"*40)
+
+
+@pytest.mark.parametrize("source_version", ["missing", "HEAD", "-" + "a"*39])
+def test_capture_source_revision_must_be_an_exact_commit(tmp_path, source_version):
+    with pytest.raises(ValueError, match="B06_CAPTURE_SOURCE_VERSION_REJECTED"):
+        inventory.read_captured_source_bytes(tmp_path, _captured_source_row(b"expected"), source_version)

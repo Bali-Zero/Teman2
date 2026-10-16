@@ -6,15 +6,19 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # DEFINITIVE-SYNTHESIS — Wave 8 Block `B06` (Business-Domain Paths `D04`–`D10`)
 
+## Historical source context on current main (2026-10-16)
+
+The21 operation records remain tied to base8061c88e and now consume a hash-pinned source-identity projection verified against those exact local Git objects. The6029-row inventory remains tied to its declared5f2e0ad9 source revision; source-integrity verification uses matching working-tree bytes or exact, hash-checked local Git objects for that revision. Missing context or a wrong object fails; no network fetch or native query is performed. These historical artifacts do not establish current runtime behavior. Original18 tests retain their full byte prefix. All38 focused tests now pass without skips; no new lint findings were introduced. Current-main merge execution and independent final source review remain pending. The prior source review does not cover this delta; final review remains pending.
+
 ## Current package and historical preparation boundary (2026-10-16)
 
-Current package evidence records 27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
+Earlier package evidence records27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
 
 The preparation sections below preserve the earlier18-test scope and its corrected historical claims. They do not supersede the current inventory evidence or establish operational closure. References to raw untracked inputs, ungranted execution or pending synthesis describe that earlier preparation phase unless explicitly repeated in current RESULT.json. Current source files and their tests are unchanged by this document reconciliation.
 
 ## Current package status (2026-10-16)
 
-Current source tests: 27 passed (18 preserved legacy tests plus 9 inventory tests). All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent source execution is recorded; document and final commit gates remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+Current source tests:38 passed (the prior27 plus11 source-context cases); the original18-test file prefix remains intact. All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent execution covers the prior27-test source phase. The current38-test delta is coordinator-verified; document and final committed-head review remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
 
 > **Dux addendum (2026-10-16, supersedes every conflicting statement below, including the 2026-10-15 correction).**
 > Authoritative status and evidence: `RESULT.json`. `test_b06_domain_paths.py` runs 18 passed, 0 skipped, offline over committed

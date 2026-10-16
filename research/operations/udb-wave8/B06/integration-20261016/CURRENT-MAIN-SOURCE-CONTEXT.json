@@ -1,0 +1,26 @@
+{
+  "at": "2026-10-16T10:41:19.018340+00:00",
+  "scope": "Current-main integration; historical source context verified separately from current working tree",
+  "historical_operation_source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "source_hash_projection_sha256": "7bcfa1a07ebd2537049a839bd06de41e1a9a17ef35e2d1af16134ad3b777aa7b",
+  "historical_inventory_source_version": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
+  "original_18_test_file_sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444",
+  "original_18_test_prefix_bytes": 24364,
+  "original_21_operation_artifact_unchanged": true,
+  "inventory_projection_unchanged": true,
+  "failed_main_integration_output_sha256": "17d3cba9909b9c3758ded7954a571736cb73ea7ba4810ce4e4a9623c6ffd8003",
+  "tests": {
+    "passed": 38,
+    "skipped": 0,
+    "exit": 0,
+    "output_sha256": "807ed6fc2a936090ec1b96c4a24a28adb5d781d8971cc85e2ac8667b1000fe3f"
+  },
+  "independent_gate": "PENDING_NEW_SOURCE_DELTA_REVIEW",
+  "native_queries": 0,
+  "operational_block_closed": false,
+  "source_files_compared_to_exact_local_git_objects": 21,
+  "producer_and_comparison_by_coordinator": true,
+  "lint_additional_findings": 0,
+  "legacy_inventory_lint_findings": 1,
+  "verified_at": "2026-10-16T10:45:23.064992+00:00"
+}
