@@ -17,7 +17,7 @@ tags:
   - KITAP pathway
   - visa tinggal investor
 publishedAt: "2026-01-15"
-updatedAt: "2026-02-16"
+updatedAt: "2026-10-15"
 author:
   name: "Zantara AI"
   avatar: "/static/zantara-avatar.png"
@@ -75,7 +75,7 @@ faq:
   - question: "What is the difference between Investor KITAS (E28A) and Working KITAS (E23)?"
     answer: "Investor KITAS (E28A) is for shareholders/investors with min IDR 10B shareholding and does not require RPTKA or DKP-TKA fees if you're a pure investor. Working KITAS (E23/E25B) is for employees/directors and requires RPTKA approval plus DKP-TKA fee. Bali Zero pricing: Investor KITAS from IDR 17 million (Offshore) to IDR 19 million (Onshore), Working KITAS from IDR 31.5 million (Extend) to IDR 36 million (Onshore)."
   - question: "Can I work in my company with an Investor KITAS?"
-    answer: "As a pure investor with E28A, you can attend board meetings, review performance, receive dividends, and make investment decisions. To manage daily operations or sign contracts as director, you need a Working KITAS (E25B for directors) with RPTKA work authorization and DKP-TKA fee. Per immigration regulations (Keputusan Menteri M.IP-08.GR.01.01/2025), investor and worker visa categories are distinct."
+    answer: "With E28A and at least IDR 10 billion of your own shareholding, you may act as director or commissioner of the PT PMA you invested in, supervise its production, receive dividends and make investment decisions. Hands-on operational work needs a Working KITAS (E23). If your own shareholding is below IDR 10 billion and you hold a director or commissioner post, you need a work visa for that post (E25B/E25A) with RPTKA and DKP-TKA fee. Per immigration regulations (Keputusan Menteri M.IP-08.GR.01.01/2025), investor and worker visa categories are distinct."
   - question: "How long does the Investor KITAS process take?"
     answer: "The full process from PT PMA establishment to KITAS issuance takes approximately 6-10 weeks. This includes company formation (2-4 weeks), capital deposit (1-2 weeks), VITAS application (5 working days per official processing time), and KITAS conversion with biometrics (5-7 days). ITAS and re-entry permit are issued automatically upon entry at immigration checkpoint."
   - question: "Can Investor KITAS lead to permanent residency (KITAP)?"
@@ -142,7 +142,7 @@ import {
         "Visa Code": "E28A",
         "RPTKA Required": "Нет (если чистый инвестор)",
         "DKP-TKA Fee": "Нет (если чистый инвестор)",
-        "Work Allowed": "Только если также есть RPTKA",
+        "Work Allowed": "Должность директора/комиссара и контроль производства; непосредственная работа требует E23",
         Duration: "2 года",
         "Bali Zero Price": "От IDR 17M (Оффшор)",
       },
@@ -221,7 +221,7 @@ import {
 | Требование                                                | Сумма/Детали                                   |
 | --------------------------------------------------------- | ---------------------------------------------- |
 | Минимальное участие в капитале на одного инвестора (E28A) | IDR 10,000,000,000 (~USD 625,000)              |
-| Общий оплаченный капитал компании                         | Минимум IDR 10,000,000,000                     |
+| Общий оплаченный капитал компании                         | Минимум IDR 2,500,000,000 (Положение BKPM 5/2025) |
 | Участие в капитале                                        | Должно быть равно IDR 10B+ на одного инвестора |
 | Тип компании                                              | PT PMA, зарегистрированная в BKPM              |
 | Правовая основа                                           | Keputusan Menteri M.IP-08.GR.01.01/2025        |
@@ -328,7 +328,7 @@ import {
   items={[
     {
       id: "passport",
-      label: "Паспорт (срок действия 24+ месяца)",
+      label: "Паспорт (срок действия не менее 6 месяцев)",
       description: "Оригинал плюс копии",
       required: true,
       category: "personal",
@@ -411,11 +411,11 @@ import {
 ## Можете ли вы работать по Investor KITAS?
 
 <InfoCard variant="note" title="Работа в качестве инвестора">
-**Чистый инвестор (только E28A)**: RPTKA не требуется, сбор DKP-TKA не взимается.
+**Инвестор (E28A, личное долевое участие IDR 10B+)**: RPTKA не требуется, сбор DKP-TKA не взимается. Вы можете быть директором или комиссаром своей PT PMA; непосредственная операционная работа требует Working KITAS (E23).
 
 **Инвестор + Директор**: Если ваша доля акций ниже IDR 10B и вы занимаете должность директора, вам потребуется Working KITAS (E25B - Visa Kerja Direktur Perusahaan) с RPTKA и сбором DKP-TKA.
 
-Многие иностранные инвесторы предпочитают быть одновременно акционером и директором, что требует Working KITAS (E25B) вместо Investor KITAS (E28A).
+Акционер с личным долевым участием IDR 10B+ может быть также директором или комиссаром по E28A. Лишь ниже этого порога должность в совете требует отдельной рабочей визы.
 
 </InfoCard>
 
@@ -448,6 +448,8 @@ import {
 ---
 
 ## Стоимость (Официальные расценки Bali Zero)
+
+Цены на Investor KITAS включают всё (государственные сборы и услуги Bali Zero).
 
 | Услуга                                      | Цена (IDR)                         |
 | ------------------------------------------- | ---------------------------------- |
@@ -486,12 +488,13 @@ Investor KITAS экономит примерно IDR 14-17 миллионов п
 ## Другие варианты инвесторских виз
 
 <InfoCard variant="note" title="Другие категории инвесторских виз (из Keputusan Menteri M.IP-08.GR.01.01/2025)">
-Семейство E28 включает несколько типов инвесторских виз, помимо стандартной E28A:
+Семейство E28 также включает инвесторские маршруты Golden Visa: ITAS на 5 или 10 лет, с продлением, без спонсора, цена после консультации:
 
-- **E28B** - Инвестор (Создание компании): 5-летняя виза требует обязательства по инвестициям в размере 2.5 млн долларов США, 10-летняя виза требует 5 млн долларов США. Компания должна быть учреждена в течение 90 дней с момента въезда.
-- **E28C** - Инвестор (Без компании): 5-летняя виза требует 350 тыс. долларов США в государственных облигациях или акциях публичных компаний, 10-летняя виза требует 700 тыс. долларов США.
-- **E28D** - Инвестор (Филиал/Дочерняя компания): 5-летняя виза требует 25 млн долларов США, 10-летняя виза требует 50 млн долларов США. Для крупных международных расширений.
-- **E28E** - Инвестор (Специальная экономическая зона): Для инвестиций в назначенных СЭЗ.
+- **E28B** - Создание компании: USD 2,5 млн (5 лет) / USD 5 млн (10 лет), обязательство в течение 90 дней после въезда, а также аудированное подтверждение долей в иностранной компании и её оборота.
+- **E28C** - Рынок капитала: государственные облигации, акции публичных компаний или паевые фонды, USD 350 000 (5 лет) / USD 700 000 (10 лет), либо квартира стоимостью не менее USD 1 000 000 (10 лет).
+- **E28D** - Директор или комиссар филиала или дочерней компании иностранной компании: иностранная компания обязуется вложить USD 25 млн (5 лет) / USD 50 млн (10 лет) в течение 90 дней после въезда.
+- **E28F** - То же, что E28D, в новой столице IKN: USD 5 млн / USD 10 млн.
+- **E28E** - Инвестор в особой экономической зоне: указан иммиграционной службой без опубликованных подробностей.
 - **E33G** - Удаленный работник (Pekerja Jarak Jauh): Для цифровых кочевников, работающих удаленно на иностранных работодателей. НЕ требует учреждения PT PMA. Услуга Bali Zero: IDR 10M (Продление), IDR 13M (Оффшор), IDR 14M (Внутренний).
 
 Для получения последних требований всегда проверяйте imigrasi.go.id или свяжитесь с Bali Zero.
