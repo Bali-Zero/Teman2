@@ -23,11 +23,15 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b38-pending-attempt-is-dead": (PY, ' and not any(e["verdict"] == "PENDING" for e in entries):', ":", DL),
     "b38-unrequired-context-is-dead": (PY, 'for c in live["required_checks"]:\n        entries = by.get(c["context"], [])',
                                        'for c in [{"context": k} for k in by]:\n        entries = by.get(c["context"], [])', DL),
+    "b38-hosted-required-names-unchecked": (PY, '        raise hc.CompareError("hosted document is not an object")\n    hc.required_names(live.get("required_checks"))\n',
+                                            '        raise hc.CompareError("hosted document is not an object")\n', DL),
     # (c) the journal
     "b38-fail-any-overall": (PY, '(r.get("overall") == "FAIL" and "error" not in hc_', '("error" not in hc_', DL),
     "b38-fail-comparison-error-ignored": (PY, '(r.get("overall") == "FAIL" and "error" not in hc_', '(r.get("overall") == "FAIL"', DL),
     "b38-fail-counts-ignored": (PY, 'and all(v == 0 for k, v in counts.items() if k != "AGREE")', "and True", DL),
-    "b38-fail-without-failing-context": (PY, 'and any(v == "FAIL" for v in ctx.values()))', "and True)", DL),
+    "b38-fail-without-failing-context": (PY, 'and any(v == "FAIL" for v in compared.values()))', "and True)", DL),
+    "b38-fail-stale-context-counted": (PY, "if k not in stale}", "}", DL),
+    "b38-fail-compared-len-unchecked": (PY, 'and len(compared) == counts["AGREE"]', "and True", DL),
     # (d) the gate
     "b38-gate-need-sticky": (PY, 'needs_gate[r.get("pr")] = r.get("gate_pending") is True', 'needs_gate[r.get("pr")] = needs_gate.get(r.get("pr")) or r.get("gate_pending") is True', DL),
     "b38-gate-asked-of-every-key": (PY, 'if needs_gate.get(n) and ask("gate_missing", n, head):', 'if ask("gate_missing", n, head):', DL),

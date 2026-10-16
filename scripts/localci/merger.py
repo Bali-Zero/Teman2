@@ -363,26 +363,37 @@ def gate_ready(repo: str, head: str, names: list) -> bool:
 def dead_by_journal(recs: list[dict]) -> tuple[dict, dict]:
     """B38 (c) and (d), from the journal alone: ``({(pr, head): True} where the newest non-replay decision at that head is a FAIL whose
     hosted comparison agreed red, {pr: True} where the PR's newest non-replay decision at any head was gate_pending)``. A FAIL agreed red
-    has a local FAIL context, a comparison without an error, and every compared context AGREE: the local red is then a hosted red."""
+    has a compared local FAIL context (not in ``drift.stale_locally``), a comparison without an error whose compared contexts match
+    ``counts.AGREE``, and every compared context AGREE: the local red is then a hosted red."""
     failed, needs_gate = {}, {}
     for r in recs:
         if r.get("kind") != "decision" or r.get("replay"):
             continue
         hc_ = r.get("hosted_compare") if isinstance(r.get("hosted_compare"), dict) else {}
         counts = hc_.get("counts") if isinstance(hc_.get("counts"), dict) else None
+        drift = hc_.get("drift") if isinstance(hc_.get("drift"), dict) else None
+        stale = drift.get("stale_locally") if isinstance(drift, dict) else None
         ctx = r.get("contexts") if isinstance(r.get("contexts"), dict) else {}
+        compared = {k: v for k, v in ctx.items() if k not in stale} if (isinstance(stale, list) and all(isinstance(x, str) for x in stale)) else {}
         failed[(r.get("pr"), r.get("head_sha"))] = (r.get("overall") == "FAIL" and "error" not in hc_ and counts is not None
                                                      and type(counts.get("AGREE")) is int and counts["AGREE"] > 0
+                                                     and len(compared) == counts["AGREE"]
                                                      and all(v == 0 for k, v in counts.items() if k != "AGREE")
-                                                     and any(v == "FAIL" for v in ctx.values()))
+                                                     and any(v == "FAIL" for v in compared.values()))
         needs_gate[r.get("pr")] = r.get("gate_pending") is True and r.get("overall") == "BLOCKED"
     return failed, needs_gate
 
 
 def hosted_dead(live: dict) -> bool:
     """B38 (b): a REQUIRED context of the hosted document has COMPLETED red (every red entry in ``DEAD_RED``) and none of its entries is
-    pending. A cancelled red is B17/B27's and never dead; a pending context is not dead."""
-    by = hc.hosted_entries(live["check_runs"], live["statuses"])
+    pending. A cancelled red is B17/B27's and never dead; a pending context is not dead. Validates the required set and lists first."""
+    if not isinstance(live, dict):
+        raise hc.CompareError("hosted document is not an object")
+    hc.required_names(live.get("required_checks"))
+    runs, statuses = live.get("check_runs"), live.get("statuses")
+    if not isinstance(runs, list) or not isinstance(statuses, list) or any(not isinstance(x, dict) for x in runs + statuses):
+        raise hc.CompareError("check_runs / statuses are not lists of objects")
+    by = hc.hosted_entries(runs, statuses)
     for c in live["required_checks"]:
         entries = by.get(c["context"], [])
         v = hc.hosted_verdict(entries, c.get("app_id"))
@@ -423,7 +434,7 @@ def triage(prs: list[dict], repo: str, recs: list[dict], base_sha: str, gate_rea
     (labelled-first stays first), never dropped. (a) ``dead_probes["review"](n, head)``: B29's changes-requested block; (b) ``["hosted"]``:
     a required hosted context completed red; (c) the journal: the newest decision at the head is a FAIL the hosted side agreed on; (d)
     ``["gate_missing"]``: the PR's newest decision was gate_pending and the head carries no gate status. A probe that raises or is absent is
-    "not dead". Keys are classified in the sorted order and the REST probes stop at the first alive key or after ``DEAD_READ_CAP`` reads.
+    "not dead". Keys are classified in the sorted order and the REST probes stop at the first alive key or after ``DEAD_READ_CAP`` keys.
     ``dead`` receives ``{(n, head): [reasons]}``."""
     now = time.time() if now_s is None else now_s
     decided = {(r.get("pr"), r.get("head_sha"), r.get("base_sha")) for r in recs if (r.get("kind") == "decision" and not r.get("replay"))

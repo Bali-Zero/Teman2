@@ -9,7 +9,8 @@ from .test_replay import rw  # noqa: F401 — `rw` is a fixture
 
 BASE, OLD_BASE = "b" * 40, "a" * 40
 H = {n: f"{n:040x}" for n in range(1, 9)}
-AGREE = {"AGREE": 3, "FALSE_GREEN": 0, "FALSE_RED": 0, "LOCAL_BLIND": 0, "HOSTED_PENDING": 0, "HOSTED_STALE": 0, "HOSTED_ABORTED": 0}
+AGREE = {"AGREE": 2, "FALSE_GREEN": 0, "FALSE_RED": 0, "LOCAL_BLIND": 0, "HOSTED_PENDING": 0, "HOSTED_STALE": 0, "HOSTED_ABORTED": 0}
+DRIFT = {"missing_locally": [], "stale_locally": []}
 
 
 def decision(n, *, overall="OK", ts="2026-10-10T00:00:00Z", base=OLD_BASE, head=None, **over):
@@ -17,7 +18,7 @@ def decision(n, *, overall="OK", ts="2026-10-10T00:00:00Z", base=OLD_BASE, head=
 
 
 def failed(n, **over):
-    return {**decision(n, overall="FAIL", contexts={"ctx-a": "FAIL", "ctx-b": "OK"}, hosted_compare={"counts": AGREE, "agreement": "3/3"}), **over}
+    return {**decision(n, overall="FAIL", contexts={"ctx-a": "FAIL", "ctx-b": "OK"}, hosted_compare={"counts": AGREE, "drift": DRIFT, "agreement": "2/2"}), **over}
 
 
 def keys(n_list, *, armed_labels=(), recs=(), probes=None, dead=None, **kw):
@@ -78,13 +79,21 @@ def test_c_a_fail_the_hosted_side_agreed_on_makes_the_key_dead_with_no_read():
 @pytest.mark.parametrize("rec", [
     decision(1, overall="OK"),                                                                        # not a FAIL
     failed(1, overall="BLOCKED"),                                                                      # a failing context under a BLOCKED overall is no FAIL verdict
-    failed(1, hosted_compare={"error": "boom", "counts": AGREE}),                                      # the comparison failed
-    failed(1, hosted_compare={"counts": {**AGREE, "FALSE_RED": 1}}),                                   # hosted did NOT agree
-    failed(1, hosted_compare={"counts": {**AGREE, "HOSTED_PENDING": 1}}),                              # hosted still pending
-    failed(1, hosted_compare={"counts": {**AGREE, "LOCAL_BLIND": 1}}),
+    failed(1, hosted_compare={"error": "boom", "counts": AGREE, "drift": DRIFT}),                      # the comparison failed
+    failed(1, hosted_compare={"counts": {**AGREE, "FALSE_RED": 1}, "drift": DRIFT}),                   # hosted did NOT agree
+    failed(1, hosted_compare={"counts": {**AGREE, "HOSTED_PENDING": 1}, "drift": DRIFT}),              # hosted still pending
+    failed(1, hosted_compare={"counts": {**AGREE, "LOCAL_BLIND": 1}, "drift": DRIFT}),
+    failed(1, hosted_compare={"counts": {"AGREE": 1, **{k: 0 for k in AGREE if k != "AGREE"}},        # only the unrequired context failed; compared required context is green
+                              "drift": {"missing_locally": [], "stale_locally": ["ctx-a"]}}),
+    failed(1, contexts={"ctx-a": "FAIL"},                                                              # 1 local context in stale_locally with AGREE=1: still 0 compared contexts
+           hosted_compare={"counts": {"AGREE": 1, **{k: 0 for k in AGREE if k != "AGREE"}},
+                           "drift": {"missing_locally": ["ctx-req"], "stale_locally": ["ctx-a"]}}),
+    failed(1, hosted_compare={"counts": {"AGREE": 3, **{k: 0 for k in AGREE if k != "AGREE"}},        # compared count does not match AGREE count
+                              "drift": DRIFT}),
+    failed(1, hosted_compare={"counts": AGREE}),                                                       # no drift: cannot prove which contexts were compared
     failed(1, hosted_compare={}),                                                                      # no counts: unknown
     failed(1, hosted_compare=None),
-    failed(1, contexts={"ctx-a": "OK"}),                                                               # a FAIL with no failing context: nothing agreed red
+    failed(1, contexts={"ctx-a": "OK", "ctx-b": "OK"}),                                                # a FAIL with no failing context: nothing agreed red
     failed(1, contexts=None),
     failed(1, replay=True),                                                                           # replays are not this PR's decision
     {**failed(1), "head_sha": H[2]},                                                                  # another head
@@ -92,6 +101,17 @@ def test_c_a_fail_the_hosted_side_agreed_on_makes_the_key_dead_with_no_read():
 def test_c_every_other_shape_is_not_dead(rec):
     dead = {}
     assert keys([1, 2], recs=[rec], probes={}, dead=dead) == keys([1, 2], recs=[rec]) and dead == {}
+
+
+def test_c_real_comparator_with_failing_unrequired_context_is_not_dead():
+    status = {"overall": "FAIL", "contexts": {"status": "ok", "results": {"required-ok": {"verdict": "OK"}, "local-only": {"verdict": "FAIL"}}}}
+    rep = mg.hc.compare(status, [{"context": "required-ok"}], [{"name": "required-ok", "status": "completed", "conclusion": "success"}], [])
+    recs = [decision(1, ts="2026-10-01T00:00:00Z", overall="FAIL", contexts={"required-ok": "OK", "local-only": "FAIL"},
+                     hosted_compare={"counts": rep["counts"], "drift": rep["drift"], "exit": mg.hc.exit_code(rep)}),
+            decision(2, ts="2026-10-02T00:00:00Z")]
+    dead = {}
+    assert keys([1, 2], recs=recs, probes={"review": lambda n, h: False, "hosted": lambda n, h: False}, dead=dead) == [1, 2]
+    assert dead == {}
 
 
 def test_c_the_newest_decision_at_the_head_decides():
@@ -190,6 +210,19 @@ def test_b_cancelled_pending_green_and_unrequired_are_not_dead(runs):
 def test_b_a_cancel_answered_by_another_run_is_judged_by_that_run_as_b17_reads_it():
     assert mg.hosted_dead(live(("ctx-a", "completed", "cancelled"), ("ctx-a", "completed", "failure"))) is True    # the cancel is dropped: the failure is the red
     assert mg.hosted_dead(live(("ctx-a", "completed", "cancelled"), ("ctx-a", "completed", "success"))) is False   # the cancel is dropped: green
+
+
+@pytest.mark.parametrize("bad_live", [
+    None,
+    {"required_checks": [{"context": "ctx"}, {}], "check_runs": [{"name": "ctx", "status": "completed", "conclusion": "failure"}], "statuses": []},
+    {"required_checks": [], "check_runs": [{"name": "ctx", "status": "completed", "conclusion": "failure"}], "statuses": []},
+    {"required_checks": [{"context": "ctx"}], "check_runs": "bad", "statuses": []},
+    {"required_checks": [{"context": "ctx"}], "check_runs": [{"name": "ctx", "status": "completed", "conclusion": "failure"}], "statuses": ["bad"]},
+])
+def test_b_malformed_hosted_document_is_rejected_and_not_classified_dead(bad_live):
+    with pytest.raises(mg.hc.CompareError):
+        mg.hosted_dead(bad_live)
+    assert mg.classify_dead([pr(1, H[1])], [], {"hosted": lambda n, h: mg.hosted_dead(bad_live)}) == {}
 
 
 # ------------------------------------------------------------------ (a) the review, B29's own predicate
