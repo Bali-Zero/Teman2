@@ -1,0 +1,33 @@
+task_id: pricing-licences-followup2-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Successor of #8632 (BLOCKED by its gate): close #8629's gate follow-ups without the
+  regression #8632 introduced. The mouth mirror's legacy company_services map keeps only
+  company-* icons and the sync refuses a duplicate; the Golongan C band states its 55% bound
+  (Perpres 74/2013 Pasal 3(1)); the three alcohol rows carry Indonesian keywords
+  ("minuman beralkohol", "minuman keras", "miras") so PricingService.search_service finds them,
+  but no generic "izin ..." keyword, which made every Indonesian permit question (and the
+  WhatsApp bot's price context) return the alcohol prices.
+acceptance:
+  - text: >-
+      "izin minuman beralkohol", "harga izin minuman beralkohol", "miras" and "minuman keras"
+      return the three alcohol rows; "izin tinggal", "izin kerja", "izin usaha", "izin edar",
+      "izin" and "berapa biaya izin usaha restoran?" return no Alcohol License row; no alcohol
+      keyword starts with "izin "; the legacy map holds only company-* keys and the builder
+      raises on a duplicate; the C band reads "above 20% up to 55% alcohol".
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017_followup.py
+  - text: >-
+      Existing catalogue, sync and backend pricing tests stay green; the mirror is in sync.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py && python3 scripts/sync_frontend_prices.py --check
+assumptions:
+  - text: >-
+      search_service matches any query word as a substring of the row text (key, name, notes,
+      description_en, legacy_names, keywords), so a keyword containing a generic word widens
+      every query that contains it.
+    status: verified
+    probe: "#8632 gate: pricing_service.py:483-486; izin tinggal 1->4, izin usaha 0->3 with the izin keyword"
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
