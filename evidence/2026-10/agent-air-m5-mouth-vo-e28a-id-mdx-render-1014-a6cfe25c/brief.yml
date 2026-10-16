@@ -1,7 +1,7 @@
 task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
 gear: 3
 gear_reason: >-
-  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +2775/-11442 against origin/main, evidence staged); declared as printed, no gear_override.
+  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +3517/-11442 against origin/main, evidence staged); declared as printed, no gear_override.
 l_level: L2
 mission_colour: BLUE
 gate_class: opus
@@ -23,7 +23,7 @@ acceptance:
       "passive investors", an 18/24-month passport, "5-7 working days", an IDR 350M threshold, "Golden Visa (ITAP)",
       KPPA/representative office for E28D, paid-in capital as the E28A test, a fee split, or "renewable annually" for
       E28A, the truth test SHALL go red naming file and line; WHEN the correct sentences are present it SHALL be green.
-    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (642 tests, five locales)"
+    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (784 tests, five locales)"
   - text: >-
       WHEN the E28G sub-variant line is put back into the E28A guide the truth test SHALL go red, and green again once
       the file is restored.
