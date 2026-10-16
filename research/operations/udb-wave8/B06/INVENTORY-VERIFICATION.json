@@ -1,0 +1,92 @@
+{
+  "history": [
+    {
+      "command": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "-m",
+        "pytest",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "-q",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-b06-domains/research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-b06-domains/research/operations/udb-wave8/B06/test_b06_inventory.py"
+      ],
+      "exit_code": 1,
+      "summary": [
+        "FAILED ../../../../../dev::test_all_captured_source_hashes_and_line_anchors_match",
+        "1 failed, 25 passed in 1.13s"
+      ],
+      "output_sha256": "335d1a75a4e51e672647533e255e0b227b217e9d721ce4ddf009dc7b6676c930",
+      "original_adapter_sha256": "59f3b7ad6b427110cbdd30f709cf6a4cdddfb6c88f70721c5cef43075a3f2fbe",
+      "original_tests_sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444"
+    }
+  ],
+  "initial_failure_cause": "232 decorator call anchors were incorrectly assigned to later function declarations; corrected to enclosing/module entry and regression added.",
+  "worktree": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "-m",
+      "pytest",
+      "-c",
+      "/dev/null",
+      "--noconftest",
+      "-p",
+      "no:cacheprovider",
+      "-q",
+      "research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+      "research/operations/udb-wave8/B06/test_b06_inventory.py"
+    ],
+    "exit_code": 0,
+    "summary": [
+      "27 passed in 1.95s"
+    ],
+    "output_sha256": "fce6a4b55fe4c10de01cf4eacfb641ae23f40c831eb8e4b5d3bc277a4d89fff8",
+    "stderr_bytes": 0
+  },
+  "clean_copy": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "-m",
+      "pytest",
+      "-c",
+      "/dev/null",
+      "--noconftest",
+      "-p",
+      "no:cacheprovider",
+      "-q",
+      "research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+      "research/operations/udb-wave8/B06/test_b06_inventory.py"
+    ],
+    "exit_code": 0,
+    "summary": [
+      "27 passed in 1.61s"
+    ],
+    "output_sha256": "11ef2e2572832390845b82eeb4823157da458ef8a983b1d7a1bb4af18d0a42ff",
+    "stderr_bytes": 0
+  },
+  "clean_cli": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "research/operations/udb-wave8/B06/b06_inventory.py"
+    ],
+    "exit_code": 0,
+    "summary": [],
+    "output_sha256": "605f6d6a49155529f74680313ca3eb01f801e29ca1f8744e5e645ca63956041d",
+    "stderr_bytes": 0
+  },
+  "clean_copy_source_files": 4231,
+  "clean_copy_no_receipts": true,
+  "original_adapter_sha256": "59f3b7ad6b427110cbdd30f709cf6a4cdddfb6c88f70721c5cef43075a3f2fbe",
+  "original_tests_sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444"
+}

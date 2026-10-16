@@ -1,0 +1,27 @@
+{
+  "schema": "b06-historical-source-hashes-v1",
+  "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "source_files": {
+    "apps/backend-rag/backend/app/routers/agentic_rag.py": "486bdaf89dcb7a570cea4a5e267f207e1f00926f372d2c6d8351eaabe220b5c1",
+    "apps/backend-rag/backend/app/routers/crm_practices.py": "34948b16afaf09e655a3a4dc191c4fddacabaf4ff93095ac9acacc29c452a1c8",
+    "apps/backend-rag/backend/app/routers/kbli_notebook.py": "ac674ffe0b2cfc5d4b5ddfc11cd32cf706e16e27fe00f7bc5d8489803bfc2e3e",
+    "apps/backend-rag/backend/app/routers/news.py": "2857a156d0802dbde9a3859dc57e0563244d28c470992f5c17bbd4c6f395265f",
+    "apps/backend-rag/backend/app/routers/whatsapp_chat.py": "45219d562fda59d3d5d3fd71ea82d01dea13407cace60d56635a5fb6819d8713",
+    "apps/backend-rag/backend/services/accounting/reconcile_service.py": "5551998463d1b7f5cd28e37c652de45ccf53def5df7860a37a85230184633657",
+    "apps/backend-rag/backend/services/crm/client_core.py": "a5ad9cb70bbb5e96a02da861561c57c9b9d91e5a281a559aa37fd89d870ce9d5",
+    "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py": "9dc2bf5a5691a979a88c8fa38bcd6fafd6fcab29436d7ad06e073335c11cabf1",
+    "apps/backend-rag/backend/services/intake/crm_delivery.py": "17628753869924a5b3784c445556470d5ce385433e490b0434a8b67b90e4fcf6",
+    "apps/backend-rag/backend/services/intake/writer.py": "fdcd673bbf26e36023646a0fedb6e21ed7030a4293f1482bf4e23dfd4fe91dbe",
+    "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py": "4e7fdf5af29ae8fe20209369c33b4e086e00adf76aa5e26066dc0e174991503e",
+    "apps/backend-rag/backend/services/invoicing/invoice_service.py": "057c343c35ce4f8a4a1f7a2322adbb13dba60ac13ce2ab35696fabcb351a7d96",
+    "apps/backend-rag/backend/services/kbli_catalogue_membership.py": "35d2a90bfe0b3413f6848ce0ce20de54c26438ab3d628d64c11330841508adb6",
+    "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py": "1647a67895b31bfc0d32b84cca98ec707afdb4345c4bf953794f88f810f0f4a3",
+    "apps/backend-rag/backend/services/memory/collective_memory_service.py": "eed548e49df339d2247d4de716d65ac01bfd5627082b09176aa1f98336825265",
+    "apps/backend-rag/backend/services/memory/memory_service_postgres.py": "b21c0960c7ad6fab587efa14b1f663238d094df338c046cf95915a53f585b8b4",
+    "apps/backend-rag/backend/services/naga/persist.py": "ba779fde46fd92f360f1ae3e299706b8aa996c394fafa23cbd0702388525f91c",
+    "apps/backend-rag/backend/services/payments/xendit.py": "d2745199f8e3b1ff48712939f6c46c499f780e942fd9c21f36f3fc0e0243ebe2",
+    "apps/backend-rag/backend/services/visa_engine/evaluate_path.py": "122d312260f4c3c8dba0f5c0d61d952bd680101bd2bf4490ace02c935865e24c",
+    "apps/backend-rag/backend/services/war_room/repository.py": "33e59ec1178b61bfa0eacfd6e1012671e413fcd35ffed3e3f9077d57853d35fa",
+    "apps/bali-intel-scraper/scripts/post_publish_poller.py": "532fd280adb3efe6f9fc61fb15670842188af6aa96cbb6c2ad3299f245b0b655"
+  }
+}

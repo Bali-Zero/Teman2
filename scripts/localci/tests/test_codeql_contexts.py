@@ -261,6 +261,14 @@ def test_a_candidate_that_rewrites_the_flag_classifier_cannot_switch_its_own_sca
     assert flags_of(spec)["outputs"]["run_codeql_python"] == "true"   # BASE's file ran: scripts/ci/ is security-sensitive, so everything runs
 
 
+def test_when_all_classifier_flags_are_false_plan_validates_the_recipe_without_building_the_deps_image(tmp_path, monkeypatch):
+    spec, _ = plan_codeql(tmp_path / "docs", monkeypatch, "python", DOCS_ONLY)
+    argv = [json.loads(x) for x in (tmp_path / "docs" / "docker.argv").read_text().splitlines()]
+    assert not any(a[0] == "build" for a in argv) and "skipped at plan" in spec["jobs"][0]["deps"]
+    bad, _ = plan_codeql(tmp_path / "bad", monkeypatch, "python", DOCS_ONLY, ctx_over={"deps": {"node": "24", "codeql": "unpinned"}})
+    assert bad["status"] == "BLOCKED" and "deps.codeql" in bad["reason"]
+
+
 @pytest.mark.parametrize("lang", LANGS)
 def test_an_unclassified_path_is_run_all_and_both_legs_run(tmp_path, monkeypatch, lang):
     spec, run_dir = plan_codeql(tmp_path, monkeypatch, lang, {**DOCS_ONLY, **UNCLASSIFIED})

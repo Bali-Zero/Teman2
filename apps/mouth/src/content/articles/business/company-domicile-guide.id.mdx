@@ -91,63 +91,240 @@ translatedBy: Gemma3:12b + Gemini 3.1 Pro
 translatedFrom: en
 twitterCard: summary_large_image
 updatedAt: "2026-01-15"
-source_sha256: "1966a523f9b6332caec6a79e02c8fc81e625ea3f9eab8dfcd514c67060b668d7"
+source_sha256: "fe3b564073c033aa8f33317d34f7a9f0eb51687d8de46945927f6e671526d176"
+locale: "id"
 ---
 
-import {
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Domisili Perusahaan: Cara Menetapkan Alamat Bisnis Anda di Indonesia 2026
 
-# Domisili Perusahaan: Menetapkan Alamat Bisnis Anda di Indonesia 2026
+Setiap perusahaan di Indonesia memerlukan alamat terdaftar (domisili). Ini menentukan yurisdiksi pajak Anda dan tempat korespondensi resmi dikirim.
 
-Setiap perusahaan di Indonesia wajib memiliki alamat kantor yang terdaftar secara resmi (domisili). Alamat ini menentukan yurisdiksi pajak Anda dan menjadi tujuan utama pengiriman seluruh korespondensi resmi dari otoritas terkait.
-
-## Ikhtisar Opsi Domisili
+## Ringkasan Pilihan
 
 <ComparisonTable
-  title="Perbandingan Opsi Domisili"
-  description="Pilih opsi alamat yang paling tepat untuk entitas bisnis Anda"
+  title="Pilihan Domisili Dibandingkan"
+  description="Pilih opsi yang tepat untuk perusahaan Anda"
   items={[
     {
       name: "Virtual Office",
-      subtitle: "Alamat bisnis + penanganan surat",
+      subtitle: "Alamat + penanganan surat",
       values: {
         "Ruang Fisik": "Tidak",
         "Surat Domisili": "Ya",
         "Penanganan Surat": "Ya",
-        "Ruang Rapat": "Tersedia (biaya tambahan)",
-        "Biaya/Tahun": "IDR 8-20 Juta",
-        "Paling Sesuai Untuk": "Sebagian besar PT PMA",
+        "Ruang Rapat": "Tersedia (ekstra)",
+        "Biaya/Tahun": "IDR 8-20M",
+        "Cocok Untuk": "Sebagian besar PT PMDN",
       },
       highlight: true,
     },
     {
       name: "Serviced Office",
-      subtitle: "Kantor privat berperabot lengkap",
+      subtitle: "Kantor pribadi yang sudah dilengkapi",
       values: {
         "Ruang Fisik": "Ya",
         "Surat Domisili": "Ya",
         "Penanganan Surat": "Ya",
         "Ruang Rapat": "Termasuk",
-        "Biaya/Tahun": "IDR 60-150 Juta",
-        "Paling Sesuai Untuk": "Butuh ruang kerja siap pakai",
+        "Biaya/Tahun": "IDR 60-150M",
+        "Cocok Untuk": "Butuh ruang kerja",
       },
     },
     {
-      name: "Sewa Kantor Konvensional",
-      subtitle: "Penyewaan gedung kantor penuh",
+      name: "Sewa Konvensional",
+      subtitle: "Sewa kantor penuh",
       values: {
         "Ruang Fisik": "Ya",
-        "Surat Domisili": "Urus sendiri",
+        "Surat Domisili": "Atur sendiri",
         "Penanganan Surat": "Kelola sendiri",
-        "Ruang Rapat": "Milik pribadi",
-        "Biaya/Tahun": "IDR 100 Juta+",
-        "Paling Sesuai Untuk": "Perusahaan yang sudah mapan",
+        "Ruang Rapat": "Milik Anda",
+        "Biaya/Tahun": "IDR 100M+",
+        "Cocok Untuk": "Perusahaan mapan",
       },
     },
   ]}
 />
+
+---
+
+## Virtual Office Dijelaskan
+
+Virtual office adalah pilihan paling umum untuk PT PMA:
+
+### Apa yang Anda Dapatkan
+
+- **Alamat bisnis terdaftar** untuk keperluan resmi
+- **Surat Keterangan Domisili** (SKD)
+- **Penerimaan surat** dan pengiriman lanjutan
+- **Jawaban telepon** (opsional)
+- **Akses ruang rapat** (tarif per jam/hari)
+
+### Apa yang Tidak Anda Dapatkan
+
+- Meja fisik atau ruang tetap
+- Tempat kerja harian
+
+<InfoCard variant="tip" title="Virtual Office Sah">
+Virtual office 100% legal dan diterima oleh:
+- Kementerian Hukum (Kemenkumham)
+- Kantor pajak (DJP)
+- Sistem OSS
+- Bank (untuk pembukaan rekening)
+
+Banyak PT PMDN beroperasi dengan cara ini, terutama bisnis berbasis jasa.
+
+</InfoCard>
+
+---
+
+## Perbandingan Biaya
+
+<Calculator
+  title="Kalkulator Biaya Domisili"
+  description="Bandingkan opsi domisili untuk anggaran Anda"
+  fields={[
+    {
+      id: "type",
+      label: "Jenis Kantor",
+      type: "select",
+      options: [
+        { value: "virtual", label: "Virtual Office" },
+        { value: "serviced", label: "Serviced Office" },
+        { value: "lease", label: "Sewa Konvensional" }
+      ],
+      defaultValue: "virtual"
+    },
+    {
+      id: "location",
+      label: "Lokasi",
+      type: "select",
+      options: [
+        { value: "jakarta-prime", label: "Jakarta Utama (SCBD, Sudirman)" },
+        { value: "jakarta-other", label: "Area Jakarta Lainnya" },
+        { value: "bali", label: "Bali" },
+        { value: "other", label: "Kota Lain" }
+      ],
+      defaultValue: "bali"
+    },
+    {
+      id: "years",
+      label: "Periode Kontrak",
+      type: "select",
+      options: [
+        { value: "1", label: "1 tahun" },
+        { value: "2", label: "2 tahun" },
+        { value: "3", label: "3 tahun" }
+      ],
+      defaultValue: "1"
+    }
+  ]}
+  calculateResult={(values) => {
+    const years = Number(values.years);
+    let yearlyBase = 0;
+
+    const rates = {
+      virtual: { 'jakarta-prime': 18000000, 'jakarta-other': 12000000, bali: 12000000, other: 8000000 },
+      serviced: { 'jakarta-prime': 120000000, 'jakarta-other': 80000000, bali: 72000000, other: 60000000 },
+      lease: { 'jakarta-prime': 200000000, 'jakarta-other': 150000000, bali: 120000000, other: 100000000 }
+    };
+
+    yearlyBase = rates[values.type][values.location];
+    const total = yearlyBase * years;
+
+    const breakdown = [
+      { label: `Kantor ${values.type} - ${values.location}`, amount: yearlyBase },
+      { label: `Total untuk ${years} tahun`, amount: total }
+    ];
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: `Per tahun: IDR ${(yearlyBase/1000000).toFixed(0)}M (~$${Math.round(yearlyBase/16000)} USD)`
+    };
+
+}}
+/>
+
+---
+
+## Apa yang Perlu Diperhatikan
+
+<Checklist
+  title="Daftar Periksa Virtual Office"
+  description="Apa yang perlu diverifikasi sebelum mendaftar"
+  persistKey="vo-checklist"
+  items={[
+    {
+      id: "domicile",
+      label: "Menyediakan Surat Domisili",
+      description: "SKD atau Surat Keterangan Domisili",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "building",
+      label: "Bangunan komersial",
+      description: "Bukan alamat residensial",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "reputation",
+      label: "Reputasi baik",
+      description: "Periksa ulasan, penyedia yang mapan",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "mail",
+      label: "Penanganan surat termasuk",
+      description: "Terima dan beri tahu/ajukan lanjutan",
+      required: true,
+      category: "services"
+    },
+    {
+      id: "meeting",
+      label: "Ketersediaan ruang rapat",
+      description: "Meskipun ada biaya tambahan",
+      required: false,
+      category: "services"
+    },
+    {
+      id: "renewal",
+      label: "Proses perpanjangan yang jelas",
+      description: "Pahami prosedur perpanjangan tahunan",
+      required: true,
+      category: "practical"
+    }
+  ]}
+  categories={[
+    { id: "essential", label: "Esensial", color: "red" },
+    { id: "services", label: "Layanan", color: "blue" },
+    { id: "practical", label: "Praktis", color: "green" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Pertanyaan Umum
+
+<AskZantara
+  context="Domisili perusahaan, virtual office, alamat bisnis Indonesia, alamat terdaftar PT PMA"
+  placeholder="Tanya tentang domisili perusahaan..."
+  suggestedQuestions={[
+    "Apakah saya bisa menggunakan alamat rumah untuk PT PMA?",
+    "Apa yang termasuk dalam virtual office?",
+    "Apakah saya bisa mengubah domisili nanti?",
+    "Apakah virtual office diterima oleh bank?",
+  ]}
+/>
+
+---
+
+## Artikel Terkait
+
+- [Panduan Pendaftaran PT PMA](/insights/business/pt-pma-registration-guide)
+- [Memulai Bisnis di Indonesia](/insights/business/starting-a-business-in-indonesia-complete-guide)
+- [Timeline PT PMA](/insights/business/pt-pma-timeline)

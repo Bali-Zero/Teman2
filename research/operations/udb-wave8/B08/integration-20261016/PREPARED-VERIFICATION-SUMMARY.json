@@ -1,0 +1,169 @@
+{
+  "scope": "PREPARED_WORKER_RECEIPT_SUMMARY_NOT_A_NEW_EXECUTION",
+  "receipt_sha256": "6583c6a54bb51660d787c46e13a42bb4c1874559cfc2e6cdcfde274fa38ac08f",
+  "patch": {
+    "path": "/tmp/udb-dux/B08-hermetic/B08-hermetic.patch",
+    "sha256": "b94b15241c166a16f60e919540b2df01372197070bfa54d7423d0f8c19712489",
+    "bytes": 288809
+  },
+  "changed_paths": [
+    {
+      "path": "research/operations/udb-wave8/B08/b08_crossstore_adapter.py",
+      "added": 210,
+      "deleted": 11,
+      "status": "modified"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "added": 253,
+      "deleted": 17,
+      "status": "modified"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/fixtures/DUX-REQ-B08-01.out",
+      "added": 159,
+      "deleted": 0,
+      "status": "new"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/fixtures/PROVENANCE.json",
+      "added": 87,
+      "deleted": 0,
+      "status": "new"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/fixtures/REAL-RUN-RECEIPT.json",
+      "added": 83,
+      "deleted": 0,
+      "status": "new"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/fixtures/STATE.json",
+      "added": 133,
+      "deleted": 0,
+      "status": "new"
+    },
+    {
+      "path": "research/operations/udb-wave8/B08/fixtures/consumer-matrix.projection.csv",
+      "added": 6030,
+      "deleted": 0,
+      "status": "new"
+    }
+  ],
+  "test_runs": {
+    "before_original_live_inputs": {
+      "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "exit": 0,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "summary_line": "16 passed in 0.11s"
+    },
+    "before_original_clean_checkout": {
+      "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "exit": 0,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 2,
+      "errors": 0,
+      "summary_line": "14 passed, 2 skipped in 0.04s"
+    },
+    "before_original_clean_without_repo_source_files": {
+      "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py (apps/ and scripts/ removed)",
+      "exit": 1,
+      "passed": 3,
+      "failed": 1,
+      "skipped": 2,
+      "errors": 10,
+      "summary_line": "1 failed, 3 passed, 2 skipped, 10 errors in 0.31s"
+    },
+    "after_a_live_inputs_present": {
+      "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "exit": 0,
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "summary_line": "37 passed in 0.24s"
+    },
+    "after_b_clean_checkout_no_agent_receipts_no_dux_requests": {
+      "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "exit": 0,
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "summary_line": "37 passed in 0.18s"
+    },
+    "after_original_unmodified_tests_vs_patched_adapter_live": {
+      "command": "pytest of the ORIGINAL test file against the PATCHED adapter, live inputs",
+      "exit": 0,
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "errors": 0,
+      "summary_line": "16 passed in 0.10s"
+    }
+  },
+  "assert_counts_test_file": {
+    "before": {
+      "assert_statements": 88,
+      "pytest_raises": 23,
+      "pytest_skip_calls": 2,
+      "test_functions": 16
+    },
+    "after": {
+      "assert_statements": 129,
+      "pytest_raises": 27,
+      "pytest_skip_calls": 0,
+      "test_functions": 25
+    },
+    "original_assert_statements_all_preserved": true,
+    "original_pytest_raises_all_preserved": true,
+    "new_assert_statements_added": 41,
+    "pytest_cases_before_after": {
+      "before_live": 16,
+      "after_live": 37,
+      "after_clean": 37
+    }
+  },
+  "ledger_parity": {
+    "command": "cd <root> && /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B research/operations/udb-wave8/B08/b08_crossstore_adapter.py --repo-root . --out research/operations/udb-wave8/B08/<regen>.json",
+    "on_disk_original_ledger": {
+      "path": "research/operations/udb-wave8/B08/b08_crossstore_ledger.json",
+      "sha256": "c2f0c5eb8ea3f231760f5c3148cbfc60272def4998e2616184b8340d0732e7f3",
+      "bytes": 70000
+    },
+    "regen_original_adapter_live_inputs": {
+      "exit": 0,
+      "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "bytes": 77786
+    },
+    "regen_patched_adapter_live_inputs": {
+      "exit": 0,
+      "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "bytes": 77786
+    },
+    "regen_patched_adapter_fixtures_only_clean": {
+      "exit": 0,
+      "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "bytes": 77786
+    },
+    "documented_default_command_clean_checkout": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B research/operations/udb-wave8/B08/b08_crossstore_adapter.py --repo-root .",
+      "exit": 0,
+      "sha256_of_default_out_after": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13"
+    },
+    "pinned_isolated_regeneration_receipt_sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+    "all_three_regenerations_identical": true,
+    "equals_pinned_46021291": true,
+    "on_disk_original_ledger_equals_regeneration": false
+  },
+  "fixture_scan": {
+    "files_with_/Users/": 0,
+    "files_with_email": 0
+  },
+  "patched_files_equal_scratch_work": true,
+  "block_closed": false
+}

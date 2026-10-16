@@ -1,0 +1,138 @@
+{
+  "at": "2026-10-16T07:51:10.189523+00:00",
+  "verdict": "PASS_SOURCE_BOUND_NOT_FINAL_HEAD",
+  "review_agent": "/root/b04_available_final_gate",
+  "mission_id": "universal-db-wave8-20261015",
+  "mission_colour": "BLUE_WITH_EXPLICIT_OWNER_NAMED_SEAT_EXCEPTION",
+  "outside_contribution_chain": true,
+  "effective_model": "UNOBSERVED",
+  "scope": "Re-review corrected B04/B08 output boundaries, clean fixture-only reproduction, immutable valid artifacts, legacy test preservation",
+  "source_pins": {
+    "B04": "e12c366a1e82731b54c4b679dd3abdf320213d9544b94eebcad5c14e9793a9c5",
+    "B08": "7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae"
+  },
+  "test_pins": {
+    "B04": "c18f879368695388d6168c478252857ee3b2b460b591461dd3249ec7c821576f",
+    "B08": "e988c28495dcc34ba3639a8447a7230cb4459c56090498254f1486557c3404e7"
+  },
+  "clean_execution": {
+    "B04": {
+      "pins": {
+        "source": "e12c366a1e82731b54c4b679dd3abdf320213d9544b94eebcad5c14e9793a9c5",
+        "test": "c18f879368695388d6168c478252857ee3b2b460b591461dd3249ec7c821576f"
+      },
+      "receipt_tree_absent": true,
+      "dux_requests_absent": true,
+      "tests": {
+        "exit_code": 0,
+        "stdout_sha256": "619ddc3e1008248cf24f7f8018b593b5271759e7783a3debe12a82a1c832edfb",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_bytes": 65,
+        "stderr_bytes": 0,
+        "pass_summary": [
+          "18 passed"
+        ]
+      },
+      "cli": {
+        "exit_code": 0,
+        "stdout_sha256": "5d6946e1658bbdf10f24557197e3b16addf3a4673c0873857f5045b3c3c491d4",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_bytes": 333,
+        "stderr_bytes": 0,
+        "pass_summary": []
+      },
+      "artifacts": {
+        "store-catalog.json": {
+          "sha256": "2b9c7d6492e8689dadc924e868f5f3548d48622db2561bae03cbacd4648c89e4",
+          "bytes": 25291,
+          "matches_frozen": true
+        },
+        "store-bindings.csv": {
+          "sha256": "712e98d987c4c1c38533e2bbbbd3f93366735d031219b107113a2971e6e29582",
+          "bytes": 1615095,
+          "matches_frozen": true
+        }
+      }
+    },
+    "B08": {
+      "pins": {
+        "source": "7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae",
+        "test": "e988c28495dcc34ba3639a8447a7230cb4459c56090498254f1486557c3404e7"
+      },
+      "receipt_tree_absent": true,
+      "dux_requests_absent": true,
+      "tests": {
+        "exit_code": 0,
+        "stdout_sha256": "bd9a83ade8af186f424b6711fe77b71a7f40846d6309f8803874f95de933bca3",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_bytes": 180,
+        "stderr_bytes": 0,
+        "pass_summary": [
+          "102 passed in 4.00s"
+        ]
+      },
+      "cli": {
+        "exit_code": 0,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_bytes": 0,
+        "stderr_bytes": 0,
+        "pass_summary": []
+      },
+      "artifacts": {
+        "b08_crossstore_ledger.json": {
+          "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+          "bytes": 77786,
+          "matches_frozen": true
+        }
+      }
+    }
+  },
+  "independent_boundary_probes_passed": true,
+  "independent_boundary_probe_count": 14,
+  "preservation": {
+    "B04": {
+      "legacy_function_source_match_count": 14,
+      "legacy_function_total": 14,
+      "legacy_original_tests": 8,
+      "legacy_assertion_count": 106,
+      "legacy_assertion_AST_exact": true,
+      "old_test_file_exact_prefix_bytes": [
+        32667
+      ]
+    },
+    "B08": {
+      "original_test_prefix_bytes": 38301,
+      "prefix_hash_exact": true,
+      "legacy_asserts": 129,
+      "legacy_pytest_raises": 27,
+      "pre_hermetic_asserts": 88,
+      "pre_hermetic_pytest_raises": 23
+    }
+  },
+  "resolved_prior_findings": [
+    "B04-FINAL-PII-01",
+    "B04-FINAL-PII-02",
+    "B08-FG-01",
+    "B08-FG-02"
+  ],
+  "new_source_blockers": [],
+  "metadata_reconciliation_required": true,
+  "final_committed_head": null,
+  "final_head_approved": false,
+  "block_closed": false,
+  "native_probes": false,
+  "candidate_mutations_by_reviewer": false,
+  "writes_confined_to_review_root": true,
+  "raw_forbidden_values_saved": false,
+  "remaining": [
+    "Coordinator updates current PR/synthesis/RESULT claims and exact baseline/freeze bindings",
+    "Reviewer checks exact committed bytes and metadata delta before final head gate"
+  ],
+  "evidence": {
+    "EXECUTION.json": "992df6db2925a8c295b91f3923de8ce2afe00d37c945e24e95a3f196c3fe7a27",
+    "ADVERSARIAL-PROBES.json": "2d4eba126f1d0bd292fde1c3e8d8b778b0177fc221d58fabdb2f42179a080d5b",
+    "PRESERVATION.json": "caa059322549e73cabae62ba11acb47bcee9ea00ba67db94a4a2348184dac735",
+    "METADATA-REVIEW.json": "d94a7a8aecb260575a73eb05821fc7a3a47169975afa7eb4210a7c9024a7418d"
+  }
+}

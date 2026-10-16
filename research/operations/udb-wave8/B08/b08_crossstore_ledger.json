@@ -1,0 +1,1825 @@
+{
+  "base_commit": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "base_commit_timestamp": "2026-10-15T07:06:22Z",
+  "block_closed": false,
+  "block_id": "B08",
+  "campaign_id": "universal-db-wave8-20261015",
+  "census_summary": {
+    "active_consumer_denominator": "UNKNOWN",
+    "additional_runtime_observations": 1,
+    "baseline_leads_preserved": 6029,
+    "by_family": {
+      "NOTEBOOK-CONTAINER-REFERENCE-NLM": 67,
+      "engine_M5": 1,
+      "engine_mini": 2,
+      "engine_pro": 2,
+      "runtime": 158,
+      "runtime-pro-plist": 1,
+      "src": 1572
+    },
+    "by_store": {
+      "NOTEBOOK_CONTAINER_REFERENCE; NOT_DATABASE_CONSUMER_IDENTITY": 67,
+      "POSTGRES_LOCAL_CLUSTER_CANDIDATE_ON_M5; logical database set UNKNOWN": 1,
+      "POSTGRES_LOCAL_CLUSTER_CANDIDATE_ON_mini; logical database set UNKNOWN": 1,
+      "POSTGRES_LOCAL_CLUSTER_CANDIDATE_ON_pro; logical database set UNKNOWN": 1,
+      "REDIS_LOCAL_ENGINE_CANDIDATE_ON_mini; keys/DB set UNKNOWN": 1,
+      "REDIS_LOCAL_ENGINE_CANDIDATE_ON_pro; keys/DB set UNKNOWN": 1,
+      "Redis; source CLI default local target, effective auth/inherited target UNKNOWN": 1,
+      "UNKNOWN;not proof of statelessness": 112,
+      "browser_state;file_state": 3,
+      "browser_state;file_state;http_indirect": 3,
+      "browser_state;file_state;spreadsheet": 1,
+      "browser_state;http_indirect": 21,
+      "browser_state;http_indirect;postgresql": 1,
+      "browser_state;postgresql;qdrant": 1,
+      "browser_state;qdrant;redis": 1,
+      "event_delivery": 36,
+      "event_delivery;file_state": 3,
+      "event_delivery;file_state;http_indirect;postgresql": 4,
+      "event_delivery;file_state;object_storage;postgresql": 1,
+      "event_delivery;file_state;postgresql": 1,
+      "event_delivery;file_state;postgresql;redis": 1,
+      "event_delivery;file_state;redis": 5,
+      "event_delivery;file_state;redis;sqlite": 1,
+      "event_delivery;file_state;sqlite": 1,
+      "event_delivery;graph;http_indirect;object_storage;postgresql;qdrant;redis": 1,
+      "event_delivery;graph;postgresql": 1,
+      "event_delivery;graph;postgresql;sql_dialect_unknown": 1,
+      "event_delivery;http_indirect": 1,
+      "event_delivery;http_indirect;postgresql": 19,
+      "event_delivery;http_indirect;postgresql;qdrant": 1,
+      "event_delivery;http_indirect;postgresql;qdrant;redis": 2,
+      "event_delivery;http_indirect;postgresql;qdrant;redis;sqlite": 1,
+      "event_delivery;http_indirect;postgresql;redis": 2,
+      "event_delivery;http_indirect;qdrant;redis": 1,
+      "event_delivery;http_indirect;redis": 1,
+      "event_delivery;object_storage;postgresql": 1,
+      "event_delivery;object_storage;sqlite": 2,
+      "event_delivery;postgresql": 38,
+      "event_delivery;postgresql;qdrant": 1,
+      "event_delivery;postgresql;redis": 1,
+      "event_delivery;postgresql;redis;sql_dialect_unknown": 1,
+      "event_delivery;postgresql;sql_dialect_unknown": 2,
+      "event_delivery;postgresql;sqlite": 3,
+      "event_delivery;qdrant": 2,
+      "event_delivery;qdrant;sql_dialect_unknown": 1,
+      "event_delivery;redis": 23,
+      "event_delivery;redis;sql_dialect_unknown": 1,
+      "event_delivery;redis;sqlite": 1,
+      "event_delivery;sql_dialect_unknown": 16,
+      "event_delivery;sqlite": 3,
+      "file_state;graph": 2,
+      "file_state;graph;http_indirect;postgresql": 4,
+      "file_state;graph;http_indirect;postgresql;qdrant": 2,
+      "file_state;graph;postgresql": 4,
+      "file_state;graph;postgresql;redis;sqlite": 1,
+      "file_state;graph;qdrant": 1,
+      "file_state;http_indirect": 76,
+      "file_state;http_indirect;object_storage": 2,
+      "file_state;http_indirect;object_storage;postgresql": 2,
+      "file_state;http_indirect;postgresql": 58,
+      "file_state;http_indirect;postgresql;qdrant": 2,
+      "file_state;http_indirect;postgresql;qdrant;redis": 1,
+      "file_state;http_indirect;postgresql;qdrant;sqlite": 1,
+      "file_state;http_indirect;postgresql;redis": 2,
+      "file_state;http_indirect;qdrant": 4,
+      "file_state;http_indirect;qdrant;spreadsheet;sqlite": 1,
+      "file_state;http_indirect;redis": 3,
+      "file_state;http_indirect;redis;sqlite": 1,
+      "file_state;http_indirect;sqlite": 1,
+      "file_state;object_storage": 4,
+      "file_state;object_storage;postgresql": 1,
+      "file_state;object_storage;postgresql;qdrant": 2,
+      "file_state;postgresql": 77,
+      "file_state;postgresql;qdrant": 3,
+      "file_state;postgresql;qdrant;redis": 3,
+      "file_state;postgresql;redis": 5,
+      "file_state;qdrant": 39,
+      "file_state;qdrant;redis": 2,
+      "file_state;qdrant;redis;spreadsheet": 1,
+      "file_state;qdrant;redis;sqlite": 1,
+      "file_state;qdrant;spreadsheet": 1,
+      "file_state;qdrant;sqlite": 1,
+      "file_state;redis": 31,
+      "file_state;redis;sqlite": 4,
+      "file_state;spreadsheet": 2,
+      "file_state;sqlite": 115,
+      "graph;http_indirect": 2,
+      "graph;http_indirect;postgresql": 30,
+      "graph;http_indirect;postgresql;qdrant": 17,
+      "graph;http_indirect;postgresql;qdrant;redis": 2,
+      "graph;http_indirect;postgresql;redis": 2,
+      "graph;http_indirect;postgresql;sqlite": 1,
+      "graph;http_indirect;qdrant": 1,
+      "graph;postgresql": 37,
+      "graph;postgresql;qdrant": 4,
+      "graph;postgresql;qdrant;redis": 1,
+      "graph;postgresql;qdrant;redis;sqlite": 1,
+      "graph;postgresql;redis": 1,
+      "graph;postgresql;sql_dialect_unknown": 2,
+      "graph;qdrant": 6,
+      "graph;redis": 3,
+      "graph;sql_dialect_unknown": 2,
+      "graph;sqlite": 1,
+      "http_indirect;object_storage": 9,
+      "http_indirect;object_storage;postgresql": 6,
+      "http_indirect;object_storage;postgresql;qdrant;redis": 1,
+      "http_indirect;other_engine": 1,
+      "http_indirect;other_engine;postgresql": 2,
+      "http_indirect;other_engine;qdrant": 1,
+      "http_indirect;postgresql": 446,
+      "http_indirect;postgresql;qdrant": 20,
+      "http_indirect;postgresql;qdrant;redis": 10,
+      "http_indirect;postgresql;qdrant;redis;spreadsheet": 1,
+      "http_indirect;postgresql;redis": 14,
+      "http_indirect;postgresql;spreadsheet": 3,
+      "http_indirect;postgresql;sqlite": 1,
+      "http_indirect;qdrant": 40,
+      "http_indirect;qdrant;redis": 4,
+      "http_indirect;qdrant;redis;spreadsheet;sqlite": 1,
+      "http_indirect;qdrant;sqlite": 3,
+      "http_indirect;redis": 15,
+      "http_indirect;redis;sqlite": 1,
+      "http_indirect;sqlite": 5,
+      "object_storage": 28,
+      "object_storage;postgresql": 11,
+      "object_storage;postgresql;qdrant": 2,
+      "object_storage;postgresql;sql_dialect_unknown": 1,
+      "object_storage;qdrant": 7,
+      "object_storage;redis": 1,
+      "other_engine;qdrant": 3,
+      "other_engine;redis;sqlite": 1,
+      "postgresql;qdrant": 43,
+      "postgresql;qdrant;redis": 21,
+      "postgresql;qdrant;redis;sqlite": 1,
+      "postgresql;redis": 41,
+      "postgresql;redis;sql_dialect_unknown": 1,
+      "postgresql;redis;sqlite": 3,
+      "postgresql;spreadsheet": 2,
+      "postgresql;sql_dialect_unknown": 34,
+      "postgresql;sqlite": 8,
+      "qdrant;redis": 14,
+      "qdrant;redis;spreadsheet": 1,
+      "qdrant;sqlite": 5,
+      "redis;sqlite": 22
+    },
+    "csv_column_count": 36,
+    "csv_total_rows": 6029,
+    "multi_store_or_boundary_rows": 1803,
+    "top_by_store": {
+      "NOTEBOOK_CONTAINER_REFERENCE; NOT_DATABASE_CONSUMER_IDENTITY": 67,
+      "UNKNOWN;not proof of statelessness": 112,
+      "browser_state;http_indirect": 21,
+      "event_delivery": 36,
+      "event_delivery;http_indirect;postgresql": 19,
+      "event_delivery;postgresql": 38,
+      "event_delivery;redis": 23,
+      "file_state;http_indirect": 76,
+      "file_state;http_indirect;postgresql": 58,
+      "file_state;postgresql": 77,
+      "file_state;qdrant": 39,
+      "file_state;redis": 31,
+      "file_state;sqlite": 115,
+      "graph;http_indirect;postgresql": 30,
+      "graph;http_indirect;postgresql;qdrant": 17,
+      "graph;postgresql": 37,
+      "http_indirect;postgresql": 446,
+      "http_indirect;postgresql;qdrant": 20,
+      "http_indirect;qdrant": 40,
+      "object_storage": 28,
+      "postgresql;qdrant": 43,
+      "postgresql;qdrant;redis": 21,
+      "postgresql;redis": 41,
+      "postgresql;sql_dialect_unknown": 34,
+      "redis;sqlite": 22
+    },
+    "union_lead_rows": 6030
+  },
+  "counterexamples": {
+    "CE-01_restore_precedence_and_epistemology": {
+      "aggregate_matches_producer": true,
+      "clients_invariant_checks_ref": "scripts/ci/restore_drill_verify.py:122",
+      "clients_lead_metadata_column_existed_in_backup": true,
+      "clients_lead_metadata_evidence_ref": "scripts/ci/restore_drill_verify.py:221-227",
+      "clients_status": "FAIL",
+      "clients_violation_count": 1,
+      "clients_violations_dispatch_ref": "scripts/ci/restore_drill_verify.py:281-288,345",
+      "conversations_unmeasured_check_count": 1,
+      "exact_conversations_sql_error_known": false,
+      "exact_failing_clients_subcheck_known": false,
+      "fail_masked_by_cannot_verify": true,
+      "overall_status": "CANNOT-VERIFY",
+      "producer_aggregate": "CANNOT-VERIFY",
+      "relations": {
+        "clients": {
+          "reason_classes": {
+            "VIOLATION": 1
+          },
+          "status": "FAIL"
+        },
+        "conversations": {
+          "reason_classes": {
+            "UNMEASURED_CHECK": 1
+          },
+          "status": "CANNOT-VERIFY"
+        },
+        "events_outbox": {
+          "reason_classes": {},
+          "status": "PASS"
+        },
+        "visa_decision_retention_policies": {
+          "reason_classes": {},
+          "status": "PASS"
+        },
+        "visa_decisions": {
+          "reason_classes": {},
+          "status": "PASS"
+        }
+      },
+      "unmeasured_check_count": 1
+    },
+    "CE-02_polymorphic_provenance": {
+      "cross_store_dangling_pointer_possible": true,
+      "has_db_foreign_key": false,
+      "polymorphic_asset_types_present": true,
+      "status": "CONFLICT",
+      "unconstrained_text_asset_id": true
+    },
+    "CE-03_organism_bridge_truncation_and_correlation": {
+      "lossy_fanout_detected": true,
+      "payload_truncated_at_2000_bytes": true,
+      "redis_xadd_non_atomic_best_effort": true,
+      "wallclock_correlation_fallback": true
+    },
+    "CE-04_qdrant_zero_io_health_probe": {
+      "checks_only_url_attribute": true,
+      "false_positive_ok_possible": true,
+      "performs_live_io": false
+    },
+    "CE-05_war_room_42p01_false_zero_cost": {
+      "catches_undefined_table_42p01": true,
+      "false_zero_cost_telemetry": true,
+      "returns_zero_usd_on_missing_table": true
+    },
+    "CE-06_outbox_orphan_gap_and_jsonl_retention": {
+      "llm_cost_jsonl_claims_90d_retention": true,
+      "llm_cost_jsonl_prune_implemented": false,
+      "llm_cost_retention_unimplemented": true,
+      "outbox_claim_window_60m": true,
+      "outbox_prune_requires_processed_at_not_null": true,
+      "unconsumed_older_than_60m_orphaned_forever": true
+    }
+  },
+  "dimensions": {
+    "analytics_observability": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:7-9",
+            "status": "PARTIAL",
+            "value": "DATABASE_URL"
+          },
+          "consumer_id": "src_af8a65192e15e595",
+          "effects": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-89",
+            "status": "CONFLICT",
+            "value": "Catches PostgreSQL 42P01 (undefined_table) at lines 84-89 and returns HTTP 200 with grand_total_usd: 0"
+          },
+          "evidence_sha256": "910eba9f6b8002d6cc915c6abf1f6d6e42360b362e3d085d2928c0d49e587d05",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:84-89",
+            "status": "CONFLICT",
+            "value": "Conflates missing schema table (42P01) with $0.00 spend under HTTP 200"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:29-59",
+            "status": "EVIDENCED",
+            "value": "read-only"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+            "status": "EVIDENCED",
+            "value": "admin-dashboard:api/war-room/metrics/costs"
+          },
+          "recovery": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+            "status": "BLOCKED",
+            "value": "war_room_costs not in restore drill REQUIRED_TABLES"
+          },
+          "retention": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+            "status": "EVIDENCED",
+            "value": "N/A reader"
+          },
+          "retries": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-94",
+            "status": "EVIDENCED",
+            "value": "none"
+          },
+          "role": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:7-20",
+            "status": "EVIDENCED",
+            "value": "dashboard_reader"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "CONFLICT",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+            "status": "EVIDENCED",
+            "value": "admin_war_room"
+          },
+          "transaction": {
+            "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:29-59",
+            "status": "EVIDENCED",
+            "value": "Read-only SELECT joining war_room_costs and war_room_drafts"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "LIVE_WAR_ROOM_COSTS_TABLE_STATE_UNPROVED"
+          ],
+          "x_counterexample_id": "CE-05",
+          "x_evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-89",
+          "x_guarantee_dimension": "analytics_observability",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B02",
+            "B04"
+          ],
+          "dimension_id": "D17_analytics_observability",
+          "invariant": "Health and cost endpoints (check_qdrant, war-room/metrics/costs) must never report status='ok' on zero-I/O checks or grand_total_usd=0 on SQL 42P01 errors.",
+          "target_status_until_proved": "CONFLICT",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "dependencies": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-236",
+            "status": "PARTIAL",
+            "value": "asyncpg_connection"
+          },
+          "consumer_id": "src_e23395130cffca55",
+          "effects": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:210-419",
+            "status": "EVIDENCED",
+            "value": "Writes public.events_outbox, fires pg_notify, replays unconsumed within 60m window"
+          },
+          "evidence_sha256": "fdf8f48cadf3fdd72b9393dc27ac385b9be489772c6931f7a9e453fb0f413269",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:332-335",
+            "status": "CONFLICT",
+            "value": "Unconsumed rows older than 60m are excluded by replay_unconsumed and never pruned by prune_consumed"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:239-275",
+            "status": "PARTIAL",
+            "value": "acknowledge guards WHERE consumed_at IS NULL; handlers must dedupe _outbox_id"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-236",
+            "status": "EVIDENCED",
+            "value": "backend-rag:events_outbox"
+          },
+          "recovery": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+            "status": "BLOCKED",
+            "value": "Outbox table checked in restore drill but downstream Redis/JSONL bus state unrecovered"
+          },
+          "retention": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:422-448",
+            "status": "CONFLICT",
+            "value": "prune_consumed deletes only consumed_at IS NOT NULL older than 30d; unconsumed >60m retained forever"
+          },
+          "retries": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:278-353",
+            "status": "EVIDENCED",
+            "value": "replay_unconsumed fetches consumed_at IS NULL AND created_at > NOW() - 60m"
+          },
+          "role": {
+            "evidence_ref": null,
+            "status": "UNKNOWN",
+            "value": "db_app_role_unverified"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "PARTIAL",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "single_tenant_system"
+          },
+          "transaction": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:210-228",
+            "status": "EVIDENCED",
+            "value": "INSERT INTO events_outbox + SELECT pg_notify($1, $2) in caller tx"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "B02_REDIS_OBSERVER_EVIDENCE_MISSING",
+            "B03_DENOMINATOR_UNCLOSED"
+          ],
+          "x_counterexample_id": "CE-06",
+          "x_evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-448",
+          "x_guarantee_dimension": "dependencies",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public",
+            "redis:pro:6379/db0"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B02",
+            "B03",
+            "B05"
+          ],
+          "dimension_id": "D12_dependencies",
+          "invariant": "Every cross-store fan-out edge (PG -> Redis, PG -> Qdrant, PG -> JSONL) must declare explicit transaction boundary, downstream idempotency key, and dead-letter/orphan sweep covering all unconsumed ages.",
+          "target_status_until_proved": "PARTIAL",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "recovery_order": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "scripts/restore_drill/run_drill.sh:20-50",
+            "status": "EVIDENCED",
+            "value": "local_ephemeral_container"
+          },
+          "consumer_id": "src_d073f505ff1671ad",
+          "effects": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:37-73",
+            "status": "BLOCKED",
+            "value": "Verifies 5 PG tables only; Qdrant, Redis, SQLite, GDrive excluded; aggregate=CANNOT-VERIFY masks clients=FAIL"
+          },
+          "evidence_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+          "evidence_timestamp": "2026-10-15T03:02:11+00:00",
+          "failure": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:221-227",
+            "status": "BLOCKED",
+            "value": "clients=FAIL (VIOLATION:1 via _CLIENTS_VIOLATIONS_SQL), conversations=CANNOT-VERIFY (UNMEASURED_CHECK:1), aggregate=CANNOT-VERIFY"
+          },
+          "idempotency": {
+            "evidence_ref": "scripts/restore_drill/run_drill.sh:66-76",
+            "status": "EVIDENCED",
+            "value": "ephemeral container destroyed on exit via trap cleanup EXIT"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-36",
+            "status": "EVIDENCED",
+            "value": "mini.restore_drill"
+          },
+          "recovery": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:41",
+            "status": "BLOCKED",
+            "value": "real_backup_restore_success_proved=false"
+          },
+          "retention": {
+            "evidence_ref": "scripts/restore_drill/run_drill.sh:66-76",
+            "status": "EVIDENCED",
+            "value": "$WORK_DIR/verify.json deleted on exit; sanitized TERMINAL verifier_summary only"
+          },
+          "retries": {
+            "evidence_ref": "scripts/restore_drill/run_drill.sh:1-76",
+            "status": "PARTIAL",
+            "value": "manual/cron drill invocation"
+          },
+          "role": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:111-187",
+            "status": "EVIDENCED",
+            "value": "restore_drill_verifier"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "BLOCKED",
+          "store_id": "pg:mini:restore-drill/nuzantara_restore_drill",
+          "tenant": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-36",
+            "status": "EVIDENCED",
+            "value": "ephemeral_docker_pg16_mini"
+          },
+          "transaction": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:221-356",
+            "status": "EVIDENCED",
+            "value": "Read-only verification queries against restored PG dump"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "B01_RECOVERY_EVIDENCE_MISSING",
+            "CLIENTS_FAILING_SUBCHECK_UNDISAMBIGUATED",
+            "CONVERSATIONS_UNMEASURED_SQL_CAUSE_UNKNOWN"
+          ],
+          "x_counterexample_id": "CE-01",
+          "x_evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-76",
+          "x_guarantee_dimension": "recovery_order",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:mini:restore-drill/nuzantara_restore_drill",
+            "pg:fly:nuzantara-postgres/public"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B01",
+            "B02",
+            "B04"
+          ],
+          "dimension_id": "D17_recovery_order",
+          "invariant": "Restore verification must prove PASS across all 5 PG tables on Mini without CANNOT-VERIFY masking FAIL, and order recovery across PG -> SQLite/GDrive -> Qdrant -> Redis.",
+          "target_status_until_proved": "BLOCKED",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        },
+        {
+          "authorization": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "keyless_observer_and_ephemeral_pg"
+          },
+          "consumer_id": "src_d073f505ff1671ad",
+          "effects": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+            "status": "BLOCKED",
+            "value": "Target guarantee: emit distinct subcheck counts and FAIL+CANNOT-VERIFY compound status without masking"
+          },
+          "evidence_sha256": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+            "status": "BLOCKED",
+            "value": "Target guarantee: any table FAIL or CANNOT-VERIFY blocks release closure"
+          },
+          "idempotency": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "ephemeral isolated restore"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+            "status": "BLOCKED",
+            "value": "target:multi_store_restore_verifier"
+          },
+          "recovery": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:41-47",
+            "status": "BLOCKED",
+            "value": "Awaiting B01 restore admission, B02 Redis observer, and B04 Qdrant metadata"
+          },
+          "retention": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "Persist sanitized per-subcheck counters via B01 admission"
+          },
+          "retries": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "deterministic drill retry"
+          },
+          "role": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "restore_drill_verifier"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "BLOCKED",
+          "store_id": "pg:mini:restore-drill/nuzantara_restore_drill",
+          "tenant": {
+            "evidence_ref": null,
+            "status": "BLOCKED",
+            "value": "system_recovery"
+          },
+          "transaction": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+            "status": "BLOCKED",
+            "value": "Target order: 1.PG base + _schema_versions -> 2.SQLite/GDrive provenance -> 3.Qdrant collection/model parity -> 4.Redis stream watermark -> 5.Outbox replay"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "B01_RECOVERY_EVIDENCE_MISSING",
+            "B02_REDIS_OBSERVER_EVIDENCE_MISSING",
+            "B04_QDRANT_PROD_METADATA_MISSING"
+          ],
+          "x_counterexample_id": "CE-01",
+          "x_evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+          "x_guarantee_dimension": "recovery_order",
+          "x_record_kind": "DESIRED_GUARANTEE",
+          "x_target_store_ids": [
+            "pg:mini:restore-drill/nuzantara_restore_drill",
+            "pg:fly:nuzantara-postgres/public",
+            "qdrant:pro:local/sha8-af100a6d",
+            "redis:pro:6379/db0",
+            "redis:mini:6379/db0"
+          ]
+        }
+      ]
+    },
+    "references": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "pg_schema_owner"
+          },
+          "consumer_id": "src_54ed3c033ab03a89",
+          "effects": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-73",
+            "status": "CONFLICT",
+            "value": "Defines public.asset_provenance(asset_kind, asset_id TEXT) across PG, Qdrant, KG, and external sources; split authority vs SQLite provenance.db"
+          },
+          "evidence_sha256": "62e437d7de7c60300330d01ea4d2ff7957fc4b309016d229a3bd8051635eb01e",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-30",
+            "status": "CONFLICT",
+            "value": "Polymorphic FK is unverifiable in DDL; external store deletion leaves dangling TEXT pointers until weekly orphan-GC backlog"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+            "status": "EVIDENCED",
+            "value": "CREATE TABLE IF NOT EXISTS / UNIQUE (asset_kind, asset_id)"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+            "status": "EVIDENCED",
+            "value": "migration_v2:154_asset_provenance"
+          },
+          "recovery": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+            "status": "BLOCKED",
+            "value": "Not included in restore_drill_verify.py REQUIRED_TABLES"
+          },
+          "retention": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:107-114",
+            "status": "PARTIAL",
+            "value": "valid_until + invalidation_mode columns defined without cross-store cascade proof"
+          },
+          "retries": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:37-38",
+            "status": "EVIDENCED",
+            "value": "none"
+          },
+          "role": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "migration_runner"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "CONFLICT",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+            "status": "EVIDENCED",
+            "value": "global_provenance"
+          },
+          "transaction": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-30",
+            "status": "EVIDENCED",
+            "value": "Single-table polymorphic DDL (asset_kind + opaque asset_id TEXT); 8/12 asset_kinds lack PG target tables"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "B04_QDRANT_PROD_METADATA_MISSING",
+            "LIVE_PROVENANCE_ROW_COUNT_UNPROVED"
+          ],
+          "x_counterexample_id": "CE-02",
+          "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-136",
+          "x_guarantee_dimension": "references",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public",
+            "qdrant:gcloud:nuzantara-qdrant/unknown",
+            "sqlite:pro:mata-garuda/provenance",
+            "object:gdrive:balizero_root/clients",
+            "external:gcloud:notebooklm/container"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B04",
+            "B06",
+            "B07"
+          ],
+          "dimension_id": "D14_references",
+          "invariant": "Cross-store references (public.asset_provenance, Qdrant point_id/source_id, GDrive file IDs, NotebookLM container refs) must have a single declared authority and periodic dangling-pointer verification.",
+          "target_status_until_proved": "CONFLICT",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "retention_erasure_security": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "scripts/outbox-prune.sh:38-56",
+            "status": "PARTIAL",
+            "value": "DATABASE_URL_via_pg_proxy_15432"
+          },
+          "consumer_id": "src_05d88b7c837c1309",
+          "effects": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:437-441",
+            "status": "EVIDENCED",
+            "value": "Deletes only WHERE consumed_at IS NOT NULL AND consumed_at < NOW() - 30 days"
+          },
+          "evidence_sha256": "316314201094a5660418b493596be6a7d7451463bbcf0284b4e17d77e47a49dd",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:332-441",
+            "status": "CONFLICT",
+            "value": "Leaves unconsumed rows (consumed_at IS NULL) older than 60m abandoned by replay_unconsumed and never pruned"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:437-441",
+            "status": "EVIDENCED",
+            "value": "idempotent DELETE by predicate"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv:3722",
+            "status": "EVIDENCED",
+            "value": "Nuzantara:com.nuzantara.outbox-prune.daily"
+          },
+          "recovery": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "N/A maintenance prune"
+          },
+          "retention": {
+            "evidence_ref": "scripts/outbox-prune.sh:66-88",
+            "status": "CONFLICT",
+            "value": "30d for consumed rows; infinite retention leak for unconsumed >60m orphans"
+          },
+          "retries": {
+            "evidence_ref": "scripts/outbox-prune.sh:46-55",
+            "status": "PARTIAL",
+            "value": "daily cron at 03:15; exits 0 with warning if pg-proxy :15432 unreachable"
+          },
+          "role": {
+            "evidence_ref": "scripts/outbox-prune.sh:8-10",
+            "status": "EVIDENCED",
+            "value": "launchd_cron_pro"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "CONFLICT",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "scripts/outbox-prune.sh:1-12",
+            "status": "EVIDENCED",
+            "value": "system_maintenance"
+          },
+          "transaction": {
+            "evidence_ref": "scripts/outbox-prune.sh:72-88",
+            "status": "EVIDENCED",
+            "value": "Calls prune_consumed(conn, older_than_days=30) executing single DELETE on public.events_outbox"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "LIVE_ORPHAN_OUTBOX_COUNT_UNPROVED"
+          ],
+          "x_counterexample_id": "CE-06",
+          "x_evidence_ref": "scripts/outbox-prune.sh:66-88",
+          "x_guarantee_dimension": "retention_erasure_security",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B01",
+            "B02",
+            "B04",
+            "B06"
+          ],
+          "dimension_id": "D16_retention_erasure_security",
+          "invariant": "PII erasure and TTL policies (visa_decision_retention_policies, events_outbox, llm_cost_log.jsonl) must cascade across PG, Qdrant, Redis, and JSONL with zero orphan gap.",
+          "target_status_until_proved": "CONFLICT",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "time_semantics": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:93-107",
+            "status": "PARTIAL",
+            "value": "DATABASE_URL+REDIS_PASSWORD"
+          },
+          "consumer_id": "src_a725ee3bebe31d76",
+          "effects": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:138-222",
+            "status": "CONFLICT",
+            "value": "Truncates payload >2000B (_truncate_payload), mints wall-clock correlation_id pg-{channel}-{ts}, logs Redis XADD failure as non-fatal"
+          },
+          "evidence_sha256": "96226534ea52ff70418dbdc040680efa70f546dfbf8bbdd51b030d0ae3420333",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:215-222",
+            "status": "CONFLICT",
+            "value": "Silent divergence between ~/.organism/events/pg-bridge.jsonl and Redis stream organism:events on XADD failure"
+          },
+          "idempotency": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:172-176",
+            "status": "CONFLICT",
+            "value": "Fallback correlation_id uses datetime.now(timezone.utc).timestamp() when _outbox_id absent"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv:3728",
+            "status": "EVIDENCED",
+            "value": "Nuzantara:com.nuzantara.pg-organism-bridge"
+          },
+          "recovery": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:238-260",
+            "status": "CONFLICT",
+            "value": "No outbox replay invoked inside pg-to-organism-bridge.py reconnect loop"
+          },
+          "retention": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:82-85",
+            "status": "PARTIAL",
+            "value": "Unbounded append to ~/.organism/events/pg-bridge.jsonl without Redis stream parity check"
+          },
+          "retries": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:238-260",
+            "status": "CONFLICT",
+            "value": "Exponential reconnect backoff (1s..60s); notifications during disconnect are lost on bridge path"
+          },
+          "role": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:82-89",
+            "status": "EVIDENCED",
+            "value": "launchd_daemon_pro"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "CONFLICT",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:82-85",
+            "status": "EVIDENCED",
+            "value": "system_organism_bus"
+          },
+          "transaction": {
+            "evidence_ref": "scripts/pg-to-organism-bridge.py:190-222",
+            "status": "EVIDENCED",
+            "value": "Ephemeral PG LISTEN/NOTIFY -> local JSONL append -> best-effort redis-cli XADD"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "B02_REDIS_OBSERVER_EVIDENCE_MISSING"
+          ],
+          "x_counterexample_id": "CE-03",
+          "x_evidence_ref": "scripts/pg-to-organism-bridge.py:138-260",
+          "x_guarantee_dimension": "time_semantics",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public",
+            "file:pro:organism/events",
+            "redis:pro:6379/db0"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B02",
+            "B05"
+          ],
+          "dimension_id": "D15_time_semantics",
+          "invariant": "Cross-store event propagation must preserve producer event_id and UTC timestamp without wall-clock fallback IDs or silent 2000-byte payload truncation.",
+          "target_status_until_proved": "CONFLICT",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "versions": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "pg_schema_owner"
+          },
+          "consumer_id": "src_da55e7bec3535c6e",
+          "effects": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:42-43",
+            "status": "BLOCKED",
+            "value": "Reconciles PG migration ledger; local Qdrant has 2 collections (af100a6d) and qdrant_model_binding_proved=false"
+          },
+          "evidence_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+          "evidence_timestamp": "2026-10-15T03:28:29.868658+00:00",
+          "failure": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:80-130",
+            "status": "BLOCKED",
+            "value": "Backup dump failed verification on clients VIOLATION:1 and conversations UNMEASURED_CHECK:1"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:25-55",
+            "status": "EVIDENCED",
+            "value": "ON CONFLICT DO NOTHING"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+            "status": "EVIDENCED",
+            "value": "migration_v2:299_schema_versions_provenance"
+          },
+          "recovery": {
+            "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-76",
+            "status": "BLOCKED",
+            "value": "Restore drill failed on clients VIOLATION:1 and conversations UNMEASURED_CHECK:1"
+          },
+          "retention": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+            "status": "EVIDENCED",
+            "value": "permanent schema ledger"
+          },
+          "retries": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:15-55",
+            "status": "EVIDENCED",
+            "value": "idempotent SQL migration"
+          },
+          "role": {
+            "evidence_ref": null,
+            "status": "PARTIAL",
+            "value": "migration_runner"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "BLOCKED",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+            "status": "EVIDENCED",
+            "value": "system_schema_ledger"
+          },
+          "transaction": {
+            "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:15-55",
+            "status": "EVIDENCED",
+            "value": "Backfills _schema_versions from schema_migrations; no cross-store Qdrant embedding version lock"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "B04_QDRANT_PROD_METADATA_MISSING",
+            "QDRANT_MODEL_BINDING_UNPROVED"
+          ],
+          "x_counterexample_id": "CE-01",
+          "x_evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:42-130",
+          "x_guarantee_dimension": "versions",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public",
+            "qdrant:pro:local/sha8-af100a6d"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B01",
+            "B04",
+            "B07"
+          ],
+          "dimension_id": "D14_versions",
+          "invariant": "PG _schema_versions and schema_migrations must match backup dump schema expectations, and Qdrant collections must prove embedding model + 1536-dim binding.",
+          "target_status_until_proved": "BLOCKED",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    },
+    "workload_cost": {
+      "current_facts": [
+        {
+          "authorization": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:154-210",
+            "status": "PARTIAL",
+            "value": "local_fs+get_db_pool"
+          },
+          "consumer_id": "src_787bbadb9e6dca52",
+          "effects": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:255-285",
+            "status": "CONFLICT",
+            "value": "Writes /data/llm_cost_log.YYYY-MM-DD.jsonl and public.llm_cost_events; partial sink failure does not roll back or backfill"
+          },
+          "evidence_sha256": "14bab578510a94609a94c0bdfb2c952a04efe2654c26b3485c23234a721f21cd",
+          "evidence_timestamp": "2026-10-15T07:06:22Z",
+          "failure": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:272-285",
+            "status": "CONFLICT",
+            "value": "Single-sink failure logs warning and returns False for that sink; PG and JSONL diverge permanently"
+          },
+          "idempotency": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:181-210",
+            "status": "PARTIAL",
+            "value": "append-only event log without UNIQUE(request_id) dedup constraint"
+          },
+          "operation_id": "UNASSIGNED_B05",
+          "principal": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:102-120",
+            "status": "EVIDENCED",
+            "value": "backend-rag:llm_cost_recorder"
+          },
+          "recovery": {
+            "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+            "status": "BLOCKED",
+            "value": "llm_cost_events not in restore_drill_verify.py REQUIRED_TABLES"
+          },
+          "retention": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:58-60",
+            "status": "CONFLICT",
+            "value": "DEFAULT_RETENTION_DAYS=90 stored on self.retention_days (line 112) but never referenced by any pruning logic"
+          },
+          "retries": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:259-285",
+            "status": "EVIDENCED",
+            "value": "none on PG or JSONL failure"
+          },
+          "role": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:239-299",
+            "status": "EVIDENCED",
+            "value": "app_telemetry_writer"
+          },
+          "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+          "status": "CONFLICT",
+          "store_id": "pg:fly:nuzantara-postgres/public",
+          "tenant": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:1-28",
+            "status": "EVIDENCED",
+            "value": "system_cost_ledger"
+          },
+          "transaction": {
+            "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:239-298",
+            "status": "EVIDENCED",
+            "value": "Independent parallel writes to Prometheus, PG llm_cost_events, and /data/llm_cost_log.YYYY-MM-DD.jsonl without reconciliation"
+          },
+          "unknowns": [
+            "OPERATION_ID_PENDING_B05",
+            "STATIC_SOURCE_ONLY",
+            "LIVE_LLM_COST_EVENTS_TABLE_EXISTENCE_UNPROVED"
+          ],
+          "x_counterexample_id": "CE-06",
+          "x_evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:55-299",
+          "x_guarantee_dimension": "workload_cost",
+          "x_record_kind": "CURRENT_FACT",
+          "x_target_store_ids": [
+            "pg:fly:nuzantara-postgres/public",
+            "file:fly:data/llm_cost_log"
+          ]
+        }
+      ],
+      "desired_guarantees": [
+        {
+          "blocking_siblings": [
+            "B04",
+            "B07"
+          ],
+          "dimension_id": "D16_workload_cost",
+          "invariant": "Dual-sink cost telemetry (/data/llm_cost_log.jsonl and public.llm_cost_events) must reconcile row counts and enforce declared 90-day file pruning.",
+          "target_status_until_proved": "CONFLICT",
+          "x_record_kind": "DESIRED_GUARANTEE"
+        }
+      ]
+    }
+  },
+  "missing_sibling_evidence": {
+    "B01": "Real-backup restore drill PASS proof missing (real_backup_restore_success_proved=false; clients=FAIL with VIOLATION:1, conversations=CANNOT-VERIFY with UNMEASURED_CHECK:1).",
+    "B02": "Keyless Redis observer admission missing on Pro and Mini (redis.pro=AUTHORIZATION_REQUIRED, redis.mini=AUTHORIZATION_REQUIRED).",
+    "B03": "Active-consumer denominator remains UNKNOWN across the 6,030 union leads.",
+    "B04": "Production Qdrant live collection/vector/model binding proof missing (qdrant_model_binding_proved=false; local Pro has only 2 collections).",
+    "B05": "Canonical operation_id minting owned by B05; all B08 operation instances carry UNASSIGNED_B05 + OPERATION_ID_PENDING_B05."
+  },
+  "operation_instances": [
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-236",
+        "status": "PARTIAL",
+        "value": "asyncpg_connection"
+      },
+      "consumer_id": "src_e23395130cffca55",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:210-419",
+        "status": "EVIDENCED",
+        "value": "Writes public.events_outbox, fires pg_notify, replays unconsumed within 60m window"
+      },
+      "evidence_sha256": "fdf8f48cadf3fdd72b9393dc27ac385b9be489772c6931f7a9e453fb0f413269",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:332-335",
+        "status": "CONFLICT",
+        "value": "Unconsumed rows older than 60m are excluded by replay_unconsumed and never pruned by prune_consumed"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:239-275",
+        "status": "PARTIAL",
+        "value": "acknowledge guards WHERE consumed_at IS NULL; handlers must dedupe _outbox_id"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-236",
+        "status": "EVIDENCED",
+        "value": "backend-rag:events_outbox"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+        "status": "BLOCKED",
+        "value": "Outbox table checked in restore drill but downstream Redis/JSONL bus state unrecovered"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:422-448",
+        "status": "CONFLICT",
+        "value": "prune_consumed deletes only consumed_at IS NOT NULL older than 30d; unconsumed >60m retained forever"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:278-353",
+        "status": "EVIDENCED",
+        "value": "replay_unconsumed fetches consumed_at IS NULL AND created_at > NOW() - 60m"
+      },
+      "role": {
+        "evidence_ref": null,
+        "status": "UNKNOWN",
+        "value": "db_app_role_unverified"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "single_tenant_system"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:210-228",
+        "status": "EVIDENCED",
+        "value": "INSERT INTO events_outbox + SELECT pg_notify($1, $2) in caller tx"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "B02_REDIS_OBSERVER_EVIDENCE_MISSING",
+        "B03_DENOMINATOR_UNCLOSED"
+      ],
+      "x_counterexample_id": "CE-06",
+      "x_evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:181-448",
+      "x_guarantee_dimension": "dependencies",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public",
+        "redis:pro:6379/db0"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "pg_schema_owner"
+      },
+      "consumer_id": "src_54ed3c033ab03a89",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-73",
+        "status": "CONFLICT",
+        "value": "Defines public.asset_provenance(asset_kind, asset_id TEXT) across PG, Qdrant, KG, and external sources; split authority vs SQLite provenance.db"
+      },
+      "evidence_sha256": "62e437d7de7c60300330d01ea4d2ff7957fc4b309016d229a3bd8051635eb01e",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-30",
+        "status": "CONFLICT",
+        "value": "Polymorphic FK is unverifiable in DDL; external store deletion leaves dangling TEXT pointers until weekly orphan-GC backlog"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+        "status": "EVIDENCED",
+        "value": "CREATE TABLE IF NOT EXISTS / UNIQUE (asset_kind, asset_id)"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+        "status": "EVIDENCED",
+        "value": "migration_v2:154_asset_provenance"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+        "status": "BLOCKED",
+        "value": "Not included in restore_drill_verify.py REQUIRED_TABLES"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:107-114",
+        "status": "PARTIAL",
+        "value": "valid_until + invalidation_mode columns defined without cross-store cascade proof"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:37-38",
+        "status": "EVIDENCED",
+        "value": "none"
+      },
+      "role": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "migration_runner"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:44-136",
+        "status": "EVIDENCED",
+        "value": "global_provenance"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-30",
+        "status": "EVIDENCED",
+        "value": "Single-table polymorphic DDL (asset_kind + opaque asset_id TEXT); 8/12 asset_kinds lack PG target tables"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "B04_QDRANT_PROD_METADATA_MISSING",
+        "LIVE_PROVENANCE_ROW_COUNT_UNPROVED"
+      ],
+      "x_counterexample_id": "CE-02",
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql:26-136",
+      "x_guarantee_dimension": "references",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public",
+        "qdrant:gcloud:nuzantara-qdrant/unknown",
+        "sqlite:pro:mata-garuda/provenance",
+        "object:gdrive:balizero_root/clients",
+        "external:gcloud:notebooklm/container"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "pg_schema_owner"
+      },
+      "consumer_id": "src_da55e7bec3535c6e",
+      "effects": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:42-43",
+        "status": "BLOCKED",
+        "value": "Reconciles PG migration ledger; local Qdrant has 2 collections (af100a6d) and qdrant_model_binding_proved=false"
+      },
+      "evidence_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "evidence_timestamp": "2026-10-15T03:28:29.868658+00:00",
+      "failure": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:80-130",
+        "status": "BLOCKED",
+        "value": "Backup dump failed verification on clients VIOLATION:1 and conversations UNMEASURED_CHECK:1"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:25-55",
+        "status": "EVIDENCED",
+        "value": "ON CONFLICT DO NOTHING"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+        "status": "EVIDENCED",
+        "value": "migration_v2:299_schema_versions_provenance"
+      },
+      "recovery": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-76",
+        "status": "BLOCKED",
+        "value": "Restore drill failed on clients VIOLATION:1 and conversations UNMEASURED_CHECK:1"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+        "status": "EVIDENCED",
+        "value": "permanent schema ledger"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:15-55",
+        "status": "EVIDENCED",
+        "value": "idempotent SQL migration"
+      },
+      "role": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "migration_runner"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "BLOCKED",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:1-58",
+        "status": "EVIDENCED",
+        "value": "system_schema_ledger"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/299_schema_versions_provenance.sql:15-55",
+        "status": "EVIDENCED",
+        "value": "Backfills _schema_versions from schema_migrations; no cross-store Qdrant embedding version lock"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "B04_QDRANT_PROD_METADATA_MISSING",
+        "QDRANT_MODEL_BINDING_UNPROVED"
+      ],
+      "x_counterexample_id": "CE-01",
+      "x_evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:42-130",
+      "x_guarantee_dimension": "versions",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public",
+        "qdrant:pro:local/sha8-af100a6d"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:93-107",
+        "status": "PARTIAL",
+        "value": "DATABASE_URL+REDIS_PASSWORD"
+      },
+      "consumer_id": "src_a725ee3bebe31d76",
+      "effects": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:138-222",
+        "status": "CONFLICT",
+        "value": "Truncates payload >2000B (_truncate_payload), mints wall-clock correlation_id pg-{channel}-{ts}, logs Redis XADD failure as non-fatal"
+      },
+      "evidence_sha256": "96226534ea52ff70418dbdc040680efa70f546dfbf8bbdd51b030d0ae3420333",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:215-222",
+        "status": "CONFLICT",
+        "value": "Silent divergence between ~/.organism/events/pg-bridge.jsonl and Redis stream organism:events on XADD failure"
+      },
+      "idempotency": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:172-176",
+        "status": "CONFLICT",
+        "value": "Fallback correlation_id uses datetime.now(timezone.utc).timestamp() when _outbox_id absent"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv:3728",
+        "status": "EVIDENCED",
+        "value": "Nuzantara:com.nuzantara.pg-organism-bridge"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:238-260",
+        "status": "CONFLICT",
+        "value": "No outbox replay invoked inside pg-to-organism-bridge.py reconnect loop"
+      },
+      "retention": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:82-85",
+        "status": "PARTIAL",
+        "value": "Unbounded append to ~/.organism/events/pg-bridge.jsonl without Redis stream parity check"
+      },
+      "retries": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:238-260",
+        "status": "CONFLICT",
+        "value": "Exponential reconnect backoff (1s..60s); notifications during disconnect are lost on bridge path"
+      },
+      "role": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:82-89",
+        "status": "EVIDENCED",
+        "value": "launchd_daemon_pro"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:82-85",
+        "status": "EVIDENCED",
+        "value": "system_organism_bus"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/pg-to-organism-bridge.py:190-222",
+        "status": "EVIDENCED",
+        "value": "Ephemeral PG LISTEN/NOTIFY -> local JSONL append -> best-effort redis-cli XADD"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "B02_REDIS_OBSERVER_EVIDENCE_MISSING"
+      ],
+      "x_counterexample_id": "CE-03",
+      "x_evidence_ref": "scripts/pg-to-organism-bridge.py:138-260",
+      "x_guarantee_dimension": "time_semantics",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public",
+        "file:pro:organism/events",
+        "redis:pro:6379/db0"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": "scripts/outbox-prune.sh:38-56",
+        "status": "PARTIAL",
+        "value": "DATABASE_URL_via_pg_proxy_15432"
+      },
+      "consumer_id": "src_05d88b7c837c1309",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:437-441",
+        "status": "EVIDENCED",
+        "value": "Deletes only WHERE consumed_at IS NOT NULL AND consumed_at < NOW() - 30 days"
+      },
+      "evidence_sha256": "316314201094a5660418b493596be6a7d7451463bbcf0284b4e17d77e47a49dd",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:332-441",
+        "status": "CONFLICT",
+        "value": "Leaves unconsumed rows (consumed_at IS NULL) older than 60m abandoned by replay_unconsumed and never pruned"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/events/outbox.py:437-441",
+        "status": "EVIDENCED",
+        "value": "idempotent DELETE by predicate"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv:3722",
+        "status": "EVIDENCED",
+        "value": "Nuzantara:com.nuzantara.outbox-prune.daily"
+      },
+      "recovery": {
+        "evidence_ref": null,
+        "status": "PARTIAL",
+        "value": "N/A maintenance prune"
+      },
+      "retention": {
+        "evidence_ref": "scripts/outbox-prune.sh:66-88",
+        "status": "CONFLICT",
+        "value": "30d for consumed rows; infinite retention leak for unconsumed >60m orphans"
+      },
+      "retries": {
+        "evidence_ref": "scripts/outbox-prune.sh:46-55",
+        "status": "PARTIAL",
+        "value": "daily cron at 03:15; exits 0 with warning if pg-proxy :15432 unreachable"
+      },
+      "role": {
+        "evidence_ref": "scripts/outbox-prune.sh:8-10",
+        "status": "EVIDENCED",
+        "value": "launchd_cron_pro"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "scripts/outbox-prune.sh:1-12",
+        "status": "EVIDENCED",
+        "value": "system_maintenance"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/outbox-prune.sh:72-88",
+        "status": "EVIDENCED",
+        "value": "Calls prune_consumed(conn, older_than_days=30) executing single DELETE on public.events_outbox"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_ORPHAN_OUTBOX_COUNT_UNPROVED"
+      ],
+      "x_counterexample_id": "CE-06",
+      "x_evidence_ref": "scripts/outbox-prune.sh:66-88",
+      "x_guarantee_dimension": "retention_erasure_security",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": "scripts/restore_drill/run_drill.sh:20-50",
+        "status": "EVIDENCED",
+        "value": "local_ephemeral_container"
+      },
+      "consumer_id": "src_d073f505ff1671ad",
+      "effects": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:37-73",
+        "status": "BLOCKED",
+        "value": "Verifies 5 PG tables only; Qdrant, Redis, SQLite, GDrive excluded; aggregate=CANNOT-VERIFY masks clients=FAIL"
+      },
+      "evidence_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "evidence_timestamp": "2026-10-15T03:02:11+00:00",
+      "failure": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:221-227",
+        "status": "BLOCKED",
+        "value": "clients=FAIL (VIOLATION:1 via _CLIENTS_VIOLATIONS_SQL), conversations=CANNOT-VERIFY (UNMEASURED_CHECK:1), aggregate=CANNOT-VERIFY"
+      },
+      "idempotency": {
+        "evidence_ref": "scripts/restore_drill/run_drill.sh:66-76",
+        "status": "EVIDENCED",
+        "value": "ephemeral container destroyed on exit via trap cleanup EXIT"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-36",
+        "status": "EVIDENCED",
+        "value": "mini.restore_drill"
+      },
+      "recovery": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:41",
+        "status": "BLOCKED",
+        "value": "real_backup_restore_success_proved=false"
+      },
+      "retention": {
+        "evidence_ref": "scripts/restore_drill/run_drill.sh:66-76",
+        "status": "EVIDENCED",
+        "value": "$WORK_DIR/verify.json deleted on exit; sanitized TERMINAL verifier_summary only"
+      },
+      "retries": {
+        "evidence_ref": "scripts/restore_drill/run_drill.sh:1-76",
+        "status": "PARTIAL",
+        "value": "manual/cron drill invocation"
+      },
+      "role": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:111-187",
+        "status": "EVIDENCED",
+        "value": "restore_drill_verifier"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "BLOCKED",
+      "store_id": "pg:mini:restore-drill/nuzantara_restore_drill",
+      "tenant": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-36",
+        "status": "EVIDENCED",
+        "value": "ephemeral_docker_pg16_mini"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:221-356",
+        "status": "EVIDENCED",
+        "value": "Read-only verification queries against restored PG dump"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "B01_RECOVERY_EVIDENCE_MISSING",
+        "CLIENTS_FAILING_SUBCHECK_UNDISAMBIGUATED",
+        "CONVERSATIONS_UNMEASURED_SQL_CAUSE_UNKNOWN"
+      ],
+      "x_counterexample_id": "CE-01",
+      "x_evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:27-76",
+      "x_guarantee_dimension": "recovery_order",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:mini:restore-drill/nuzantara_restore_drill",
+        "pg:fly:nuzantara-postgres/public"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:154-210",
+        "status": "PARTIAL",
+        "value": "local_fs+get_db_pool"
+      },
+      "consumer_id": "src_787bbadb9e6dca52",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:255-285",
+        "status": "CONFLICT",
+        "value": "Writes /data/llm_cost_log.YYYY-MM-DD.jsonl and public.llm_cost_events; partial sink failure does not roll back or backfill"
+      },
+      "evidence_sha256": "14bab578510a94609a94c0bdfb2c952a04efe2654c26b3485c23234a721f21cd",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:272-285",
+        "status": "CONFLICT",
+        "value": "Single-sink failure logs warning and returns False for that sink; PG and JSONL diverge permanently"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:181-210",
+        "status": "PARTIAL",
+        "value": "append-only event log without UNIQUE(request_id) dedup constraint"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:102-120",
+        "status": "EVIDENCED",
+        "value": "backend-rag:llm_cost_recorder"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+        "status": "BLOCKED",
+        "value": "llm_cost_events not in restore_drill_verify.py REQUIRED_TABLES"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:58-60",
+        "status": "CONFLICT",
+        "value": "DEFAULT_RETENTION_DAYS=90 stored on self.retention_days (line 112) but never referenced by any pruning logic"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:259-285",
+        "status": "EVIDENCED",
+        "value": "none on PG or JSONL failure"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:239-299",
+        "status": "EVIDENCED",
+        "value": "app_telemetry_writer"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:1-28",
+        "status": "EVIDENCED",
+        "value": "system_cost_ledger"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:239-298",
+        "status": "EVIDENCED",
+        "value": "Independent parallel writes to Prometheus, PG llm_cost_events, and /data/llm_cost_log.YYYY-MM-DD.jsonl without reconciliation"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_LLM_COST_EVENTS_TABLE_EXISTENCE_UNPROVED"
+      ],
+      "x_counterexample_id": "CE-06",
+      "x_evidence_ref": "apps/backend-rag/backend/services/observability/llm_cost_recorder.py:55-299",
+      "x_guarantee_dimension": "workload_cost",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public",
+        "file:fly:data/llm_cost_log"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:7-9",
+        "status": "PARTIAL",
+        "value": "DATABASE_URL"
+      },
+      "consumer_id": "src_af8a65192e15e595",
+      "effects": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-89",
+        "status": "CONFLICT",
+        "value": "Catches PostgreSQL 42P01 (undefined_table) at lines 84-89 and returns HTTP 200 with grand_total_usd: 0"
+      },
+      "evidence_sha256": "910eba9f6b8002d6cc915c6abf1f6d6e42360b362e3d085d2928c0d49e587d05",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:84-89",
+        "status": "CONFLICT",
+        "value": "Conflates missing schema table (42P01) with $0.00 spend under HTTP 200"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:29-59",
+        "status": "EVIDENCED",
+        "value": "read-only"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+        "status": "EVIDENCED",
+        "value": "admin-dashboard:api/war-room/metrics/costs"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+        "status": "BLOCKED",
+        "value": "war_room_costs not in restore drill REQUIRED_TABLES"
+      },
+      "retention": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+        "status": "EVIDENCED",
+        "value": "N/A reader"
+      },
+      "retries": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-94",
+        "status": "EVIDENCED",
+        "value": "none"
+      },
+      "role": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:7-20",
+        "status": "EVIDENCED",
+        "value": "dashboard_reader"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:20-97",
+        "status": "EVIDENCED",
+        "value": "admin_war_room"
+      },
+      "transaction": {
+        "evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:29-59",
+        "status": "EVIDENCED",
+        "value": "Read-only SELECT joining war_room_costs and war_room_drafts"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_WAR_ROOM_COSTS_TABLE_STATE_UNPROVED"
+      ],
+      "x_counterexample_id": "CE-05",
+      "x_evidence_ref": "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts:82-89",
+      "x_guarantee_dimension": "analytics_observability",
+      "x_record_kind": "CURRENT_FACT",
+      "x_target_store_ids": [
+        "pg:fly:nuzantara-postgres/public"
+      ]
+    },
+    {
+      "authorization": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "keyless_observer_and_ephemeral_pg"
+      },
+      "consumer_id": "src_d073f505ff1671ad",
+      "effects": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+        "status": "BLOCKED",
+        "value": "Target guarantee: emit distinct subcheck counts and FAIL+CANNOT-VERIFY compound status without masking"
+      },
+      "evidence_sha256": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+        "status": "BLOCKED",
+        "value": "Target guarantee: any table FAIL or CANNOT-VERIFY blocks release closure"
+      },
+      "idempotency": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "ephemeral isolated restore"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+        "status": "BLOCKED",
+        "value": "target:multi_store_restore_verifier"
+      },
+      "recovery": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json:41-47",
+        "status": "BLOCKED",
+        "value": "Awaiting B01 restore admission, B02 Redis observer, and B04 Qdrant metadata"
+      },
+      "retention": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "Persist sanitized per-subcheck counters via B01 admission"
+      },
+      "retries": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "deterministic drill retry"
+      },
+      "role": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "restore_drill_verifier"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "BLOCKED",
+      "store_id": "pg:mini:restore-drill/nuzantara_restore_drill",
+      "tenant": {
+        "evidence_ref": null,
+        "status": "BLOCKED",
+        "value": "system_recovery"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:43-50",
+        "status": "BLOCKED",
+        "value": "Target order: 1.PG base + _schema_versions -> 2.SQLite/GDrive provenance -> 3.Qdrant collection/model parity -> 4.Redis stream watermark -> 5.Outbox replay"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "B01_RECOVERY_EVIDENCE_MISSING",
+        "B02_REDIS_OBSERVER_EVIDENCE_MISSING",
+        "B04_QDRANT_PROD_METADATA_MISSING"
+      ],
+      "x_counterexample_id": "CE-01",
+      "x_evidence_ref": "scripts/ci/restore_drill_verify.py:451-457",
+      "x_guarantee_dimension": "recovery_order",
+      "x_record_kind": "DESIRED_GUARANTEE",
+      "x_target_store_ids": [
+        "pg:mini:restore-drill/nuzantara_restore_drill",
+        "pg:fly:nuzantara-postgres/public",
+        "qdrant:pro:local/sha8-af100a6d",
+        "redis:pro:6379/db0",
+        "redis:mini:6379/db0"
+      ]
+    }
+  ],
+  "status": "PARTIAL"
+}

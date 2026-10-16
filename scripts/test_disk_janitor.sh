@@ -16,7 +16,8 @@ SCRIPT="$HERE/disk_janitor.sh"
 WRAP="$HERE/../infra/launchagents/wrappers/pro-disk-janitor.sh"
 ROOT="$(mktemp -d "${TMPDIR:-/tmp}/djfix.XXXXXX")" || { echo "mktemp failed"; exit 70; }
 ROOT="$(cd "$ROOT" && pwd -P)"   # physical: macOS /var -> /private/var, and the payload refuses a symlinked TMP_ROOT chain
-H="$ROOT/home"; T="$ROOT/claude-501"; FAKEBIN="$ROOT/bin"; PIDF="$ROOT/wrapper.pid"
+H="$ROOT/home"; T="$ROOT/claude-501"; TS="$ROOT/tmp_stale"; FAKEBIN="$ROOT/bin"; PIDF="$ROOT/wrapper.pid"
+export DISK_JANITOR_TMP_STALE_ROOT="$TS"
 PASS=0; FAIL=0
 ok(){ echo "  ✅ $1"; PASS=$((PASS+1)); }
 no(){ echo "  ❌ $1"; FAIL=$((FAIL+1)); }
@@ -34,7 +35,7 @@ DECOYS="Desktop/OSINT-Nexus/x.jsonl wa-mirror-media/x.jsonl backups/fly-postgres
 
 build(){
   find "$ROOT" -mindepth 1 -delete 2>/dev/null || true
-  mkdir -p "$H/.claude/sessions" "$H/logs"
+  mkdir -p "$H/.claude/sessions" "$H/logs" "$TS"
   # scratch: old-dead (prune) · old-live (keep: uuid registered) · fresh (keep) · non-project parent · non-uuid child
   mk "$T/-Users-x-clients-$MARK/$U_DEAD/scratchpad/x"; old "$T/-Users-x-clients-$MARK/$U_DEAD" 10
   mk "$T/-proj/$U_LIVE/scratchpad/x";  old "$T/-proj/$U_LIVE" 10
@@ -438,7 +439,8 @@ hang_case(){ # $1 FAKE_HANG key  $2 step ("" = just errors>=1)  $3 reason  $4 re
   HC_N=$((HC_N+1))
   (
     local el p st alive="" shape=ok w=0
-    ROOT="$HC/$HC_N"; H="$ROOT/home"; T="$ROOT/claude-501"; FAKEBIN="$ROOT/bin"; mkdir -p "$ROOT"
+    ROOT="$HC/$HC_N"; H="$ROOT/home"; T="$ROOT/claude-501"; TS="$ROOT/tmp_stale"; FAKEBIN="$ROOT/bin"; mkdir -p "$ROOT"
+    export DISK_JANITOR_TMP_STALE_ROOT="$TS"
     build; fake_tools; : > "$ROOT/hang.pid"; SECONDS=0
     OUT=$(FAKE_HANG="$1" DISK_JANITOR_CACHE_TIMEOUT=3 truns --apply); RC=$?; el=$SECONDS
     while :; do   # bounded poll (3 s) for the killed children to be gone, not a fixed sleep
@@ -484,6 +486,85 @@ build; fake_tools
 OUT=$(DISK_JANITOR_CACHE_TIMEOUT=abc truns --apply); RC=$?
 [ $RC -eq 2 ] && [ ! -s "$ROOT/calls" ] && [ ! -e "$GUARD/tripped" ] && ok "bad knob with --apply: rc 2 and NO tool invoked (fakes stay first, real tools unreachable)" || no "bad knob case reached a tool or ran: rc=$RC calls=$(tr '\n' ';' < "$ROOT/calls")"
 decoys_intact && ok "protected decoys intact after the tool steps" || no "a decoy was touched by a tool step"
+
+echo "═══ TEST 11: tmp_stale — direct children of /private/tmp idle >3d (B41 guilt + innocence) ═══"
+build
+# Candidates (prune): old dir with only old content, old file with PII marker
+mk "$TS/gate-old-$MARK/sub/a.txt"; old "$TS/gate-old-$MARK/sub/a.txt" 6; old "$TS/gate-old-$MARK/sub" 6; old "$TS/gate-old-$MARK" 6
+mk "$TS/fold-old-$MARK.txt"; old "$TS/fold-old-$MARK.txt" 6
+# Keepers (innocence):
+# 1) fresh top-level dir
+mk "$TS/fresh-dir/a.txt"; old "$TS/fresh-dir" 1
+# 2) old top-level dir with fresh content inside, plus a 60h-old child (BSD find rounds 60h up to 3d: -mtime -3 misses it, ! -mtime +3 keeps it)
+mk "$TS/mixed-dir/new.txt"; old "$TS/mixed-dir/new.txt" 1; old "$TS/mixed-dir" 6
+mk "$TS/mixed-60h/ sixty.txt"; touch -h -t "$(date -v-60H +%Y%m%d%H%M 2>/dev/null || date -d '60 hours ago' +%Y%m%d%H%M)" "$TS/mixed-60h/ sixty.txt"; old "$TS/mixed-60h" 6
+# 3) reserved names
+for rn in .dotfile claude-502 com.apple.launchd.x pytest-of-nuzantara daemon.pid job.lock ipc.sock; do
+  mk "$TS/$rn"; old "$TS/$rn" 10
+done
+# 4) directory carrying a .git below it (checkout or registered worktree)
+mk "$TS/wt-hold/tree/.git"; old "$TS/wt-hold/tree/.git" 10; old "$TS/wt-hold/tree" 10; old "$TS/wt-hold" 10
+# 5) directory named by an XML launchd plist and by a binary launchd plist carrying Unicode (plus non-plist .DS_Store / .bak ignored)
+mkdir -p "$H/Library/LaunchAgents"
+printf '\0\0\0\1Bud1' > "$H/Library/LaunchAgents/.DS_Store"
+printf 'not-a-plist-backup' > "$H/Library/LaunchAgents/com.nuzantara.demo.plist.bak"
+python3 -I -c 'import pathlib, plistlib, sys; pathlib.Path(sys.argv[1]).write_bytes(plistlib.dumps({"Program": sys.argv[2]}, fmt=plistlib.FMT_XML))' \
+  "$H/Library/LaunchAgents/com.nuzantara.demo.plist" "$TS/plist-owned/run.sh"
+python3 -I -c 'import pathlib, plistlib, sys; pathlib.Path(sys.argv[1]).write_bytes(plistlib.dumps({"Program": sys.argv[2] + "\u2014\u00e9"}, fmt=plistlib.FMT_BINARY))' \
+  "$H/Library/LaunchAgents/com.nuzantara.bplist.plist" "$TS/bplist-owned/run.sh"
+mk "$TS/plist-owned/run.sh"; old "$TS/plist-owned/run.sh" 10; old "$TS/plist-owned" 10
+mk "$TS/bplist-owned/run.sh"; old "$TS/bplist-owned/run.sh" 10; old "$TS/bplist-owned" 10
+# 6) file held open by a live process
+mk "$TS/open-held.txt"; old "$TS/open-held.txt" 10
+exec 4< "$TS/open-held.txt"
+OUT_DRY=$(run); RC_DRY=$?
+[ $RC_DRY -eq 0 ] && have "$TS/gate-old-$MARK" && have "$TS/fold-old-$MARK.txt" \
+  && grep -q '"tmp_stale":{"status":"dry-run","count":2' "$ROOT/j.jsonl" \
+  && ! echo "$OUT_DRY" | grep -q "$MARK" \
+  && ok "tmp_stale dry-run: counts 2 candidates, removes nothing, hashes names (no PII marker)" \
+  || no "tmp_stale dry-run wrong: rc=$RC_DRY $(tail -1 "$ROOT/j.jsonl")"
+OUT_APP=$(run --apply); RC_APP=$?
+exec 4<&-
+[ $RC_APP -eq 0 ] && ! have "$TS/gate-old-$MARK" && ! have "$TS/fold-old-$MARK.txt" \
+  && grep -q '"tmp_stale":{"status":"done","count":2' "$ROOT/j.jsonl" \
+  && ok "tmp_stale apply: prunes old dir and old file, count=2, errors=0" \
+  || no "tmp_stale apply wrong: rc=$RC_APP $(tail -1 "$ROOT/j.jsonl")"
+have "$TS/fresh-dir" && have "$TS/mixed-dir/new.txt" && have "$TS/mixed-60h/ sixty.txt" && have "$TS/.dotfile" && have "$TS/claude-502" \
+  && have "$TS/com.apple.launchd.x" && have "$TS/pytest-of-nuzantara" && have "$TS/daemon.pid" \
+  && have "$TS/job.lock" && have "$TS/ipc.sock" && have "$TS/wt-hold/tree/.git" \
+  && have "$TS/plist-owned/run.sh" && have "$TS/bplist-owned/run.sh" && have "$TS/open-held.txt" \
+  && ok "tmp_stale innocence: fresh, 60h-child, reserved names, .git checkout, XML+binary launchd-referenced and open-file entries all kept" \
+  || no "tmp_stale innocence: a keeper was deleted"
+# Cap + entry limit + kill switch + sentinel + corrupt plist + invalid root/knobs
+build
+dd if=/dev/zero of="$TS/big-stale.bin" bs=1048576 count=2 2>/dev/null; old "$TS/big-stale.bin" 6
+mk "$TS/small-1.txt"; old "$TS/small-1.txt" 6
+mk "$TS/small-2.txt"; old "$TS/small-2.txt" 6
+OUT=$(DISK_JANITOR_TMP_STALE_CAP_MB=1 DISK_JANITOR_TMP_STALE_MAX_ENTRIES=1 run --apply); RC=$?
+[ $RC -eq 0 ] && have "$TS/big-stale.bin" && grep -q '"tmp_stale":{"status":"done","count":1' "$ROOT/j.jsonl" \
+  && { have "$TS/small-1.txt" || have "$TS/small-2.txt"; } \
+  && ok "tmp_stale cap & max-entries: 2 MB file over 1 MB cap kept, entry limit=1 stops after 1 removal" \
+  || no "tmp_stale cap/max-entries wrong: rc=$RC $(tail -1 "$ROOT/j.jsonl")"
+build; mk "$TS/cand.txt"; old "$TS/cand.txt" 6
+OUT=$(DISK_JANITOR_TMP_STALE_ENABLED=false run --apply); RC=$?
+[ $RC -eq 0 ] && have "$TS/cand.txt" && tail -1 "$ROOT/j.jsonl" | grep -q '"tmp_stale":{"status":"skipped"[^}]*"reason":"disabled"' \
+  && ok "tmp_stale env kill switch skips step and keeps candidate" || no "tmp_stale env kill switch failed"
+: > "$H/logs/disk-janitor.tmp-stale.disabled"
+OUT=$(run --apply); RC=$?
+[ $RC -eq 0 ] && have "$TS/cand.txt" && tail -1 "$ROOT/j.jsonl" | grep -q '"tmp_stale":{"status":"skipped"[^}]*"reason":"disabled-sentinel"' \
+  && ok "tmp_stale sentinel file skips step and keeps candidate" || no "tmp_stale sentinel kill switch failed"
+rm -f "$H/logs/disk-janitor.tmp-stale.disabled"
+mkdir -p "$H/Library/LaunchAgents"; printf 'not-a-plist' > "$H/Library/LaunchAgents/bad.plist"
+OUT=$(run --apply); RC=$?
+[ $RC -eq 1 ] && have "$TS/cand.txt" && tail -1 "$ROOT/j.jsonl" | grep -q '"tmp_stale":{"status":"error"[^}]*"reason":"launchd-unreadable"' \
+  && ok "tmp_stale corrupt launchd plist fails closed (launchd-unreadable, rc=1) and keeps candidate" || no "tmp_stale corrupt launchd plist not refused: rc=$RC"
+rm -rf "$H/Library/LaunchAgents"
+OUT=$(DISK_JANITOR_TMP_STALE_ROOT="$H/logs" run --apply); RC=$?
+[ $RC -eq 1 ] && tail -1 "$ROOT/j.jsonl" | grep -q '"tmp_stale":{"status":"error"[^}]*"reason":"root-invalid"' \
+  && ok "tmp_stale root under HOME refused with root-invalid error, rc=1" || no "tmp_stale root under HOME not refused: rc=$RC"
+OUT=$(DISK_JANITOR_TMP_STALE_DAYS=0 run --apply); RC=$?
+[ $RC -eq 2 ] && have "$TS/cand.txt" && ok "tmp_stale invalid knob (DAYS=0) refused rc=2 before any deletion" || no "tmp_stale invalid knob accepted: rc=$RC"
+
 [ ! -e "$GUARD/tripped" ] && ok "no real docker/colima/uv/restic/brew/limactl reached by any case in the suite" || no "a REAL tool was reached: $(cat "$GUARD/tripped")"
 
 echo; echo "PASS=$PASS FAIL=$FAIL"
