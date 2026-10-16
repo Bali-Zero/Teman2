@@ -21,7 +21,7 @@ struct RegistryVerdictSheet: View {
     var scrolls: Bool = true
 
     /// Pure, headless-callable (`Tests/semantictest`) — the sheet's national-axis card delegates
-    /// entirely to `KBLIVerdict.ownershipLine` (OPEN-1, 2026-09-17). `nationalValue` below calls
+    /// entirely to `KBLIVerdict.ownershipLine` (OPEN-1, 2026-09-17). The national plate calls
     /// this SAME function with the view's own `isID`; kept `static` and free of `@EnvironmentObject`
     /// state so a test can assert it against the projection without instantiating a live view.
     static func ownershipLine(_ kbli: KBLI, isID: Bool) -> String {
@@ -57,6 +57,8 @@ struct RegistryVerdictSheet: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.radiusLg, style: .continuous)
             .strokeBorder(Theme.hairline, lineWidth: 1))
         .shadow(color: .black.opacity(0.28), radius: 18, y: -6)
+        .coordinateSpace(name: SheetFit.space)
+        .censusFrame("sheet")
     }
 
     private var content: some View {
@@ -104,45 +106,59 @@ struct RegistryVerdictSheet: View {
 
     private var head: some View {
         let v = verdict
-        return VStack(alignment: .leading, spacing: 18) {
-            WideOrStacked(side: 330, wideFrom: 780, spacing: 32) {
-                identity
+        return VStack(alignment: .leading, spacing: expanded ? 18 : 10) {
+            if expanded {
+                WideOrStacked(side: 330, wideFrom: 780, spacing: 32) {
+                    identity()
+                    nationalPlate(v)
+                }
+                verdictBand(v)
+            } else {
+                // The collapsed sheet is verdict-first at every width: the app's real main pane is about 807 pt at the minimum window (the
+                // sidebar takes 232 of 1040), under the 780 where a plate sits beside the title, and the card is half the window tall. So
+                // title, the band, and the plate as one thin row after it (D2 VERDICT-FIRST, #8492 gate).
+                identity(official: false)
+                    .censusFrame("head.compact")   // on the title block, which stands wherever the band does: the head's own frame runs below the fold
+                verdictBand(v).background(SheetFit.reader)
                 nationalPlate(v)
+                if !isID { officialTitle }
             }
-            verdictBand(v)
             baliBlock(v)
             riskRow(v)
         }
     }
 
-    private var identity: some View {
+    /// The record's own title in Bahasa Indonesia, labelled (EN only): the collapsed sheet shows it after the verdict band and the plate.
+    private var officialTitle: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+            Text(LabelBook.officialTitle(kbli)).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func identity(official: Bool = true) -> some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: official ? 8 : 4) {
                 Text("KBLI \(kbli.kode) · 2025")
                     .font(Theme.scalable(11, weight: .semibold, design: .monospaced)).tracking(1.0)
                     .foregroundStyle(Theme.faint)
-                Text(LabelBook.title(kbli, isID: isID))
-                    .font(Theme.display(44))
-                    .foregroundStyle(Theme.white)
-                    .fixedSize(horizontal: false, vertical: true)
+                StepDownTitle(text: LabelBook.title(kbli, isID: isID))
                     .accessibilityAddTraits(.isHeader)
                     .censusFrame("title")
-                if !isID {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(LabelBook.officialTitleLabel).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
-                        Text(LabelBook.officialTitle(kbli)).font(Theme.scalable(15)).foregroundStyle(Theme.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                if !isID && official { officialTitle }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // IMM: the division glyph sits beside the title, never under its text (Q28).
-            if immersive && Theme.decorationsVisible {
+            // IMM: the division glyph sits beside the title, never under its text (Q28), a title's width after it as on the card; a title
+            // that takes the whole row leaves it the column's edge.
+            // (The collapsed sheet's compact head gives its row to the title: no glyph there.)
+            if immersive && Theme.decorationsVisible && expanded {
                 GlyphStroke(division: Int(kbli.kode.prefix(2)) ?? 0, size: 64, alpha: Theme.mode == .light ? 0.55 : 0.5, width: 1.6)
+                    .padding(.leading, 32)
                     .modifier(Beat(p: arrival, from: 0, to: 0.6, dx: 16, fade: false))
                     .censusFrame("glyph")
                     .accessibilityHidden(true)
             }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(Beat(p: immersive ? arrival : 1, from: 0, to: 0.35, dy: 6))
@@ -155,28 +171,44 @@ struct RegistryVerdictSheet: View {
         let tone: Theme.Tone = { switch v.national { case .open: return .open; case .restricted: return .restricted
                                                     case .closed: return .closed; case .undetermined: return .neutral } }()
         let c = Theme.chip(tone)
-        return VStack(alignment: .leading, spacing: 10) {
-            Text(isID ? "NASIONAL" : "NATIONAL")
-                .font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9).foregroundStyle(Theme.faint)
-            Text(parts[0]).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg)
-                .padding(.vertical, 4).padding(.horizontal, 8)
-                .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-                .censusFrame("chip.national", CensusTone.national(verdict: v))
-            if let cap = v.nationalCap {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Group {
-                        if immersive { CountUpPercent(p: arrival, value: cap) } else { Text("\(cap)%") }
-                    }
-                    .font(Theme.display(64)).monospacedDigit().foregroundStyle(Theme.white)
-                    .censusFrame("cap")
-                    Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
+        // The collapsed sheet (470 pt) carries a compact plate: label, chip, figure and "Max foreign" on one row, Source under it, so the
+        // verdict band stays on the screen at the app's minimum window (D2 VERDICT-FIRST). The expanded sheet takes the card's whole plate.
+        let compact = !expanded
+        func capRow(_ cap: Int) -> some View {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Group {
+                    if immersive { CountUpPercent(p: arrival, value: cap) } else { Text("\(cap)%") }
                 }
-            } else if parts.count > 1 {
-                Text(parts[1]).font(Theme.scalable(15, weight: .semibold)).foregroundStyle(Theme.muted)
+                .font(Theme.display(compact ? 34 : 64)).monospacedDigit().foregroundStyle(Theme.white)
+                .censusFrame("cap")
+                Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
             }
-            SourceDisclosure(text: AxisSource.national(kbli, isID: isID), isID: isID)
         }
-        .padding(20)
+        let label = Text(isID ? "NASIONAL" : "NATIONAL")
+            .font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9).foregroundStyle(Theme.faint)
+        let chip = Text(parts[0]).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg).textCase(isID ? .uppercase : nil)
+            .padding(.vertical, 4).padding(.horizontal, 8)
+            .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
+            .censusFrame("chip.national", CensusTone.national(verdict: v))
+        return VStack(alignment: .leading, spacing: compact ? 6 : 10) {
+            if compact {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    label
+                    chip
+                    if let cap = v.nationalCap { capRow(cap) }
+                    else if parts.count > 1 { Text(parts[1]).font(Theme.scalable(13, weight: .semibold)).foregroundStyle(Theme.muted) }
+                    Spacer(minLength: 8)
+                    SourceDisclosure(text: AxisSource.national(kbli, isID: isID), isID: isID)
+                }
+            } else {
+                label
+                chip
+                if let cap = v.nationalCap { capRow(cap) }
+                else if parts.count > 1 { Text(parts[1]).font(Theme.scalable(15, weight: .semibold)).foregroundStyle(Theme.muted) }
+            }
+            if !compact { SourceDisclosure(text: AxisSource.national(kbli, isID: isID), isID: isID) }
+        }
+        .padding(.horizontal, compact ? 14 : 20).padding(.vertical, compact ? 8 : 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.inkLift, in: RoundedRectangle(cornerRadius: 2))
         .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
@@ -190,7 +222,7 @@ struct RegistryVerdictSheet: View {
         let color = baliColor(v), tone = Theme.chip(LabelBook.baliChip(v, isID: isID).tone)
         return VStack(alignment: .leading, spacing: 8) {
             Text("BALI").font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9).foregroundStyle(Theme.faint)
-            Text(LabelBook.baliChip(v, isID: isID).word).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(tone.fg)
+            Text(LabelBook.baliChip(v, isID: isID).word).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(tone.fg).textCase(isID ? .uppercase : nil)
                 .padding(.vertical, 4).padding(.horizontal, 8)
                 .background(tone.bg, in: RoundedRectangle(cornerRadius: 2))
             Text(baliValue(v)).font(Theme.scalable(15, weight: .semibold))
@@ -222,12 +254,6 @@ struct RegistryVerdictSheet: View {
 
     // MARK: the three axes, each with its own source line (the graft)
 
-    // OPEN-1 (2026-09-17): this used to re-phrase the national axis in the sheet's own words
-    // ("Open · cap not recorded", "Closed to foreign capital" — a wording no other surface used).
-    // `KBLIVerdict.ownershipLine` is now the ONLY source of this line; a pure delegate so the
-    // semantic probe can assert this surface never drifts from the other four again.
-    private func nationalValue(_ v: KBLIVerdict) -> String { Self.ownershipLine(kbli, isID: isID) }
-
     /// The Bali axis answers the PROVINCIAL question only. It used to render `.open` as "Open to a
     /// PT PMA", which on a nationally-closed record sat under a banner saying the opposite
     /// (council round 2, codex-gpt-5.6-sol): the axis cannot promise registrability, only that the
@@ -244,15 +270,6 @@ struct RegistryVerdictSheet: View {
         switch v.risk {
         case .known(let label): return Theme.riskShortLabel(label, isID: isID)
         case .absent:           return RiskCell.absentText(isID: isID)
-        }
-    }
-
-    private func nationalColor(_ v: KBLIVerdict) -> Color {
-        switch v.national {
-        case .open: return Theme.pmaOpen
-        case .restricted: return Theme.pmaRestricted
-        case .closed: return Theme.pmaClosed
-        case .undetermined: return Theme.faint
         }
     }
 
@@ -315,10 +332,11 @@ struct RegistryVerdictSheet: View {
             .strokeBorder(color.opacity(0.25), lineWidth: 1))
         .overlay(alignment: .top) {
             if immersive {
-                Rectangle().fill(color).frame(height: 3).modifier(DrawnRule(p: arrival, from: 0.1, to: 0.5))
+                Rectangle().fill(color).frame(height: 3).modifier(DrawnRule(p: arrival, from: 0.1, to: 0.5)).censusFrame("rule")
             }
         }
         .modifier(Beat(p: immersive ? arrival : 1, from: 0.15, to: 0.5, dy: 6))
+        .censusFrame("band")
         .accessibilityElement(children: .combine)
     }
 
@@ -373,54 +391,6 @@ struct RegistryVerdictSheet: View {
     }
 }
 
-/// One axis: the name, the state, and the record fields the state was read from. The source line
-/// is selectable — a reader checking the dataset copies the locator instead of retyping it.
-struct AxisCard: View {
-    let title: String
-    let value: String
-    let color: Color
-    let undetermined: Bool
-    let source: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(Theme.scalable(9.5, weight: .heavy, design: .monospaced)).tracking(0.9)
-                .foregroundStyle(Theme.faint)
-            HStack(spacing: 7) {
-                if undetermined {
-                    Image(systemName: "diamond").font(Theme.scalable(10, weight: .bold)).foregroundStyle(Theme.muted)
-                        .accessibilityHidden(true)
-                }
-                Text(value)
-                    .font(Theme.scalable(13, weight: .semibold))
-                    .foregroundStyle(undetermined ? Theme.muted : color)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Text(source)
-                .font(Theme.scalable(9.5, design: .monospaced))
-                .foregroundStyle(Theme.faint)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.inkLift.opacity(undetermined ? 0.5 : 1),
-                    in: RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous))
-        .overlay {
-            if undetermined {
-                RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
-                    .foregroundStyle(Theme.hairlineHi)
-            } else {
-                RoundedRectangle(cornerRadius: Theme.radiusMd, style: .continuous)
-                    .strokeBorder(Theme.hairline, lineWidth: 1)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// The grey provenance line of an axis, collapsed behind "Source" / "Sumber" (owner ruling 2026-10-12): a reader who wants the locator
 /// clicks for it. `KBLI_SOURCE_OPEN` opens every one (the text census and the content proof count the words with them open).
 struct SourceDisclosure: View {
@@ -445,6 +415,7 @@ struct SourceDisclosure: View {
                     .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             }
         }
+        .censusFrame("source", open ? "open" : "closed")
     }
 }
 
@@ -481,5 +452,81 @@ struct WideOrStacked: Layout {
             subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
             subviews[1].place(at: CGPoint(x: bounds.minX, y: bounds.minY + a.height + spacing), anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
         }
+    }
+}
+
+/// The title is content and is never truncated. At display 44 it takes up to two lines; a longer one steps down to 34, then to 28, just
+/// enough to keep the verdict band on the screen (D2 VERDICT-FIRST, 2026-08-11: the binding answer leads; at the app's minimum window
+/// height this is the difference between a reader seeing the verdict and having to scroll for it). At 28 it takes the lines it needs.
+struct StepDownTitle: View {
+    let text: String
+
+    var body: some View {
+        FiniteHeight {
+            ViewThatFits(in: .vertical) {
+                AtMostLines(lines: 2) { title(44); reference(44) }
+                AtMostLines(lines: 2) { title(34); reference(34) }
+                title(28)
+            }
+        }
+    }
+
+    private func title(_ size: CGFloat) -> some View {
+        Text(text).font(Theme.display(size)).foregroundStyle(Theme.white).fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// One line at the same size, never drawn: the ruler the line count is read against.
+    private func reference(_ size: CGFloat) -> some View {
+        Text("Ag").font(Theme.display(size)).fixedSize().hidden()
+    }
+}
+
+/// What the collapsed sheet needs to show its head down to the verdict band, read by `SearchListView` to size the detent (D2 VERDICT-FIRST:
+/// the verdict is on the screen at every window, for every title, and nothing is cut to get it there).
+enum SheetFit {
+    static let space = "sheet-fit"
+    /// Below the band, so its last line is not on the sheet's edge.
+    static let margin: CGFloat = 12
+    static var reader: some View {
+        GeometryReader { g in
+            Color.clear.preference(key: SheetFitKey.self, value: g.frame(in: .named(space)).maxY + margin)
+        }
+    }
+}
+
+struct SheetFitKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// Takes its first subview's size, or reports a height no frame can hold when that subview wraps to more than `lines` lines (its second
+/// subview is one line of the same font, the ruler).
+struct AtMostLines: Layout {
+    var lines: Int
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let t = subviews[0].sizeThatFits(proposal), one = subviews[1].sizeThatFits(.unspecified).height
+        return t.height > one * (CGFloat(lines) + 0.5) ? CGSize(width: t.width, height: 10_000_000) : t
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
+        subviews[1].place(at: bounds.origin, anchor: .topLeading, proposal: .zero)
+    }
+}
+
+/// Proposes its one child a height it can always be measured against (a `ViewThatFits` handed an unspecified height takes its first child).
+struct FiniteHeight: Layout {
+    static let height: CGFloat = 1_000_000
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let child = subviews.first else { return .zero }
+        return child.sizeThatFits(ProposedViewSize(width: proposal.width, height: Self.height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
     }
 }

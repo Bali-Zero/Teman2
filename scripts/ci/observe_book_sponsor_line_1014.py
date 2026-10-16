@@ -8,7 +8,8 @@
 The observation runs apps/mouth/src/components/book/book-sponsor-line.test.ts with vitest, which
 proves: a highlight that is not verbatim in the catalogue row (or is blank) makes the builder
 throw at module load; the E33F service's first feature is exactly the sponsor sentence while its
-tagline stays the untouched catalogue description_en; the remaining E33F features keep their
+tagline is the catalogue description_en without that sentence (and the ID locale renders the
+sentence in Indonesian, once); the remaining E33F features keep their
 order; every other pricing-backed visa service has exactly the features computed from its
 snapshot row. It does NOT assert the rendered visibility of the sentence at 320px and 1280px;
 that is apps/mouth/e2e/book-pricing.spec.ts, run on Pro (never Playwright on M5).

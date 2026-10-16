@@ -277,6 +277,69 @@ describe("Visa Oracle authoritative outcome adapter", () => {
     }
   });
 
+  describe("V08: the Legal references link opens the per-code imigrasi page", () => {
+    const CATALOGUE = "https://www.imigrasi.go.id/wna/daftar-visa-indonesia";
+    const catalogueResponse = (code: string) => {
+      const response = makeVisaOracleResponse();
+      response.sources[0].source_record_id =
+        "6f5135f2-0000-4000-8000-000000000000";
+      response.sources[0].canonical_url = CATALOGUE;
+      response.sources[0].locators = ["B1", "C1", "C2", "C6", "E33"].map(
+        (c) => ({
+          kind: "PAGE" as const,
+          value: `/wna/daftar-visa-indonesia/${c}`,
+        }),
+      );
+      response.display.candidates[0].product_code = code;
+      response.decision.candidates[0].product_code = code;
+      response.decision.candidates[0].source_refs = [
+        response.sources[0].source_record_id,
+      ];
+      return response;
+    };
+
+    it.each(["B1", "C1", "C2", "C6"])(
+      "candidate %s links its own page",
+      (code) => {
+        const outcome = buildEngineOutcome(catalogueResponse(code));
+        expect(outcome.sources[0].url).toBe(`${CATALOGUE}/${code}`);
+      },
+    );
+
+    it("keeps the catalogue URL when candidates span two in-scope codes (D-ambiguous-keeps-catalogue)", () => {
+      const response = catalogueResponse("B1");
+      const second = structuredClone(response.display.candidates[0]);
+      second.product_code = "C1";
+      response.display.candidates.push(second);
+      const secondDecision = structuredClone(response.decision.candidates[0]);
+      secondDecision.product_code = "C1";
+      response.decision.candidates.push(secondDecision);
+      const url = buildEngineOutcome(response).sources[0].url;
+      expect(url).toBe(CATALOGUE);
+      expect(url).not.toMatch(/\/(B1|C1)$/);
+    });
+
+    it("leaves other codes, other sources, and missing locators unchanged", () => {
+      const foreignId = catalogueResponse("C1");
+      foreignId.sources[0].source_record_id =
+        "99999999-0000-4000-8000-000000000000";
+      foreignId.decision.candidates[0].source_refs = [
+        foreignId.sources[0].source_record_id,
+      ];
+      expect(buildEngineOutcome(foreignId).sources[0].url).toBe(CATALOGUE);
+      expect(buildEngineOutcome(catalogueResponse("E33")).sources[0].url).toBe(
+        CATALOGUE,
+      );
+      const other = makeVisaOracleResponse();
+      expect(buildEngineOutcome(other).sources[0].url).toBe(
+        "https://www.imigrasi.go.id/regulation",
+      );
+      const noLocator = catalogueResponse("C1");
+      noLocator.sources[0].locators = [{ kind: "ARTICLE", value: "1" }];
+      expect(buildEngineOutcome(noLocator).sources[0].url).toBe(CATALOGUE);
+    });
+  });
+
   it("uses only processing/pricing/document assessments, never stay policy or mock content", () => {
     const outcome = buildEngineOutcome(makeVisaOracleResponse());
     expect(outcome.state).toBe("SUPPORTED_CANDIDATES");
@@ -1432,6 +1495,46 @@ describe("support reasons are sentences, not machine codes", () => {
     );
   });
 
+  // I-M01 (2026-10-15): the four E28 Golden Visa advisor checks added at seq-6
+  // were never emitted by any signed pack. They are tombstones: no pack emits
+  // them, no copy exists, and every other E28 copy key is a code the highest
+  // signed pack really emits (or an explicitly listed retired one).
+  const DEAD_E28_ADVISOR_KEYS = [
+    "E28B_USD_THRESHOLD_ADVISOR_CHECK",
+    "E28C_USD_THRESHOLD_ADVISOR_CHECK",
+    "E28D_USD_THRESHOLD_TURNOVER_ADVISOR_CHECK",
+    "E28F_IKN_THRESHOLD_ADVISOR_CHECK",
+  ] as const;
+
+  it("I-M01: the four dead E28 advisor-check keys are tombstones — in no signed pack, with no copy", () => {
+    const everywhere = reasonCodesOfSignedPacksFrom(0);
+    expect(everywhere.size).toBeGreaterThanOrEqual(2);
+    const emitted = new Set<string>();
+    for (const codes of everywhere.values())
+      codes.forEach((c) => emitted.add(c));
+    // Guard the guard: the walk does see E28 codes (a live one is present).
+    expect(emitted.has("E28B_COMPANY_ESTABLISHMENT_ELIGIBLE")).toBe(true);
+    for (const key of DEAD_E28_ADVISOR_KEYS) {
+      expect(emitted.has(key), `${key} emitted by a signed pack`).toBe(false);
+      expect(key in SUPPORT_REASON_COPY, `${key} has copy`).toBe(false);
+      expect(RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS).toContain(key);
+    }
+  });
+
+  it("I-M01: every E28 key in the copy table is emitted by the highest signed pack or listed as retired; every E28 code the pack emits has copy", () => {
+    const packs = reasonCodesOfSignedPacksFrom(0);
+    const live = packs.get(Math.max(...packs.keys()))!;
+    const liveE28 = [...live].filter((key) => /^E28[A-Z]_/.test(key));
+    expect(liveE28.length).toBeGreaterThanOrEqual(7);
+    expect(liveE28.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
+    const orphans = Object.keys(SUPPORT_REASON_COPY)
+      .filter((key) => /^E28[A-Z]_/.test(key))
+      .filter(
+        (key) => !live.has(key) && !RETIRED_SUPPORT_REASON_KEYS.includes(key),
+      );
+    expect(orphans).toEqual([]);
+  });
+
   /**
    * Walks a rule's `when` tree looking for a `{ op: "lt", fact, value }`
    * node on the named fact, at any nesting depth — same shape as
@@ -1487,6 +1590,7 @@ describe("support reasons are sentences, not machine codes", () => {
 
     const paidCapitalEn = paidCapitalValue!.toLocaleString("en-US");
     const paidCapitalId = paidCapitalValue!.toLocaleString("id-ID");
+    // I-M02: Indonesian writes rupiah as "Rp", never "IDR"; one style per language.
     const totalInvestmentEn = totalInvestmentValue!.toLocaleString("en-US");
     const totalInvestmentId = totalInvestmentValue!.toLocaleString("id-ID");
 
@@ -1494,14 +1598,49 @@ describe("support reasons are sentences, not machine codes", () => {
       `IDR ${paidCapitalEn}`,
     );
     expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).toContain(
-      `IDR ${paidCapitalId}`,
+      `Rp ${paidCapitalId}`,
+    );
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).not.toContain(
+      "IDR",
     );
     expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.en).toContain(
       `IDR ${totalInvestmentEn}`,
     );
     expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id).toContain(
-      `IDR ${totalInvestmentId}`,
+      `Rp ${totalInvestmentId}`,
     );
+    expect(
+      SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id,
+    ).not.toContain("IDR");
+  });
+
+  it("I-M02: E28A reason and exclusions write rupiah as 'Rp' in Indonesian, 'IDR' in English, and name the role with the question labels", () => {
+    const support = SUPPORT_REASON_COPY.E28A_INVESTMENT_ELIGIBLE;
+    expect(support.id).toContain("Rp 2,5 miliar");
+    expect(support.id).toContain("Rp 10 miliar");
+    expect(support.id).not.toContain("IDR");
+    expect(support.en).toContain("IDR 2.5 billion");
+    expect(support.en).toContain("IDR 10 billion");
+    for (const key of [
+      "E28A_INVESTMENT_ELIGIBLE",
+      "E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR",
+    ]) {
+      // Guilt: the hyphenated calque; innocence: the question's own labels
+      // ("Pemegang saham dan direktur" / "Pemegang saham dan komisaris").
+      expect(SUPPORT_REASON_COPY[key].id).not.toMatch(/pemegang saham-/i);
+      expect(SUPPORT_REASON_COPY[key].id).toContain(
+        "pemegang saham dan direktur",
+      );
+      expect(SUPPORT_REASON_COPY[key].id).toContain(
+        "pemegang saham dan komisaris",
+      );
+    }
+    for (const key of [
+      "E28A_PAID_CAPITAL_BELOW_MIN",
+      "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+    ]) {
+      expect(SUPPORT_REASON_COPY[key].id).toMatch(/Rp \d{1,3}(\.\d{3})+/);
+    }
   });
 
   describe("RETIREMENT_INCOME_BELOW_THRESHOLD names the figure the rules check", () => {
@@ -1798,18 +1937,19 @@ describe("support reasons are sentences, not machine codes", () => {
     return Number(match[1].replace(/\./g, ""));
   }
 
-  function idrBillionFromProse(copy: string): number {
-    const match = copy.match(/IDR\s+([\d.]+)\s+billion/i);
+  // `nth` picks the nth figure of the sentence (E28A names two: paid-up, then total).
+  function idrBillionFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/IDR\s+([\d.]+)\s+billion/gi)][nth];
     if (!match) {
-      throw new Error(`no "IDR <n> billion" figure found in: ${copy}`);
+      throw new Error(`no "IDR <n> billion" figure #${nth} found in: ${copy}`);
     }
     return Math.round(Number(match[1]) * 1_000_000_000);
   }
 
-  function rpMiliarFromProse(copy: string): number {
-    const match = copy.match(/Rp\s+([\d,]+)\s+miliar/i);
+  function rpMiliarFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/Rp\s+([\d,]+)\s+miliar/gi)][nth];
     if (!match) {
-      throw new Error(`no "Rp <n> miliar" figure found in: ${copy}`);
+      throw new Error(`no "Rp <n> miliar" figure #${nth} found in: ${copy}`);
     }
     return Math.round(Number(match[1].replace(",", ".")) * 1_000_000_000);
   }
@@ -1821,6 +1961,8 @@ describe("support reasons are sentences, not machine codes", () => {
       fact: string;
       readEn: (copy: string) => number;
       readId: (copy: string) => number;
+      /** The copy key when the map key is a suffixed second figure of one sentence. */
+      copyKey?: string;
     }
   > = {
     E28A_INVESTMENT_ELIGIBLE: {
@@ -1828,6 +1970,14 @@ describe("support reasons are sentences, not machine codes", () => {
       fact: "investment.paid_up_capital_idr",
       readEn: idrBillionFromProse,
       readId: rpMiliarFromProse,
+    },
+    // I-M02: the same sentence names the SECOND figure the rule checks.
+    "E28A_INVESTMENT_ELIGIBLE#total_investment": {
+      copyKey: "E28A_INVESTMENT_ELIGIBLE",
+      ruleId: "el.e28a.investment",
+      fact: "investment.investment_capital_idr",
+      readEn: (copy: string) => idrBillionFromProse(copy, 1),
+      readId: (copy: string) => rpMiliarFromProse(copy, 1),
     },
     E33E_RETIREMENT_ELIGIBLE: {
       ruleId: "el.e33e.retirement",
@@ -1853,7 +2003,7 @@ describe("support reasons are sentences, not machine codes", () => {
     // Guard the guard: an empty map would make the loop below vacuously pass.
     expect(Object.keys(FIGURE_BACKED_BY_RULE).length).toBeGreaterThan(0);
     for (const [key, spec] of Object.entries(FIGURE_BACKED_BY_RULE)) {
-      const copy = SUPPORT_REASON_COPY[key];
+      const copy = SUPPORT_REASON_COPY[spec.copyKey ?? key];
       const expected = gteThresholdInPack(spec.ruleId, spec.fact);
       expect(spec.readEn(copy.en)).toBe(expected);
       expect(spec.readId(copy.id)).toBe(expected);
@@ -4717,6 +4867,163 @@ describe("V05 product-aware next steps: free A1 and onshore-only BRIDGING", () =
   });
 });
 
+// V06: exclusion reasons stop stacking and name the official visa-free list.
+describe("V06: overstay de-stacking and the BVK list copy", () => {
+  function noPathMessages(codes: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = codes.map((code) => ({
+      code,
+      rule_ids: ["hf.test"],
+      source_refs: [TEST_SOURCE_ID],
+    }));
+    const outcome = buildEngineOutcome(response);
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons;
+  }
+  const isOverstay = (code: string) => /OVERSTAY/.test(code);
+
+  it("overstay 61 (both codes fire) renders exactly one overstay reason, naming 60 days, EN and ID", () => {
+    const reasons = noPathMessages([
+      "ACTIVE_OVERSTAY_SETTLE_FIRST",
+      "OVERSTAY_EXCEEDS_60_DAYS",
+      "BVK_NATIONALITY_ONLY",
+    ]);
+    const overstay = reasons.filter((r) => isOverstay(r.code));
+    expect(overstay).toHaveLength(1);
+    expect(overstay[0].code).toBe("OVERSTAY_EXCEEDS_60_DAYS");
+    expect(overstay[0].message.en).toContain("60 days");
+    expect(overstay[0].message.id).toContain("60 hari");
+    expect(reasons.map((r) => r.code)).toContain("BVK_NATIONALITY_ONLY");
+  });
+
+  it("innocence: the any-overstay reason alone (overstay 1-60) is kept", () => {
+    const reasons = noPathMessages(["ACTIVE_OVERSTAY_SETTLE_FIRST"]);
+    expect(reasons.map((r) => r.code)).toEqual([
+      "ACTIVE_OVERSTAY_SETTLE_FIRST",
+    ]);
+  });
+
+  it("innocence: the 60-day reason alone is kept", () => {
+    const reasons = noPathMessages(["OVERSTAY_EXCEEDS_60_DAYS"]);
+    expect(reasons.map((r) => r.code)).toEqual(["OVERSTAY_EXCEEDS_60_DAYS"]);
+  });
+
+  it("BVK copy is plural, links the official list, carries no count, EN and ID", () => {
+    const url =
+      "https://www.imigrasi.go.id/wna/daftar-negara-voa-bvk-calling-visa/daftar-negara-bebas-visa-kunjungan";
+    const { en, id } = SUPPORT_REASON_COPY.BVK_NATIONALITY_ONLY;
+    expect(en).toContain(url);
+    expect(id).toContain(url);
+    expect(en).toContain("passports");
+    expect(en).toContain("Bebas Visa Kunjungan");
+    expect(id).toContain("Bebas Visa Kunjungan");
+    expect(id).toContain("paspor");
+    expect(en.replace(url, "")).not.toMatch(/\d/);
+    expect(id.replace(url, "")).not.toMatch(/\d/);
+  });
+});
+
+// V07: a visit-stay dead end names the 180-day limit.
+describe("V07: a visit stay past 180 days names the limit", () => {
+  function noPath(facts: OracleFacts, codes: readonly string[]) {
+    const response = makeVisaOracleResponse("NO_SUPPORTED_PATH");
+    response.decision.no_path_reasons = codes.map((code) => ({
+      code,
+      rule_ids: ["hf.test"],
+      source_refs: [TEST_SOURCE_ID],
+    }));
+    const outcome = buildEngineOutcome(response, { facts });
+    if (outcome.state !== "NO_SUPPORTED_PATH")
+      throw new Error("unexpected state");
+    return outcome.noPathReasons;
+  }
+  // seq-29 measured codes for the stay-181 walks (T06 census pins).
+  const CASES: ReadonlyArray<[string, string]> = [
+    ["tourism", "BVK_NATIONALITY_ONLY"],
+    ["business", "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"],
+    ["other", "BRIDGING_ONSHORE_ONLY"],
+  ];
+
+  it.each(CASES)(
+    "%s with stay 181 leads with the 180-day sentence, EN and ID",
+    (category, code) => {
+      const reasons = noPath(
+        { in_indonesia: "no", category, stay_days: "181" },
+        [code],
+      );
+      expect(reasons[0].code).toBe("VISIT_STAY_EXCEEDS_180_DAYS");
+      expect(reasons[0].message.en).toBe(
+        "Each stay on a visit visa starts at 60 days and can be extended to at most 180 days. You told us 181 days.",
+      );
+      expect(reasons[0].message.id).toContain("visa kunjungan");
+      expect(reasons[0].message.id).toContain("180 hari");
+      expect(reasons[0].message.id).toContain("181 hari");
+      expect(reasons.map((r) => r.code)).toEqual([
+        "VISIT_STAY_EXCEEDS_180_DAYS",
+        code,
+      ]);
+      // Advisor offered, never promised: no promise verb in either language.
+      expect(reasons[0].message.en).not.toMatch(
+        /guarantee|will be approved|will confirm|advisor/i,
+      );
+      expect(reasons[0].message.id).not.toMatch(
+        /pasti|dijamin|akan memastikan|konsultan/i,
+      );
+    },
+  );
+
+  it.each(CASES)("%s with stay 180 is unaffected", (category, code) => {
+    const reasons = noPath({ in_indonesia: "no", category, stay_days: "180" }, [
+      code,
+    ]);
+    expect(reasons.map((r) => r.code)).toEqual([code]);
+  });
+
+  it("innocence: the business explorer (D12, 360 days), other categories and an unanswered stay are untouched", () => {
+    const code = "BVK_NATIONALITY_ONLY";
+    expect(
+      noPath(
+        {
+          category: "business",
+          business_activity: "exploring",
+          stay_days: "300",
+        },
+        [code],
+      ).map((r) => r.code),
+    ).toEqual([code]);
+    expect(
+      noPath({ category: "retirement", stay_days: "400" }, [code]).map(
+        (r) => r.code,
+      ),
+    ).toEqual([code]);
+    expect(noPath({ category: "tourism" }, [code]).map((r) => r.code)).toEqual([
+      code,
+    ]);
+    expect(
+      noPath({ category: "tourism", stay_days: "" }, [code]).map((r) => r.code),
+    ).toEqual([code]);
+    for (const stay_days of [
+      "181.5",
+      " 181 ",
+      "2e2",
+      "0181",
+      "-200",
+      "unsure",
+    ]) {
+      expect(
+        noPath({ category: "tourism", stay_days }, [code]).map((r) => r.code),
+      ).toEqual([code]);
+    }
+  });
+
+  it("the bound is the pack's 180 (el.c1.tourism-family / el.c2.business / el.c6.social)", () => {
+    expect([C1_MAX_STAY_DAYS, C2_MAX_STAY_DAYS, C6_MAX_STAY_DAYS]).toEqual([
+      180, 180, 180,
+    ]);
+  });
+});
+
 describe("stay-permit length, verified renewal, and longer-stay continuation (PR-7)", () => {
   function makePricedResponse(
     code = "E33F",
@@ -5087,8 +5394,8 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     },
   );
 
-  it("guilt: signed-pack E28A (730 + 100x365), E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
-    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> duration undefined
+  it("guilt: signed-pack E28A (730 + 100x365) shows its 2-year length and the continue-by-renewal line, because the page states the permit is extendable; E30A (365/730 UNKNOWN), BRIDGING (FIXED_DAYS null/60), and A1 (30/30 no extensions) render no unauthorized length, renewal, continuation, or raw identifiers", () => {
+    // E28A signed-pack shape: 730-day fixed stay + maximum_extensions 100, days_per_extension 365 -> the 2-year length (owner ruling 2026-10-15) plus the longer-stay renewal line (page: extendable)
     const e28a = makePricedResponse("E28A", 20_000_000);
     e28a.display.candidates[0].stay_policy = {
       stay: { kind: "FIXED_DAYS", minimum_days: 730, maximum_days: 730 },
@@ -5106,7 +5413,18 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     if (e28aOutcome.state !== "SUPPORTED_CANDIDATES") {
       throw new Error("expected SUPPORTED_CANDIDATES");
     }
-    expect(e28aOutcome.candidates[0].duration).toBeUndefined();
+    // Innocence: the length IS shown (E28A is sold as 2 years only) and a plan
+    // beyond it gets "your stay can continue by renewal", TRUE per the E28A page
+    // (df3ba889: "Izin Tinggal ini dapat diperpanjang", extension online by the sponsor) ...
+    expect(e28aOutcome.candidates[0].duration).toEqual({
+      selectedDays: 730,
+      options: [],
+      extensionRequired: false,
+      longerStay: STAY_PERMIT_LONGER_STAY_COPY.verified,
+    });
+    // No per-extension sentence is invented: STAY_PERMIT_RENEWAL_COPY has no
+    // 365:100 key, so only the longer-stay line (above) surfaces the renewal.
+    expect(e28aOutcome.candidates[0].duration?.renewal).toBeUndefined();
 
     // E30A signed-pack shape: FIXED_DAYS 365..730, extension UNKNOWN -> duration undefined
     const e30a = makePricedResponse("E30A", 15_000_000);
@@ -5170,12 +5488,7 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
     }
     expect(a1Outcome.candidates[0].duration).toBeUndefined();
 
-    for (const outcome of [
-      e28aOutcome,
-      e30aOutcome,
-      bridgingOutcome,
-      a1Outcome,
-    ]) {
+    for (const outcome of [e30aOutcome, bridgingOutcome, a1Outcome]) {
       const candidate = outcome.candidates[0];
       expect(candidate.duration).toBeUndefined();
       expect(JSON.stringify(candidate)).not.toMatch(
@@ -5183,8 +5496,8 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
       );
     }
 
-    // Unmapped fixed day counts (30, 60, 180, 730) -> no length, never raw days
-    for (const days of [30, 60, 180, 730]) {
+    // Unmapped fixed day counts (30, 60, 180) -> no length, never raw days
+    for (const days of [30, 60, 180]) {
       const unmapped = makePricedResponse("C1", 3_250_000);
       unmapped.display.candidates[0].stay_policy = {
         stay: { kind: "FIXED_DAYS", minimum_days: days, maximum_days: days },
@@ -5642,11 +5955,11 @@ describe("stay-permit length, verified renewal, and longer-stay continuation (PR
         },
       },
       {
-        label: "FIXED_DAYS 730/730",
+        label: "FIXED_DAYS 730/1095",
         stay: {
           kind: "FIXED_DAYS" as const,
           minimum_days: 730,
-          maximum_days: 730,
+          maximum_days: 1095,
         },
       },
     ];

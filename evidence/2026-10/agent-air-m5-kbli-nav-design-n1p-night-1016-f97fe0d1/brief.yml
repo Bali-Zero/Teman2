@@ -1,0 +1,28 @@
+task_id: kbli-nav-design-n1p-night
+mission: kbli-nav-design-loop (Track A, build, lot N1' — night RootView renders are night; successor of #8571, gate BLOCK B1)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Harness and census change in the render path (Snapshot and FoldCensus pin the theme override a user's toggle sets, the legacy
+  `--snapshot root|sidebar` path included) with a census check (N1) and a mutant. The app's own theme logic is untouched; content
+  frozen; no visible app change. The check claims exactly what it reads: the share of the window drawn in the OTHER theme's
+  surfaces, and the title's contrast. It does not claim every pixel is the theme's. Gear 2 so a fresh gate reads the diff.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: a render or census named night is not drawn in day surfaces, and the reverse. RootView re-syncs its theme from the
+  persisted themeOverride on its first render, so a harness that only set Theme.mode drew a mixed window when the machine's
+  override was light. The harness pins themeOverride for its own process only. png_census N1 fails a root render whose window
+  holds more than 5% of the opposite theme's surface tokens (a partial mix included: the #8571 gate's G1 and G4) or whose
+  sheet title ink is under 4.5:1.
+constraints:
+  - Harness only: no change to RootView or any app behaviour; the override is pinned in the process argument domain, never written to the persisted defaults.
+  - Content frozen.
+  - Out of scope, for the CX lot: the search placeholder follows the process appearance (1.39:1 at night); system-drawn ink is not read by N1.
+acceptance:
+  - text: A root render named night SHALL hold at most 5% of the day surface tokens, and a mixed one SHALL fail by its cause.
+    probe: "Pro: innocents 0.7-1.3% (55203, 56101, 56306 night 648); G1 sidebar day on real renders 22.6-23.2% FAIL; G4 day chrome above the night sheet 21.8-54.7% FAIL; the unpinned set 2 FAIL; self-test 256/256 with G1 and G4 as guilt cases"
+  - text: The legacy snapshot root path SHALL render the theme KBLI_THEME names.
+    probe: "Pro: KBLI_THEME=dark --snapshot root 1040x700 is night all the way (looked at); KBLI_THEME=light is day"
+  - text: The mutant table SHALL grow and hold.
+    probe: "Pro: head_mutants.sh control rc 0 and all 14 mutants rc 1, nightrevert FAILs on N1"

@@ -15,6 +15,7 @@ exclusion between processes on ONE machine, not a distributed fence.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import fcntl
 import fnmatch
 import hashlib
@@ -2055,12 +2056,104 @@ def xdist_dead_worker(log: Path) -> tuple[str, int] | None:
     return None
 
 
+SANDBOX_SAMPLER_ENV = "LOCALCI_SANDBOX_SAMPLER"   # "0": no `docker stats` / `docker ps -s` (B33 S2); the host-side phase times stay
+SANDBOX_SAMPLE_EVERY_S = 2.0
+SANDBOX_STATS_TIMEOUT_S, SANDBOX_PS_TIMEOUT_S = 20, 60
+_SIZE_UNITS = {"B": 1, "KB": 10**3, "MB": 10**6, "GB": 10**9, "TB": 10**12, "KIB": 2**10, "MIB": 2**20, "GIB": 2**30, "TIB": 2**40}
+
+
+def new_probe(name: str) -> dict:
+    """B33 S2: the trusted side's numbers about one candidate container. DATA for the receipt — no verdict function reads a key of it."""
+    sampler = "off" if os.environ.get(SANDBOX_SAMPLER_ENV) == "0" else "on"
+    return {"name": name, "sampler": sampler, "t_create": None, "t_copy_in": None, "t_start_to_exit": None, "t_junit": None, "t_remove": None,
+            "mem_peak_bytes": None, "disk_rw_bytes": None, "sampler_error": None}
+
+
+def parse_size_bytes(text: str | None) -> int | None:
+    """Docker's human size ('12.3MB', '1.5GiB', '0B') to bytes; None for anything else."""
+    m = re.match(r"\s*([0-9]*\.?[0-9]+)\s*([A-Za-z]+)\s*$", text or "")
+    unit = _SIZE_UNITS.get(m.group(2).upper()) if m else None
+    return int(float(m.group(1)) * unit) if m and unit else None
+
+
+def _probe_error(probe: dict, what: str) -> None:
+    seen = probe["sampler_error"] or ""
+    if what not in seen and len(seen) < 200:
+        probe["sampler_error"] = f"{seen}; {what}"[:200].lstrip("; ")
+
+
+@contextlib.contextmanager
+def _timed(probe: dict | None, key: str):
+    t0 = time.monotonic()
+    try:
+        yield
+    finally:
+        if probe is not None:
+            probe[key] = round(time.monotonic() - t0, 3)
+
+
+class _MemSampler:
+    """`docker stats --no-stream` of the container every SANDBOX_SAMPLE_EVERY_S while it runs; the maximum used memory is kept. Any failure
+    is written to the probe and swallowed: this thread can never change what the run concludes."""
+
+    def __init__(self, docker: str, ctr: str, denv: dict, probe: dict | None):
+        self.docker, self.ctr, self.denv, self.probe = docker, ctr, denv, probe
+        self._stop, self._t = threading.Event(), None
+
+    def _once(self) -> None:
+        try:
+            r = subprocess.run([self.docker, "stats", "--no-stream", "--format", "{{.MemUsage}}", self.ctr], capture_output=True, text=True,
+                               timeout=SANDBOX_STATS_TIMEOUT_S, env=self.denv)
+            used = parse_size_bytes(r.stdout.split("/")[0]) if r.returncode == 0 else None
+            if used is None:
+                _probe_error(self.probe, f"docker stats rc={r.returncode} unparsable")
+            elif used > 0 and (self.probe["mem_peak_bytes"] is None or used > self.probe["mem_peak_bytes"]):   # 0B: not running yet
+                self.probe["mem_peak_bytes"] = used
+        except Exception as e:   # noqa: BLE001 — a sampler failure is data in the receipt, never a verdict
+            _probe_error(self.probe, f"docker stats {type(e).__name__}")
+
+    def _loop(self) -> None:
+        while True:
+            self._once()
+            if self._stop.wait(SANDBOX_SAMPLE_EVERY_S):
+                return
+
+    def __enter__(self):
+        if self.probe is not None and self.probe["sampler"] == "on":
+            self._t = threading.Thread(target=self._loop, name="localci-mem-sampler", daemon=True)
+            self._t.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self._stop.set()
+        if self._t is not None:
+            self._t.join(30)
+
+
+def _probe_layer(docker: str, ctr: str, denv: dict, probe: dict | None) -> None:
+    """The container's writable layer (`docker ps -s` SIZE, the part before '(virtual'), read before the container is removed."""
+    if probe is None or probe["sampler"] != "on":
+        return
+    try:
+        r = subprocess.run([docker, "ps", "-a", "-s", "--filter", f"name=^{ctr}$", "--format", "{{.Size}}"], capture_output=True, text=True,
+                           timeout=SANDBOX_PS_TIMEOUT_S, env=denv)
+        size = parse_size_bytes(r.stdout.split("(")[0]) if r.returncode == 0 else None
+        if size is None:
+            _probe_error(probe, f"docker ps -s rc={r.returncode} unparsable")
+        else:
+            probe["disk_rw_bytes"] = size
+    except Exception as e:   # noqa: BLE001 — as the memory sampler: data, never a verdict
+        _probe_error(probe, f"docker ps -s {type(e).__name__}")
+
+
 def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: list[str], overrides: dict[str, bytes], extra: dict[str, bytes],
                       env: dict, log: Path, junit: Path, timeout: int, workdir: str = "/w", network: str = "none", image_id: str | None = None,
-                      memory: str = "4g", collect=None, paths: set | None = None, files: dict[str, Path] | None = None) -> tuple[int | None, str | None]:
+                      memory: str = "4g", collect=None, paths: set | None = None, files: dict[str, Path] | None = None,
+                      probe: dict | None = None) -> tuple[int | None, str | None]:
     """Run candidate code in a fresh container: no bind mount, no network, no capability, non-root, no host environment.
     The tree goes in as a tar stream and only the junit comes out; the host run dir, receipts, credentials and the Pysa
-    home are not reachable from inside. Returns (rc, error)."""
+    home are not reachable from inside. Returns (rc, error). `probe` (new_probe) is filled in place with the trusted side's phase times,
+    peak memory and layer size (B33 S2): data for the receipt, read by no verdict."""
     iso = spec["isolation"]
     docker = iso["docker"]
     ctr = re.sub(r"[^a-zA-Z0-9_.-]", "-", f"localci-{plan['run_id']}-{name}")[:100] + "-" + os.urandom(4).hex()
@@ -2069,8 +2162,11 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
               "--network", network, "--cap-drop", "ALL", "--init",   # an init reaps orphans, as the hosted runner's does
               "--security-opt", "no-new-privileges", "--user", iso["user"], "--pids-limit", "1024", "--memory", memory, "--workdir", workdir,
               *[f"--env={k}={v}" for k, v in sorted(env.items())], image_id or iso["image_id"], *inner]
+    made = False
     try:
-        r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
+        with _timed(probe, "t_create"):
+            r = subprocess.run(create, capture_output=True, text=True, timeout=120, env=denv)
+        made = r.returncode == 0
         if r.returncode != 0:
             return None, f"container create failed (image {iso['image_id'][:19]} pinned at plan time): {r.stderr.strip()[:300]}"
         with tempfile.TemporaryFile() as errf:   # stderr to a file (no pipe to fill) and a watchdog: a stalled copy-in cannot hang the run
@@ -2083,7 +2179,8 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                 for proc in list(group):
                     proc.kill()
             watchdog = threading.Timer(COPY_TIMEOUT_S, _expire)
-            t_end = time.monotonic() + COPY_TIMEOUT_S
+            t_cp = t_end = time.monotonic()
+            t_end += COPY_TIMEOUT_S
             try:
                 watchdog.start()
                 n = stream_tree_tar(Path(plan["worktree"]), plan["candidate_sha"], cp.stdin, overrides, extra, group, COPY_TIMEOUT_S, paths, files)
@@ -2095,6 +2192,8 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                     proc.wait()
                 return None, f"candidate tree copy-in failed{' (budget ' + str(COPY_TIMEOUT_S) + 's expired)' if expired.is_set() else ''}: {type(e).__name__}"
             finally:
+                if probe is not None:
+                    probe["t_copy_in"] = round(time.monotonic() - t_cp, 3)
                 watchdog.cancel()
                 for proc in group:   # a signal (KeyboardInterrupt) skips the except above: never leave the copy group running
                     if proc.poll() is None:
@@ -2110,7 +2209,8 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
             fh.write(f"# isolation=container image={image_id or iso['image_id']} network={network} user={iso['user']} mounts=none tree={plan['candidate_sha']} blobs={n}\n")
             fh.flush()
             try:
-                rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
+                with _MemSampler(docker, ctr, denv, probe), _timed(probe, "t_start_to_exit"):   # the sampler's join is after the clock stops
+                    rc = subprocess.run([docker, "start", "-a", ctr], stdout=fh, stderr=subprocess.STDOUT, timeout=timeout, env=denv).returncode
             except subprocess.TimeoutExpired:
                 subprocess.run([docker, "kill", ctr], capture_output=True, timeout=60, env=denv)
                 tail = "(container killed; removal verified below or the run aborts)"
@@ -2118,15 +2218,21 @@ def execute_contained(name: str, spec: dict, run_dir: Path, plan: dict, inner: l
                     return None, (f"timeout after {timeout}s — an xdist worker died mid-run ('{dead[0]}', log line {dead[1]}) and the controller "
                                   f"never finished: a memory-cgroup OOM-kill is the measured cause on Pro (2026-10-07/08); no verdict {tail}")
                 return None, f"timeout after {timeout}s {tail}"
-        why = _read_junit_out(docker, ctr, junit)
-        if collect is not None:   # artifacts a later job downloads, copied out of the stopped container before it is removed
-            why = "; ".join(x for x in (why, collect(docker, ctr)) if x) or None
+        with _timed(probe, "t_junit"):
+            why = _read_junit_out(docker, ctr, junit)
+            if collect is not None:   # artifacts a later job downloads, copied out of the stopped container before it is removed
+                why = "; ".join(x for x in (why, collect(docker, ctr)) if x) or None
         if why:
             with open(log, "a") as fh:
                 fh.write(f"# junit: {why}\n")
         return rc, None
     finally:
-        _remove_verified(docker, ctr, denv)
+        try:
+            if made:
+                _probe_layer(docker, ctr, denv, probe)
+        finally:   # a signal inside the layer read must still reach the removal
+            with _timed(probe, "t_remove"):
+                _remove_verified(docker, ctr, denv)
 
 
 class ContainerCleanupError(RuntimeError):
@@ -2212,27 +2318,27 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
     with open(log, "w") as fh:
         fh.write(f"# {now()} container cmd={' '.join(inner)}\n")
         fh.write(pack_note or "")
-    t0 = time.monotonic()
+    t0, probe = time.monotonic(), new_probe(name)
     try:
-        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir, files=files)
+        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir, files=files, probe=probe)
     except ContainerCleanupError:
         raise
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:
         rc, err = None, f"container execution failed: {type(e).__name__}: {e}"
     dur = round(time.monotonic() - t0, 3)
     if (full := host_disk_full([log], name)):   # before any verdict: a full disk makes this run no evidence either way
-        return {"status": "ERROR", "reason": full, "rc": rc, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container"}
+        return {"status": "ERROR", "reason": full, "rc": rc, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container", "sandbox": [probe]}
     if err:
-        return {"status": "ERROR", "reason": err, "rc": None, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container"}
+        return {"status": "ERROR", "reason": err, "rc": None, "duration_s": dur, "counts": None, "log": str(log), "isolation": "container", "sandbox": [probe]}
     if kind == "contained_steps":
         steps = parse_step_junit(junit)
         status, reason = classify_contained_steps(rc, steps, spec)
         return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": rc, "duration_s": dur, "counts": None, "steps": steps,
-                "log": str(log), "isolation": "container"}
+                "log": str(log), "isolation": "container", "sandbox": [probe]}
     counts = parse_junit(junit)
     status, reason = classify_pytest(rc, counts)
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": rc, "duration_s": dur, "counts": counts, "log": str(log),
-            "isolation": "container"}
+            "isolation": "container", "sandbox": [probe]}
 
 
 def read_blobs(wt: Path, oids: list) -> list:
@@ -2511,7 +2617,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
     iso, denv, t0 = spec["isolation"], trusted_env(), time.monotonic()
     ctx = {**spec["expr"], "matrix": dict(leg), "needs": {j: needs[j] for j in job["needs"]}}
     drv, exs = STEPS_DRIVER.read_bytes(), GH_EXPR.read_bytes()
-    out = {"label": label, "rc": None, "steps": [], "seconds": 0.0, "cpu": 0.0, "infra": None, "log": str(log), "logs": [str(log)]}
+    out = {"label": label, "rc": None, "steps": [], "seconds": 0.0, "cpu": 0.0, "infra": None, "log": str(log), "logs": [str(log)], "sandbox": []}
     if sha256_bytes(drv) != spec["driver_sha256"] or sha256_bytes(exs) != spec["expr_sha256"]:
         out["infra"] = ("ERROR", "steps driver or gh_expr changed since the plan pinned them")
         return out
@@ -2529,7 +2635,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if st.get("env"):
             st["env"] = fill_generated(st["env"], gen)
         if (st.get("side") or {}).get("where") == "egress":
-            st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan)
+            st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan, out["sandbox"])
             out["logs"].append(str(run_dir / "logs" / f"{name}.{slug}.egress.log"))   # written by this leg: read for a full disk too
         steps.append(st)
     extra = dict(base_extra)
@@ -2576,9 +2682,10 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if why:
             out["infra"] = ("BLOCKED", f"{label}: {why}")
             return out
+        out["sandbox"].append(probe := new_probe(f"{name}.{slug}"))
         rc, err = execute_contained(f"{name}.{slug}", spec, run_dir, plan, inner, overrides, extra, env, log, junit, job["timeout_s"], "/w",
                                     network=f"container:{owner}" if owner else "none", image_id=job["image_id"], memory=spec.get("memory", "4g"),
-                                    collect=collect if uploads else None, files=files)
+                                    collect=collect if uploads else None, files=files, probe=probe)
         for sv, c in zip(job["services"], ctrs):   # before teardown: what the stand-in was asked, counted by the stand-in
             if sv.get("reached"):
                 seen = requests_seen(iso["docker"], c, sv["reached"])
@@ -2626,7 +2733,7 @@ def gate_pending_of(status: str, steps: list) -> bool:
 
 
 def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base: dict, base_extra: dict, env: dict, inner: list,
-                run_dir: Path, plan: dict) -> dict:
+                run_dir: Path, plan: dict, probes: list | None = None) -> dict:
     """A step that needs the network (pip-audit asks a vulnerability service) runs alone in a sandbox on the default bridge: no
     service, no git history, only the candidate files it names (data), and tools the plan proved are BASE's pins. Its rc is folded
     into the job's own run at its position, under the step's own `if:`."""
@@ -2638,8 +2745,11 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     extra["cfg/steps.json"] = json.dumps({**cfg_base, "context": f"{spec['context']} / {slug} / egress", "steps": [one]}).encode()
     with open(log, "w") as fh:
         fh.write(f"# {now()} egress step {st['name']!r}: inputs {st['side']['inputs']}, rewrites {st['side']['rewrite']}\n")
+    probe = new_probe(f"{name}.{slug}.egress")
+    if probes is not None:
+        probes.append(probe)
     rc, err = execute_contained(f"{name}.{slug}.egress", spec, run_dir, plan, inner, {}, extra, env, log, junit, st.get("timeout_s") or job["timeout_s"],
-                                "/w", network="bridge", image_id=job["image_id"], memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))
+                                "/w", network="bridge", image_id=job["image_id"], probe=probe, memory=spec.get("memory", "4g"), paths=set(st["side"]["inputs"]))
     got = parse_expr_junit(junit) if not err else None
     tail = log.read_text(errors="replace")[-4000:] if log.exists() else ""
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
@@ -2650,6 +2760,10 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
                              r"resolution)[^\n]{0,120}", full)):
         return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict (never green), re-run", "log": tail}
     return {"rc": rc, "reason": f"egress sandbox: {got[0]['reason']}", "log": tail}
+
+
+def _job_rows(legs: list) -> list:
+    return [{**{k: x[k] for k in ("label", "rc", "seconds", "cpu")}, "sandbox": x.get("sandbox") or []} for x in legs]
 
 
 def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -> dict:
@@ -2665,11 +2779,11 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
             legs.append(r)
             if (full := host_disk_full(r.get("logs") or [r.get("log")], r["label"])):   # the chain stops: nothing after it is evidence
                 return {"status": "ERROR", "reason": full, "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": r["log"],
-                        "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], "isolation": "container"}
+                        "jobs": _job_rows(legs), "isolation": "container"}
             if r["infra"]:
                 st, why = r["infra"]
                 return {"status": st, "reason": why, "rc": None, "duration_s": round(time.monotonic() - t0, 3), "counts": None, "log": r["log"],
-                        "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], "isolation": "container"}
+                        "jobs": _job_rows(legs), "isolation": "container"}
             mine.append(r)
         needs[job["job_id"]] = {"result": "success" if all(r["rc"] == 0 for r in mine) else "failure", "outputs": {}}
     combined = [{**s, "name": f"{r['label']} › {s['name']}"} for r in legs for s in r["steps"]]
@@ -2683,7 +2797,7 @@ def _execute_jobs(name: str, spec: dict, run_dir: Path, plan: dict, log: Path) -
     return {"status": status, "reason": reason + " [contained: candidate-produced junit]", "rc": max(r["rc"] for r in legs),
             "duration_s": round(time.monotonic() - t0, 3), "counts": None, "steps": combined, "log": str(log), "isolation": "container",
             **({"codeql": found} if found else {}),
-            "jobs": [{k: x[k] for k in ("label", "rc", "seconds", "cpu")} for x in legs], **({"gate_pending": True} if gate_pending_of(status, combined) else {})}
+            "jobs": _job_rows(legs), **({"gate_pending": True} if gate_pending_of(status, combined) else {})}
 
 
 def execute(name: str, spec: dict, run_dir: Path, plan: dict, timeout: int) -> dict:

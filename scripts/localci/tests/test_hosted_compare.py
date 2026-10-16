@@ -364,3 +364,24 @@ def test_a_context_the_host_could_not_judge_is_blind_never_false_red_and_never_a
     rep = hc.compare(_status({"a": res}), _req("a"), [_run("a", hosted)], [])
     assert _klass(rep, "a") == "LOCAL_BLIND" and rep["rows"][0]["local_detail"] == f"{verdict} (executed) {code}"
     assert rep["counts"]["FALSE_RED"] == 0 and rep["coverage"]["compared_full"] == 0
+
+
+def _answered(runs, statuses=(), app_id=ACTIONS):
+    return hc.b17_answered(hc.hosted_entries(runs, list(statuses))["a"], app_id)
+
+
+def test_b27_a_cancelled_run_is_answered_by_a_green_of_its_own_app_in_either_order():
+    assert _answered(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, ACTIONS))) == {1}
+    assert _answered(_runs("a", ("success", T1, ACTIONS), ("cancelled", T2, ACTIONS))) == {2}
+
+
+def test_b27_a_pinned_cancelled_run_is_never_answered_by_another_apps_green():
+    assert _answered(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, 999))) == set()
+    assert _answered(_runs("a", ("cancelled", T1, 999), ("success", T2, ACTIONS))) == set()
+    assert _answered(_runs("a", ("cancelled", T1, ACTIONS), ("success", T2, 999)), app_id=None) == {1}
+
+
+def test_b27_a_green_commit_status_never_answers_a_cancelled_run():
+    runs = _runs("a", ("cancelled", T1, ACTIONS))
+    assert _answered(runs, [_st("a", "success")], app_id=None) == set()
+    assert _answered(runs, [_st("a", "success")]) == set()

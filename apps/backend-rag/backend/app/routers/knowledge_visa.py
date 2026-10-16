@@ -8,6 +8,7 @@ Provides endpoints for:
 - Filtering by category
 """
 
+import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -81,6 +82,16 @@ class VisaTypeCreate(VisaTypeBase):
 # =============================================================================
 
 
+def _is_retired(metadata: object) -> bool:
+    """True iff the row's metadata carries `retired: true` (dict, or a JSON string)."""
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except ValueError:
+            return False
+    return isinstance(metadata, dict) and metadata.get("retired") is True
+
+
 @router.get("/", response_model=VisaTypeListResponse)
 async def list_visa_types(
     category: str | None = None,
@@ -122,6 +133,10 @@ async def list_visa_types(
                     name
             """
             rows = await conn.fetch(query)
+
+        # Retired rows (metadata.retired = true, e.g. E28G: not a current visa) stay readable by
+        # code but are not listed as products.
+        rows = [row for row in rows if not _is_retired(row["metadata"])]
 
         # Get unique categories
         categories_query = "SELECT DISTINCT category FROM visa_types ORDER BY category"

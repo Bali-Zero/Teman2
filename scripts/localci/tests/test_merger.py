@@ -97,7 +97,8 @@ class FakeGraphQL:
         return {"repository": {"pullRequest": {
             "id": f"PR_node_{p['number']}", "number": p["number"], "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
             "headRefOid": p["head"]["sha"], "body": BODY, "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
-            "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
+            "timelineItems": {"nodes": [labelled(n, "maint") for n in names]},
+            "reviewDecision": None, "latestOpinionatedReviews": {"totalCount": 0, "nodes": []}, **self.over}}}
 
     def mutations(self):
         return [v for q, v in self.calls if q == mg.ENQUEUE]
@@ -656,7 +657,7 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
     origin.rename(tmp_path / "gone.git")
     dead = wrap(env)
     assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2 --code-sha\n"
-    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(g(src, "rev-parse", "main")[:12])
+    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(f"code={g(src, 'rev-parse', 'main')[:12]} depth=0")
 
 
 def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
@@ -819,6 +820,10 @@ def _pr(**over):
     return lambda w: w.gql.over.update(over)
 
 
+def _reviews(*states):
+    return {"totalCount": len(states), "nodes": [{"state": st} for st in states]}
+
+
 def _timeline(*events):
     return _pr(timelineItems={"nodes": list(events)})
 
@@ -828,6 +833,12 @@ GUILT = {
                            _check("tests.frontend_mouth", "INTERRUPTED"), _check("ctx.a", "RUNNING"), _check("ctx.a", None),
                            _check("security.pysa_python", "QUEUED")],   # only the review may wait
     "review_independent": [_check("review.independent", "BLOCKED"), _check("review.independent", "FAIL"), _check("review.independent", "STALE")],
+    "review_not_blocking": [_pr(reviewDecision="CHANGES_REQUESTED", latestOpinionatedReviews=_reviews("CHANGES_REQUESTED")),
+                            _pr(reviewDecision=None, latestOpinionatedReviews=_reviews("CHANGES_REQUESTED")),   # the flip's world: no review is required, the decision reads null
+                            _pr(reviewDecision="CHANGES_REQUESTED", latestOpinionatedReviews=_reviews()),
+                            _pr(reviewDecision="APPROVED", latestOpinionatedReviews=_reviews("APPROVED", "CHANGES_REQUESTED")),   # one reviewer's approval does not lift another's
+                            _pr(reviewDecision=7), _pr(latestOpinionatedReviews=None), _pr(latestOpinionatedReviews={"totalCount": 2, "nodes": [{"state": "APPROVED"}]}),
+                            _pr(latestOpinionatedReviews=_reviews("LGTM"))],
     "executed_contexts_ok": [_result("ctx-a", verdict="FAIL"), _result("ctx-a", verdict="BLOCKED"),    # BLOCKED only when NOT executed
                              _result("CodeQL", mapping="executed"), _result("ctx-a", verdict="UNCOVERED"),
                              lambda w: w.status["contexts"]["results"].pop("ctx-a"), lambda w: w.status["contexts"].update(status="invalid")],
@@ -865,7 +876,11 @@ def test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it(enq,
 
 
 @pytest.mark.parametrize("tweak", [None, _hosted(CodeQL="skipped"), _hosted(CodeQL="neutral"), _timeline(labelled(mg.ARM_LABEL, "boss")),
-                                   _check("review.independent", "PASS")], ids=["all-hold", "skipped", "neutral", "admin", "review-pass"])
+                                   _check("review.independent", "PASS"),
+                                   _pr(reviewDecision="APPROVED", latestOpinionatedReviews=_reviews("APPROVED")),   # a later approval by the reviewer who asked for changes
+                                   _pr(reviewDecision=None, latestOpinionatedReviews=_reviews("DISMISSED", "APPROVED", "COMMENTED")),
+                                   _pr(reviewDecision="REVIEW_REQUIRED", latestOpinionatedReviews=_reviews())],
+                         ids=["all-hold", "skipped", "neutral", "admin", "review-pass", "approved-after-changes", "dismissed", "no-review-yet"])
 def test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head(enq, capsys, tweak):
     if tweak:
         tweak(enq)
@@ -895,7 +910,7 @@ def test_an_unreadable_pull_request_refuses_every_sub_criterion_it_holds_with_th
         raise mg.GraphQLError(mg.redact("gh api graphql rc=1: Something went wrong ghp_" + "A" * 24))
     monkeypatch.setattr(mg, "gh_graphql", down)
     line = enq.run()
-    pr_side = ["head_unchanged", "same_repo", "not_draft", "base_main", "open", "not_in_queue", "first_enqueue", "label_privileged"]
+    pr_side = ["review_not_blocking", "head_unchanged", "same_repo", "not_draft", "base_main", "open", "not_in_queue", "first_enqueue", "label_privileged"]
     assert line["kind"] == "would_enqueue" and line["refused"] == pr_side and not any(line["criterion"][k] for k in pr_side)
     assert all("Something went wrong" in line["why"][k] and "ghp_" not in line["why"][k] for k in pr_side)
 
@@ -926,7 +941,7 @@ def test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_v
     world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(2, world.head2, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0 and world.tick() == 0   # #1 decided and enqueued; #2 conflicts with main: no verdict, no criterion
-    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]
+    assert [(r["kind"], r["pr"]) for r in world.journal() if r["kind"] != "replay_deferred"] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]   # B28: a labelled #2 may forfeit the replay turn
     assert world.gql.mutations() == [{"pr": "PR_node_1", "oid": world.head1}]
 
 
