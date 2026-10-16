@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/b03_census_adapter.py", line 776, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/b03_census_adapter.py", line 766, in main
+    rows, summary = build_census_rows(args.repo_root)
+                    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/b03_census_adapter.py", line 639, in build_census_rows
+    verified_hashes = verify_pinned_inputs(repo_root, extra_pins=extra_pins)
+  File "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/b03_census_adapter.py", line 186, in verify_pinned_inputs
+    raise PinVerificationError(
+    ...<2 lines>...
+    )
+PinVerificationError: SHA-256 mismatch for .agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json: expected 94fe319002dbbcdeca1273f3360384725da9c044a7597184df88477607b26130, got e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e

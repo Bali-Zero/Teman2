@@ -257,8 +257,9 @@ articles/**/*.{id,it,ru,fr}.mdx` is a generated artifact and no longer counts to
   healer-tick PRs ledger-only if you want the diet.
 - **The stall notifier is live on Mini** (`scripts/queue_stall_notify_cron.sh`, `*/30`, cap 5,
   repage 6 h). A CLEAN PR unarmed for 30 min is a `not-armed` stall and reaches the fleet mailbox;
-  the session that reads it arms it (own/whitelisted) or gates+arms it (external seat — Subhi's
-  PRs cannot self-arm, Builder Contract 5). Dependabot PRs sharing `package-lock.json`: one at a
+  the session that reads it arms it (own/whitelisted) or gates+arms it (external LLM seat, Builder
+  Contract 5). A Subhi PR (`SubBZ2026`) is his to arm — no gate since RULED 2026-10-15; ping
+  him, do not arm it for him. Dependabot PRs sharing `package-lock.json`: one at a
   time; separate lockfiles in parallel. `gh pr merge N --auto` on a CLEAN PR enqueues it directly
   with `autoMergeRequest` still null — read `mergeQueueEntry`, not the empty output (W111).
 

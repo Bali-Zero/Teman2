@@ -9,20 +9,37 @@ the CLI's --dry-run contract so a future edit can't quietly invert PASS/BLOCK.
 
 from __future__ import annotations
 
+import base64
+import json
 import subprocess
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 SCRIPTS = REPO / "scripts"
 
 sys.path.insert(0, str(SCRIPTS))
+import harness_fable_gate  # noqa: E402
 from harness_fable_gate import (  # noqa: E402
     VERDICT_STATE,
     build_description,
     check_overwrite,
+    ledger_append,
+    ledger_command,
     main,
 )
+
+HEAD = "a" * 40
+
+
+@pytest.fixture(autouse=True)
+def _no_ledger_ssh(monkeypatch, request):
+    """main() appends to the Pro ledger before it posts (B25-prime P1): no test here may reach ssh. The tests of ledger_append itself
+    (named test_ledger_append_*) and the end-to-end one stub the process layer below it instead."""
+    if not request.node.name.startswith(("test_ledger_append_", "test_the_publisher_and_the_ledger")):
+        monkeypatch.setattr(harness_fable_gate, "ledger_append", lambda *a, **k: 0)
 
 
 def test_pass_maps_to_success():
@@ -338,3 +355,148 @@ def test_main_supersede_names_the_most_recent_status_not_the_first(monkeypatch):
     assert rc == 0
     assert len(calls) == 1
     assert "supersedes=success@2026-09-21T03:00:00Z: third reading" in calls[0]
+
+
+# --- B25-prime P1: the ledger is appended BEFORE the status is posted -----------------------------------------------------------
+
+def test_main_appends_the_ledger_before_it_posts_and_passes_the_entry_fields(monkeypatch):
+    calls = []
+    monkeypatch.setattr(harness_fable_gate, "ledger_append", lambda *a: calls.append(("ledger", a)) or 0)
+    monkeypatch.setattr(harness_fable_gate, "publish", lambda *a: calls.append(("post", a)) or 0)
+    rc = main(["--verdict", "BLOCK", "--sha", HEAD, "--repo", "acme/example", "--pr", "42", "--gate-session", "gate-x",
+               "--evidence-sha256", "b" * 64], read_statuses=lambda r, s: [])
+    assert rc == 0 and [c[0] for c in calls] == ["ledger", "post"]
+    assert calls[0][1] == ("acme/example", HEAD, 42, "failure", "gate-x", "b" * 64, False, False)
+
+
+def test_a_failed_ledger_append_posts_nothing(monkeypatch):
+    posts = []
+    monkeypatch.setattr(harness_fable_gate, "ledger_append", lambda *a: 1)
+    monkeypatch.setattr(harness_fable_gate, "publish", lambda *a: posts.append(a) or 0)
+    assert main(["--verdict", "PASS", "--sha", HEAD, "--repo", "acme/example"], read_statuses=lambda r, s: []) == 1
+    assert posts == []
+
+
+def test_supersede_reaches_the_ledger_append_as_a_flag(monkeypatch):
+    seen = []
+    monkeypatch.setattr(harness_fable_gate, "ledger_append", lambda *a: seen.append(a[6]) or 0)
+    monkeypatch.setattr(harness_fable_gate, "publish", lambda *a: 0)
+    prev = [{"state": "failure", "description": "x", "created_at": "2026-09-21T01:00:00Z"}]
+    assert main(["--verdict", "PASS", "--sha", HEAD, "--repo", "a/b", "--supersede", "why"], read_statuses=lambda r, s: prev) == 0
+    assert main(["--verdict", "PASS", "--sha", HEAD, "--repo", "a/b"], read_statuses=lambda r, s: []) == 0
+    assert seen == [True, False]
+
+
+def test_dry_run_shows_the_ledger_command_before_the_post_and_runs_nothing():
+    proc = subprocess.run([sys.executable, str(SCRIPTS / "harness_fable_gate.py"), "--verdict", "PASS", "--sha", "deadbeef",
+                           "--repo", "acme/example", "--dry-run"], capture_output=True, text=True, timeout=30)
+    assert proc.returncode == 0 and "DRY-RUN: ledger append would run:" in proc.stdout and "gate-append <entry-b64>" in proc.stdout
+    assert proc.stdout.index("ledger append") < proc.stdout.index("statuses/deadbeef")
+
+
+def test_the_ledger_command_is_ssh_pro_elsewhere_and_the_wrapper_itself_on_pro(monkeypatch):
+    monkeypatch.setattr(harness_fable_gate.os, "uname", lambda: type("U", (), {"nodename": "Air-M5.local"})())
+    assert ledger_command("QUJD", True) == ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "pro",
+                                            "bash ~/.nuzantara-cron/localci_merger_tick.sh gate-append QUJD --supersede"]
+    monkeypatch.setattr(harness_fable_gate.os, "uname", lambda: type("U", (), {"nodename": "Nuzantara.local"})())
+    cmd = ledger_command("QUJD", False)
+    assert cmd[0] == "/bin/bash" and cmd[1].endswith("/.nuzantara-cron/localci_merger_tick.sh") and cmd[2:] == ["gate-append", "QUJD"]
+
+
+def entry_of(cmd):
+    words = " ".join(cmd).split()
+    return json.loads(base64.b64decode(words[words.index("gate-append") + 1]))
+
+
+def test_ledger_append_sends_exactly_the_seven_keys_as_one_base64_argv(monkeypatch):
+    got = {}
+
+    def fake_run(cmd, **kw):
+        got["cmd"] = cmd
+        return subprocess.CompletedProcess(cmd, 0, stdout="d" * 64 + "\n", stderr="")
+
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", fake_run)
+    assert ledger_append("acme/example", HEAD, 42, "success", "s" * 100, None, False, False) == 0
+    assert entry_of(got["cmd"]) == {"repo": "acme/example", "pr": 42, "head_sha": HEAD, "verdict": "success", "gate_session": "s" * 80,
+                     "evidence_sha256": None, "supersedes": None}
+
+
+@pytest.mark.parametrize("sha", ["deadbeef", HEAD.upper()], ids=["short", "upper"])
+def test_ledger_append_refuses_a_bad_sha_without_running_anything(monkeypatch, sha):
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", lambda *a, **k: pytest.fail("ran a process"))
+    assert ledger_append("acme/example", sha, 1, "success", "g", None, False, False) == 1
+
+
+def test_a_gate_that_posts_before_its_pr_exists_records_pr_null_and_never_guesses_it(monkeypatch):
+    calls = []
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", lambda cmd, **k: calls.append(cmd) or subprocess.CompletedProcess(cmd, 0, "d" * 64, ""))
+    assert ledger_append("acme/example", HEAD, None, "failure", "g", None, False, False) == 0
+    assert entry_of(calls[-1])["pr"] is None and not any("gh" == c[0] for c in calls)
+    assert not hasattr(harness_fable_gate, "derive_pr")
+
+
+def test_a_failed_append_or_an_unreachable_pro_is_reported_and_posts_nothing(monkeypatch, capsys):
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", lambda cmd, **k: subprocess.CompletedProcess(cmd, 3, "", "no mirror") if "gate-append" in " ".join(cmd) else subprocess.CompletedProcess(cmd, 0, "", ""))
+    assert ledger_append("acme/example", HEAD, 5, "failure", "g", None, False, False) == 1
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", lambda *a, **k: (_ for _ in ()).throw(subprocess.TimeoutExpired("ssh", 60)))
+    assert ledger_append("acme/example", HEAD, 5, "failure", "g", None, False, False) == 1
+
+
+@pytest.mark.parametrize("rc,needle", [(10, "no gate-append mode"), (11, "no scripts/localci/gate_ledger.py"), (255, "preflight rc=255")])
+def test_a_missing_deploy_step_is_named_and_the_wrapper_is_never_run(monkeypatch, capsys, rc, needle):
+    calls = []
+
+    def fake(cmd, **k):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, rc, "", "")
+
+    monkeypatch.setattr(harness_fable_gate.subprocess, "run", fake)
+    assert ledger_append("acme/example", HEAD, 5, "failure", "g", None, False, False) == 1
+    assert needle in capsys.readouterr().err and len(calls) == 1 and "gate-append" not in " ".join(calls[0]).replace("grep -q gate-append", "")
+
+
+def _run_preflight(home, extra_env=None):
+    cmd = ["/bin/bash", "-c", harness_fable_gate.PREFLIGHT.format(w=str(home / "wrapper.sh"))]
+    env = {"PATH": "/usr/bin:/bin:/opt/homebrew/bin", "HOME": str(home), "GIT_CONFIG_GLOBAL": "/dev/null"}
+    return subprocess.run(cmd, capture_output=True, text=True, env=env).returncode
+
+
+def test_the_preflight_reads_the_wrapper_and_the_mirror_and_runs_neither(tmp_path):
+    state = tmp_path / ".nuzantara-pilots/local-ci/merger/repo.git"
+    assert _run_preflight(tmp_path) == 10   # no wrapper
+    (tmp_path / "wrapper.sh").write_text("#!/bin/bash\ntouch RAN\n")
+    assert _run_preflight(tmp_path) == 10   # an old wrapper without the mode
+    (tmp_path / "wrapper.sh").write_text("#!/bin/bash\ntouch RAN\nif [ \"$1\" = gate-append ]; then :; fi\n")
+    assert _run_preflight(tmp_path) == 11   # no mirror
+    work = tmp_path / "w"
+    work.mkdir()
+    g = ["git", "-c", "user.name=t", "-c", "user.email=t@t"]
+    subprocess.run(g + ["init", "-q", str(work)], check=True)
+    (work / "scripts/localci").mkdir(parents=True)
+    (work / "scripts/localci/other.py").write_text("x")
+    subprocess.run(g + ["-C", str(work), "add", "-A"], check=True)
+    subprocess.run(g + ["-C", str(work), "commit", "-qm", "m"], check=True)
+    state.parent.mkdir(parents=True)
+    subprocess.run(["git", "clone", "-q", "--bare", str(work), str(state)], check=True)
+    subprocess.run(["git", "-C", str(state), "update-ref", "refs/merger/wrapper", "HEAD"], check=True)
+    assert _run_preflight(tmp_path) == 11   # mirror without gate_ledger.py
+    (work / "scripts/localci/gate_ledger.py").write_text("x")
+    subprocess.run(g + ["-C", str(work), "add", "-A"], check=True)
+    subprocess.run(g + ["-C", str(work), "commit", "-qm", "m2"], check=True)
+    subprocess.run(["git", "-C", str(state), "fetch", "-q", str(work), "+HEAD:refs/merger/wrapper"], check=True)
+    assert _run_preflight(tmp_path) == 0
+    assert not (tmp_path / "RAN").exists() and not (Path.cwd() / "RAN").exists()
+
+
+def test_the_publisher_and_the_ledger_module_agree_end_to_end(monkeypatch, tmp_path):
+    """The entry the publisher builds is one the appender accepts, and the reader then confers OK (writer and reader, one rule)."""
+    sys.path.insert(0, str(SCRIPTS / "localci"))
+    import gate_ledger
+    ledger = str(tmp_path / "d" / "verdicts.jsonl")
+    monkeypatch.setattr(harness_fable_gate, "preflight_command", lambda: ["true"])
+    monkeypatch.setattr(harness_fable_gate, "ledger_command", lambda b64, sup: [
+        sys.executable, "-I", str(SCRIPTS / "localci" / "gate_ledger.py"), "--ledger", ledger, "append", b64] + (["--supersede"] if sup else []))
+    assert ledger_append("Bali-Zero/Teman2", HEAD, None, "failure", "g", None, False, False) == 0
+    assert gate_ledger.gate_verdict(ledger, "Bali-Zero/Teman2", HEAD)[0] is False
+    assert ledger_append("Bali-Zero/Teman2", HEAD, 12, "success", "g", "c" * 64, True, False) == 0
+    assert gate_ledger.gate_verdict(ledger, "Bali-Zero/Teman2", HEAD)[0] is True

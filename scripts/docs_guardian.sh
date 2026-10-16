@@ -373,7 +373,11 @@ if [[ "$BROKEN" == "0" && -n "$PR_URL" && "$PR_URL" =~ ^https://github.com/.+/pu
   PR_NUM=$(echo "$PR_URL" | awk -F'/' '{print $NF}')
   # label + bare arm (the queue refuses --squash); helper lives next to this script's checkout
   if [ -x scripts/signal_merge_intent.sh ]; then
-    scripts/signal_merge_intent.sh "$PR_NUM" >/dev/null 2>&1 || true
+    # B31: a missing merge label strands the PR after the flip — never swallowed
+    if ! INTENT_OUT=$(scripts/signal_merge_intent.sh "$PR_NUM" 2>&1); then
+      echo "ERROR: signal_merge_intent failed on PR #$PR_NUM: $(printf '%s' "$INTENT_OUT" | tail -3 | tr '\n' ' ')" >&2
+      INTENT_FAILED=1
+    fi
   else
     gh pr merge "$PR_NUM" --auto >/dev/null 2>&1 || true
   fi
@@ -389,8 +393,12 @@ SUMMARY=()
 [[ "$BROKEN" != "0" ]] && SUMMARY+=("L2: $BROKEN broken-link file(s) need manual fix")
 [[ -n "$PR_URL" ]] && SUMMARY+=("PR: $PR_URL")
 
+[[ "${INTENT_FAILED:-0}" == "1" ]] && SUMMARY+=("MERGE INTENT FAILED on PR #${PR_NUM:-?} (label/arm) — it will not merge by itself")
+
 if [[ ${#SUMMARY[@]} -gt 0 ]]; then
   MSG="docs-guardian weekly run"
   for s in "${SUMMARY[@]}"; do MSG="$MSG | $s"; done
   notify "docs-guardian" "$MSG"
 fi
+
+if [[ "${INTENT_FAILED:-0}" == "1" ]]; then exit 1; fi

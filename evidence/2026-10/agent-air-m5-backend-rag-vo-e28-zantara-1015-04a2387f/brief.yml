@@ -1,0 +1,30 @@
+task_id: vo-e28-zantara-1015
+gear: 2
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  PR C of the E28 family audit (research/visa/2026-10-15-e28-family-audit.md, findings F30-F35 and
+  F50-F53): Zantara's golden routes, the few-shot examples, the v3/v4 worked examples and the
+  legacy /api/visa/match E28A entry say only what the signed pack seq-29 and the saved official
+  E28 pages (research/visa/2026-10-15-e28-pages/) say. No E28G, no E28A as a worker permit, no
+  IDR 10 billion as minimum or paid-up PT PMA capital (zantara_core_v4 RULE 6 is the rule), the
+  Golden Visa figures per code exactly as the pages state them, the legacy E28A extension, notes
+  and document list as the pack and the page state them.
+constraints:
+  - "zantara_core.py is not touched (off-limits)."
+  - "app/routers/visa_check.py processing days are not touched."
+  - "IMTA is rewritten only inside steps that are themselves rewritten for E28A; everywhere else it is untouched."
+acceptance:
+  - text: "No golden route, prompt or KG docstring names E28G, calls E28A a worker permit, or states IDR 10 billion as minimum or paid-up capital; every visa_golden figure equals the saved page of its code."
+    probe: "python3 scripts/ci/observe_zantara_e28_1015.py"
+  - text: "The legacy E28A row follows the pack (730 days, 365 per extension) with the page's notes and document list, and no budget figure presented as a requirement."
+    probe: "cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_check -p no:cacheprovider"
+consumer_map:
+  - "Zantara RAG: KGEnhancedRetrieval golden routes handed to the model; v3/v4 worked examples and the few-shot / WhatsApp persona examples in the prompt."
+  - "Legacy /api/visa/match: catalogue.VISA_META and match_tree pre-arrival steps."
+risks:
+  - "Red team C (codex) cures: D12 keeps its own list, E28A prints no computed total, the investor route does not require a board post, the detectors catch Working/bare E28/numeric 10 bn forms."
+  - "E28A keeps min_budget_idr=500_000_000 as an internal ranking-only band boundary (orchestrator decision 2026-10-15); the reason text no longer prints it, so ranking is unchanged and nothing presents it as a requirement."
+grader: "Fresh Opus 5.5 final gate commissioned by the team lead."
+brief_ref: evidence/brief.yml

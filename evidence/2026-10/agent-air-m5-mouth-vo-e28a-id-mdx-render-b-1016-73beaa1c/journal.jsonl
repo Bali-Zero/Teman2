@@ -1,0 +1,5 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-10-16T00:20:29Z"}
+{"seat": "agy-gemini-4-argon", "role": "review", "ok": true, "ts": "2026-10-16T00:27:47Z", "seat_fallback_reason": "agy --headless returned 429 MODEL_CAPACITY_EXHAUSTED on gemini-4-argon; executed via gemini -p -m gemini-2.5-pro per roster fallback"}
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-10-16T04:23:05Z"}
+{"seat": "agy-gemini-4-argon", "role": "review", "ok": true, "ts": "2026-10-16T04:23:09Z"}
+{"seat": "codex-gpt-6-astra", "role": "review", "ok": true, "ts": "2026-10-16T06:58:00Z", "seat_fallback_reason": "owner override 2026-10-16: all Claude seats at quota limit; Astra appointed as final gate"}

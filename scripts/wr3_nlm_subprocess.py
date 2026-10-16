@@ -59,7 +59,7 @@ async def query_nb(
     """
     bin_path = cli or NLM_CLI
     if not shutil.which(bin_path):
-        raise NLMError(f"NLM CLI not found at {bin_path!r}. Install via 'nlm login'.")
+        raise NLMError(f"NLM CLI not found at {bin_path!r}. Install via 'uv tool install notebooklm-mcp-cli==0.15.5', then run 'nlm login'.")
 
     args = [
         bin_path,

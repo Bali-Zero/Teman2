@@ -1,0 +1,61 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15 -
+  the iQOO PIN is used only through the Pro-side helper iqoo-unlock (#8541).
+mission: >-
+  The /visaoracle ledger records the iQOO physical walks that closed the E33 mobile backlog row, #8543 (the /book E33F
+  sponsor sentence in Indonesian) and #8541 (the iQOO unlock rule), and corrects the wave-5 claim that adb was not
+  installed on Pro.
+lanes:
+  - lane: ledger-wave6
+    role: build
+    seat: claude-sonnet-5 (Claude Code session)
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '43 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: The four ledger test files pass with the addendum pins (PR/sha pairs, comment URLs, the PIN-free wording, the SKILL lead, the closed iQOO row, the one opened spec row, the Firefox item, the floor equal to the file's test count).
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
+    result: "78 passed in 0.97s"
+    exit: 0
+    ts: "2026-10-15T11:26:30Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 39 to 43, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "43 passed in 0.87s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-15T11:26:32Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (one row closed, one opened, the open count unchanged).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 605 -> head 605 (delta 0)"
+    exit: 0
+    ts: "2026-10-15T11:26:34Z"
+    seat: this session
+  - claim: "Every PR state, merge sha and comment URL written (PRs 8511, 8512, 8533, 8536, 8541, 8543 and the four comments) was re-read from GitHub this turn."
+    cmd: "gh pr view <n> --json state,mergeCommit,mergedAt for 8511 8512 8533 8536 8541 8543; gh api repos/Bali-Zero/Teman2/issues/comments/<id> for 6188925096 6188925677 6188926239; gh pr view 8543 --json comments for 6190499447"
+    result: "all six MERGED with the shas written (8541 66c7c706dd, 8543 3d94f56a4c); the four comment URLs resolve"
+    exit: 0
+    ts: "2026-10-15T11:10:00Z"
+    seat: this session
+  - claim: The evidence pack lints clean as CI stages it (temporary evidence/pack.yml and evidence/brief.yml, real pack and brief paths passed as --source-path and --brief-source-path), the temporary copies removed afterwards, and the bites parse is legacy, not malformed.
+    cmd: "python3 scripts/evidence_pack_lint.py evidence/pack.yml --repo-root . --changed-files-file <changed files> --source-path <real pack> --brief-source-path <real brief>; python3 scripts/ci/bites_parse.py --pack <real pack>"
+    result: "evidence_pack_lint: clean (one appetite NOTICE); bites_parse prints legacy true"
+    exit: 0
+    ts: "2026-10-15T11:40:00Z"
+    seat: this session
+decisions:
+  - id: D-floor-43
+    decision: >-
+      The observer floor is the true count after four new pins (43); the existing pin asserts the floor equals the
+      number of tests in the file.
+  - id: D-correct-in-place
+    decision: >-
+      The wave-5 sentence 'adb not installed on Pro' is corrected in place (adb is installed, the blocker was the
+      missing device) and the addendum states the correction, instead of leaving a false line.
+  - id: D-no-pin
+    decision: >-
+      The PIN value appears nowhere; the ledger records only the helper rule as merged in #8541.
+dissent: []

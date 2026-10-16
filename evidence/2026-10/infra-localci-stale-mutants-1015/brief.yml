@@ -1,0 +1,30 @@
+task_id: infra-localci-stale-mutants-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B32. A mutant whose anchor text no longer occurs exactly once in its
+  target is never applied: the sweep reports it STALE at best, and in the
+  normal suite nothing notices, so the rule it stood for silently stops
+  guarding. The stale rows of merger_mutants.py are re-anchored on the code as
+  it is now, and test_mutant_anchors.py holds every rule of every sweep table
+  to "matches exactly once" inside the ordinary suite, in well under a second,
+  naming the table, the rule and the match count. Sweeps (mutants/*_mutants.py)
+  and tables (module-level dicts named *MUTANTS) are discovered, not listed, so
+  a table added later is covered by construction; a short rule with no target
+  file fails the check loudly unless its module declares ANCHOR_TARGET.
+acceptance:
+  - text: >-
+      Every rule of every table of every sweep matches its target exactly
+      once and differs from its replacement; the check names a gone anchor, an
+      ambiguous one and a no-op, and discovers a table added later.
+    probe: python3 -m pytest -q scripts/localci/tests/test_mutant_anchors.py
+  - text: >-
+      The full merger sweep reports no STALE row and no SURVIVED row.
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py
+assumptions:
+  - text: >-
+      Mini's python3.11 has no PyYAML; the sweep's baseline needs it, so heavy
+      runs use Mini's python3.
+    status: verified
+    probe: ssh mini 'python3.11 -c "import yaml"'

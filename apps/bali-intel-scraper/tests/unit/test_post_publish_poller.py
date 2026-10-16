@@ -1559,3 +1559,12 @@ class TestOnePrPerFamily:
         assert [written[k] for k in ppp.HERO_KEYS] == ["t2", "t1", "p1", "p0", "m1"]
         assert [written[k] for k in ppp.LATEST_KEYS] == ["m2", "m3", "m4", "m5", "l1"]
         assert gh.closed == [7003]
+
+
+def test_b31_a_helper_that_cannot_label_is_alerted_even_when_the_pr_is_armed(monkeypatch):
+    alerts = []
+    monkeypatch.setattr(ppp, "send_telegram_alert", lambda msg, dedup_key=None: alerts.append((msg, dedup_key)), raising=False)
+    monkeypatch.setattr(ppp, "_pr_state", lambda n: {"armed": True, "queued": False, "head": "h"}, raising=False)
+    monkeypatch.setattr(ppp.subprocess, "run", lambda cmd, **kw: _res(returncode=2, stderr="SIGNAL_INTENT_FAIL pr=42 label=failed"))
+    assert ppp._arm_pr("https://github.com/Bali-Zero/Teman2/pull/42", "news") is True   # armed is still armed
+    assert len(alerts) == 1 and "no valid merge label" in alerts[0][0] and alerts[0][1] == "post-publish:bot-pr-unlabelled:news"

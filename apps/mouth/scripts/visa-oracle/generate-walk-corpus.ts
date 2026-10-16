@@ -1154,10 +1154,13 @@ export function enumerateScenarios(): Scenario[] {
   // (`:181`). `review_gate` is a comma-joined SET (`fact-mapper.ts:406`), so
   // one walk can carry many items at once — three new walks close all
   // twelve, not twelve new walks. The fourteenth member,
-  // `CONFLICTING_IMMIGRATION_STATUS`, is impossible from the interview by
-  // construction (every walk's `immigration.overstay_days` is `KNOWN 0`) and
-  // is covered instead by an allowlist row in the census, citing
-  // `test_evaluate_endpoint.py:2641`/`:2727`.
+  // `CONFLICTING_IMMIGRATION_STATUS`, is impossible from the OFFSHORE
+  // interview by construction (an offshore walk never asks `overstay_days`,
+  // so its `immigration.overstay_days` is `KNOWN 0`; the onshore overstay
+  // walks of PR-13 do answer it, and are measured, not assumed, to leave the
+  // flag unraised) and is covered instead by an allowlist row in the census,
+  // citing `test_evaluate_endpoint.py::test_condition_notice_order_is_canonical_not_request_order`
+  // and `::test_condition_notice_order_covers_the_three_new_flags`.
   scenarios.push({
     // The nine conditioning gate items in one walk: `CRIMINAL_RECORD` and
     // `ACTIVITY_BOUNDARY` are HOLDING flags (they empty candidates), so they
@@ -1284,6 +1287,178 @@ export function enumerateScenarios(): Scenario[] {
       sponsor_category: "INDIVIDUAL",
     },
   });
+
+  // T06 (visa-night visit family, 2026-10-14): the stay bounds and entry
+  // patterns of the visit rules, one walk per side of each bound the pack
+  // draws, plus the answers of `business_activity` / `other_purpose` that no
+  // walk gave. Every row changes ONLY the listed answers of the default
+  // offshore walk of its tile; each is reachable through the real tree
+  // (`stay_days` accepts 1..36,500; the other answers are option keys). The
+  // `other` rows answer `other_paid_activity = no`: its first option (`yes`)
+  // turns the walk into EMPLOYMENT, where the purpose and the stay bound of
+  // an OTHER visit are no longer what the walk exercises.
+  // Bounds (rulepack-prod-029 source): A1 SG tourism/transit <= 30 days; B1
+  // tourism <= 60 (the default IT is on its list); C1 tourism/family <= 180;
+  // D2 business meetings <= 180; C2/C6 <= 180 with a confirmed sponsor; D12
+  // investment <= 360 (needs `wants_onshore_conversion = no`); D1 MULTIPLE
+  // entry <= 180 on tourism/transit/business. Global-filter walks
+  // (nationality, calling visa, overstay, minor, criminal record) follow in
+  // the PR-13 block below.
+  const visitWalks: Array<[string, Record<string, string>]> = [
+    ["offshore/tourism/sg/stay_30", { nationalities: "SG", stay_days: "30" }],
+    ["offshore/tourism/sg/stay_31", { nationalities: "SG", stay_days: "31" }],
+    ["offshore/tourism/stay_60", { stay_days: "60" }],
+    ["offshore/tourism/stay_61", { stay_days: "61" }],
+    ["offshore/tourism/stay_180", { stay_days: "180" }],
+    ["offshore/tourism/stay_181", { stay_days: "181" }],
+    [
+      "offshore/tourism/voa_60d/multiple",
+      { stay_days: "45", entry_pattern: "MULTIPLE" },
+    ],
+    [
+      "offshore/tourism/stay_180/multiple",
+      { stay_days: "180", entry_pattern: "MULTIPLE" },
+    ],
+    [
+      "offshore/tourism/stay_181/multiple",
+      { stay_days: "181", entry_pattern: "MULTIPLE" },
+    ],
+    ...(["180", "181"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/business/no_local_compensation/stay_${days}`,
+        {
+          category: "business",
+          work_indonesia_compensation: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    [
+      "offshore/business/no_local_compensation/multiple",
+      {
+        category: "business",
+        work_indonesia_compensation: "no",
+        entry_pattern: "MULTIPLE",
+      },
+    ],
+    ...(["negotiation", "conference", "training", "other"] as const).map(
+      (activity): [string, Record<string, string>] => [
+        `offshore/business/${activity}/no_local_compensation`,
+        {
+          category: "business",
+          business_activity: activity,
+          work_indonesia_compensation: "no",
+        },
+      ],
+    ),
+    ...(["360", "361"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/business/exploring/offshore_application/stay_${days}`,
+        {
+          category: "business",
+          business_activity: "exploring",
+          wants_onshore_conversion: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    [
+      "offshore/other/transit/multiple",
+      {
+        category: "other",
+        other_paid_activity: "no",
+        entry_pattern: "MULTIPLE",
+      },
+    ],
+    ...(["180", "181"] as const).map(
+      (days): [string, Record<string, string>] => [
+        `offshore/other/medical/stay_${days}`,
+        {
+          category: "other",
+          other_purpose: "medical",
+          other_paid_activity: "no",
+          stay_days: days,
+        },
+      ],
+    ),
+    ...(
+      [
+        "volunteer",
+        "religious",
+        "arts_sport",
+        "journalism",
+        "crew",
+        "other",
+      ] as const
+    ).map((purpose): [string, Record<string, string>] => [
+      `offshore/other/${purpose}`,
+      { category: "other", other_purpose: purpose, other_paid_activity: "no" },
+    ]),
+  ];
+  for (const [label, answers] of visitWalks) {
+    scenarios.push({
+      label,
+      overrides: {
+        in_indonesia: "no",
+        holds_stay_permit: "no",
+        category: "tourism",
+        ...answers,
+      },
+    });
+  }
+
+  // PR-13 (visa-night work family, 2026-10-15): the global filters no walk
+  // answered on the employment tile, now that the backend names a no-path
+  // cause for the filters that end a walk (E31-B01; the minor, guardian,
+  // criminal-record and paid-medical walks end in a question or a hold, and
+  // the census pins which). Every row changes ONLY the listed answers of
+  // the default `offshore/work` walk (or its `onshore` / paid-`other`
+  // sibling), so the walk's whole content is that answer. `overstay_days` is
+  // asked ONLY on the onshore arm (flow.ts: offshore skips it), so the
+  // overstay rows are onshore by necessity; `nationalities` and the birth
+  // date are spine questions, asked on every walk; `guardian_consent` is
+  // asked only when the birth date makes the applicant a minor.
+  const globalFilterWalks: Array<[string, Record<string, string>]> = [
+    ["offshore/work/nationality_id", { nationalities: "ID" }],
+    // AF is on the calling-visa list the engine does not assess.
+    ["offshore/work/nationality_calling_visa", { nationalities: "AF" }],
+    ["onshore/work/overstay_30", { in_indonesia: "yes", overstay_days: "30" }],
+    ["onshore/work/overstay_61", { in_indonesia: "yes", overstay_days: "61" }],
+    ["offshore/work/minor", { birth_date: MINOR_APPLICANT_BIRTH_DATE }],
+    [
+      "offshore/work/minor/guardian_no",
+      { birth_date: MINOR_APPLICANT_BIRTH_DATE, guardian_consent: "no" },
+    ],
+    ["offshore/work/disclosed_criminal", { review_gate: "criminal_record" }],
+    [
+      "onshore/work/sponsor_government/trade_office_only/overstay_61",
+      {
+        in_indonesia: "yes",
+        overstay_days: "61",
+        sponsor_category: "GOVERNMENT",
+        sponsor_government_invitation: "no",
+      },
+    ],
+    [
+      "offshore/other/paid/medical",
+      {
+        category: "other",
+        other_paid_activity: "yes",
+        other_purpose: "medical",
+      },
+    ],
+  ];
+  for (const [label, answers] of globalFilterWalks) {
+    scenarios.push({
+      label,
+      overrides: {
+        in_indonesia: "no",
+        holds_stay_permit: "no",
+        category: "work",
+        ...answers,
+      },
+    });
+  }
 
   return scenarios;
 }

@@ -1,0 +1,67 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-16 -
+  explicit "go" for the two Qdrant writes (67 contact-trailer updates and 17 orphan deletes) and Astra (gpt-6-astra)
+  appointed as independent reviewer/gate while Claude is unavailable.
+mission: >-
+  Record the Qdrant pricing contact-trailer patch (67 points) and orphan deletion (#8594, d85145eb8b; 17 points
+  deleted, re-plan 0 updates / 0 deletes / 0 orphans / 116 in_sync), close the wave-5 operator[business] PENDING-ARMS
+  row opened by #8575, and add the two --expect-orphans boundary tests from PR #8594 Gate Condition 1.
+lanes:
+  - lane: vo-ledger-qdrant-orphans-1016
+    role: build
+    seat: agy (Antigravity, M5)
+  - lane: vo-ledger-qdrant-orphans-1016
+    role: review
+    seat: gpt-6-astra (codex exec read-only gate)
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '57 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: All ledger and sync-pricing test suites pass with the new pins and the two --expect-orphans boundary tests.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py
+    result: "117 passed in 1.65s"
+    exit: 0
+    ts: "2026-10-16T07:04:24Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 54 to 57, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "57 passed in 1.17s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-16T07:01:30Z"
+    seat: this session
+  - claim: Two mutants on scripts/sync_pricing_collection_prices.py line 656 (!= -> <, and expect_orphans and !=) and three mutants on scripts/ci/observe_visa_ledger_seq29.py (MIN_TESTS=56, MIN_TESTS=58, >= -> >) are all killed, and the files are restored byte-identical.
+    cmd: per mutant, one-site edit then pytest -q, then restore and git diff --stat
+    result: "2 / 1 / 1 / 2 / 2 tests red across the 5 mutants; restored, 0 diff"
+    exit: 0
+    ts: "2026-10-16T07:04:39Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (overdue count 610 -> 610; total - opened rows 899 -> 898, - closed rows 989 -> 990).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 610 -> head 610 (delta 0)"
+    exit: 0
+    ts: "2026-10-16T07:08:10Z"
+    seat: this session
+  - claim: Every fact recorded in the ledger was measured this session on Pro and live /api/search after PR 8594 merged as d85145eb8b.
+    cmd: "Pro: merged blobs 5e85d1db53 + 0c28a6fcc4 dry-run (deletes=17), backup qdrant-backup-20261016T062129Z.json (sha256 b7ffd20208733d7b92ac5c86ef94b5d3379ddace928d7514547202ae2ca80179), --apply --expect-orphans 17 (DELETED 17), verify_delete.py (116 kept_identical), re-plan (in_sync=116, 0 orphans), full scroll (116/116 +62 821 3454 721), live POST /api/search"
+    result: "DELETED 17; points_count 116; kept_identical 116 of 116; updates=0 deletes=0 in_sync=116 points_without_catalog_row=0; 116/116 +62 821 3454 721"
+    exit: 0
+    ts: "2026-10-16T06:24:00Z"
+    seat: this session
+decisions:
+  - id: D-close-operator-row-without-new-open
+    text: >-
+      Both writes carried by the operator[business] row opened in #8575 (67 contact-trailer updates and 17 orphan
+      deletes) are now applied and verified in bali_zero_pricing_hybrid; the row closes with proof and no successor
+      row is needed (- opened rows 899 -> 898, - closed rows 989 -> 990).
+  - id: D-gate-c1-tests-in-closeout
+    text: >-
+      Include the two --expect-orphans boundary tests from PR #8594 Gate Condition 1 (over-count mismatch and
+      --expect-orphans 0 with orphans present) in the same close-out PR so the two surviving line-656 mutants are
+      closed immediately.
+dissent: []
+spend:
+  wall_clock_hours: 0.4
+  adversarial_rounds: 0

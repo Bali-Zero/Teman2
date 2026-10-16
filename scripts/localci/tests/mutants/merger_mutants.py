@@ -47,6 +47,10 @@ B22 = K("main_is_recomputed_and_kept_under_pressure_the_prs_newer_images_go", "t
         "no_candidate_image_means_unknown_and_todays_rule", "an_exception_in_the_keeper_is_unknown_never_a_crash",
         "the_vm_floor_can_still_remove_main", "deps_recipe_digests_equal_the_recorded_ones",
         "a_context_whose_workflow_is_absent_at_base_raises_and_only_that_recipe_is_unknown", "the_python_prefix_of_the_job_is_part_of_the_recomputed_tag")
+# B30: a transient local no-verdict is decided again at the same base
+RD = ("scripts/localci/tests/test_redecide.py",)
+RA = ("scripts/localci/tests/test_redecide_allowlist.py", "scripts/localci/tests/test_redecide_attribution.py", "scripts/localci/tests/test_redecide_window.py")   # B30 D1 allow-list, D2 window
+RDA = RD + RA
 START_DEFAULT = 'default=HOST_FLOOR_GB + START_MARGIN_GB,\n                   help="the start floor'
 B6_FLOOR = (f"{MERGER_T}::test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why",)
 FLOOR_SH, FLOOR_T = "scripts/ops/pro_disk_floor_tick.sh", "scripts/localci/tests/test_disk_floor.py"
@@ -64,10 +68,15 @@ SHIPPABLE = ("scripts/localci/tests/test_triage_shippable.py",)   # B23
 PENDING = ("scripts/localci/tests/test_merger_pending.py",)   # B19
 TICK = "scripts/localci/tests/test_merger.py"
 PY, SH = "scripts/localci/merger.py", "scripts/localci/localci_merger_tick.sh"
+TCH, B33 = "scripts/localci/tick_chain.py", ("scripts/localci/tests/test_tick_chain.py",)   # B33 S1
 HC, RUNNER = "scripts/localci/hosted_compare.py", "scripts/localci/runner.py"
 HCT, RUNT = "scripts/localci/tests/test_hosted_compare.py", "scripts/localci/tests/test_runner.py"
 HD = "scripts/localci/tests/test_host_disk.py"
 CS = "scripts/localci/tests/test_cancelled_superseded.py"
+B29_UNIT = ("scripts/localci/tests/test_review_gate.py",)   # B29
+B29_GATE = (f"{TICK}::test_the_guilt_table_breaks_every_sub_criterion", f"{TICK}::test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it",
+            f"{TICK}::test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head")
+B29_MOMENT = (f"{PHASEF}::test_one_false_condition_alone_means_no_merge_no_push_and_the_line_names_it",)
 DRIVER, TP = "scripts/localci/steps_driver.py", "scripts/localci/tests/test_tree_pack.py"   # B14
 RUNT_COV = tuple(f"{RUNT}::{t}" for t in ("test_the_matrix_coverage_is_full_by_default_partial_where_declared_and_never_full_when_unreadable",
                                          "test_every_context_result_in_the_status_carries_the_base_matrix_coverage",
@@ -134,6 +143,7 @@ CQ_MIXED = cq("test_a_leg_that_mixes_the_gate_skip_with_any_other_skip_is_not_a_
 CQ_SEAM = cq("test_a_base_job_env_that_sets_a_leg_seam_blocks_the_plan", "test_a_base_step_env_or_a_matrix_step_env_that_sets_a_leg_seam_blocks_the_plan")
 CQ_REPO = cq("test_the_reader_refuses_a_repo_that_climbs_the_api_path")
 CQ_CONFIG = cq("test_a_queries_block_the_rewriter_cannot_read_as_text_is_no_verdict_and_writes_nothing")
+PF = "scripts/localci/tests/test_pr_first.py"   # B28
 RC = "scripts/localci/tests/test_ready_cache.py"   # B20
 RS = ("scripts/localci/tests/test_required_set.py",)   # the required set after the phase F flip
 CQ_CORPUS = ("scripts/localci/tests/test_runner.py::test_the_corpus_check_also_runs_the_gate_flags_corpus_from_base",)
@@ -249,6 +259,95 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-ref-window-shorter": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 46", (PRUNE_T,)),
     "b6-ref-window-longer": (PRUNE, "REF_WINDOW_H = 48", "REF_WINDOW_H = 72", (PRUNE_T,)),
     "b6-newest-guard-off": (PRUNE, 'elif top is None or im["created"] is None or im["created"] == top["created"] or im["tag"] in main:', 'elif top is None or im["created"] is None or im["tag"] in main:', (PRUNE_T,)),
+    "b30-cap-off": (PY, "            if st[0] >= REDECIDE_CAP:", "            if False:", RDA),
+    "b30-cap-not-reported": (PY, "                    redecide_capped.append(pr)", "                    pass", RDA),
+    "b30-backoff-ignored": (PY, "or anchor is None or now - anchor < REDECIDE_BACKOFF_S * st[0]:", "or anchor is None:", RDA),
+    "b30-backoff-flat": (PY, "REDECIDE_BACKOFF_S * st[0]:", "REDECIDE_BACKOFF_S:", RDA),
+    "b30-host-precondition-ignored": (PY, 'if "host_disk" in st[1] and not (host_free_gb is not None and host_free_gb >= start_floor_gb):', "if False:", RDA),
+    "b30-unmeasured-host-due": (PY, "not (host_free_gb is not None and host_free_gb >= start_floor_gb)", "not (host_free_gb is None or host_free_gb >= start_floor_gb)", RDA),
+    "b30-floor-exclusive": (PY, "host_free_gb >= start_floor_gb)", "host_free_gb > start_floor_gb)", RDA),
+    "b30-attempt-off-by-one": (PY, '"attempt": st[0] + 1}', '"attempt": st[0]}', RDA),
+    "b30-redecide-not-journalled": (PY, '        rec["redecide"] = redecide', "        pass", RDA),
+    "b30-redecide-not-passed-to-decide": (PY, 'redecide=todo[0].get("_redecide"))', "redecide=None)", RDA),
+    "b30-redec-evict-cap-ignored": (PY, "        elif (st := redec.get((n, head, base_sha), [0, [], None]))[1]:\n            if evictions[(n, head, base_sha)] >= EVICT_CAP:", "        elif (st := redec.get((n, head, base_sha), [0, [], None]))[1]:\n            if False:", RDA),
+    "b30-redec-evict-cap-off-by-one": (PY, "[1]:\n            if evictions[(n, head, base_sha)] >= EVICT_CAP:", "[1]:\n            if evictions[(n, head, base_sha)] > EVICT_CAP:", RDA),
+    "b30-redec-evict-cap-not-reported": (PY, "                if evict_capped is not None:\n                    evict_capped.append(pr)\n                continue\n            if st[0] >= REDECIDE_CAP:", "                if evict_capped is not None:\n                    pass\n                continue\n            if st[0] >= REDECIDE_CAP:", RDA),
+    "b30-backoff-ignores-evictions": (PY, "(st[2], evicted_ts.get((n, head, base_sha)))", "(st[2],)", RDA),
+    "b30-backoff-eviction-oldest": (PY, "evicted_ts[k] = max(evicted_ts.get(k, ts), ts)", "evicted_ts[k] = min(evicted_ts.get(k, ts), ts)", RDA),
+    "b30-backoff-anchor-min": (PY, "anchor = max([_epoch(t)", "anchor = min([_epoch(t)", RDA),
+    "b30-driver-plan-text-dropped": (PY, 'DRIVER_ERRORS = ("runner plan failed", ', 'DRIVER_ERRORS = (', RDA),
+    "b30-driver-noseal-text-dropped": (PY, '"the runner printed no seal", ', "", RDA),
+    "b30-driver-status-text-dropped": (PY, '"runner status failed", ', "", RDA),
+    "b30-driver-unreadable-text-dropped": (PY, ', "status.json unreadable")', ", )", RDA),
+    "b30-driver-seal-mismatch-admitted": (PY, '"status.json unreadable")', '"status.json unreadable", "status.json is bound")', RDA),
+    "b30-driver-ticktimeout-admitted": (PY, '"status.json unreadable")', '"status.json unreadable", "tick exceeded")', RDA),
+    "b30-host-class-full-admitted": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid", "host_disk_full")', RDA),
+    "b30-host-class-below-floor-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_unmeasured", "host_disk_floor_invalid")', RDA),
+    "b30-host-class-unmeasured-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_floor_invalid")', RDA),
+    "b30-host-class-floor-invalid-dropped": (PY, 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured", "host_disk_floor_invalid")', 'REDECIDE_HOST_CLASS = ("host_disk_below_floor", "host_disk_unmeasured")', RDA),
+    "b30-host-measured-not-all": (PY, '            or not all(host_measured(v) for v in host.values())\n', '            or not any(host_measured(v) for v in host.values())\n', RDA),
+    "b30-host-measured-unchecked": (PY, '            or not all(host_measured(v) for v in host.values())\n', '', RDA),
+    "b30-check-error-unnamed-admitted": (PY, '(v == "ERROR" and host and k in named)', '(v == "ERROR" and host)', RDA),
+    "b30-check-error-named-without-host": (PY, '(v == "ERROR" and host and k in named)', '(v == "ERROR" and k in named)', RDA),
+    "b30-check-error-always-admitted": (PY, 'not (v == "ERROR" and host and k in named)', 'not (v == "ERROR")', RDA),
+    "b30-host-checks-shape-unguarded": (PY, 'named = r.get("host_checks") if isinstance(r.get("host_checks"), list) else []', 'named = r.get("host_checks") or []', RDA),
+    "b30-host-checks-not-journalled": (PY, '"host_checks": [] if gate.get("error") else host_checks(status),', '"host_checks": [],', RDA),
+    "b30-host-checks-status-unchecked": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))', 'host_measured(v.get("reason")))', RDA),
+    "b30-host-checks-reason-unchecked": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured(v.get("reason")))', 'v.get("status") in ("ERROR", "BLOCKED"))', RDA),
+    "b30-host-checks-blocked-dropped": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured', 'v.get("status") in ("ERROR",) and host_measured', RDA),
+    "b30-host-checks-error-dropped": (PY, 'v.get("status") in ("ERROR", "BLOCKED") and host_measured', 'v.get("status") in ("BLOCKED",) and host_measured', RDA),
+    "b30-host-measured-str-unchecked": (PY, 'return isinstance(reason, str) and reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', 'return reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', RDA),
+    "b30-host-measured-colon-unsplit": (PY, 'reason.split(" ")[0].split(":")[0] in', 'reason.split(" ")[0] in', RDA),
+    "b30-host-measured-space-unsplit": (PY, 'reason.split(" ")[0].split(":")[0] in', 'reason.split(":")[0] in', RDA),
+    "b30-host-measured-prefix": (PY, 'reason.split(" ")[0].split(":")[0] in REDECIDE_HOST_CLASS', 'reason.startswith(REDECIDE_HOST_CLASS)', RDA),
+    "b30-host-not-passed-to-triage": (PY, "host_free_gb=a.host_free_gb, start_floor_gb=a.min_host_free_gb)", "host_free_gb=None, start_floor_gb=a.min_host_free_gb)", RDA),
+    "b30-ctx-fail-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "FAIL")', RDA),
+    "b30-ctx-blocked-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "BLOCKED")', RDA),
+    "b30-ctx-error-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "ERROR")', RDA),
+    "b30-ctx-interrupted-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "INTERRUPTED")', RDA),
+    "b30-ctx-running-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "RUNNING")', RDA),
+    "b30-ctx-stale-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "STALE")', RDA),
+    "b30-ctx-pass-admitted": (PY, 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED")', 'REDECIDE_CTX = ("OK", "UNCOVERED", "QUEUED", "PASS")', RDA),
+    "b30-host-ctx-fail-admitted": (PY, 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")', 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED", "FAIL")', RDA),
+    "b30-host-ctx-ok-admitted": (PY, 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")', 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED", "OK")', RDA),
+    "b30-host-ctx-interrupted-admitted": (PY, 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")', 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED", "INTERRUPTED")', RDA),
+    "b30-host-ctx-running-admitted": (PY, 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")', 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED", "RUNNING")', RDA),
+    "b30-host-ctx-stale-admitted": (PY, 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED")', 'REDECIDE_HOST_CTX = ("ERROR", "BLOCKED", "STALE")', RDA),
+    "b30-check-fail-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "FAIL")', RDA),
+    "b30-check-interrupted-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "INTERRUPTED")', RDA),
+    "b30-check-running-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "RUNNING")', RDA),
+    "b30-check-stale-admitted": (PY, 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED")', 'REDECIDE_CHECK = ("PASS", "NOT_APPLICABLE", "BLOCKED", "QUEUED", "STALE")', RDA),
+    "b30-overall-fail-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "FAIL")', RDA),
+    "b30-overall-interrupted-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "INTERRUPTED")', RDA),
+    "b30-overall-pass-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "PASS")', RDA),
+    "b30-overall-running-admitted": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("BLOCKED", "ERROR", "RUNNING")', RDA),
+    "b30-overall-blocked-dropped": (PY, 'REDECIDE_OVERALL = ("BLOCKED", "ERROR")', 'REDECIDE_OVERALL = ("ERROR",)', RDA),
+    "b30-overall-error-any-text": (PY, '            or (r.get("overall") == "ERROR" and not driver)\n', '', RDA),
+    "b30-overall-error-non-str-text": (PY, 'driver = isinstance(err, str) and err.startswith(DRIVER_ERRORS)', 'driver = err is None or err.startswith(DRIVER_ERRORS)', RDA),
+    "b30-section-shape-unguarded": (PY, '    if not (isinstance(ctx, dict) and isinstance(host, dict) and isinstance(checks, dict)):\n        return []\n', '', RDA),
+    "b30-replay-redecided": (PY, 'if (r.get("replay") or r.get("gate_pending") is True', 'if (r.get("gate_pending") is True', RDA),
+    "b30-gate-pending-redecided": (PY, ' or r.get("gate_pending") is True or r.get("non_executed")', ' or r.get("non_executed")', RDA),
+    "b30-non-executed-redecided": (PY, ' or r.get("non_executed") or r.get("overall") not in REDECIDE_OVERALL', ' or r.get("overall") not in REDECIDE_OVERALL', RDA),
+    "b30-host-class-dropped": (PY, '("host_disk", bool(host))', '("host_disk", False)', RDA),
+    "b30-error-class-dropped": (PY, '("error", r.get("overall") == "ERROR")', '("error", False)', RDA),
+    "b30-host-named-ctx-held-to-rest": (PY, '(REDECIDE_HOST_CTX if k in host else REDECIDE_CTX)', 'REDECIDE_CTX', RDA),
+    "b30-host-named-ctx-unchecked": (PY, '(REDECIDE_HOST_CTX if k in host else REDECIDE_CTX)', '(REDECIDE_HOST_CTX if k in host else REDECIDE_CTX) + (tuple(ctx.values()) if k in host else ())', RDA),
+    "b30-window-ignored": (PY, 'counts = bool(why) and (not is_ts(ts) or now - _epoch(ts) <= REDECIDE_WINDOW_S)', 'counts = bool(why)', RDA),
+    "b30-window-inverted": (PY, 'now - _epoch(ts) <= REDECIDE_WINDOW_S)', 'now - _epoch(ts) > REDECIDE_WINDOW_S)', RDA),
+    "b30-window-edge-exclusive": (PY, 'now - _epoch(ts) <= REDECIDE_WINDOW_S)', 'now - _epoch(ts) < REDECIDE_WINDOW_S)', RDA),
+    "b30-window-unreadable-ts-uncounted": (PY, 'counts = bool(why) and (not is_ts(ts) or now', 'counts = bool(why) and (is_ts(ts) and now', RDA),
+    "b30-window-wide": (PY, 'REDECIDE_WINDOW_S = 6 * 3600 ', 'REDECIDE_WINDOW_S = 600 * 3600 ', RDA),
+    "b30-window-zero": (PY, 'REDECIDE_WINDOW_S = 6 * 3600 ', 'REDECIDE_WINDOW_S = 0 ', RDA),
+    "b30-older-reasons-carry": (PY, 'redec[k] = [redec.get(k, [0])[0] + counts, why, ts]', 'redec[k] = [redec.get(k, [0, []])[0] + counts, why or redec.get(k, [0, []])[1], ts]', RDA),
+    "b30-count-resets": (PY, 'redec[k] = [redec.get(k, [0])[0] + counts, why, ts]', 'redec[k] = [counts, why, ts]', RDA),
+    "b30-cap-off-by-one": (PY, '            if st[0] >= REDECIDE_CAP:', '            if st[0] > REDECIDE_CAP:', RDA),
+    "b30-first-redecide-immediate": (PY, 'REDECIDE_BACKOFF_S * st[0]:', 'REDECIDE_BACKOFF_S * (st[0] - 1):', RDA),
+    "b30-capped-key-falls-through": (PY, '                    redecide_capped.append(pr)\n                continue\n', '                    redecide_capped.append(pr)\n', RDA),
+    "b30-replay-rows-counted": (PY, '    for r in recs:\n        if r.get("kind") == "decision" and not r.get("replay"):\n            k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))\n            why = transient_reasons(r)', '    for r in recs:\n        if r.get("kind") == "decision":\n            k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))\n            why = transient_reasons(r)', RDA),
+    "b30-decision-ts-oldest": (PY, 'redec[k] = [redec.get(k, [0])[0] + counts, why, ts]', 'redec[k] = [redec.get(k, [0])[0] + counts, why, (redec.get(k) or [0, [], ts])[2]]', RDA),
+    "b30-unreadable-decision-ts-due-via-eviction": (PY, 'if not is_ts(st[2]) or anchor is None or', 'if anchor is None or', RDA),
+    "b30-redecide-sorts-first": (PY, '(p["number"], head_of(p)) in last, last.get(', '(p["number"], head_of(p)) in last and "_redecide" not in p, last.get(', RDA),
+    "b30-evict-ts-any-base": (PY, '                k = (r.get("pr"), r.get("head_sha"), r.get("base_sha"))\n                evicted_ts[k]', '                k = (r.get("pr"), r.get("head_sha"), base_sha)\n                evicted_ts[k]', RDA),
     "b6-never-list-off": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return False\n", (PRUNE_T,)),
     # lead's addenda (2026-10-08): service stand-ins from the BASE matrix, a cap of 2 per recipe, a tick in flight, the run in progress
     "b6-stand-ins-ignored": (PRUNE, "    return tag.startswith(NEVER) or tag in stand_ins\n", "    return tag.startswith(NEVER)\n", (PRUNE_T,)),
@@ -351,17 +450,17 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-verdict-days-31": (PRUNE, "FULL_DAYS, VERDICT_DAYS = 7, 30", "FULL_DAYS, VERDICT_DAYS = 7, 31", (PRUNE_T,)),
     "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
-    "b6-undated-run-trimmed": (PRUNE, "if age_h is None or age_h < FULL_DAYS * 24:", "if age_h is not None and age_h < FULL_DAYS * 24:", (PRUNE_T,)),
-    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
+    "b6-undated-run-trimmed": (PRUNE, '        if age_h is None or age_h < TREE_PACK_STALE_H:', '        if age_h is not None and age_h < TREE_PACK_STALE_H:', (PRUNE_T,)),
+    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free (start floor) no run starts
+    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
-    # B15: Pro's host floor of 90 GB, held through the run
-    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "b6-merger-floor-59": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "59.0"), B6_FLOOR),
+    # B15: Pro's host floor of 50 GB, held through the run
+    "floor-start-50": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "50.0"), HF),
     "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
     "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
     "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
@@ -370,8 +469,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                           "return (False if free is None else free < self.evict_gb), free", HF),
     "evict-not-rotated": (PY, 'if (r.get("kind") == "decision" and not r.get("replay")) or r.get("kind") == "evicted":',
                           'if (r.get("kind") == "decision" and not r.get("replay")):', HF),
-    "evict-cap-ignored": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if False:", HF),
-    "evict-cap-off-by-one": (PY, "if evictions[(n, head, base_sha)] >= EVICT_CAP:", "if evictions[(n, head, base_sha)] > EVICT_CAP:", HF),
+    "evict-cap-ignored": (PY, "decided:\n            if evictions[(n, head, base_sha)] >= EVICT_CAP:", "decided:\n            if False:", HF),
+    "evict-cap-off-by-one": (PY, "decided:\n            if evictions[(n, head, base_sha)] >= EVICT_CAP:", "decided:\n            if evictions[(n, head, base_sha)] > EVICT_CAP:", HF),
     "evict-window-ignored": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if True:", HF),
     "evict-window-inverted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if not is_ts(ts) or now - _epoch(ts) > EVICT_WINDOW_S:", HF),
     "evict-unreadable-ts-not-counted": (PY, "if not is_ts(ts) or now - _epoch(ts) <= EVICT_WINDOW_S:", "if is_ts(ts) and now - _epoch(ts) <= EVICT_WINDOW_S:", HF),
@@ -382,7 +481,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
                                      'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue", "hosted_required_green")', LV),
     "liveness-coverage-over-all-merged": (PY, '\n               and (n, head_of(p)) in decided_heads]', ']', LV),
     "liveness-window-ignored": (PY, "    return is_ts(ts) and clock - _epoch(ts) <= LIVENESS_WINDOW_S", "    return is_ts(ts)", LV),
-    "liveness-feeds-ready": (PY, '"phase_e_ready": ready, "liveness": live_block', '"phase_e_ready": ready and live_block["liveness_ok"], "liveness": live_block', LV),
+    "liveness-feeds-ready": (PY, '"phase_e_ready": ready, "false_green_breakdown"', '"phase_e_ready": ready and live_block["liveness_ok"], "false_green_breakdown"', LV),
     "liveness-replays-are-decided": (PY, ' for d in decisions if d.get("replay") is not True}', ' for d in decisions}', LV),
     "liveness-tick-reads-listing": (PY, "merged_listing(a) if emit else None", "merged_listing(a)", LV),
     "liveness-label-ok-uncounted": (PY, '"label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True)', '"label_ok_rows": 0', LV),
@@ -442,6 +541,20 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "r5-b17-requires-a-later-green": (HC, "            and bool(greens)}", "            and any((g.get(\"completed_at\") or \"\") > (e.get(\"completed_at\") or \"\") for g in greens)}", (*HA, CS)),
     "r5-reread-lists-nothing-it-dropped": (PY, "            superseded.append(rid)", "            pass", (CS,)),
     "r5-cli-overwrites-a-run-dirs-evidence": (HC, 'if (out_dir / "state" / "plan.json").exists():', "if False:", ("scripts/localci/tests/test_hosted_compare.py",)),
+    "b29-term-out-of-the-gate": (PY, 'GATE = ("local_checks_clean", "review_independent", "review_not_blocking", "executed_contexts_ok",', 'GATE = ("local_checks_clean", "review_independent", "executed_contexts_ok",', B29_GATE),
+    "b29-decision-alone-is-ignored": (PY, 'if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:', 'if "CHANGES_REQUESTED" in states:', B29_UNIT),
+    "b29-reviewer-list-ignored": (PY, 'if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:', 'if decision == "CHANGES_REQUESTED":', B29_UNIT + B29_GATE),
+    "b29-incomplete-list-trusted": (PY, 'type(latest.get("totalCount")) is not int or latest["totalCount"] != len(nodes)', "False", B29_UNIT),
+    "b29-unknown-state-trusted": (PY, "if any(st not in REVIEW_STATES for st in states):", "if False:", B29_UNIT),
+    "b29-nonstring-decision-trusted": (PY, "if decision is not None and not isinstance(decision, str):", "if False:", B29_UNIT),
+    "b29-absent-decision-reads-clear": (PY, 'if not isinstance(p, dict) or "reviewDecision" not in p:\n        return "the review decision is unreadable"\n    decision, latest = p["reviewDecision"], p.get("latestOpinionatedReviews")', 'if not isinstance(p, dict):\n        return "the review decision is unreadable"\n    decision, latest = p.get("reviewDecision"), p.get("latestOpinionatedReviews")', B29_UNIT + B29_MOMENT),
+    "b29-pr-side-term-never-set": (PY, "review_not_blocking=review_block(p),", "review_not_blocking=None,", B29_GATE),
+    "b29-merge-time-reread-unchecked": (PY, "if reason := review_block(pull):", "if False and review_block(pull):", B29_MOMENT),
+    "b29-liveness-excludes-the-term": (PY, 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue")', 'LIVENESS_EXCLUDED = ("label_privileged", "not_in_queue", "first_enqueue", "review_not_blocking")', B29_UNIT),
+    "b29-old-row-without-the-term-counts": (PY, "all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)", "all(c.get(k) is not False for k in CRITERION if k not in LIVENESS_EXCLUDED)", B29_UNIT),
+    "b29-query-drops-writers-only": (PY, "latestOpinionatedReviews(first: 100, writersOnly: true)", "latestOpinionatedReviews(first: 100)", B29_UNIT),
+    "b29-dismissed-clears-another-reviewer": (PY, 'if decision == "CHANGES_REQUESTED" or "CHANGES_REQUESTED" in states:', 'if decision == "CHANGES_REQUESTED" or ("CHANGES_REQUESTED" in states and "DISMISSED" not in states):', B29_UNIT),
+    "b29-query-drops-the-reviewer-list": (PY, "latestOpinionatedReviews(first: 100, writersOnly: true)", "latestOpinionatedReviews(first: 99, writersOnly: true)", B29_UNIT),
     "parent-pid-not-handed": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": "0"}', HF),
     "parent-watch-unwired": (RUN_PY, '    if a.cmd in ("plan", "run"):\n        watch_parent()', '    if False:\n        watch_parent()', HF),
     "parent-watch-pid-1": (RUN_PY, 'if not raw.isdigit() or int(raw) <= 1:', 'if not raw.isdigit():', HF),
@@ -480,10 +593,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
     "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
     # B6-4: pro.disk_floor — ok above 90 GB, warning 60-90, failed under 60
-    "b6-floor-organ-ok-at-90": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
-    "b6-floor-organ-ok-above-91": (FLOOR_SH, "OK_ABOVE_MB=90000 ", "OK_ABOVE_MB=91000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-ok-at-60": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-61": (FLOOR_SH, "OK_ABOVE_MB=60000 ", "OK_ABOVE_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-49": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=49000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-51": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=51000 ", (FLOOR_T,)),
     "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
@@ -516,7 +629,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f1-ok-ignores-conflict": (PY, 'and line["base_current"] and line["clean"]', 'and line["base_current"]', (TICK,)),
     "f1-base-current-always": (PY, 'line["base_current"] = line["remote_main"] == base_sha', 'line["base_current"] = True', (TICK,)),
     "f1-base-current-vs-mirror": (PY, 'line["base_current"] = line["remote_main"] == base_sha', 'line["base_current"] = line["mirror_main"] == base_sha', (TICK,)),
-    "f1-remote-read-without-timeout": (PY, "check=False, timeout=REMOTE_TIMEOUT_S)", "check=False)", (TICK,)),
+    "f1-remote-read-without-timeout": (PY, '"ls-remote", "origin", f"refs/heads/{base}", check=False, timeout=REMOTE_TIMEOUT_S)', '"ls-remote", "origin", f"refs/heads/{base}", check=False)', (MERGER_T,)),
+    "f1-remote-read-without-timeout-phase-f": (PY, '"ls-remote", url, f"refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False, timeout=REMOTE_TIMEOUT_S)', '"ls-remote", url, f"refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}, check=False)', (PHASEF,)),
     "f1-remote-error-is-current": (PY, "        errors.append(redact(f\"{type(exc).__name__}: {exc}\"))\n    try:\n        line[\"mirror_main\"]",
                                    "        line[\"base_current\"] = True\n    try:\n        line[\"mirror_main\"]", (TICK,)),
     "f1-journal-failure-reaches-decide": (PY, "        except Exception as exc:  # noqa: BLE001 — a shadow never turns a decision", "        except ZeroDivisionError as exc:  # noqa: BLE001", (TICK,)),
@@ -539,14 +653,14 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f1-bites-always": (PY, '"bites": isinstance(p.get("body"), str) and BITES_RE.search(p["body"]) is not None', '"bites": True', (TICK,)),
     "f1-bites-case-sensitive": (PY, "re.M | re.I)   # the PR contract", "re.M)   # the PR contract", (TICK,)),
     "f1-bites-anywhere": (PY, 'BITES_RE = re.compile(r"^[ \\t>*_-]*Bites', 'BITES_RE = re.compile(r".*Bites', (TICK,)),
-    "f1-report-counts-other-kinds": (PY, 'wm = [r for r in window if r.get("kind") == "would_merge"]', 'wm = [r for r in window if r.get("kind") in ("would_merge", "would_enqueue")]', (REPORT,)),
+    "f1-report-counts-other-kinds": (PY, 'wm = [r for r in window if r.get("kind") == "would_merge" and not r.get("retry")]', 'wm = [r for r in window if r.get("kind") in ("would_merge", "would_enqueue") and not r.get("retry")]', (REPORT,)),
     "f1-report-ok-any": (PY, '"ok": sum(1 for r in wm if r.get("ok") is True)', '"ok": len(wm)', (REPORT,)),
     "f1-report-conflicted-inverted": (PY, 'sum(1 for r in wm if r.get("clean") is False and', 'sum(1 for r in wm if r.get("clean") is True and', (REPORT,)),
     "f1-report-base-moved-inverted": (PY, 'sum(1 for r in wm if r.get("base_current") is False and', 'sum(1 for r in wm if r.get("base_current") is True and', (REPORT,)),
     "f1-report-phase-f-live": (PY, 'phase_f = "shadow" if not', 'phase_f = "live" if not', (REPORT,)),
     # F2 (phase F, the executor): disarmed by construction — each arming condition is one rule, and the push is plain
-    "f2-ready-dropped": (PY, 'elif rep.get("phase_e_ready") is not True:', "elif False:", (PHASEF,)),
-    "f2-ready-unreadable-passes": (PY, 'if rep.get("refused"):', "if False:", (PHASEF,)),
+    "f2-ready-dropped": (PY, '    if doc.get("phase_e_ready") is not True:', '    if False:', (PHASEF,)),
+    "f2-ready-unreadable-passes": (PY, '    if doc.get("refused"):\n        return redact(f"READY unreadable', '    if False:\n        return redact(f"READY unreadable', (PHASEF,)),
     "f2-precheck-removed": (PY, "elif (early := ready_precheck(state)):", "elif (early := None):", (PHASEF,)),
     "f2-precheck-passes-without-the-report": (PY, "        why.append(early)\n    else:\n        try:", "        why.append(early)\n    elif True:\n        pass\n    else:\n        try:", (PHASEF,)),
     "f2-precheck-days-ignored": (PY, "if days + READY_SPAN_SLACK_DAYS < READY_MIN_DAYS:", "if False:", (PHASEF,)),
@@ -578,7 +692,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "f2-subject-without-number": (PY, 'subject = title if title.endswith(f"(#{n})") else f"{title} (#{n})"', "subject = title", (PHASEF,)),
     "f2-bites-not-carried": (PY, "([bites] if bites else [])", "[]", (PHASEF,)),
     "f2-key-in-the-runner-env": (PY, '"LOCALCI_PARENT_PID": str(os.getpid())}', '"LOCALCI_PARENT_PID": str(os.getpid()), "GIT_SSH_COMMAND": "ssh -i " + str(base_wt.parent.parent / KEY_FILE)}', (PHASEF,)),
-    "f2-key-in-the-process-env": (PY, 'env={"GIT_SSH_COMMAND": push_ssh_command(state)}', 'env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
+    "f2-key-in-the-process-env": (PY, '"push", "origin", f"{commit}:refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}', '"push", "origin", f"{commit}:refs/heads/{base}", env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
+    "f2-key-in-the-process-env-ls-remote": (PY, '"ls-remote", url, f"refs/heads/{base}", env={"GIT_SSH_COMMAND": push_ssh_command(state)}', '"ls-remote", url, f"refs/heads/{base}", env=os.environ.setdefault("GIT_SSH_COMMAND", push_ssh_command(state)) and {"GIT_SSH_COMMAND": push_ssh_command(state)}', (PHASEF,)),
     "f2-fetch-guard-dropped": (PY, "if anchor is None or halt_reason(state) is not None:", "if True:", (PHASEF,)),
     "f2-fetch-guard-ignores-the-halt": (PY, "if anchor is None or halt_reason(state) is not None:", "if anchor is None:", (PHASEF,)),
     "f2-fetch-anchor-is-unpushed": (PY, 'if r.get("kind") == "pushed" and is_sha(r.get("merge_commit"))', 'if r.get("kind") in ("pushed", "merged") and is_sha(r.get("merge_commit"))', (PHASEF,)),
@@ -644,8 +759,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b10-oldest-entry-times-the-verdict": (HC, "when = max(stamps) if", "when = min(stamps) if", (STALE,)),
     "b10-judge-unwired-in-the-tick": (PY, "run_dir, judge, gate=GateJudge(", "run_dir, None, gate=GateJudge(", (TICK,)),
     "b10-tick-drops-the-stale-rows": (PY, '**({"stale": stale} if stale else {})', "**{}", (STALE,)),
-    "b10-report-compare-without-judge": (PY, 'live["statuses"], stale_judge=judge, gate_judge=gate)\n                for k, v',
-                                         'live["statuses"], gate_judge=gate)\n                for k, v', (REPORT,)),
+    "b10-report-compare-without-judge": (PY, 'live["statuses"], stale_judge=judge, gate_judge=gate,\n                                 abort_judge=abort,', 'live["statuses"], gate_judge=gate,\n                                 abort_judge=abort,', (REPORT,)),
     "b10-report-reclassifies-without-evidence": (PY, 'if reading["stale"] is True:\n            out.append', 'if True:\n            out.append', (REPORT,)),
     "b10-report-reclassifies-a-red-that-went": (PY, 'if h["verdict"] != "RED":\n            kept.append(', "if False:\n            kept.append(", (REPORT,)),
     "b10-report-never-subtracts": (PY, "recorded_fg += raw - len(got)", "recorded_fg += raw", (REPORT,)),
@@ -692,8 +806,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b11-oldest-merge-first": (PY, "for line in log:   # newest first (B11b)", "for line in reversed(log):   # (B11b)", (REPLAY,)),
     "b11-replayed-again": (PY, "if sha in done or not m or not parents.split():", "if not m or not parents.split():", (REPLAY,)),
     "b11-unconfirmed-commit-replayed": (PY, 'p.get("merged") is True and p.get("merge_commit_sha") == sha and head_of(p)', 'p.get("merged") is True and head_of(p)', (REPLAY,)),
-    "b11-stale-judge-on-a-replay": (PY, "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE)",
-                                    "hosted_summary(a.repo, a.base, status, cand_sha, run_dir, StaleJudge(repo_dir, base_sha), REPLAY_NOTE)", (REPLAY,)),
+    "b11-stale-judge-on-a-replay": (PY, 'hosted_summary(a.repo, a.base, status, cand_sha, run_dir, None, REPLAY_NOTE, matrix=', 'hosted_summary(a.repo, a.base, status, cand_sha, run_dir, StaleJudge(repo_dir, base_sha), REPLAY_NOTE, matrix=', (REPLAY,)),
     "b11-replay-enqueues": (PY, "        if replay:\n            return 0\n        enq = ", "        if False:\n            return 0\n        enq = ", (REPLAY,)),
     "b11-replay-counted-without-threshold": (PY, 'and compared_enough(compared_ctx, len(not_full["partial"]))})', 'and (d.get("replay") is True or compared_enough(compared_ctx, len(not_full["partial"]))) })', (REPORT,)),
     "b11-pr-counted-twice": (PY, 'merges = sorted({r["pr"]: r["merged_at"] for r in rows if r["compared_merge"]}.values())', 'merges = sorted(r["merged_at"] for r in rows if r["compared_merge"])', (REPORT,)),
@@ -758,8 +871,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "hc-no-verdict-unnamed": (HC, '''+ (f" {res['no_verdict']}" if isinstance(res.get("no_verdict"), str) else "")''', '+ ""', (HCT,)),
     # B17 — a check run cancelled by concurrency is no verdict whenever a completed non-cancelled run of the same name decides, in either order
     "b17-drop-a-lone-cancelled": (HC, "return [e for e in entries if decided and run(e)", "return [e for e in entries if run(e)", (HCT,)),
-    "b17-drop-across-apps": (HC, "return e[\"app_id\"] == app_id if is_pinned(app_id) else True", "return True", (HCT,)),
-    "b17-status-decides": (HC, 'return e["source"] != "commit-status" and e["conclusion"] is not None', 'return e["conclusion"] is not None', (HCT,)),
+    "b17-drop-across-apps": (HC, 'return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    decided = any(', 'return True\n\n    decided = any(', (HCT,)),
+    "b17-drop-across-apps-answered": (HC, 'return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    greens = [', 'return True\n\n    greens = [', (HCT,)),
+    "b17-status-decides": (HC, 'return e["source"] != "commit-status" and e["conclusion"] is not None\n\n    def same_app(e):\n        return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    decided = any(', 'return e["conclusion"] is not None\n\n    def same_app(e):\n        return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    decided = any(', (HCT,)),
+    "b17-status-decides-answered": (HC, 'return e["source"] != "commit-status" and e["conclusion"] is not None\n\n    def same_app(e):\n        return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    greens = [', 'return e["conclusion"] is not None\n\n    def same_app(e):\n        return e["app_id"] == app_id if is_pinned(app_id) else True\n\n    greens = [', (HCT,)),
     "b17-drop-timed-out-too": (HC, 'and e["conclusion"] == "cancelled" and same_app(e)]', 'and e["conclusion"] in ("cancelled", "timed_out") and same_app(e)]', (HCT,)),
     "b17-cancelled-sibling-decides": (HC, 'decided = any(run(o) and o["conclusion"] != "cancelled" and same_app(o)', "decided = any(run(o) and same_app(o)", (HCT,)),
     "b17-reread-ignores-stuck-red": (PY, "return flipped if not stuck and len(flipped) == raw else []", "return flipped if len(flipped) == raw else []", (CS,)),
@@ -927,7 +1042,7 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "rs-matrix-not-memoized": (HC, "    if mkey not in _CACHE:", "    if True:", RS),
     "rs-imports-phase-e-flip": (HC, "    if not isinstance(rs, dict):\n        return False\n    rules, bypass", "    import phase_e_flip  # noqa\n    if not isinstance(rs, dict):\n        return False\n    rules, bypass", RS),
     # R2/R3: each call site reads the required set at the BASE its commit was built on
-    "rs-report-reads-at-the-sha": (PY, 'base_matrix(state / "repo.git", d.get("base_sha")))\n                hc.required_names(lives[lkey]', 'base_matrix(state / "repo.git", sha))\n                hc.required_names(lives[lkey]', (REPORT,)),
+    "rs-report-reads-at-the-sha": (PY, 'lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", d.get("base_sha")))', 'lives[lkey] = hc.fetch_live(a.repo, a.base, sha, base_matrix(state / "repo.git", sha))', (REPORT,)),
     "rs-report-cache-keyed-by-sha": (PY, 'lkey = (sha, d.get("base_sha"))   # R3', 'lkey = (sha, None)   # R3', (REPORT,)),
     "rs-decide-reads-at-the-head": (PY, "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)),\n                                         matrix=base_matrix(repo_dir, base_sha))",
                                     "gate=GateJudge(a.repo, judge, plan_time(run_dir), frozen_reads(run_dir)),\n                                         matrix=base_matrix(repo_dir, head))", (f"{TICK}::test_the_tick_reads_the_required_set_at_the_decided_base_never_at_the_head",)),
@@ -1034,6 +1149,89 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "pi-history-failure-is-error": (RUNNER, '            hist = None\n', '            return {"status": "ERROR", "reason": hist, "rc": None, "counts": None}\n', ("scripts/localci/tests/test_pytest_indexed.py",)),
     "pi-missing-311-silent": (RUNNER, '        if py == "python":\n            notes.append(', '        if False:\n            notes.append(', ("scripts/localci/tests/test_pytest_indexed.py",)),
     "pi-history-dropped": (RUNNER, '"history": hist, "argv": argv', '"history": None, "argv": argv', ("scripts/localci/tests/test_pytest_indexed.py",)),
+    # B28: a waiting labelled PR is decided before a replay
+    "b28-always-replay-first": (PY, "if (reason and todo and has_arm_label(todo[0]) and os.environ", "if (False and todo and has_arm_label(todo[0]) and os.environ", (PF,)),
+    "b28-ignore-label": (PY, 'if (reason and todo and has_arm_label(todo[0]) and os.environ', 'if (reason and todo and True and os.environ', (PF,)),
+    "b28-ignore-gate-pending": (PY, "if (reason and todo and has_arm_label(todo[0]) and os.environ", "if (reason and (todo or deferred) and has_arm_label((todo or deferred)[0]) and os.environ", (PF,)),
+    "b28-no-starvation-bound": (PY, "if skipped >= REPLAY_MAX_SKIP or (first is not None and time.time() - first >= REPLAY_MAX_SKIP_S):", "if False:", (PF,)),
+    "b28-no-skip-count-bound": (PY, "if skipped >= REPLAY_MAX_SKIP or (first", "if (first", (PF,)),
+    "b28-no-skip-age-bound": (PY, "or (first is not None and time.time() - first >= REPLAY_MAX_SKIP_S):", ":", (PF,)),
+    "b28-skip-count-off-by-one": (PY, "if skipped >= REPLAY_MAX_SKIP or", "if skipped > REPLAY_MAX_SKIP or", (PF,)),
+    "b28-phase-f-defers": (PY, 'and os.environ.get(PHASE_F_ENV) != "1"\n            and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', 'and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', (PF,)),
+    "b28-defers-before-a-first-decision": (PY, 'and any(r.get("kind") == "decision" and not r.get("replay") for r in recs)):   # B28', '):   # B28', (PF, *PENDING)),
+    "b28-forced-none-no-reset": (PY, "if forced and pick is None:", "if False:", (PF,)),
+    "b28-count-never-resets-on-replay": (PY, '''(r.get("kind") == "decision" and r.get("replay")) or (r.get("kind") == "skipped" and r.get("why") == "replay_none"):''', '(r.get("kind") == "skipped" and r.get("why") == "replay_none"):', (PF,)),
+    "b28-any-decision-resets-the-count": (PY, '(r.get("kind") == "decision" and r.get("replay")) or', '(r.get("kind") == "decision") or', (PF,)),
+    "b28-replay-none-every-turn": (PY, "if forced and pick is None:", "if pick is None:", (PF,)),
+    "b28-age-from-the-newest-deferral": (PY, "else min(first, _epoch", "else max(first, _epoch", (PF,)),
+    "b28-skip-bound-60": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 60, 43200", (PF,)),
+    "b28-skip-age-bound-86400": (PY, "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 43200", "REPLAY_MAX_SKIP, REPLAY_MAX_SKIP_S = 6, 86400", (PF,)),
+    # B33 S1: a tick that bore a verdict starts the next at once — the predicate and the wrapper's chain
+    "b33-drop-error-row-check": (TCH, "        if kind in STOP_KINDS:\n", "        if False:\n", B33),
+    "b33-host-no-verdict-chains": (TCH, '            if row.get("host_no_verdict"):\n', "            if False:\n", B33),
+    "b33-stop-kind-dropped-merge_error": (TCH, '"merge_error", ', "", B33),
+    "b33-stop-kind-dropped-push_unlanded": (TCH, '"push_unlanded", ', "", B33),
+    "b33-stop-kind-dropped-push_refused": (TCH, '"push_refused", ', "", B33),
+    "b33-stop-kind-dropped-storage_diverged": (TCH, ', "storage_diverged")', ")", B33),
+    "b33-decision-error-ignored": (TCH, '            if row.get("error") is not None:\n', "            if False:\n", B33),
+    "b33-seal-not-required": (TCH, '            if not (isinstance(row.get("seal"), str) and SEAL.fullmatch(row["seal"])):\n', "            if False:\n", B33),
+    "b33-seal-prefix-match": (TCH, 'SEAL.fullmatch(row["seal"])', 'SEAL.match(row["seal"])', B33),
+    "b33-skipped-is-work": (TCH, 'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed")',
+                            'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed", "skipped")', B33),
+    "b33-refresh-failed-not-work": (TCH, 'CHAIN_KINDS = ("decision", "ready_refreshed", "ready_refresh_failed", "pushed")',
+                                    'CHAIN_KINDS = ("decision", "ready_refreshed", "pushed")', B33),
+    "b33-whole-journal-read": (TCH, "            fh.seek(offset)\n", "            fh.seek(0)\n", B33),
+    "b33-shrunk-journal-chains": (TCH, "            if offset > size:\n", "            if False:\n", B33),
+    "b33-chain-on-rc-nonzero": (TCH, "    if rc != 0:\n", "    if False:\n", B33),
+    "b33-torn-line-skipped": (TCH, '        except ValueError:\n            return False, "an appended line is not JSON"\n', "        except ValueError:\n            continue\n", B33),
+    "b33-cap-13": (SH, 'CHAIN_MAX="${MERGER_CHAIN_MAX:-12}"', 'CHAIN_MAX="${MERGER_CHAIN_MAX:-13}"', B33),
+    "b33-cap-ignored": (SH, 'elif [ "$DEPTH" -ge "$CHAIN_MAX" ]; then', "elif false; then", B33),
+    "b33-ignore-chain-off-file": (SH, 'elif [ -e "$STATE/chain_off" ]; then', "elif false; then", B33),
+    "b33-ignore-chain-env-switch": (SH, 'elif [ "${LOCALCI_MERGER_CHAIN:-1}" = "0" ]; then', "elif false; then", B33),
+    "b33-chain-on-rc-nonzero-sh": (SH, '"$STATE/decisions.jsonl" "$OFFSET" "$TICK_RC" 2>/dev/null', '"$STATE/decisions.jsonl" "$OFFSET" 0 2>/dev/null', B33),
+    "b33-warned-tick-chains": (SH, 'elif [ -n "$WARN" ]; then chain_why=', "elif false; then chain_why=", B33),
+    "b33-absent-predicate-chains": (SH, 'elif [ ! -f "$CODE/tick_chain.py" ]; then chain_why=', "elif false; then chain_why=", B33),
+    "b33-no-heartbeat-before-exec": (SH, '  finish_with "$TICK_RC"\n  trap - EXIT', "  :\n  trap - EXIT", B33),
+    "b33-depth-not-carried": (SH, "  export MERGER_CHAIN_DEPTH=$((DEPTH + 1))\n", "  :\n", B33),
+    "b33-prediction-from-stale-offset": (SH, 'OFFSET="$(wc -c 2>/dev/null < "$STATE/decisions.jsonl" | tr -d \'[:space:]\' || true)"', 'OFFSET=0', B33),
+    "b33-garbage-depth-chains": (SH, "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0; CHAIN_OK=0 ;; esac", "case \"$DEPTH\" in '' | *[!0-9]*) DEPTH=0 ;; esac", B33),
+    "b33-sibling-instead-of-exec": (SH, '  exec "$BASH" "$0" ||', '  "$BASH" "$0" ||', B33),
+    # B34 P1: the shepherd's budget floors, call cap, fork predicate and off-limits entities, against test_shepherd.py
+    "b34-skip-floor-inclusive": ("scripts/localci/shepherd.py", "if core < CORE_SKIP or", "if core <= CORE_SKIP or", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-graphql-floor-inclusive": ("scripts/localci/shepherd.py", "or graphql < GQL_SKIP:", "or graphql <= GQL_SKIP:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-observe-floor-inclusive": ("scripts/localci/shepherd.py", "if core < CORE_OBSERVE:", "if core <= CORE_OBSERVE:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-cap-check-dropped": ("scripts/localci/shepherd.py", "if self.used + n > self.cap:", "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-cap-off-by-one": ("scripts/localci/shepherd.py", "if self.used + n > self.cap:", "if self.used + n >= self.cap:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-fork-predicate-dropped": ("scripts/localci/shepherd.py", 'if pr.get("isCrossRepository"):', "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-env-substring": ("scripts/localci/shepherd.py", "base.startswith(OFF_LIMITS_ENV_PREFIX)", '"env" in path', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-fly-toml-top-level-only": ("scripts/localci/shepherd.py", "base in OFF_LIMITS_BASENAMES", "path in OFF_LIMITS_BASENAMES", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-lease-ignored": ("scripts/localci/shepherd.py", "if fh is None:", "if False:", ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-ratelimit-error-acts": ('scripts/localci/shepherd.py', '        res = rest("rate_limit").get("resources") or {}\n', '        try:\n            res = rest("rate_limit").get("resources") or {}\n        except Exception:\n            res = {"core": {"remaining": 5000}, "graphql": {"remaining": 5000}}\n', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-ratelimit-missing-acts": ('scripts/localci/shepherd.py', '.get("remaining") for k in ("core", "graphql"))', '.get("remaining", 5000) for k in ("core", "graphql"))', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-state-is-the-mergers": ('scripts/localci/shepherd.py', '"local-ci" / "shepherd"', '"local-ci" / "merger"', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-state-is-the-mergers": ('scripts/localci/localci_shepherd_tick.sh', 'local-ci/shepherd}', 'local-ci/merger}', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-warning-reads-ok": ('scripts/localci/localci_shepherd_tick.sh', 'elif [ "$STATUS" = "warning" ]; then', 'elif false; then', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-killswitch-silent": ('scripts/localci/localci_shepherd_tick.sh', '  heartbeat disabled "kill switch LOCALCI_SHEPHERD_ENABLED=false"\n', '', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-wrapper-full-clone": ('scripts/localci/localci_shepherd_tick.sh', 'git clone --bare --shared --quiet', 'git clone --bare --quiet', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-env-dot-substring": ('scripts/localci/shepherd.py', 'base.startswith(OFF_LIMITS_ENV_PREFIX)', 'OFF_LIMITS_ENV_PREFIX in path', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-write-via-merger": ('scripts/localci/shepherd.py', '\n\ndef main(argv', '\n\ndef _w(a, state, rec, loc, live):\n    return mg.enqueue_step(a, state, rec, loc, live)\n\n\ndef main(argv', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-write-verb-assembled": ('scripts/localci/shepherd.py', '\n\ndef main(argv', '\n\n_Q = "mut" + "ation{addLabelsToLabelable(input:{}){clientMutationId}}"\n\n\ndef main(argv', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-journal-armed-true": ('scripts/localci/shepherd.py', '"armed": False', '"armed": True', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-brief-truncation-ignored": ('scripts/localci/shepherd.py', '        return None   # a truncated file list', '        pass   # a truncated file list', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-files-truncation-ignored": ('scripts/localci/shepherd.py', 'if (files.get("totalCount") or 0) > len(files.get("nodes") or []):\n        return {**row, "actions": ["never_auto"]', 'if False:\n        return {**row, "actions": ["never_auto"]', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-role-failure-retried": ('scripts/localci/shepherd.py', '            roles[login] = None\n            continue\n', '            continue\n', ('scripts/localci/tests/test_shepherd.py',)),
+    "b34-rate-limit-uncounted": ('scripts/localci/shepherd.py', 'rest("rate_limit").get', 'get("rate_limit").get', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-labels-total-ignored": ('scripts/localci/shepherd.py', '(labels.get("totalCount") or 0) > len(nodes)', 'False', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-labels-truncated-is-candidate": ('scripts/localci/shepherd.py', '    elif labels_cut:', '    elif False:', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-roles-read-for-truncated-labels": ('scripts/localci/shepherd.py', 'mg.ARM_LABEL in labels or labels_cut or', 'mg.ARM_LABEL in labels or', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-gate-suppresses-label": ('scripts/localci/shepherd.py', 'row["actions"].append("would_label")', 'row["actions"] = row["actions"] or ["would_label"]', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-journal-first-action-only": ('scripts/localci/shepherd.py', 'for action in r["actions"]:', 'for action in r["actions"][:1]:', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-code-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -rf "$CODE" || true', 'rm -rf "$CODE"', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-out-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$OUT" || true', 'rm -f "$OUT"', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
+    "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
+    # B31: the label read-back and the pre-flip census
+    # B31 round 3: the predicate census — every conditional of the helper and label_census.py has a mutant (README table)
 }
 
 
@@ -1042,13 +1240,18 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh"):   # B31: the helper, its probe and its shell table
+        shutil.copy2(ROOT / rel, dest / rel)
+    (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
+    shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
-    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json"):
+    for rel in ("scripts/ops/pro_disk_floor_tick.sh", "infra/launchagents/com.nuzantara.disk-floor.plist", "infra/home-fork/declared-pairs.json",
+                "infra/launchagents/com.balizero.localci-shepherd.plist", "docs/rules/RULINGS.md"):   # B34: test_shepherd.py reads the last two
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)   # B6-4: the disk-floor organ and the files its test reads
         shutil.copy2(ROOT / rel, dest / rel)
 
@@ -1064,11 +1267,72 @@ def verdict(rc: int) -> str:
     return {0: "SURVIVED", 1: "KILLED"}.get(rc, f"ERROR (pytest exit {rc})")
 
 
+ROWS_DIR = Path(__file__).resolve().parent / "rows"   # B36: one file per change, each defining ROWS with MUTANTS' row shape
+
+
+def _check_row(origin: str, name: object, row: object) -> None:
+    ok = (isinstance(name, str) and name and isinstance(row, tuple) and len(row) == 4 and all(isinstance(x, str) for x in row[:3])
+          and row[0] and row[1] and isinstance(row[3], tuple) and row[3] and all(isinstance(t, str) and t for t in row[3]))
+    if not ok:
+        raise SystemExit(f"{origin}: malformed mutant row {name!r}: want name -> (target, old, new, (test, ...)) with non-empty strings")
+
+
+_MERGED: dict[str, tuple[str, tuple]] = {}   # rows name -> (file, row) already merged, so a second merge_rows() is a no-op
+
+
+def _check_untouched(origin: str, tables: list, snaps: list, bound: dict) -> None:
+    """B36 gate L1: a rows file only defines ROWS. Whatever alias it reached the table by (T = MUTANTS, `import ... as`, getattr, vars, sys.modules),
+    the dict it wrote is the same object, so the table is compared with the snapshot taken before its exec_module."""
+    if globals()["MUTANTS"] is not bound:
+        raise SystemExit(f"{origin}: rebinds MUTANTS; a rows file only defines ROWS")
+    for table, snap in zip(tables, snaps):
+        removed = sorted(k for k in snap if k not in table)
+        changed = sorted(k for k in snap if k in table and table[k] is not snap[k])
+        added = sorted(k for k in table if k not in snap)
+        if removed or changed or added:
+            raise SystemExit(f"{origin}: wrote MUTANTS directly (removed {removed}, changed {changed}, added {added}); a rows file only defines ROWS")
+
+
+def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
+    """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run.
+    Runs at import (below) and again from main(): a row already merged from the same file, identical, is skipped."""
+    import importlib.util
+    rows_dir = ROWS_DIR if rows_dir is None else rows_dir
+    into = MUTANTS if into is None else into
+    if __name__ in sys.modules:
+        sys.modules.setdefault("merger_mutants", sys.modules[__name__])   # a rows file's `from merger_mutants import PY` shares this table
+    owner = {n: _MERGED[n][0] if n in _MERGED else "the inline MUTANTS dict" for n in into}
+    for f in sorted(rows_dir.glob("*.py")) if rows_dir.is_dir() else []:
+        if f.name.startswith("_"):
+            continue
+        spec = importlib.util.spec_from_file_location(f"_mutant_rows_{f.stem}", f)
+        mod = importlib.util.module_from_spec(spec)
+        bound, tables = MUTANTS, [into] if into is MUTANTS else [into, MUTANTS]
+        snaps = [dict(t) for t in tables]
+        spec.loader.exec_module(mod)
+        _check_untouched(f.name, tables, snaps, bound)
+        rows = getattr(mod, "ROWS", None)
+        if not isinstance(rows, dict):
+            raise SystemExit(f"{f.name}: must define ROWS as a dict")
+        for n, row in rows.items():
+            _check_row(f.name, n, row)
+            if n in owner and _MERGED.get(n) == (f.name, row) and into.get(n) == row:
+                continue
+            if n in owner:
+                raise SystemExit(f"{f.name}: duplicate mutant name {n!r}, already in {owner[n]}")
+            owner[n] = f.name
+            into[n] = row
+            if into is MUTANTS:
+                _MERGED[n] = (f.name, row)
+    return into
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--only", nargs="+", metavar="NAME", help="run only these mutants")
     ap.add_argument("--list", action="store_true", help="print the table and exit")
     a = ap.parse_args(argv)
+    merge_rows()
     names = a.only or list(MUTANTS)
     if unknown := [n for n in names if n not in MUTANTS]:
         print(f"unknown mutant(s): {unknown}", file=sys.stderr)
@@ -1103,6 +1367,9 @@ def main(argv: list[str] | None = None) -> int:
     killed = len(names) - len(survived) - len(stale) - len(errors)
     print(f"{killed}/{len(names)} killed; survivors: {survived or 'none'}; errors: {errors or 'none'}; stale: {stale or 'none'}")
     return 1 if survived or stale or errors else 0
+
+
+merge_rows()   # B36: at import, so a harness that iterates MUTANTS sees the rows too
 
 
 if __name__ == "__main__":

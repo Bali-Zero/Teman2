@@ -145,7 +145,7 @@ def classify_login(rc: int, out: str) -> tuple[bool, str, str | None]:
     success sentinel. Returns (ok, reason, code); code is None iff ok. The
     reason is fixed text, never `out`."""
     if _AUTH_DEAD_RE.search(out) or _INVALID_RE.search(out) or "expired" in out.lower():
-        return False, "pro nlm login dead (run `nlm login --clear` on Pro interactively)", Code.LOGIN_DEAD
+        return False, "pro nlm login dead (try `nlm auth refresh --http-only --profile default` on Pro, then `nlm login --profile default` if sign-in is required)", Code.LOGIN_DEAD
     if rc == 0 and _SUCCESS_RE.search(out):
         return True, "", None
     # Anything not confirmed valid (timeout, ssh failure, unknown text) degrades.

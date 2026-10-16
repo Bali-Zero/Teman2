@@ -7,6 +7,9 @@ Used when the team takes actions that the client should see in their portal:
 - Profile fields updated → client sees "Your profile has been updated"
 """
 
+from collections.abc import Mapping
+from typing import Any
+
 import asyncpg
 
 from backend.app.utils.logging_utils import get_logger
@@ -38,6 +41,22 @@ INTERNAL_FIELDS = {
     "avatar_url",
     "service_interest",
 }
+
+
+def practice_display_name(practice: Mapping[str, Any]) -> str:
+    """Name a practice the way a client should read it.
+
+    The human name from practice_types wins; the internal code is only a
+    fallback, and never shown with underscores (a client once read
+    "visa_d12_business_1yr" in a portal status message).
+    """
+    name = practice.get("practice_type_name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    code = practice.get("practice_type_code")
+    if isinstance(code, str) and code.strip():
+        return code.strip().replace("_", " ")
+    return "Practice"
 
 
 class PortalNotificationService:

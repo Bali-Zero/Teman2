@@ -1,0 +1,114 @@
+{
+  "schema": "udb-wave8-scoped-document-review-v1",
+  "reviewer": "codex",
+  "requested_parent_seat": "Astra 6 / xhigh",
+  "effective_model": "UNOBSERVED",
+  "effective_effort": "UNOBSERVED",
+  "review_kind": "SCOPED_ADVERSARIAL_DOCUMENT_REVIEW",
+  "full_document_review": false,
+  "implementation_approval": false,
+  "final_blue_gate": false,
+  "scope": "Document headings, mandate, PR summary and verification sections, synthesis dispositions, and selected counterexample/unsafe-proposal sections. Sources were read with bounded excerpts; this is not blanket document or code approval.",
+  "observed_at": "2026-10-15T16:54:26.046617+00:00",
+  "block": "B01",
+  "head_before": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_after": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "verdict": "REVIEWED_PARTIAL_WITH_BLOCKERS",
+  "block_closed": false,
+  "findings": [
+    {
+      "severity": "BLOCKER",
+      "file": "ANALYSIS.md",
+      "lines": [57, 60],
+      "finding": "Historical run date and 10/12 relation count contradict the pinned real-run receipt; archive as superseded, never cite as current proof."
+    },
+    {
+      "severity": "BLOCKER",
+      "file": "PROPOSAL.md",
+      "lines": [79, 84, 85],
+      "finding": "Historical proposal fabricates receipt consent fields/date and 12/12 acceptance; it also suggests widening clients semantics. Must remain blocked for implementation; current five-invariant verifier and actual owner consent govern."
+    },
+    {
+      "severity": "BLOCKER",
+      "file": "RESTORE-ADMISSION-PROPOSAL.md",
+      "lines": [36, 38, 40],
+      "finding": "Option 2A puts a production data backfill in S2+ before B01 closure, while S1 requires all eight closures: dependency cycle. The pending parent question admits diagnostics/install/one restore only, not client-row remediation. No approval inferred."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "PR_BODY.md",
+      "lines": [35, 41],
+      "finding": "Refresh missing execution evidence using existing real 60-unit/synthetic proof receipts; preserve fresh-install/run/data-decision blockers and do not turn prospective Bites into a live claim."
+    }
+  ],
+  "files": [
+    {
+      "path": "research/operations/udb-wave8/B01/ANALYSIS.md",
+      "sha256_before": "d0a1438f4b7118e64096547f6aeabea174ba9c6bc93ecc3d490513a06a387916",
+      "sha256_after": "d0a1438f4b7118e64096547f6aeabea174ba9c6bc93ecc3d490513a06a387916",
+      "stable": true,
+      "line_count": 194,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    },
+    {
+      "path": "research/operations/udb-wave8/B01/BATTLE.md",
+      "sha256_before": "6ead38750c3984462d60e6400c5729ddfc14126c74f1514511db007294e797bd",
+      "sha256_after": "6ead38750c3984462d60e6400c5729ddfc14126c74f1514511db007294e797bd",
+      "stable": true,
+      "line_count": 30,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "MANDATE_RECORDED_NO_IMPLEMENTATION_APPROVAL"
+    },
+    {
+      "path": "research/operations/udb-wave8/B01/DEFINITIVE-SYNTHESIS.md",
+      "sha256_before": "625fac618adf89018c64493f5bd5e61fc8ab57e863de28125b10969d8a50f699",
+      "sha256_after": "625fac618adf89018c64493f5bd5e61fc8ab57e863de28125b10969d8a50f699",
+      "stable": true,
+      "line_count": 198,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    },
+    {
+      "path": "research/operations/udb-wave8/B01/PROPOSAL.md",
+      "sha256_before": "7c1bfb03d900c686ddb9c9f820ebdc23fa0eb868155fbd9a495f64b47c0e7fc9",
+      "sha256_after": "7c1bfb03d900c686ddb9c9f820ebdc23fa0eb868155fbd9a495f64b47c0e7fc9",
+      "stable": true,
+      "line_count": 162,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED"
+    },
+    {
+      "path": "research/operations/udb-wave8/B01/PR_BODY.md",
+      "sha256_before": "e2a01275e71c64dcaaa422e5d602165e82a26d0c30cbff2a9d73a2dec151c3b1",
+      "sha256_after": "e2a01275e71c64dcaaa422e5d602165e82a26d0c30cbff2a9d73a2dec151c3b1",
+      "stable": true,
+      "line_count": 41,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    },
+    {
+      "path": "research/operations/udb-wave8/B01/RESTORE-ADMISSION-PROPOSAL.md",
+      "sha256_before": "ffa69c4e6f4b1b70ad47470345aa91dc8a1a5ddeabcdd89f2377b88e5e601e31",
+      "sha256_after": "ffa69c4e6f4b1b70ad47470345aa91dc8a1a5ddeabcdd89f2377b88e5e601e31",
+      "stable": true,
+      "line_count": 106,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED"
+    }
+  ],
+  "limitations": [
+    "Parent contributed bounded source repairs to B03/B06/B07; this document review is not an independent grade of that code.",
+    "Fresh exact-head Opus 5.5 xhigh gate is still mandatory.",
+    "Any document edited after the listed SHA needs renewed scoped review; no blanket future attribution.",
+    "No native/client data, credentials, ACL provisioning or production writes were accessed or authorized."
+  ],
+  "extracted_from_sha256": "d25ee7505133bcd76dfee45be51febcf520585f5b9f3c8732e9a709df823b2b9",
+  "extraction_note": "B01 section only of the parent's scoped multi-block review receipt; other blocks omitted."
+}

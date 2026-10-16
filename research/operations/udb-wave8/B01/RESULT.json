@@ -1,0 +1,84 @@
+{
+  "block_id": "B01",
+  "campaign_id": "universal-db-wave8-20261015",
+  "status": "PARTIAL",
+  "block_closed": false,
+  "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
+  "proofs": [
+    {
+      "claim": "Verifier candidate: the conversations check is DDL-free and handles jsonb and text messages (pg_input_is_valid on PostgreSQL 17); clients keeps its strict predicate unchanged and adds lead_metadata to the required columns so a missing column is CANNOT-VERIFY, never PASS. Previous installed verifier sha256 3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856.",
+      "file": "scripts/ci/restore_drill_verify.py",
+      "sha256": "19686bb0b0a5d1ced48b1cbdb60c817869529450e2042a4aa5a0207bbf07114a",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Verifier tests: 27 passed.",
+      "file": "scripts/tests/test_restore_drill_verify.py",
+      "sha256": "1dee5b622b38b93f2b40296725140ea69e837f992827a8c18ff5b19f7f39e46f",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Recovery adapter: emits the B01 contract records and verifies its pinned inputs from the gitignored campaign inputs when present, otherwise from the committed fixtures with the same pins (byte-identical copies) and an explicit projected identity for the consumer-matrix projection.",
+      "file": "research/operations/udb-wave8/B01/b01_recovery_adapter.py",
+      "sha256": "d91c0dfefa7dcc922c5ba6f040d43f1bf70e2c5dfbd9607e966fcfc29fa88697",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Adapter tests: 14 passed, including clean-checkout fixture use and tamper rejection.",
+      "file": "research/operations/udb-wave8/B01/test_b01_recovery_adapter.py",
+      "sha256": "937f2cc438e62b563e04710384fdf851d5920554bb9ace6819e3ea7307710ad9",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "The only real-backup run of record (2026-10-15, started 03:00:43Z, terminal 03:02:11Z): aggregate CANNOT-VERIFY; conversations CANNOT-VERIFY (UNMEASURED_CHECK 1); clients FAIL (VIOLATION 1); visa_decisions, events_outbox, visa_decision_retention_policies PASS; raw-report sha256 1d368c2d16d32a0834bb7d120d75005423227b77239107b1dc1873f8140b5744; no rows, counts or raw errors exported. Byte-identical committed copy.",
+      "file": "research/operations/udb-wave8/B01/fixtures/REAL-RUN-RECEIPT.json",
+      "sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Fixture provenance: byte-identical copies of REAL-RUN-RECEIPT.json, STATE.json (caaebbba…), LEAD-DELTA.json (91e6bac9…); consumer-matrix projection (6029 consumer_id rows; entry_point/store/disposition/evidence only for 5 historical restore consumers) with output sha256 d743bfb90c0ece5c40288bac0bb041c1842db8cf1088255b38f8462061b6d70f, distinct from source c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118. Not new native observations.",
+      "file": "research/operations/udb-wave8/B01/fixtures/PROVENANCE.json",
+      "sha256": "b4440b86ec399a5f704ed9cd71c3700031019f4b9b9e64c4f3069c3cf4e63db0",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "B01 contract records, unchanged by the fixture repair.",
+      "file": "research/operations/udb-wave8/B01/b01-recovery-instances.json",
+      "sha256": "b49327732dc795c00c12c4d8b6e06f8cc5bb4035dbabd0c56034393292f2e085",
+      "status": "EVIDENCED"
+    }
+  ],
+  "missing": [
+    "The owner-authorized single isolated restore of an existing backup with the installed candidate (consent 2026-10-16 'continua'): pending the fresh gate, the merge of this PR (the install route) and the reviewed pin check on Mini. Its result is recorded outside this file because a committed file cannot report a run that happens after it merges.",
+    "clients: the last real run FAILED on a violation; the strict predicate stays unchanged. Closure needs all five invariants measured PASS; if clients still fails, the next step is a data-owner proposal, never a client-row change by this block.",
+    "conversations: CANNOT-VERIFY on the installed verifier; measurement with the candidate is unproven until the run.",
+    "Withdrawn as unsupported: any run date other than 2026-10-15T03:00:43Z, 10/12 or 12/12 relation counts, quoted consent fields not in the receipt, and Option 2A (production backfill before closure, a dependency cycle with S1)."
+  ],
+  "tests": [
+    {
+      "command": "pytest scripts/tests/test_restore_drill_verify.py",
+      "result": "27 passed, exit 0 (original worktree 2026-10-16, output sha256 feb656070cbb155e53b0c20c4d6bd3d876eb8a1a1f89e1f5f97f26cfd29a4980)"
+    },
+    {
+      "command": "pytest research/operations/udb-wave8/B01/test_b01_recovery_adapter.py",
+      "result": "14 passed, exit 0 after fixture repair 6567fb57 (output sha256 90319bfceac6ce6ebe21ef5925423f50a5f6d62b0853c540c4dcb8854bd8809b); before it 5 passed in the original worktree but 3 failed in a clean checkout"
+    },
+    {
+      "command": "both suites in a clean copy without .agent-receipts and dux-requests",
+      "result": "41 passed, 0 skipped, exit 0 (output sha256 edbef6ffe313d432d93e8a83234f61ce68ed1bd27b0006d19fed045f15a95514)"
+    },
+    {
+      "command": "b01_recovery_adapter.py --synthetic-pg-out (throwaway PostgreSQL 17.11, private Unix socket, no TCP listener)",
+      "result": "all_passed true, synthetic only (receipt sha256 e496ae170778533800b6baf706d14afa8ed20ff0e2e41aa7d60d9746a98dacec)"
+    }
+  ],
+  "dux_correction": {
+    "executed": true,
+    "patch_sha256": "6567fb579fef81dfce923d4487097cbd59c7a86b9753e07f364779e8b1b3608f",
+    "bytes": 208236,
+    "paths": 7,
+    "scope": "committed fixtures plus adapter and test fallback; verifier, verifier tests and contract records unchanged",
+    "native_probe_executed": false
+  }
+}

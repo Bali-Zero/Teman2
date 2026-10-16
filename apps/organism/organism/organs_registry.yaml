@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 01ee8dda8273b1710336701aa31a26e045eaa7dc2c34e2a337e447d0b68c1730 # pragma: allowlist secret
+checksum: 973e64735c9464f7ba4692396c559e20e7e024d900c185a84cb1cd95f18bf963 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3249,7 +3249,7 @@ organs:
 - id: pro.localci_merger
   runtime: pro_launchd
   type: cron
-  expected_hb_seconds: 5400
+  expected_hb_seconds: 6000
   owner_module: scripts/localci/localci_merger_tick.sh
   dependencies: []
   recovery_action: launchctl_kickstart
@@ -3268,6 +3268,29 @@ organs:
     path: ~/.organism/last_seen/pro.localci_merger.json
     timestamp_field: ts
     status_field: status
+- id: pro.localci_shepherd
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1200
+  owner_module: scripts/localci/localci_shepherd_tick.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.localci-shepherd
+  severity_on_silence: warning
+  notes: 'LOCALCI-SOVEREIGN B34 P1 PR shepherd tick on Pro (docs/specs/localci-sovereign-2026-10-07.md):
+    OBSERVE only, no write verb. Lists the open PRs with one GraphQL query, classifies the
+    stranded classes (gate missing, label candidate) and journals would_*
+    rows in ~/.nuzantara-pilots/local-ci/shepherd/journal.jsonl. Budget: core <1500 observe,
+    <800 skip, 60 REST calls per tick. Wrapper runs shepherd.py as committed on origin/main
+    from its own mirror. Kill switch LOCALCI_SHEPHERD_ENABLED=false.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.localci_shepherd.json
+    timestamp_field: ts
+    status_field: status
 - id: pro.disk_floor
   runtime: pro_launchd
   type: cron
@@ -3280,9 +3303,9 @@ organs:
     label: com.nuzantara.disk-floor
   severity_on_silence: warning
   notes: 'LOCALCI-SOVEREIGN B6 (docs/specs/localci-sovereign-2026-10-07.md, RULED 2026-10-08:
-    Pro keeps > 90 GB free, always; Zero 2026-10-11, lowered from 100): reads df -Pk /System/Volumes/Data every 30 min
-    (StartInterval 1800, no KeepAlive). ok above 90 GB, warning 60-90, failed under
-    60 (written as error); the note carries the free GB and, when not ok, the three
+    Pro keeps > 50 GB free, always; Zero 2026-10-16, lowered from 90): reads df -Pk /System/Volumes/Data every 30 min
+    (StartInterval 1800, no KeepAlive). ok above 60 GB, warning 50-60, failed under
+    50 (written as error); the note carries the free GB and, when not ok, the three
     biggest top-level directories of ~. Kill switch PRO_DISK_FLOOR_ENABLED=false.
     Born via organ_birth.py.'
   cicatrix_refs: []

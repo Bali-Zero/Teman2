@@ -20,6 +20,7 @@ HR, TICK, TH = "scripts/localci/hand_report.sh", "scripts/localci/localci_merger
 PLIST = "infra/launchagents/com.balizero.localci-merger.plist"   # test_hand_report.py reads launchd's PATH from it
 
 # name: (text that must occur once in phase_e_flip.py, replacement) — every rule must turn the test file red
+ANCHOR_TARGET = PEF   # read by test_mutant_anchors.py: the file every (old, new) rule of MUTANTS edits
 MUTANTS = {
     # the operator's confirmation binds the very state the plan read
     "pe-confirm-unchecked": ('    if a.confirm != dig:\n        print("REFUSED: --confirm does not match this plan\'s digest (re-read',

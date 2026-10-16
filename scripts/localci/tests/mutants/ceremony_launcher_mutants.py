@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
 LAUNCHER = "scripts/localci/ceremonies/launcher.zsh"
+ANCHOR_TARGET = LAUNCHER   # read by test_mutant_anchors.py: the file every (old, new, tests) rule of this table edits
 TEST = "scripts/localci/ceremonies/tests/test_launcher.py"
 
 

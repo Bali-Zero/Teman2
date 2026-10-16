@@ -1,0 +1,18 @@
+mandate: universal-db-wave8-20261015-B01
+gear: 3
+colour: BLUE
+intent:
+  Ship a measurable restore-drill verifier candidate and hermetic recovery evidence for B01; the single
+  owner-authorized isolated restore of an existing backup and the clients/conversations invariants remain
+  unproved until that run.
+scope:
+  - research/operations/udb-wave8/B01/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b01-recovery-926e7a2c/
+  - .secrets.baseline
+  - scripts/ci/restore_drill_verify.py
+  - scripts/tests/test_restore_drill_verify.py
+constraints:
+  - One PR for B01; original Gemini conversation retained.
+  - No client rows, new backup, repeated restore, data remediation, invariant weakening or unadmitted native probe.
+  - Fresh independent Opus5.5/xhigh exact-head final gate required; Dux alone releases.
+  - S1 cannot start before all8actual block closures.

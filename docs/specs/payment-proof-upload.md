@@ -34,13 +34,13 @@
 | n8n webhook           | Bali Zero does not use n8n; use (d). On `35ebafcc3c`, `git grep -I` finds `n8n` only in 10 text files (docs, research notes, `.gitignore`, one base64 image `.txt`), none in application source; the other hits of the earlier 78-line count are binary/SVG image bytes |
 | invoice status column | does not exist; badge is derived (a)                                                                                                                                                                                                                                    |
 
-## Open questions for Antonello (answer before backend starts)
+## Answers (Antonello, 9 Oct 2026, A4 — all five accepted)
 
-1. Badge derivation when an invoice has more than one proof: latest proof wins, or any `verified` wins?
-2. Does `confirm_payment` set `paid_date`? With 0 of 895 invoices carrying it, the badge must not depend on `paid_date` until this is known.
-3. Client ownership check on the new endpoint: which existing portal billing guard should it reuse?
-4. Can a client upload again after `rejected` (new row), or is the rejected row reopened?
-5. Notification recipient: `_notify_lead_about_document` sends to the client's `assigned_to` (fallback `zero@balizero.com`). For payment proofs, should it also go to accounting (new recipient parameter), go to accounting instead, or stay with the assigned lead?
+1. Badge derivation: the **latest** proof wins (created_at, then id), not "any `verified`".
+2. The badge never depends on `paid_date`.
+3. The new endpoint reuses the existing portal billing ownership guard.
+4. After `rejected` the client uploads again as a **new row**; the rejected row stays as history.
+5. Notification goes to the client’s `assigned_to` lead **and** accounting (new recipient parameter = backend PR, not frontend).
 
 ## Delivery order
 

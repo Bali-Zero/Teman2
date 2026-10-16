@@ -1,0 +1,140 @@
+{
+  "block_id": "B03",
+  "campaign_id": "universal-db-wave8-20261015",
+  "fixtures": [
+    {
+      "bytes": 51,
+      "fixture": "GITHUB-WORKFLOW-METADATA.projected.json",
+      "kind": "projection",
+      "output_sha256": "6d70609014a602e39d42b2ed5121320b6b902a9dbb0ef273a7ca487882861ccd",
+      "projection": {
+        "format": "json",
+        "keeps": [
+          "observed_at"
+        ],
+        "row_order": "n/a"
+      },
+      "rows": null,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261014-0535/GITHUB-WORKFLOW-METADATA.json",
+      "source_sha256": "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 729,
+      "fixture": "INPUT-MANIFEST.json",
+      "kind": "byte_identical",
+      "output_sha256": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+      "projection": null,
+      "rows": null,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json",
+      "source_sha256": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 2614,
+      "fixture": "LEAD-DELTA.json",
+      "kind": "byte_identical",
+      "output_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "projection": null,
+      "rows": null,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+      "source_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 1190313,
+      "fixture": "consumer-matrix.projected.csv.gz",
+      "kind": "projection",
+      "output_sha256": "5d06602f5fc41d2e592705d2037d1eec6afc6c102f601ad123a2b3d122e73f77",
+      "projection": {
+        "columns_dropped": 31,
+        "columns_kept": [
+          "consumer_id",
+          "entry_point",
+          "disposition",
+          "blocker",
+          "identity_relationships"
+        ],
+        "format": "csv",
+        "row_order": "preserved",
+        "transform": {
+          "cells_changed": 257,
+          "op": "replace_regex",
+          "pattern": "absolute user-home prefix: the Users root plus one path component",
+          "replacement": "<HOME>"
+        }
+      },
+      "rows": 6029,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+      "source_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "stored_encoding": "gzip"
+    },
+    {
+      "bytes": 12688,
+      "fixture": "jobs-M5.json",
+      "kind": "byte_identical",
+      "output_sha256": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+      "projection": null,
+      "rows": null,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-M5.json",
+      "source_sha256": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 32486,
+      "fixture": "jobs-mini.json",
+      "kind": "byte_identical",
+      "output_sha256": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+      "projection": null,
+      "rows": null,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-mini.json",
+      "source_sha256": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 17936,
+      "fixture": "jobs-pro.projected.json",
+      "kind": "projection",
+      "output_sha256": "bbd94d10e2810fae1b911b8a572c6cc4108bf83f53d742aa675bd16e045c5a61",
+      "projection": {
+        "format": "json",
+        "keeps": [
+          "observed_at",
+          "jobs[].label_hash"
+        ],
+        "row_order": "preserved"
+      },
+      "rows": 218,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-pro.json",
+      "source_sha256": "4f7bf4e90c1aad7f47ca04cd80ca8fe304cf2affae56bbc68fca080185986703",
+      "stored_encoding": "identity"
+    },
+    {
+      "bytes": 422271,
+      "fixture": "source-index-enhanced.projected.json",
+      "kind": "projection",
+      "output_sha256": "56fc3136f98b83aa95de4f893551e3521bd9de44ba59a5654b2d1ec94dc757df",
+      "projection": {
+        "format": "json",
+        "keeps": [
+          "nodes[].source_id"
+        ],
+        "row_order": "preserved"
+      },
+      "rows": 10299,
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json",
+      "source_sha256": "9f90a66733d63b9183ad21beeca6b84b78db0b243e41aeb9a1d7bc5ab89363cd",
+      "stored_encoding": "identity"
+    }
+  ],
+  "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+  "manifest_attested_not_copied": [
+    ".agent-receipts/udb-wave8-inputs/ASTRA-ADVICE.md",
+    ".agent-receipts/udb-wave8-inputs/FINAL-BLUE-GATE.json",
+    ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+    ".agent-receipts/udb-wave8-inputs/REPORT.md",
+    ".agent-receipts/udb-wave8-inputs/STATE.json",
+    ".agent-receipts/udb-wave8-inputs/research-lines.csv"
+  ],
+  "purpose": "Make the B03 adapter tests reproducible from committed files only; frozen metadata already pinned by the adapter, no new native observation."
+}
