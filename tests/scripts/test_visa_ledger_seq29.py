@@ -688,8 +688,8 @@ def test_e28_entry_carries_the_three_prs_with_full_merge_shas_once():
                   "scripts/ci/observe_zantara_e28_1015.py", "scripts/ci/observe_visa_oracle_stay_permit_length.py",
                   "Stay of 730 days (2 years), extendable online by the sponsor.", "All-inclusive price: government fees and Bali Zero service included.",
                   "user-agent `bz-synthetic-prove-live-20261016`", "the renewal line is present, which is true per page df3ba889:69,72",
-                  "the lease was taken and released, the phone left locked", "session gate receipts, not repo paths",
-                  "except PR B, which had none", "(7) NOT done:"):
+                  "the lease was taken and released, the phone left locked", "session gate receipts, not repo paths; facts as held by the Dux",
+                  "B #8573: no Codex red team;", "(7) NOT done:"):
         assert body.count(token) == 1, token
 
 
@@ -746,6 +746,23 @@ def test_e28_backlog_row_carries_every_item_once():
                   "(18) the Qdrant E28 payloads keep the heading", "(19) MCP ask_legal routed an informational E28D question to client_journey",
                   "(20) the Canva MCP client passes the httpx2-based OAuth provider", "(21) other FR/IT/RU articles may carry bare '<' MDX breaks"):
         assert row.count(token) == 1, token
+
+
+def test_e28_gate_record_is_per_pr_and_8586_is_not_an_e28_closeout_pr():
+    body = _e28_entry()
+    gates = body[body.index("(4) Gates, per PR"):body.index("(5) Shipped")]
+    for token in ("A #8574: Codex gpt-5.6-sol red team FIX-FIRST on `b0346c2017` (HIGH-1 accepted and cured, HIGH-2 rejected)",
+                  "fresh Opus 5.5 gate PASS on `ecf7f92869`, delta PASS on `4d4923f557`",
+                  "B #8573: no Codex red team; fresh Opus 5.5 gate PASS on `77fb65f9d0`, delta PASSes on `0065c204f8` and `afc06c370e`",
+                  "C #8572: Codex red team; Opus PASS on `59d51750cc`, delta BLOCK on `c84ceb12b8`, delta PASS on `09b8fee900`",
+                  "C2 #8578: Codex red team FIX-FIRST on `f5f5bce12f`, cured in `4fdb37f5e2`; Opus BLOCK on `e3b3de2748` (gear floor), delta PASS on `804da11666`",
+                  "#8584 (the Qdrant fixer id fix, depth-1 follow-up of C2): Gear 1, no adversarial round; fresh Opus 5.5 gate PASS on `29778d03ed`",
+                  "#8586 (the mcp 2.2.0 CI unblock, not an E28 close-out PR): Gear 1, no adversarial round; Opus 5.5 gate BLOCK on `98f0ef51a8` (evidence pack only), cured in `845b3668da`"):
+        assert gates.count(token) == 1, token
+    assert gates.count("no adversarial round") == 2
+    head = body[:body.index("(1) PR C")]
+    assert "the mcp 2.2.0 CI unblock" in head and "named separately" in head and "E28 close-out PRs A, B, C, C2" in head
+    assert "each PR had a Codex" not in body and "(items (18)-(21) added)" in body and "(16)-(21)" not in body
 
 
 def test_e28_c2_is_closed_with_prod_a_and_prod_b_as_given_and_headline_leaves_only_d_and_e_open():

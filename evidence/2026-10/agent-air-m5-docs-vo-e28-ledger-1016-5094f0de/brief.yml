@@ -1,6 +1,6 @@
 gear: 2
 gear_reason: >-
-  Size floor 2 (churn about 526 > 400, the audit matrix is 295 of it). Docs, ledger and test pins only: two skill files, one pending-arms file, the ledger test, the observer floor and the
+  Size floor 2 (churn 539 added and 16 deleted lines by git numstat > 400, the audit matrix is 295 of it). Docs, ledger and test pins only: two skill files, one pending-arms file, the ledger test, the observer floor and the
   audit matrix document. No engine rule pack, no data, no runtime change.
 mission: >-
   The /visaoracle ledger records the three merged E28 close-out PRs (#8572, #8573, #8574) with their measured live

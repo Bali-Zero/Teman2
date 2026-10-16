@@ -13,47 +13,47 @@ lanes:
     seat: claude-sonnet-5 (Claude Code session)
 pii_scan: clean
 floor_note: >-
-  The floor is 2 by size (churn about 526 > 400); the brief now declares gear 2 and matches it.
+  The floor is 2 by size (churn 539 added and 16 deleted lines by git numstat > 400); the brief now declares gear 2 and matches it.
 bites: >-
   Consumer: the next session reading LIVE STATE and PENDING-ARMS. Observation: the ledger test and the observer
-  (python3 scripts/ci/observe_visa_ledger_seq29.py prints '53 passed' and 'seq-29 ledger holds') green on main.
+  (python3 scripts/ci/observe_visa_ledger_seq29.py prints '54 passed' and 'seq-29 ledger holds') green on main.
 receipts:
-  - claim: The four ledger test files pass with the E28 pins (three PR/sha pairs, the C2 production addendum, deploy and prove-live facts, four opened rows, the backlog items once each, the SKILL lead, the audit matrix and the page snapshots present, the floor equal to the file's test count).
+  - claim: The four ledger test files pass with the E28 pins (three PR/sha pairs, the C2 production addendum, deploy and prove-live facts, three opened rows and one closed row, the per-PR gate record, the backlog items once each, the SKILL lead, the audit matrix and the page snapshots present, the floor equal to the file's test count).
     cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
-    result: "88 passed in 1.00s"
+    result: "89 passed in 2.69s"
     exit: 0
-    ts: "2026-10-16T01:48:11Z"
+    ts: "2026-10-16T02:04:39Z"
     seat: claude-sonnet-5
-  - claim: The seq-29 observer holds with its floor raised from 52 to 53, the true count of the ledger test file.
+  - claim: The seq-29 observer holds with its floor raised from 53 to 54, the true count of the ledger test file.
     cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
-    result: "53 passed in 1.08s; seq-29 ledger holds"
+    result: "54 passed in 2.10s; seq-29 ledger holds"
     exit: 0
-    ts: "2026-10-16T01:48:11Z"
+    ts: "2026-10-16T02:04:39Z"
     seat: claude-sonnet-5
   - claim: The facts recorded (merge shas, deploy run, live probes, dpl ids) are quoted as measured by the conductor session; this seat did not re-measure them, and the gate receipts are cited as session gate receipts, not repo paths.
     cmd: "cross-check of each sha in the ledger text against the brief given to this seat"
     result: "quoted as given; no claim upgraded"
     exit: 0
-    ts: "2026-10-16T01:48:11Z"
+    ts: "2026-10-16T02:04:39Z"
     seat: claude-sonnet-5
   - claim: scripts/tests/test_pending_arms_report.py passes with no phantom-operator and no malformed entry in the real ledger (no open E28 row is owned by an operator).
     cmd: python3 -m pytest scripts/tests/test_pending_arms_report.py -p no:cacheprovider -q
-    result: "141 passed in 2.58s"
+    result: "141 passed in 6.65s"
     exit: 0
-    ts: "2026-10-16T01:48:11Z"
+    ts: "2026-10-16T02:04:39Z"
     seat: claude-sonnet-5
   - claim: The R1 gate passes on the audit matrix (adversarial_review is the bare seat codex; the detail sits in adversarial_review_detail and the body section).
     cmd: python3 scripts/check_adversarial_review.py --diff origin/main
     result: "PASS - 1 research file(s) carry a valid adversarial review"
     exit: 0
-    ts: "2026-10-16T01:48:11Z"
+    ts: "2026-10-16T02:04:39Z"
     seat: claude-sonnet-5
 decisions:
-  - id: D-floor-53
+  - id: D-floor-54
     decision: >-
-      The observer floor is the true count after one net new pin (53); the existing pin asserts the floor equals the
+      The observer floor is the true count after one more pin (54); the existing pin asserts the floor equals the
       number of tests in the file.
-  - id: D-no-row-closed
+  - id: D-one-row-closed-c2
     decision: >-
       One row is closed (C2, replaced in place by a closed row after PROD A and PROD B); three rows are opened (D, E, backlog), so the open work is D and E.
 dissent: []
