@@ -134,7 +134,7 @@ let rc: Int32 = MainActor.assumeIsolated {
         let hu = KBLIVerdict.headsUp(record: k, isID: isID)
         emit(k.kode, "registry-row", KBLIRegistryRow(kbli: k, isID: isID), anchors: c + [risk])
         emit(k.kode, "registry-sheet", RegistryVerdictSheet(kbli: k, expanded: .constant(false), onClose: {}, scrolls: false),
-             anchors: c + [isID ? "Buka dosir lengkap" : "Open the full dossier"])
+             anchors: c + [isID ? "Putusan Bali" : "Bali verdict"])   // the collapsed sheet draws no action row (H1d E1): the band's own label is what it must draw
         emit(k.kode, "registry-sheet-open-imm", RegistryVerdictSheet(kbli: k, expanded: .constant(true), onClose: {}, scrolls: false).immersiveHost(),
              anchors: c + [isID ? "Tutup dosir" : "Collapse dossier"])
         // The scope selector's content proof on the LIVE sheet (IMM-5b): each scope and each scale picked in turn through the
