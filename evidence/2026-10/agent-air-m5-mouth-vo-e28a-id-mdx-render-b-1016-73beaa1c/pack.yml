@@ -1,8 +1,7 @@
 gear: 3
-brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-e28a-id-mdx-render-1016-561d3ffb/brief.yml
+brief_ref: evidence/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/vo-e28a-id-mdx-render-1016 on origin/main (superseding frozen PR #8599 on -1014 after CI
-  surfaced a cross-surface test pin in test_e33_forbidden_claims.py). Round 1 and the locale twins (ea2dc2429e) were
+  Branch agent/air-m5/mouth/vo-e28a-id-mdx-render-b-1016 on origin/main (superseding frozen PR #8599 and #8604). Round 1 and the locale twins (ea2dc2429e) were
   judged FIX-FIRST by two council seats; round 2 replaces the E28A and Investor KITAS bodies by short true bodies,
   completes every twin, rewrites the truth test, updates test_e33_forbidden_claims.py and records the verdicts below.
 mission: >-
