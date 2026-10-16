@@ -30,11 +30,11 @@ import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
-PatternSpec = Union[str, Callable[..., str]]
+PatternSpec = str | Callable[..., str]
 _AsyncCallable = TypeVar("_AsyncCallable", bound=Callable[..., Awaitable[Any]])
 
 
@@ -139,7 +139,7 @@ def cache_invalidating(patterns: list[PatternSpec]) -> Callable[[_AsyncCallable]
                     logger.warning(
                         "cache_invalidating: failed to resolve pattern for %s: %s",
                         func.__qualname__,
-                        exc,
+                        type(exc).__name__,
                     )
                     _inc_error_counter("unresolved")
                     continue
@@ -150,10 +150,10 @@ def cache_invalidating(patterns: list[PatternSpec]) -> Callable[[_AsyncCallable]
                     _inc_success_counter(namespace)
                 except Exception as exc:
                     logger.warning(
-                        "cache_invalidating: invalidation failed for %s (pattern=%s): %s",
+                        "cache_invalidating: invalidation failed for %s (namespace=%s): %s",
                         func.__qualname__,
-                        pattern,
-                        exc,
+                        namespace,
+                        type(exc).__name__,
                     )
                     _inc_error_counter(namespace)
 

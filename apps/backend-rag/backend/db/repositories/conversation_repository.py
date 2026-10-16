@@ -6,7 +6,7 @@ Handles all database operations for conversation persistence
 from datetime import datetime, timedelta, timezone
 
 from backend.app.utils.json_utils import to_jsonb
-from backend.app.utils.logging_utils import get_logger, log_error, log_success
+from backend.app.utils.logging_utils import get_logger, log_success
 from backend.core.retention_policy import (
     ALLOW_CLOCK_DELETE_ENV,
     RETENTION_MIN_DAYS,
@@ -18,6 +18,12 @@ from backend.db.base_repository import BaseRepository
 from backend.services.common.cache import cache_invalidating
 
 logger = get_logger(__name__)
+
+# Two-int advisory keys are distinct from the migration runner's bigint keys.
+# "CVNS" namespaces cooperating conversation writers; hash collisions only
+# serialize unrelated sessions. The lock is released by commit or rollback.
+# The hash is a runtime lock key only; it is never persisted as an identifier.
+_CONVERSATION_LOCK_NAMESPACE = 0x43564E53
 
 
 class ConversationRepository(BaseRepository):
@@ -58,13 +64,23 @@ class ConversationRepository(BaseRepository):
             # reads that as a blanket directive on the comment's own line.)
             async with self.db_pool.acquire() as conn:  # noqa: SIM117
                 async with conn.transaction():
+                    # Protect both absent-row creation and read/modify/write.
+                    # A row lock alone cannot protect a session with no row yet.
+                    # This protocol requires every concurrent writer to adopt it;
+                    # old application versions must be drained before cutover.
+                    await conn.execute("SET LOCAL lock_timeout = '5s'")
+                    await conn.execute(
+                        "SELECT pg_advisory_xact_lock($1::integer, hashtext($2::text))",
+                        _CONVERSATION_LOCK_NAMESPACE,
+                        session_id,
+                    )
                     # Check if conversation exists for this session
                     existing = await conn.fetchrow(
                         """
                     SELECT id, messages FROM conversations
                     WHERE session_id = $1
-                    ORDER BY created_at DESC
-                    LIMIT 1
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT 1 FOR UPDATE
                     """,
                         session_id,
                     )
@@ -101,7 +117,6 @@ class ConversationRepository(BaseRepository):
                             logger,
                             "Updated conversation",
                             conversation_id=conversation_id,
-                            session_id=session_id,
                             total_messages=len(merged_messages),
                         )
                     else:
@@ -125,14 +140,15 @@ class ConversationRepository(BaseRepository):
                             logger,
                             "Created new conversation",
                             conversation_id=conversation_id,
-                            session_id=session_id,
                             messages_count=len(messages),
                         )
 
                     return conversation_id
 
         except Exception as e:
-            log_error(logger, "Failed to save conversation", error=e, exc_info=True)
+            # PostgreSQL error details can contain bound values. Keep diagnostics
+            # to the error class; neither the query nor its payload is log-safe.
+            logger.error("Conversation persistence failed: %s", type(e).__name__)
             return None
 
     async def get_messages(
@@ -156,7 +172,7 @@ class ConversationRepository(BaseRepository):
                     """
                     SELECT messages FROM conversations
                     WHERE session_id = $1
-                    ORDER BY created_at DESC
+                    ORDER BY created_at DESC, id DESC
                     LIMIT 1
                     """,
                     session_id,
@@ -172,7 +188,7 @@ class ConversationRepository(BaseRepository):
                 return []
 
         except Exception as e:
-            log_error(logger, "Failed to retrieve messages", error=e, exc_info=True)
+            logger.error("Conversation retrieval failed: %s", type(e).__name__)
             return []
 
     @cache_invalidating(
@@ -232,7 +248,7 @@ class ConversationRepository(BaseRepository):
                 return deleted_count
 
         except Exception as e:
-            log_error(logger, "Failed to cleanup conversations", error=e, exc_info=True)
+            logger.error("Conversation cleanup failed: %s", type(e).__name__)
             return 0
 
     @cache_invalidating(
@@ -286,5 +302,5 @@ class ConversationRepository(BaseRepository):
                 return anonymized_count
 
         except Exception as e:
-            log_error(logger, "Failed to anonymize user data", error=e, exc_info=True)
+            logger.error("Conversation anonymization failed: %s", type(e).__name__)
             return 0
