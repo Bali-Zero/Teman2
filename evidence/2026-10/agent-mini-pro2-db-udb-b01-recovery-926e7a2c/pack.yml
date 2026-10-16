@@ -88,7 +88,7 @@ dissent:
 pii_scan: clean
 block_closed: false
 native_probe_executed: false
-final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
+final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD_AVAILABLE_INDEPENDENT_SEAT
 production_adoption: false
 limitations:
   - The single owner-authorized isolated restore of an existing backup is not run by this pack; its result
@@ -114,5 +114,17 @@ seat_override:
   The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh support and Opus5.5/xhigh
   support, with one adversarial pass then synthesis. This model assignment supersedes the legacy two-seat
   council whitelist; no legacy Sol/Kimi/TP1 reviewer is invoked or claimed. Actual source-pinned modern-seat
-  evidence is retained. The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
-  and PENDING; this override does not sign a gate or grant block closure.
+  evidence is retained. The original independent fresh BLUE Opus5.5/xhigh exact-head gate was pending at this receipt.
+  The later owner_claude_availability_exception below supersedes the unavailable named seat only;
+  neither record signs a gate or grants block closure.
+
+owner_claude_availability_exception:
+  observed_at: "2026-10-16T06:08:25.878830Z"
+  authority_ref: research/operations/udb-wave8/B01/OWNER-SEAT-EXCEPTION.json
+  effect: Claude unavailability does not block execution or review; available independent seats replace unavailable named seats.
+  colour: BLUE_WITH_EXPLICIT_OWNER_SEAT_EXCEPTION
+  independent_review_required: true
+  strict_acceptance_unchanged: true
+  stage_amendment_granted: false
+  native_B02_consent_granted: false
+  correction_budget_reset: false
