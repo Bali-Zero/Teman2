@@ -96,9 +96,10 @@ class Invariant:
 # Column lists and constraints below are taken from the migrations that
 # introduced them, not invented — see the file:line cited on each relation.
 INVARIANTS: tuple[Invariant, ...] = (
-    # migrations_v2/143_legacy_conversations.sql: min_rows=1 (a production
-    # restore to zero rows is degenerate); `messages` is TEXT but defaults
-    # to '[]' — always meant to parse as a JSON array.
+    # migrations_v2/143_legacy_conversations.sql (TEXT) and production
+    # schema (JSONB): min_rows=1 (a production restore to zero rows is
+    # degenerate); non-NULL `messages` must parse as a JSON array across
+    # both TEXT and JSONB column types.
     Invariant(
         relation="conversations",
         required_columns=("id", "user_id", "messages", "created_at"),
@@ -115,6 +116,7 @@ INVARIANTS: tuple[Invariant, ...] = (
             "full_name",
             "client_type",
             "google_drive_folder_id",
+            "lead_metadata",
             "created_at",
             "updated_at",
         ),
@@ -193,8 +195,10 @@ _INVARIANT_BY_RELATION: dict[str, Invariant] = {inv.relation: inv for inv in INV
 # 2) row-count probe (names no column beyond the relation itself)
 # 3) violations probe, run ONLY if every column its checks reference is
 #    confirmed present. Every count is a scalar subquery so one bad row
-#    can't fail the whole query — except `conversations`, which uses a
-#    `pg_temp` helper so a malformed JSON row is COUNTED, not thrown.
+#    can't fail the whole query; `conversations` uses PostgreSQL 16+
+#    `pg_input_is_valid(messages::text, 'jsonb')` gated by `messages IS NOT NULL`
+#    so both TEXT and JSONB columns are checked without `pg_temp` DDL and
+#    malformed JSON text rows are COUNTED rather than thrown.
 
 _COLUMNS_SQL = (
     "SELECT to_jsonb(array_agg(column_name ORDER BY ordinal_position)) "
@@ -205,16 +209,15 @@ _COLUMNS_SQL = (
 _ROW_COUNT_SQL = "SELECT count(*) FROM {relation};"
 
 _CONVERSATIONS_VIOLATIONS_SQL = """
-CREATE OR REPLACE FUNCTION pg_temp.try_jsonb_array(text) RETURNS boolean AS $$
-BEGIN
-  RETURN jsonb_typeof($1::jsonb) = 'array';
-EXCEPTION WHEN OTHERS THEN
-  RETURN false;
-END;
-$$ LANGUAGE plpgsql;
 SELECT jsonb_build_object(
   'messages_not_json_array',
-  (SELECT count(*) FROM conversations WHERE NOT pg_temp.try_jsonb_array(messages))
+  (SELECT count(*) FROM conversations
+     WHERE messages IS NOT NULL
+       AND CASE
+         WHEN pg_input_is_valid(messages::text, 'jsonb')
+           THEN jsonb_typeof((messages::text)::jsonb) <> 'array'
+         ELSE true
+       END)
 );
 """
 
