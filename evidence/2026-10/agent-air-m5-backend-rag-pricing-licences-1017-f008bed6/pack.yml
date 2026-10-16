@@ -21,6 +21,15 @@ lanes:
   - lane: pricing-licences
     role: read
     seat: claude-sonnet-5 (Explore census of the pricing surfaces)
+  - lane: pricing-licences-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner ruling of 2026-10-17 (the ruling field above, verbatim): the three alcohol
+      prices and the price-on-consultation status are business decisions, not derived from a
+      notebook or memory. The Golongan alcohol bands in the descriptions are the ones
+      apps/mouth/src/data/services_data.ts already states (Perpres 74/2013 Pasal 3).
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
 pii_scan: clean
 bites: >-
   Consumer: PricingService/PricingTool (Zantara) and GET /api/pricing on nuzantara-rag, the
