@@ -145,7 +145,7 @@ interface Deferred {
 
 /**
  * URL-dispatching `api.get`: the screen now issues four different reads (list,
- * catalog, the four `limit=1` counters, and one CRM client read per id), so a
+ * catalog, the five `limit=1` counters, and one CRM client read per id), so a
  * single blanket mockResolvedValue cannot serve them.
  */
 function installApiGet(
@@ -441,18 +441,19 @@ describe("ObligationsPage", () => {
     ).toBe(1);
   });
 
-  it("reads one counter per status with limit=1, all four in parallel", async () => {
+  it("reads one counter per status with limit=1, all five in parallel", async () => {
     const deferred: Deferred[] = [];
     const { counterCalls } = installApiGet({ deferCounters: deferred });
 
     render(<ObligationsPage />);
 
-    // All four reads are dispatched before any of them resolves.
-    await waitFor(() => expect(deferred.length).toBe(4));
+    // All five reads are dispatched before any of them resolves.
+    await waitFor(() => expect(deferred.length).toBe(5));
     expect(counterCalls.every((url) => url.includes("limit=1"))).toBe(true);
     expect(deferred.map((d) => d.status).sort()).toEqual([
       "alerted",
       "approved",
+      "done",
       "proposed",
       "rejected",
     ]);
@@ -462,6 +463,7 @@ describe("ObligationsPage", () => {
       approved: 3,
       rejected: 1,
       alerted: 2,
+      done: 4,
     };
     deferred.forEach((d) => d.resolve(totals[d.status] ?? 0));
 
@@ -473,6 +475,7 @@ describe("ObligationsPage", () => {
       expect(screen.getByTestId("counter-approved")).toHaveTextContent("3");
       expect(screen.getByTestId("counter-rejected")).toHaveTextContent("1");
       expect(screen.getByTestId("counter-alerted")).toHaveTextContent("2");
+      expect(screen.getByTestId("counter-done")).toHaveTextContent("4");
     });
   });
 
@@ -483,7 +486,7 @@ describe("ObligationsPage", () => {
     installApiGet({ deferCounters: deferred, listForClient: LIST_RESPONSE });
 
     render(<ObligationsPage />);
-    await waitFor(() => expect(deferred.length).toBe(4));
+    await waitFor(() => expect(deferred.length).toBe(5));
     deferred.forEach((d) => d.resolve(9));
     await waitFor(() =>
       expect(screen.getByTestId("counter-proposed")).toHaveTextContent("9"),
@@ -646,6 +649,125 @@ describe("ObligationsPage", () => {
     expect(
       screen.getByText("Could not load the rule catalog — showing rule ids."),
     ).toBeVisible();
+  });
+});
+
+describe("ObligationsPage — completion", () => {
+  const alerted = {
+    ...PROPOSED_ROW,
+    status: "alerted",
+    alert_id: "alert-test",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    installApiGet({ list: { ...LIST_RESPONSE, items: [alerted] } });
+    apiMock.post.mockResolvedValue({});
+  });
+
+  it("requires both evidence and a declaration, then records and refreshes", async () => {
+    const response = { ...LIST_RESPONSE, items: [{ ...alerted }] };
+    const totals = { done: 0 };
+    installApiGet({ list: response, counterTotals: totals });
+    apiMock.post.mockImplementation(async () => {
+      response.items[0].status = "done";
+      totals.done = 1;
+      return {};
+    });
+    render(<ObligationsPage />);
+    const button = await screen.findByRole("button", {
+      name: "Record completion",
+    });
+    expect(button).toBeDisabled();
+    fireEvent.change(
+      screen.getByLabelText("Evidence reference for obligation 101"),
+      {
+        target: { value: "  internal-document:test-receipt  " },
+      },
+    );
+    expect(button).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I confirm this obligation/ }),
+    );
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        "/api/compliance/obligations/101/complete",
+        { evidence_ref: "internal-document:test-receipt", declaration: true },
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("counter-done")).toHaveTextContent("1"),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Record completion" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Completion recorded for obligation #${alerted.id} (internal evidence).`,
+      ),
+    ).toBeVisible();
+  });
+
+  it("whitespace is not evidence and submission is disabled while saving", async () => {
+    apiMock.post.mockReturnValue(new Promise(() => {}));
+    render(<ObligationsPage />);
+    const button = await screen.findByRole("button", {
+      name: "Record completion",
+    });
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I confirm this obligation/ }),
+    );
+    const input = screen.getByLabelText(
+      "Evidence reference for obligation 101",
+    );
+    fireEvent.change(input, { target: { value: "   " } });
+    expect(button).toBeDisabled();
+    expect(input).toHaveAttribute("maxlength", "500");
+    fireEvent.change(input, { target: { value: "test-receipt" } });
+    fireEvent.click(button);
+    expect(
+      await screen.findByRole("button", { name: "Recording…" }),
+    ).toBeDisabled();
+    expect(apiMock.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a concurrent completion conflict and refreshes the register", async () => {
+    const response = { ...LIST_RESPONSE, items: [{ ...alerted }] };
+    const { listCalls, counterCalls } = installApiGet({
+      list: response,
+    });
+    apiMock.post.mockImplementation(async () => {
+      response.items[0].status = "done";
+      throw new ApiError("Conflict", 409, {
+        detail: "Obligation must be alerted (status=done).",
+      });
+    });
+    render(<ObligationsPage />);
+    await screen.findByRole("button", { name: "Record completion" });
+    fireEvent.change(
+      screen.getByLabelText("Evidence reference for obligation 101"),
+      {
+        target: { value: "test-receipt" },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /I confirm this obligation/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Record completion" }));
+    expect(
+      await screen.findByText(
+        `Completion not recorded for obligation #${alerted.id}: Obligation must be alerted (status=done).`,
+      ),
+    ).toBeVisible();
+    await waitFor(() => expect(listCalls.length).toBe(2));
+    expect(counterCalls.length).toBe(10);
+    expect(
+      screen.queryByRole("button", { name: "Record completion" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Completion recorded for obligation/),
+    ).not.toBeInTheDocument();
   });
 });
 
