@@ -1,0 +1,23 @@
+gear: 2
+gear_reason: >-
+  Test-only change to the Visa Oracle walk corpus and its census pins: 9 global-filter walks on the employment tile,
+  regenerated fixtures and the per-sequence tables they feed; touches no rule, no pack, no tree, no copy and no engine
+  adapter.
+mission: >-
+  The walk corpus covers the global filters (nationality, calling visa, overstay, minor, criminal record) and the
+  paid-medical hold on the employment tile, and the census pins each new walk's outcome, candidates and reason codes on
+  every pinned sequence including seq-29.
+objective: >-
+  Visa-night tree item PR-13. Add nine walks (Indonesian nationality, calling-visa nationality, onshore overstay 30/61,
+  minor with and without guardian, disclosed criminal record, trade-office walk past the overstay cap, paid other
+  walk answering medical); re-measure every pin by replay on seq-20..29 against the E31-B01 backend; correct the
+  generator comment on CONFLICTING_IMMIGRATION_STATUS.
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq21_pack.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

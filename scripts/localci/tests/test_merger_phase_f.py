@@ -112,7 +112,8 @@ def SSH_COMMAND(w):
 def full_pull(w, **over):
     """The PR as the moment-of-merging re-read sees it when nothing is wrong."""
     return {"headRefOid": w.head1, "state": "OPEN", "isInMergeQueue": False, "isDraft": False, "baseRefName": "main",
-            "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, "timelineItems": {"nodes": [labelled(mg.ARM_LABEL, "maint")]}, **over}
+            "labels": {"nodes": [{"name": mg.ARM_LABEL}]}, "timelineItems": {"nodes": [labelled(mg.ARM_LABEL, "maint")]},
+            "reviewDecision": None, "latestOpinionatedReviews": {"totalCount": 0, "nodes": []}, **over}
 
 
 def assert_nothing_merged(w, why_part=None):
@@ -258,6 +259,14 @@ DISARM = [
      "in GitHub's merge queue now"),
     ("pr-draft-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, isDraft=True)), "a draft now"),
     ("pr-retargeted-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, baseRefName="release")), "PR base 'release', not 'main'"),
+    ("pr-review-lands-after-the-decision-decision-field", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, reviewDecision="CHANGES_REQUESTED")),
+     "review_not_blocking false at the moment of merging"),
+    ("pr-review-lands-after-the-decision-reviewer-list", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, latestOpinionatedReviews={"totalCount": 1, "nodes": [{"state": "CHANGES_REQUESTED"}]})),
+     "review_not_blocking false at the moment of merging"),
+    ("pr-review-fields-unreadable-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: {k: v for k, v in full_pull(w).items() if k != "reviewDecision"}),
+     "review_not_blocking false at the moment of merging"),
+    ("pr-review-list-incomplete-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, latestOpinionatedReviews={"totalCount": 3, "nodes": []})),
+     "review_not_blocking false at the moment of merging"),
     ("label-gone-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, labels={"nodes": []})), f"label {mg.ARM_LABEL} absent at the moment"),
     ("label-readded-by-a-writer-at-the-moment", lambda w, mp: mp.setattr(mg, "pr_view", lambda a, n: full_pull(w, timelineItems={"nodes": [labelled(mg.ARM_LABEL, "dev")]})),
      "whose role is 'write'"),
@@ -466,6 +475,7 @@ def test_b21_main_moved_to_a_third_commit_halts_even_after_a_timeout(fw, monkeyp
 
 
 def test_b21_the_read_back_runs_twice_with_the_deploy_key_ssh_command(fw, monkeypatch):
+    monkeypatch.delenv("GIT_SSH_COMMAND", raising=False)   # a clean process env, so a key leaked into it by the read-back shows
     _push_reports(monkeypatch, lands=False, timeout=True)
     seen = []
     real = mg.git
@@ -478,6 +488,7 @@ def test_b21_the_read_back_runs_twice_with_the_deploy_key_ssh_command(fw, monkey
     fw.tick()
     readbacks = [x for x in seen if x[0][0][-1] == "refs/heads/main" and (x[0][1] or {}).get("GIT_SSH_COMMAND")]
     assert len(readbacks) == 2 and all(r[0][1] == {"GIT_SSH_COMMAND": SSH_COMMAND(fw)} and r[1] == mg.REMOTE_TIMEOUT_S for r in readbacks)
+    assert "GIT_SSH_COMMAND" not in os.environ   # the key rides the child's env only, never the merger's own
 
 
 def _readbacks(monkeypatch, per_call):

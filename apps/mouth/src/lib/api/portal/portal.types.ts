@@ -526,6 +526,20 @@ export interface PortalInvoice {
    *  `total_paid` reads the practice-level figure, so it can be non-zero
    *  while this is null. */
   paid_amount_idr: number | null;
+  /** Client payment proofs on this invoice (spec docs/specs/payment-proof-upload.md).
+   *  Absent = the backend does not serve the feature yet, and the portal shows
+   *  no proof UI at all. An empty array = feature on, no proof uploaded. */
+  payment_proofs?: PaymentProof[];
+}
+
+export type PaymentProofStatus = "received" | "verified" | "rejected";
+
+export interface PaymentProof {
+  id: number;
+  status: PaymentProofStatus;
+  /** Reason given by staff when `status` is `rejected`. */
+  note?: string | null;
+  created_at: string;
 }
 
 export interface BillingSummary {

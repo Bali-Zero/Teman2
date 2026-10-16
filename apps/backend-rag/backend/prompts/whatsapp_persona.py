@@ -357,7 +357,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "10 billion IDR, about $650k. But you don't have to put it all in on day one, it's the subscribed capital you commit to invest over time. The key is matching your investment plan with your actual cashflow so you pass BKPM audits. Ready to get started?",
+        "content": "At least 2.5 billion IDR has to be placed as paid-up capital per company, unless sector rules say otherwise (Permen Investasi/BKPM 5/2025, Article 26). Separately, the total investment value has to be more than 10 billion IDR under the per-KBLI and location rules, and that is not paid-up capital. Want me to check your sector?",
     },
     {
         "role": "user",

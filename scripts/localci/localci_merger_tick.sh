@@ -31,15 +31,21 @@ fi
 
 CODE=""
 SHA=""
+# B33: how many ticks this launchd instance has already chained (0 on a launchd start; the only thing that crosses the re-exec).
+# Anything but digits means no chain at all, never a guess.
+DEPTH="${MERGER_CHAIN_DEPTH:-0}"
+CHAIN_OK=1
+case "$DEPTH" in '' | *[!0-9]*) DEPTH=0; CHAIN_OK=0 ;; esac
 WARN=""   # B6: the host under the floor, or a prune that failed: the tick is not an error, the organ says warning
 # shellcheck disable=SC2329  # invoked indirectly, by `trap finish EXIT` below (shellcheck 0.11 does not follow it here)
-finish() {
-  local rc=$?
+finish() { finish_with "$?"; }
+finish_with() {   # B33: a chained tick calls this by hand, with the tick's rc, before it re-execs
+  local rc=$1
   if [ -n "$CODE" ]; then rm -rf "$CODE"; fi
   local code="${SHA:0:12}"
-  if [ "$rc" -ne 0 ]; then heartbeat error "tick rc=$rc code=${code:-none}"
-  elif [ -n "$WARN" ]; then heartbeat warning "$WARN code=${code:-none}"
-  else heartbeat ok "tick rc=0 code=${code:-none}"; fi
+  if [ "$rc" -ne 0 ]; then heartbeat error "tick rc=$rc code=${code:-none} depth=$DEPTH"
+  elif [ -n "$WARN" ]; then heartbeat warning "$WARN code=${code:-none} depth=$DEPTH"
+  else heartbeat ok "tick rc=0 code=${code:-none} depth=$DEPTH"; fi
 }
 trap finish EXIT
 
@@ -78,7 +84,7 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
-for f in prune.py runner.py contexts_matrix.yaml; do   # B6's prune, its df probe and the BASE matrix whose stand-ins it keeps
+for f in prune.py runner.py contexts_matrix.yaml tick_chain.py; do   # B6's prune, its df probe and the BASE matrix whose stand-ins it keeps; B33's chain predicate (absent: no chain)
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f" 2>/dev/null || rm -f "$CODE/$f"
 done
 HB_NEW="$(mktemp "$STATE/.heartbeat.sh.XXXXXX")"   # one temp file per run: a hand run beside launchd never shares it
@@ -105,6 +111,8 @@ if [ -n "$FREE" ] && [ "$FREE" -lt "$FLOOR_GB" ]; then WARN="host_below_floor fr
 if [ -z "$FREE" ]; then WARN="host free space unreadable (df -Pk $HOST_PATH): no run started"; fi   # a floor unread is not a floor met
 echo "merger_tick: $(date -u +%FT%TZ) code=${SHA:0:12} host_free_gb=${FREE:-unread}"
 TICK_RC=0
+OFFSET="$(wc -c 2>/dev/null < "$STATE/decisions.jsonl" | tr -d '[:space:]' || true)"   # B33: the journal bytes before the tick
+OFFSET="${OFFSET:-0}"
 if [ -n "$WARN" ] && [ -z "$FREE_FLAG" ]; then
   echo "merger_tick: $WARN (not journalled: no reading, or a merger.py that cannot journal the skip)" >&2
 else
@@ -116,4 +124,34 @@ if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then
   "$PY" -I "$CODE/merger.py" prune --state-dir "$STATE" --fstrim ${CODE_FLAG:+"$CODE_FLAG"} || PRUNE_RC=$?
   if [ "$PRUNE_RC" -ne 0 ]; then WARN="${WARN:+$WARN; }prune rc=$PRUNE_RC"; fi
 fi
+
+# B33 S1: launchd re-arms StartInterval only when this job EXITS, so every tick was followed by 600 s of nothing (measured 601-603 s,
+# 5 of 5 cycles). A tick that bore a verdict re-executes this script at once, in the same process: launchd still sees the one instance
+# it started, the lease is taken and dropped inside merger.py so a parallel manual tick still excludes it, and the next tick is a WHOLE
+# tick (fetch, code at the new sha, floor, lease, watchdog, prune). Any doubt is today's behaviour: exit, and StartInterval resumes.
+CHAIN_MAX="${MERGER_CHAIN_MAX:-12}"
+case "$CHAIN_MAX" in '' | *[!0-9]*) CHAIN_MAX=0 ;; esac
+chain_why=""
+if [ "$CHAIN_OK" -ne 1 ]; then chain_why="MERGER_CHAIN_DEPTH is not a number"
+elif [ "${LOCALCI_MERGER_CHAIN:-1}" = "0" ]; then chain_why="LOCALCI_MERGER_CHAIN=0"
+elif [ -e "$STATE/chain_off" ]; then chain_why="$STATE/chain_off exists"
+elif [ "$DEPTH" -ge "$CHAIN_MAX" ]; then chain_why="depth cap $CHAIN_MAX reached"
+elif [ -n "$WARN" ]; then chain_why="the tick warned: $WARN"
+elif [ ! -f "$CODE/tick_chain.py" ]; then chain_why="no tick_chain.py at ${SHA:0:12}"
+else
+  CHAIN_OUT="$("$PY" -I "$CODE/tick_chain.py" "$STATE/decisions.jsonl" "$OFFSET" "$TICK_RC" 2>/dev/null || true)"
+  case "$CHAIN_OUT" in
+    "chain "*) ;;
+    *) chain_why="${CHAIN_OUT#stop }"; chain_why="${chain_why:-the predicate gave no answer}" ;;
+  esac
+fi
+if [ -z "$chain_why" ]; then
+  echo "merger_tick: chain depth=$((DEPTH + 1)) after ${CHAIN_OUT#chain }"
+  finish_with "$TICK_RC"
+  trap - EXIT
+  export MERGER_CHAIN_DEPTH=$((DEPTH + 1))
+  shopt -s execfail
+  exec "$BASH" "$0" || { heartbeat error "chain exec failed code=${SHA:0:12}"; exit 1; }
+fi
+echo "merger_tick: chain stop: $chain_why"
 exit "$TICK_RC"

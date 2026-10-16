@@ -1,0 +1,54 @@
+task_id: kbli-nav-design-h1b2-fold
+mission: kbli-nav-design-loop (Track A, build, lot H1b' — the collapsed verdict sheet fits its head at the app's real windows; successor of #8492, gate BLOCK comment 6166699161)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Visible app change (the collapsed sheet's height rule and the title step-down) with census checks of their own, shipped
+  under the fresh-gate lane. The gate verdict of #8492 binds this PR: bindings 1-9 and the addendum A1 and A3a are closed
+  here by name; bindings 11, 12 and 13 are DECLARED DEFERRED to H1g (a separate lot after H1d) and are NOT claimed. Binding 10
+  (head_mutants.sh survives SIGPIPE) is the A3a fix and is closed here. Content frozen: no fact, verdict, cap, basis or
+  reason changes. The Nusantara map (H2), the whole-rows rule of the collapsed edge (H1d) and the guards 11-13 (H1g) are separate PRs.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: at the app's real windows (RootView with its sidebar, 1040x648, 1040x700, 1180x800) the Bali verdict band of the
+  collapsed sheet is on the screen for every one of the 1,559 titles, en and id. The collapsed sheet height adapts to its head
+  (title, band, one-row plate, official title) with cap min(0.8 x window, pane - 64) and a 12 pt margin under the band; the
+  title steps down 44 -> 34 -> 28 and is never truncated; the census runs on the real RootView (fold_census over 9,354 rows)
+  and C27 names its cause.
+constraints:
+  - No fact, verdict, cap, basis or reason changes; the title is never truncated (no lineLimit, no ellipsis).
+  - Bindings 11, 12 and 13 of the #8492 gate (compact-plate composition guard, the source mark read from what is drawn, rule and band measured on ink and headline) are deferred to H1g by name; this PR does not claim the compact head composition or the source state is guarded.
+  - The 24 pt title floor was tried and REMOVED (it changed 0 pixels: the 4 failing codes were band-bound).
+acceptance:
+  - text: Binding 1 and 2. The collapsed band SHALL clear the sheet bottom by at least 12 pt for every code, en and id, at the real windows.
+    probe: "Pro: fold_census over the real RootView, 1,559 codes x en/id x 1040x648, 1040x700, 1180x800 = 9,354 rows, 0 FAIL, minimum margin 12 pt in every window, least list left 72 pt at 648 (56102)"
+  - text: Binding 3. The layout answer at the stacked width SHALL hold at the minimum window.
+    probe: "Pro: the fold census above runs at the minimum window 1040x648 with the sidebar; the plate stacks under the title there and the band still fits"
+  - text: Binding 4 and 5. C27 SHALL name its cause and C26 SHALL bind head.compact to the collapsed state.
+    probe: "Pro: png_census.py 0 FAIL, 1 VACUOUS (the known xxl C8), C26 armed 45, C27 armed 30 (27 root-sheet + 3 bare pane); head_mutants compactexp FAILs by 'head.compact is marked on a render the record does not call collapsed'"
+  - text: Binding 6 and 7. The band mark SHALL name the band its rule heads, and an armed row matching no render SHALL fail.
+    probe: "Pro: head_mutants bandmove FAILs by 'the verdict rule is outside the band mark'; a set with zero matching renders FAILs"
+  - text: Binding 8. A title SHALL never be cut.
+    probe: "Pro: content_check.sh step 9 title-whole over 12,472 rows (1,559 codes x en/id x collapsed/open x 783 and 924 pt), 0 FAIL; title_whole_mutant.sh: the control passes, .lineLimit(2) FAILs"
+  - text: Binding 9 and 10. head_mutants.sh SHALL stop when its mutant build fails and SHALL survive SIGPIPE; the mutant table only grows.
+    probe: "Pro: head_mutants.sh control rc 0 and 13 mutants rc 1; head_mutants_trap_test.sh ok 1 (closed pipe leaves Sources clean), ok 2 (without the PIPE trap Sources is left mutated: the test bites), ok 3 (staged Sources refused, exit 4)"
+  - text: A1 and A3a of the addendum SHALL hold.
+    probe: "Pro: A1 (47192 en/id, 87202 en at 1040x700) are rows of the fold census, 0 FAIL; A3a is the trap test above"
+  - text: Content SHALL stay frozen.
+    probe: "Pro: word census vs origin/main, counts identical per language and mode; the only difference is the id national chip case (textCase), 16 lost / 16 gained, 0 / 0 case-insensitive"
+  - text: The detail-identity scan and the mark order SHALL hold on this head.
+    probe: "Pro: content_check.sh steps 1, 3, 4, 5, 6, 7, 8 ok; contrast TOTAL=196 FAIL=0"
+deferred:
+  - id: gate-binding-11
+    to: H1g
+    source: https://github.com/Bali-Zero/Teman2/pull/8492#issuecomment-6166699161
+    text: Compact one-row plate composition guard (label, chip, figure, Source on one baseline band; C26 two-row rules keyed by state).
+  - id: gate-binding-12
+    to: H1g
+    source: https://github.com/Bali-Zero/Teman2/pull/8492#issuecomment-6166699161
+    text: The source mark read from what is drawn (provenance drawn open under a closed mark FAILs).
+  - id: gate-binding-13
+    to: H1g
+    source: https://github.com/Bali-Zero/Teman2/pull/8492#issuecomment-6166699161
+    text: Rule and band measured on their ink and on the headline, not on the outer frame.

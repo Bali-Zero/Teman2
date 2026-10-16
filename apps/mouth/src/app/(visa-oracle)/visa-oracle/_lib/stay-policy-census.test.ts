@@ -245,7 +245,7 @@ describe(`signed rule-pack stay_policy census (${chosenPack.file})`, () => {
         const expectsPermitLength =
           kind === "FIXED_DAYS" &&
           minDays === maxDays &&
-          (maxDays === 365 || maxDays === 1825);
+          (maxDays === 365 || maxDays === 730 || maxDays === 1825);
 
         if (expectsPermitLength) {
           expect(candidate.duration).toBeDefined();

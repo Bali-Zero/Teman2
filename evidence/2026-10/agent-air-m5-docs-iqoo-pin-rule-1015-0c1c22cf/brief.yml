@@ -1,0 +1,20 @@
+gear: 1
+gear_reason: >-
+  Docs only: the iQOO sections of the four doors and the iQOO runbook. No code, no data, no runtime change; about 60
+  changed lines, outside the Builder Contract block.
+mission: >-
+  The iQOO PIN rule changes per Zero 2026-10-15: the phone is cabled to Pro and any LLM seat unlocks it only through
+  the Pro-side helper iqoo-unlock, never reading or typing the PIN.
+objective: >-
+  CLAUDE.md, AGENTS.md, GEMINI.md and QWEN.md carry the same short iQOO paragraph naming iqoo-unlock; the runbook
+  states the helper rule, the USB cabling and a dated 2026-10-15 keep-connected and reboot-test section; no
+  'Never save or automate' wording remains; the Builder Contract block is byte-identical to origin/main.
+scope:
+  - CLAUDE.md
+  - AGENTS.md
+  - GEMINI.md
+  - QWEN.md
+  - docs/runbooks/iqoo-live-qa.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

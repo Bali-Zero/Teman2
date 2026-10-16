@@ -1,0 +1,26 @@
+task_id: infra-localci-review-gate-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Safety before the phase F flip. A changes-requested review blocked a merge only through the classic branch protection
+  (required_pull_request_reviews, 0 approvals). phase_e_flip.py deletes that protection and phase F merges by deploy-key
+  fast-forward, and GATE had no review term (review_independent accepts QUEUED). Live: two armed PRs with CHANGES_REQUESTED
+  had all-true would_enqueue rows. B29 adds the GATE term review_not_blocking: reviewDecision is not CHANGES_REQUESTED and
+  no reviewer's latest opinionated review is CHANGES_REQUESTED (both read, since reviewDecision can read null once no review
+  is required), read in pr_side and re-read at the moment of merging in phase_f_arming; anything unreadable is false. The term
+  is a criterion member, so B24 counts it. The spec lists every other setting the flip deletes and what covers each.
+residuals:
+  - >-
+    A would_enqueue row journalled before this change lacks the key and is not mergeable under B24 L1 (fail closed): liveness reads
+    0 mergeable rows for up to 48 h after the deploy. Phase F arming re-reads the review at merge time, so an old row cannot merge on
+    a stale reading.
+  - >-
+    Only reviews from reviewers with write access count (latestOpinionatedReviews writersOnly: true), as under classic protection: a
+    changes-requested review from any other account on the public repo does not block. A dismissed review is not listed, so dismissing
+    clears it. More than 100 writer reviewers is unreadable and blocks.
+  - >-
+    Not enforced before or after the flip, named in the spec as follow-ups F29a-c for the owner: code-owner review
+    (.github/CODEOWNERS exists), signed commits, conversation resolution. Each is off in the live classic protection today.
+  - >-
+    The reviewer's identity is neither read nor journalled; the term says how many reviewers have changes requested.

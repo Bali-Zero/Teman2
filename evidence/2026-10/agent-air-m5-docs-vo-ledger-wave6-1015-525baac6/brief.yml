@@ -1,0 +1,22 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, two test files and the observer floor
+  constant. Far under 400 net lines of code; no engine rule pack, no data, no runtime change.
+mission: >-
+  The /visaoracle ledger records the iQOO physical walks that closed the E33 mobile backlog row, #8543 (the /book E33F
+  sponsor sentence in Indonesian) and #8541 (the iQOO unlock rule), and corrects the wave-5 claim that adb was not
+  installed on Pro.
+objective: >-
+  live-state-log.md carries a dated 2026-10-15 addendum as newest, SKILL.md leads its LIVE STATE with one index line,
+  PENDING-ARMS.md closes the wave-5 iQOO row and opens one row for the Mobile Chrome spec fragility, the wave-5 text
+  no longer says adb is not installed on Pro, and the seq-29 ledger observer floor equals the file's test count.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
