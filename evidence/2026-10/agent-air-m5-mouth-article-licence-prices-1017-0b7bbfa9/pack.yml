@@ -1,0 +1,92 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17: "MERP venduto da solo, ACC Mutation e ACC Boarding Pass da far sparire dal
+  sistema; licenza alcolici: solo golongan A 4 jt, solo B+C 10jt, A+B+C 12jt; il resto
+  rimandiamo a contattarci" (the rest = SLHS, Halal, PIRT).
+mission: >-
+  The client-facing articles agree with the pricing catalog (#8629): the new alcohol licence
+  prices, price on request for SLHS, halal and PIRT, no standalone MERP price.
+lanes:
+  - lane: article-licence-prices
+    role: build
+    seat: claude-sonnet-5 (subagent, same worktree; articles, locales, stamps, llms patch, guard test)
+  - lane: article-licence-prices
+    role: read
+    seat: claude-sonnet-5 (Explore census of the article prices, translation pipeline and llms exports)
+  - lane: article-licence-prices
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: article-licence-prices-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner ruling of 2026-10-17 (the ruling field above, verbatim) and the catalog rows
+      of #8629; government tariffs kept are the ones each article already labels as
+      governmental (BPJPH/SIHALAL).
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: readers of balizero.com articles (and LLM crawlers of /llms-full.txt and
+  /llms-id.txt). Observation: after the merge and the Vercel promotion,
+  https://balizero.com/business/kbli-2025-food-beverage-fnb shows "Golongan A only IDR
+  4,000,000" and SLHS "On request", and no longer contains "15,000,000".
+receipts:
+  - claim: The guard test and the PT PMA price test pass.
+    cmd: cd apps/mouth && /Users/balizero/nuzantara/node_modules/.bin/vitest run src/content/licence-prices-1017.test.ts src/content/pt-pma-setup-price.test.ts
+    result: "10 passed"
+    exit: 0
+    ts: "2026-10-16T21:00:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: The content suite (12 files incl. description-fields-integrity, blog [slug] metadata, sitemap) passes.
+    cmd: cd apps/mouth && vitest run src/content + blog metadata + sitemap tests
+    result: "947 passed"
+    exit: 0
+    ts: "2026-10-16T21:00:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: The llms-export suites pass on the targeted patch.
+    cmd: cd apps/mouth && vitest run licence-prices-1017, pt-pma-setup-price, description-fields-integrity, llms-article-exports, kbli-llms-corpus, llms-public-file-guard
+    result: "8 + 71 passed"
+    exit: 0
+    ts: "2026-10-16T21:15:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: The guard catches the old figures (IDR 15,000,000 back on an NPBBKC line; the old MERP cost line back in lost-passport); files restored byte-identical.
+    cmd: cp backup, one-site edit, vitest run src/content/licence-prices-1017.test.ts, cp back + cmp
+    result: "guard red on both; restored"
+    exit: 0
+    ts: "2026-10-16T21:00:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Every added llms-export line appears verbatim in a full regeneration of the exports from this branch.
+    cmd: LLMS_GENERATE_ARTICLES_ONLY=1 tsx scripts/generate-llms-full.ts (scratch copy), then line-by-line membership check
+    result: "194 added lines checked (154 llms-full, 40 llms-id), 0 mismatches"
+    exit: 0
+    ts: "2026-10-16T21:15:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-gov-fees-kept
+    text: >-
+      Tariffs the article itself labels as governmental (SIHALAL registration free, BPJPH
+      government fee up to IDR 500,000) and the LPH audit range stay; Bali Zero service prices
+      and unattributed ranges a client would read as a quote become price on request.
+  - id: D-bundles-kept
+    text: >-
+      KITAP + MERP bundles (45M / 55M / 33M) and single ERP/EPO prices stay; the generic
+      "re-entry permit" budget lines in e25b and e31e (not named MERP) stay.
+  - id: D-stamps
+    text: >-
+      Edited locales that were fresh are re-stamped to the new EN body hash; locales already
+      stale or unstamped keep their state, so the translator's view of their other drift is
+      not hidden.
+  - id: D-llms-targeted
+    text: >-
+      The exports are patched on the changed lines only (209+/189-), as #8305 did, instead of
+      a full regeneration that would rewrite ~346k lines of unrelated content.
+  - id: D-pii-override
+    text: >-
+      The llms commit runs with PII_GATE_ENFORCEMENT=false: the gate scans the whole staged
+      file and llms-full.txt already carries the published NPWP format example
+      01.234.567.8-901.000 from the tax articles; the added lines match no PII pattern.
+dissent: []
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 0

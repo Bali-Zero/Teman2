@@ -43385,9 +43385,9 @@ Sektor akomodasi adalah tulang punggung Bali, tetapi juga sektor yang paling ban
 **Restoran / Kafe (56101):**
 
 - Lisensi Inti: Sertifikat Laik Sehat (SLHS) — Sertifikat Kebersihan
-- Biaya/Waktu: IDR 9–25 juta tergantung ukuran; 3–4 minggu pemrosesan
+- Biaya/Waktu: harga atas permintaan — hubungi Bali Zero; 3–4 minggu pemrosesan
 - Alkohol (PB-UMKU): Lisensi NPBBKC terpisah diperlukan untuk penjualan alkohol (Kelas A, B, C)
-- Sertifikasi Halal: IDR 5–25 juta tergantung kompleksitas menu
+- Sertifikasi Halal: Harga atas permintaan — hubungi Bali Zero
 
 **Toko Minuman / Juice Bar (56304):**
 
@@ -46267,7 +46267,7 @@ URL: https://balizero.com/business/halal-certificate-bpjph-guide
 PUBLISHED: 2026-02-17
 
 ### RINGKASAN AI ZANTARA
-Halal certification is mandatory for F&B products sold in Indonesia since October 2024. Small businesses can self-declare (IDR 0-1M) through the SIHALAL system. Full certification via LPH inspection costs IDR 5-8M through Bali Zero. Processing takes 30-90 days.
+Halal certification is mandatory for F&B products sold in Indonesia since October 2024. Small businesses can self-declare through the SIHALAL system (registration is free). Full certification via LPH inspection through Bali Zero is price on request. Processing takes 30-90 days.
 
 KONTEN:
 ## Memahami Sistem Sertifikasi Halal di Indonesia
@@ -48488,7 +48488,7 @@ Sebagian besar bar dan kelab malam membutuhkan ketiga kategori tersebut. Restora
 
 ### NPBBKC Melalui Bali Zero
 
-Mendapatkan NPBBKC secara mandiri melibatkan navigasi Bea Cukai, persetujuan pemerintah daerah, dan dokumentasi kepatuhan. Bali Zero menyediakan layanan izin NPBBKC lengkap yang mencakup **Kategori A, B, dan C** seharga **IDR 15.000.000**.
+Mendapatkan NPBBKC secara mandiri melibatkan navigasi Bea Cukai, persetujuan pemerintah daerah, dan dokumentasi kepatuhan. Bali Zero menyediakan layanan izin NPBBKC lengkap yang mencakup **Kategori A, B, dan C**, dengan harga per Golongan: Golongan A saja **IDR 4.000.000**; Golongan B + C saja **IDR 10.000.000**; Golongan A + B + C **IDR 12.000.000**.
 
 Ini mencakup seluruh proses aplikasi, dokumentasi, dan penghubung dengan Bea Cukai. Jangka waktunya biasanya 4-8 minggu tergantung pada beban kerja kantor setempat.
 
@@ -48525,7 +48525,7 @@ SLHS adalah sertifikasi formal bahwa tempat usaha Anda telah lolos inspeksi kese
 - Penyimpanan makanan dan kepatuhan rantai dingin (cold chain)
 - Langkah-langkah pengendalian hama (pest control)
 
-Bali Zero menyediakan bantuan sertifikasi SLHS seharga **IDR 9.000.000**, yang mencakup persiapan pra-inspeksi, dokumentasi, dan koordinasi dengan Dinas Kesehatan.
+Bali Zero menyediakan bantuan sertifikasi SLHS (**harga atas permintaan — hubungi Bali Zero**), yang mencakup persiapan pra-inspeksi, dokumentasi, dan koordinasi dengan Dinas Kesehatan.
 
 ### Dokumen Penilaian Mandiri
 
@@ -48535,11 +48535,11 @@ Bisnis F&B berisiko menengah (56103 dan 56210) diwajibkan untuk menyerahkan doku
 
 Sejak Oktober 2024, undang-undang sertifikasi halal Indonesia (UU JPH) mensyaratkan semua produk makanan — termasuk makanan restoran — untuk memiliki pernyataan Halal atau Non-Halal. Bagi restoran di Bali yang menyajikan daging babi atau alkohol, mendaftar sebagai **Non-Halal** adalah jalur kepatuhan yang tepat.
 
-Biaya sertifikasi halal berkisar dari **IDR 5.000.000 hingga IDR 8.000.000** tergantung pada kompleksitas menu dan lembaga sertifikasi yang digunakan. Bagi sebagian besar bisnis F&B berbasis di Bali yang menyajikan masakan internasional, pernyataan Non-Halal lebih sederhana dan lebih cepat.
+Harga sertifikasi halal tergantung pada kompleksitas menu dan lembaga sertifikasi yang digunakan (**harga atas permintaan — hubungi Bali Zero**). Bagi sebagian besar bisnis F&B berbasis di Bali yang menyajikan masakan internasional, pernyataan Non-Halal lebih sederhana dan lebih cepat.
 
 ### PIRT (Pangan Industri Rumah Tangga)
 
-Jika Anda memproduksi produk makanan kemasan (salsa, snack, makanan panggang) untuk penjualan ritel alih-alih menyajikan makanan siap saji, Anda mungkin memerlukan pendaftaran PIRT. Ini mencakup produksi makanan industri rumah tangga skala kecil dan berbiaya **IDR 500.000 hingga IDR 1.000.000**. Perhatikan bahwa PIRT terpisah dari perizinan restoran — ini berlaku untuk produk makanan, bukan layanan makanan.
+Jika Anda memproduksi produk makanan kemasan (salsa, snack, makanan panggang) untuk penjualan ritel alih-alih menyajikan makanan siap saji, Anda mungkin memerlukan pendaftaran PIRT. Ini mencakup produksi makanan industri rumah tangga skala kecil. Harga atas permintaan — hubungi Bali Zero. Perhatikan bahwa PIRT terpisah dari perizinan restoran — ini berlaku untuk produk makanan, bukan layanan makanan.
 
 ---
 
@@ -48627,10 +48627,12 @@ Mendirikan bisnis F&B di Bali membutuhkan navigasi di berbagai instansi, izin, d
 
 | Layanan                      | Biaya (IDR)           | Jangka Waktu |
 | ---------------------------- | --------------------- | ------------ |
-| Izin Alkohol NPBBKC (A+B+C)  | 15.000.000            | 4-8 minggu   |
-| SLHS (Sertifikat Laik Sehat) | 9.000.000             | 3-6 minggu   |
-| Sertifikat Halal             | 5.000.000 - 8.000.000 | 4-8 minggu   |
-| PIRT (Industri Rumah Tangga) | 500.000 - 1.000.000   | 2-4 minggu   |
+| Izin Alkohol NPBBKC (Golongan A saja) | 4.000.000             | 4-8 minggu   |
+| Izin Alkohol NPBBKC (Golongan B + C saja) | 10.000.000            | 4-8 minggu   |
+| Izin Alkohol NPBBKC (Golongan A + B + C) | 12.000.000            | 4-8 minggu   |
+| SLHS (Sertifikat Laik Sehat) | Atas permintaan       | 3-6 minggu   |
+| Sertifikat Halal             | Atas permintaan       | 4-8 minggu   |
+| PIRT (Industri Rumah Tangga) | Atas permintaan       | 2-4 minggu   |
 | Audit & Migrasi Kode KBLI    | Hubungi kami          | 1-2 minggu   |
 | Setup PT PMA Lengkap (F&B)   | Hubungi kami          | 8-12 minggu  |
 
@@ -49810,7 +49812,7 @@ URL: https://balizero.com/business/kbli-2025-halal-certification-fnb
 PUBLISHED: 2026-02-17
 
 ### RINGKASAN AI ZANTARA
-Halal certification is now mandatory for food, beverages, and cosmetics in Indonesia. Know which KBLI codes require it, the BPJPH process, costs (IDR 0-50M), and the Bali restaurant implications.
+Halal certification is now mandatory for food, beverages, and cosmetics in Indonesia. Know which KBLI codes require it, the BPJPH process, cost considerations, and the Bali restaurant implications.
 
 KONTEN:
 ## KBLI 2025 dan Sertifikasi Halal: Kode Bisnis Mana yang Memerlukannya di Indonesia
@@ -50245,7 +50247,7 @@ Di **Bali Zero**, kami berspesialisasi dalam membantu investor asing dan bisnis 
 1. **Sertifikasi halal wajib** untuk semua makanan, minuman, kosmetik, dan restoran berdasarkan UU 33/2014
 2. **Kode KBLI 10xxx, 11xxx, 56xxx, dan 20231-20232** semuanya tercakup
 3. **BPJPH** adalah otoritas sertifikasi; ajukan melalui [SIHALAL](https://sihalal.go.id)
-4. **Biaya:** IDR 0-50 juta (usaha kecil sering disubsidi)
+4. **Biaya:** harga atas permintaan — hubungi Bali Zero (usaha kecil sering disubsidi)
 5. **Jangka waktu:** 2-6 bulan dari aplikasi hingga sertifikat
 6. **Bisnis Bali:** Jika Anda menyajikan daging babi/alkohol, beri label "TIDAK HALAL"—itu legal dan diperlukan
 7. **Sanksi:** Denda, penangguhan lisensi, dan sanksi pidana untuk klaim halal palsu
@@ -51503,10 +51505,10 @@ Bisnis F&B menghadapi persyaratan perizinan berlapis paling banyak dari setiap j
 | Izin                 | Nama Lengkap                                    | Diperlukan Untuk                  | Otoritas Penerbit  | Harga Bali Zero           |
 | -------------------- | ----------------------------------------------- | --------------------------------- | ------------------ | ------------------------- |
 | **HSP**              | Label Higiene Sanitasi Pangan                   | Semua bisnis F&B                  | Dinas Kesehatan    | Termasuk dengan SLHS      |
-| **SLHS**             | Sertifikat Laik Higiene Sanitasi                | Restoran, kafe, katering          | Dinas Kesehatan    | IDR 9,000,000             |
-| **NPBBKC**           | Nomor Pokok Pengusaha Barang Kena Cukai (A+B+C) | Bisnis yang menjual alkohol       | Bea Cukai (Pabean) | IDR 15,000,000            |
-| **Sertifikat Halal** | Sertifikat Halal                                | Produksi makanan, makanan kemasan | BPJPH              | IDR 5,000,000 - 8,000,000 |
-| **PIRT**             | Pangan Industri Rumah Tangga                    | Produksi makanan rumahan          | Dinas Kesehatan    | IDR 500,000 - 1,000,000   |
+| **SLHS**             | Sertifikat Laik Higiene Sanitasi                | Restoran, kafe, katering          | Dinas Kesehatan    | Atas permintaan           |
+| **NPBBKC**           | Nomor Pokok Pengusaha Barang Kena Cukai (A+B+C) | Bisnis yang menjual alkohol       | Bea Cukai (Pabean) | Golongan A: IDR 4,000,000; B + C: IDR 10,000,000; A + B + C: IDR 12,000,000 |
+| **Sertifikat Halal** | Sertifikat Halal                                | Produksi makanan, makanan kemasan | BPJPH              | Atas permintaan           |
+| **PIRT**             | Pangan Industri Rumah Tangga                    | Produksi makanan rumahan          | Dinas Kesehatan    | Atas permintaan           |
 
 **SLHS** tidak dapat dinegosiasikan untuk setiap tempat yang menyajikan makanan kepada publik. Sertifikasi melibatkan inspeksi kesehatan di tempat yang mencakup fasilitas dapur, penyimpanan makanan, kualitas air, pembuangan limbah, dan praktik kebersihan staf. Tanpa itu, tempat Anda dapat ditutup selama inspeksi Dinas Kesehatan rutin — dan inspeksi ini di Bali telah meningkat secara signifikan sejak 2025.
 
@@ -51631,10 +51633,12 @@ Perizinan adalah tempat biaya operasional bertambah dengan cepat. Di bawah ini a
 
 | Layanan              | Deskripsi                                | Harga (IDR)           |
 | -------------------- | ---------------------------------------- | --------------------- |
-| **SLHS**             | Sertifikat Sanitasi Kebersihan untuk F&B | 9,000,000             |
-| **NPBBKC (A+B+C)**   | Lisensi Alkohol — semua tiga kategori    | 15,000,000            |
-| **Sertifikat Halal** | Wajib untuk produksi makanan             | 5,000,000 - 8,000,000 |
-| **PIRT**             | Lisensi produksi makanan rumah tangga    | 500,000 - 1,000,000   |
+| **SLHS**             | Sertifikat Sanitasi Kebersihan untuk F&B | Atas permintaan       |
+| **NPBBKC (Golongan A)** | Lisensi Alkohol — Golongan A saja        | 4,000,000             |
+| **NPBBKC (Golongan B + C)** | Lisensi Alkohol — Golongan B + C saja    | 10,000,000            |
+| **NPBBKC (Golongan A + B + C)** | Lisensi Alkohol — Golongan A + B + C     | 12,000,000            |
+| **Sertifikat Halal** | Wajib untuk produksi makanan             | Atas permintaan       |
+| **PIRT**             | Lisensi produksi makanan rumah tangga    | Atas permintaan       |
 
 Untuk paket pembentukan perusahaan yang mencakup perizinan dasar, pendaftaran NIB, dan pemilihan kode KBLI, [hubungi Bali Zero](https://balizero.com) untuk konsultasi yang disesuaikan dengan jenis bisnis dan sektor Anda.
 
@@ -56017,14 +56021,14 @@ Berdasarkan UU Ketenagakerjaan (UU No. 13/2003 sebagaimana diubah), perusahaan y
 
 Memahami di mana DKP-TKA cocok dalam struktur biaya keseluruhan membantu dengan perencanaan anggaran:
 
-| Jenis Biaya      | Jumlah        | Dibayarkan Kepada           | Tujuan                  |
-| ---------------- | ------------- | --------------------------- | ----------------------- |
-| DKP-TKA          | USD 100/bulan | Kementerian Ketenagakerjaan | Dana kompensasi pekerja |
-| Pemrosesan RPTKA | Variabel      | Kementerian Ketenagakerjaan | Pemrosesan aplikasi     |
-| Biaya VITAS      | USD 110-335   | Imigrasi                    | Penerbitan visa         |
-| Biaya ITAS       | IDR 2.000.000 | Imigrasi                    | Penerbitan izin tinggal |
-| MERP/STM         | IDR 1.000.000 | Imigrasi                    | Izin masuk kembali      |
-| Biaya jasa agen  | Variabel      | Agen imigrasi               | Layanan profesional     |
+| Jenis Biaya          | Jumlah        | Dibayarkan Kepada       | Tujuan                    |
+| -------------------- | ------------- | ----------------------- | ------------------------- |
+| DKP-TKA              | USD 100/bulan | Kementerian Ketenagakerjaan | Dana kompensasi pekerja   |
+| Pemrosesan RPTKA     | Beragam       | Kementerian Ketenagakerjaan | Pemrosesan aplikasi       |
+| Biaya VITAS          | USD 110-335   | Imigrasi                | Penerbitan visa           |
+| Biaya ITAS           | IDR 2.000.000 | Imigrasi                | Penerbitan izin tinggal   |
+| MERP/STM             | Atas permintaan | Imigrasi                | Izin masuk kembali        |
+| Biaya layanan agen   | Beragam       | Agen imigrasi           | Layanan profesional       |
 
 ## Pertanyaan yang Sering Diajukan tentang DKP-TKA
 
@@ -58859,7 +58863,7 @@ Jika siswa pindah sekolah di tengah masa berlaku visa:
 | Aplikasi VITAS            | USD 110 - 335 (tergantung durasi) |
 | Penerbitan ITAS (2 tahun) | IDR 2.000.000                     |
 | Biaya Biometrik           | IDR 200.000                       |
-| MERP (Izin Re-entry)      | IDR 1.000.000                     |
+| MERP (Izin Re-entry)      | Atas permintaan                   |
 | Jasa Agen/Admin           | IDR 3.000.000 - 8.000.000         |
 | **Total Estimasi**        | **IDR 5.000.000 - 15.000.000**    |
 
@@ -59177,7 +59181,7 @@ Setelah **5 tahun berturut-turut** dengan KITAS pensiun, Anda memenuhi syarat un
 
 **IDR 45.000.000** (termasuk kartu KITAP + MERP awal 5 tahun)
 
-**Perpanjangan MERP**: Setiap 5 tahun, sekitar IDR 10.000.000 - 15.000.000
+**Perpanjangan MERP**: Setiap 5 tahun, harga atas permintaan
 
 ## Lokasi Terbaik untuk Pensiunan di Indonesia
 
@@ -67472,7 +67476,7 @@ Jika Anda memiliki izin masuk-keluar berkali (MERP/STM) di paspor lama, Anda per
 
 - MERP lama berada di paspor yang hilang dan tidak lagi berlaku
 - Ajukan MERP baru di saat yang sama dengan re-stamping KITAS
-- Biaya: IDR 1.000.000 untuk MERP baru
+- Biaya: harga atas permintaan — hubungi Bali Zero
 
 ## Ringkasan Timeline: Paspor Hilang hingga Pemulihan Penuh
 
@@ -98817,10 +98821,10 @@ Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami
       name: "MERP",
       subtitle: "Multiple Exit Re-Entry",
       values: {
-        Perjalanan: "Tak Terbatas",
-        Durasi: "Sesuai KITAS",
-        Biaya: "Rp 1-1,5 Juta",
-        "Cocok untuk": "Sering bepergian",
+        Trips: "Tak terbatas",
+        Duration: "Sesuai dengan masa berlaku KITAS",
+        Cost: "Atas permintaan",
+        "Best for": "Penumpang reguler",
       },
       highlight: true,
     },
