@@ -1,0 +1,66 @@
+{
+  "active_consumer_denominator": "UNKNOWN",
+  "base_commit_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "block_id": "B03",
+  "campaign_id": "universal-db-wave8-20261015",
+  "disposition_counts": {
+    "active": 0,
+    "duplicate": 43,
+    "excluded": 1803,
+    "retired": 0,
+    "unresolved": 4184
+  },
+  "historical_restore_references_reconciled": {
+    "runtime_mini_46522da0ef79d3aa7422ca41": "live_mini_restore_organ_partial_contract",
+    "src_2f350566b97aee80": "historical_restore_ref:workflow_wiring_unit_test_excluded",
+    "src_307bea3dfb94ec31": "historical_restore_ref:git_deleted_workflow_legacy_unproved",
+    "src_cdf3ae5e4ecf861c": "historical_restore_ref:verifier_unit_test_excluded",
+    "src_d073f505ff1671ad": "historical_restore_ref:restore_drill_verifier_script",
+    "src_def7a4c288a552af": "historical_restore_ref:pg_restore_drill_shell_script"
+  },
+  "lead_delta_leads": 1,
+  "manual_break_glass_counts": {
+    "manual_backfill_script": 27,
+    "manual_backup_script": 8,
+    "manual_migration_cli": 1,
+    "manual_migration_manager": 1,
+    "manual_or_cron_restore_verifier": 1,
+    "manual_pg_operator_shell": 1,
+    "manual_restore_drill_shell": 1,
+    "manual_restore_or_recovery_script": 2,
+    "manual_seed_script": 9,
+    "scheduled_and_manual_restore_drill_organ": 1
+  },
+  "matrix_leads": 6029,
+  "status_counts": {
+    "BLOCKED": 3940,
+    "CONFLICT": 0,
+    "EVIDENCED": 0,
+    "PARTIAL": 2086,
+    "UNKNOWN": 4
+  },
+  "supplementary_prior_hashes": {
+    ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261014-0535/GITHUB-WORKFLOW-METADATA.json": "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-M5.json": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-mini.json": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-pro.json": "4f7bf4e90c1aad7f47ca04cd80ca8fe304cf2affae56bbc68fca080185986703",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json": "9f90a66733d63b9183ad21beeca6b84b78db0b243e41aeb9a1d7bc5ab89363cd"
+  },
+  "total_leads": 6030,
+  "verified_input_hashes": {
+    ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261014-0535/GITHUB-WORKFLOW-METADATA.json": "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-M5.json": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-mini.json": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-pro.json": "4f7bf4e90c1aad7f47ca04cd80ca8fe304cf2affae56bbc68fca080185986703",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json": "9f90a66733d63b9183ad21beeca6b84b78db0b243e41aeb9a1d7bc5ab89363cd",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+    ".agent-receipts/udb-wave8-inputs/ASTRA-ADVICE.md": "72f349f285bc681013b67ad1d25cdad54d3d4478080dc1f5e7e0512dd9e1fdb8",
+    ".agent-receipts/udb-wave8-inputs/FINAL-BLUE-GATE.json": "b9d284e1dba9e87ad340cbd4076061e7a35a93fdf8bc1c910340e6099d711856",
+    ".agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+    ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+    ".agent-receipts/udb-wave8-inputs/REPORT.md": "d289fb8660a6bd634cb7785fef3a8c0b47ceefe82463d134c4bbf66dc0563e9a",
+    ".agent-receipts/udb-wave8-inputs/STATE.json": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+    ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+    ".agent-receipts/udb-wave8-inputs/research-lines.csv": "1b3d1f31df997500975311d3f49cbd3a50346c2fa7d27f45ff808c7203654c10"
+  }
+}

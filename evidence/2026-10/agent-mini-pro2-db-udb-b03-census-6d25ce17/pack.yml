@@ -1,0 +1,55 @@
+{
+  "mandate": "universal-db-wave8-20261015-B03",
+  "brief_ref": "evidence/brief.yml",
+  "status": "PARTIAL_PREPARED_NOT_CLOSED",
+  "receipts":
+    [
+      {
+        "claim": "Current original candidate source suite passes; child clean-checkout execution also passed with no ignored receipts.",
+        "cmd": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+        "exit": 0,
+        "ts": "2026-10-16T06:59:50.604744+00:00",
+        "seat": "codex-coordinator",
+        "result": "24 passed, 0 skipped; parent re-executed current suite, child executed clean copy",
+        "evidence_ref": "research/operations/udb-wave8/B03/INTEGRATION-VERIFICATION.json",
+      },
+    ],
+  "dissent":
+    [
+      {
+        "seat": "campaign-independent-adversary",
+        "objection": "Actual active denominator, native store/operation compatibility and dependent recovery evidence remain unknown; source reproducibility is not operational closure.",
+        "status": "CONFIRMED",
+      },
+    ],
+  "pii_scan": "clean",
+  "block_closed": false,
+  "native_probe_executed": false,
+  "production_adoption": false,
+  "final_gate": "PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD",
+  "lanes":
+    [
+      {
+        "lane": "B03-original",
+        "role": "build",
+        "seat": "gemini-4-argon-high",
+      },
+      {
+        "lane": "B03-bounded-prepared-integration",
+        "role": "build",
+        "seat": "codex-coordinator",
+      },
+      {
+        "lane": "B03-outside-contribution-final",
+        "role": "review",
+        "seat": "astra-requested-independent-review-pending",
+      },
+    ],
+  "seat_override": "Owner explicitly selected Gemini Argon/high with Astra6/xhigh and Opus5.5/xhigh support. Latest authenticated owner instruction removes Claude availability as a blocker and permits available independent review. No unavailable model is claimed as observed; independent different-family grading relative to main Gemini builder and exact-head gate remain required.",
+  "limitations":
+    [
+      "Source and fixture observations only; block_closed stays false.",
+      "Baseline additions are exact individually classified digest/identifier or synthetic-negative-test findings; no blanket exclusions.",
+      "No stage amendment, B02 native consent or correction-budget reset inferred.",
+    ],
+}
