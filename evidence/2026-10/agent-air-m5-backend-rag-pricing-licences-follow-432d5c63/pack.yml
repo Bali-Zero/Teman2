@@ -11,7 +11,7 @@ mission: >-
 lanes:
   - lane: pricing-licences-followup2
     role: build
-    seat: claude-sonnet-5 (subagent; cherry-pick of #8632's 61f864ea1d + the BLOCK cure)
+    seat: "claude-sonnet-5 (subagent; cherry-pick of PR 8632's 61f864ea1d + the BLOCK cure)"
   - lane: pricing-licences-followup2
     role: review
     seat: claude-opus-5-5 (Claude Code session, M5)
