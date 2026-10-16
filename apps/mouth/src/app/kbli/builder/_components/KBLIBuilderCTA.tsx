@@ -36,8 +36,8 @@ export function KBLIBuilderCTA() {
       <span
         className="inline-block text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-6"
         style={{
-          background: "var(--accent-funnel)",
-          color: "var(--text-on-accent)",
+          background: "var(--r19-wash)",
+          color: "var(--accent-funnel)",
         }}
       >
         PT PMA 2025
@@ -113,8 +113,8 @@ export function KBLIBuilderCTA() {
               <span
                 className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{
-                  background: "var(--accent-funnel)",
-                  color: "var(--text-on-accent)",
+                  background: "var(--r19-wash)",
+                  color: "var(--accent-funnel)",
                 }}
                 aria-hidden="true"
               >

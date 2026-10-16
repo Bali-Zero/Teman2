@@ -9,9 +9,9 @@ const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getColor(score: number): string {
-  if (score >= 70) return "#D4B483"; // gold
-  if (score >= 40) return "#F59E0B"; // amber
-  return "#555"; // dim
+  if (score >= 70) return "var(--accent-funnel)"; // copper
+  if (score >= 40) return "var(--kbli-pma-restricted)"; // amber
+  return "var(--kbli-text-muted)"; // muted
 }
 
 export default function MatchScoreRing({ score }: { score: number }) {
@@ -31,7 +31,7 @@ export default function MatchScoreRing({ score }: { score: number }) {
           cy={SIZE / 2}
           r={RADIUS}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="var(--kbli-border)"
           strokeWidth={STROKE}
         />
         {/* Fill */}

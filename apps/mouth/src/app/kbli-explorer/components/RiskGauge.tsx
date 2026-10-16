@@ -26,12 +26,12 @@ const RISK_LABELS: Record<RiskLevel, string> = {
 };
 
 const RISK_COLORS: Record<RiskLevel, string> = {
-  low: "#34d399",
-  "medium-low": "#6ee7b7",
-  medium: "#fbbf24",
-  "medium-high": "#f97316",
-  high: "#ef4444",
-  "not-classified": "#9ca3af",
+  low: "var(--kbli-pma-open)",
+  "medium-low": "var(--kbli-pma-open)",
+  medium: "var(--kbli-pma-restricted)",
+  "medium-high": "var(--accent-funnel)",
+  high: "var(--kbli-pma-closed)",
+  "not-classified": "var(--kbli-text-muted)",
 };
 
 const WIDTH = 160;
@@ -75,10 +75,10 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
       <svg width={WIDTH} height={HEIGHT} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
         <defs>
           <linearGradient id="risk-arc-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#34d399" />
-            <stop offset="35%" stopColor="#fbbf24" />
-            <stop offset="65%" stopColor="#f97316" />
-            <stop offset="100%" stopColor="#ef4444" />
+            <stop offset="0%" stopColor="var(--kbli-pma-open)" />
+            <stop offset="35%" stopColor="var(--kbli-pma-restricted)" />
+            <stop offset="65%" stopColor="var(--accent-funnel)" />
+            <stop offset="100%" stopColor="var(--kbli-pma-closed)" />
           </linearGradient>
         </defs>
 
@@ -86,7 +86,7 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
         <path
           d={describeArc(CX, CY, RADIUS, -90, 90)}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="var(--kbli-border)"
           strokeWidth={STROKE}
           strokeLinecap="round"
         />
@@ -123,7 +123,7 @@ export default function RiskGauge({ level }: { level: RiskLevel }) {
 
         {/* Center dot */}
         <circle cx={CX} cy={CY} r={4} fill={color} />
-        <circle cx={CX} cy={CY} r={2} fill="#050507" />
+        <circle cx={CX} cy={CY} r={2} fill="var(--kbli-bg-elevated)" />
       </svg>
       <span
         className="text-[11px] uppercase tracking-widest mt-1"

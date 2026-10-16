@@ -91,7 +91,7 @@ export function KBLIPanelCodeDetail({
         <TransitionBadge transition={detail.transition} />
       </div>
 
-      <p className="mt-5 border-t border-white/[0.06] pt-4 text-sm leading-relaxed text-zinc-400">
+      <p className="mt-5 border-t border-[var(--border)] pt-4 text-sm leading-relaxed text-zinc-400">
         Scope description, licensing by business scale, authority and processing
         time are on the code&apos;s own page — rendered there by the components
         that know how to state what is verified and what is derived.
@@ -103,7 +103,7 @@ export function KBLIPanelCodeDetail({
       <a
         href={`/kbli/${detail.code}`}
         data-testid="kbli-panel-detail-full"
-        className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.06]
+        className="mt-6 inline-flex items-center gap-2 rounded-xl border border-white/[0.10] bg-[var(--kbli-bg-surface)]
                    px-4 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-all
                    hover:border-[var(--kbli-accent)]/60 hover:bg-[var(--kbli-accent)]/20
                    focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kbli-accent)]"

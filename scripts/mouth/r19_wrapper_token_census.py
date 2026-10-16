@@ -1706,10 +1706,9 @@ PENDING = "() => !!document.querySelector('[role=\"log\"] [role=\"status\"]')"
 FAILED = "() => (document.querySelector('[role=\"log\"]')?.innerText || '').includes('Something went wrong')"
 ZANTARA = ['div:has(> [role="log"])']
 # Declared, not deleted (W0d-3b-2a): a walk whose every text run is over an image has no ground to judge, and the
-# rule that fails it stays. The exemption ends with W2''', which gives the badge a solid plate, puts the walk
-# back and shows it ok (contract section 8.4).
-NOT_JUDGEABLE = {("zantara-pending", "mobile/system-dark"):
-                 "every text run is over-image (gradient-clip title, badge spread 15, bubble on gradient)"}
+# rule that fails it stays. W2''' gives the badge a solid plate, puts zantara-pending mobile/system-dark back in
+# the walks and shows it ok (contract section 8.4).
+NOT_JUDGEABLE: dict[tuple[str, str], str] = {}
 OK = {"search": 200, "inspect": 200}
 # name, page, walks ("all" = the six states), stubs, seed, opener, surface selectors[, options]
 SCENARIOS = [

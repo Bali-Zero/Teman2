@@ -13,10 +13,13 @@ import { buildWhatsAppLink, type Funnel } from "@/lib/whatsapp-utm";
 interface MobileNavProps {
   items: { label: string; href: string }[];
   funnel: Funnel;
+  /** Paper ink for the trigger on a light nav that is not an R19 route (the /kbli wrapper). */
+  paper?: boolean;
 }
 
-export function MobileNav({ items, funnel }: MobileNavProps) {
+export function MobileNav({ items, funnel, paper }: MobileNavProps) {
   const isR19 = useR19();
+  const lightTrigger = isR19 || Boolean(paper);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -39,9 +42,9 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
           aria-label={open ? "Close menu" : "Open menu"}
           className={`${isR19 ? "min-[981px]:hidden w-11 h-11" : "md:hidden w-10 h-10"} inline-flex items-center justify-center flex-shrink-0 rounded-lg`}
           style={{
-            color: isR19 ? "#1D2C3B" : "#ffffff",
-            background: isR19 ? "#FFFCF7" : "rgba(255,255,255,0.06)",
-            border: isR19
+            color: lightTrigger ? "#1D2C3B" : "#ffffff",
+            background: lightTrigger ? "#FFFCF7" : "rgba(255,255,255,0.06)",
+            border: lightTrigger
               ? "1px solid #DAD8D1"
               : "1px solid rgba(255,255,255,0.14)",
           }}
@@ -58,23 +61,23 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
             position: "fixed",
             inset: 0,
             zIndex: 398,
-            background: "rgba(0,0,0,0.45)",
+            background: paper ? "rgba(29, 44, 59, 0.45)" : "rgba(0,0,0,0.45)",
           }}
         />
 
         {/* Drawer panel */}
         <Dialog.Content
           aria-describedby={undefined}
-          className={`${isR19 ? `${r19Styles.drawer} min-[981px]:hidden` : "md:hidden"} fixed inset-y-0 left-0 z-[399] flex flex-col w-[min(80vw,320px)]`}
+          className={`${isR19 ? `${r19Styles.drawer} min-[981px]:hidden` : paper ? "kbli-r19 md:hidden" : "md:hidden"} fixed inset-y-0 left-0 z-[399] flex flex-col w-[min(80vw,320px)]`}
           data-presentation={isR19 ? "r19-drawer" : undefined}
           style={{
             ...(isR19 ? R19_VARS : {}),
-            fontFamily: isR19 ? "var(--font-sans)" : undefined,
+            fontFamily: isR19 || paper ? "var(--font-sans)" : undefined,
             color: "var(--text-primary)",
             background: "var(--nav-bg)",
             borderRight: "1px solid var(--nav-border)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
+            backdropFilter: paper ? "none" : "blur(16px)",
+            WebkitBackdropFilter: paper ? "none" : "blur(16px)",
             overflowY: "auto",
           }}
         >
@@ -114,10 +117,12 @@ export function MobileNav({ items, funnel }: MobileNavProps) {
                   className="block px-4 py-3 rounded-xl text-[18px] font-semibold"
                   style={{
                     color: "var(--text-primary)",
-                    background:
-                      "color-mix(in srgb, var(--accent-funnel) 6%, transparent)",
-                    border:
-                      "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
+                    background: paper
+                      ? "var(--r19-wash)"
+                      : "color-mix(in srgb, var(--accent-funnel) 6%, transparent)",
+                    border: paper
+                      ? "1px solid var(--border-default)"
+                      : "1px solid color-mix(in srgb, var(--accent-funnel) 14%, transparent)",
                     textDecoration: "none",
                   }}
                 >
