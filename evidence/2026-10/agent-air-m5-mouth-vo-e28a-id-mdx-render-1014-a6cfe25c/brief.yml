@@ -1,0 +1,59 @@
+task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
+gear: 2
+l_level: L2
+mission_colour: BLUE
+gate_class: opus
+objective: >-
+  E28 close-out, PR D. Six investor articles (the E28A guide, the Golden Visa guide and the Investor KITAS guide, each
+  EN and ID) and the /visa/kitas page state things the official Imigrasi E28A-E28F pages, read 2026-10-15, contradict:
+  an E28G that does not exist, E28A as a strictly passive visa, an 18-month passport, a 5-7 day visa stage, a Golden
+  Visa that is a permanent ITAP at IDR 350M, E28D as a representative-office permit. Each false sentence, cell or FAQ
+  entry is replaced by the shortest true one; the official pages are saved under research/visa/2026-10-15-e28-pages/;
+  a truth test holds the corrected facts in place with guilt and innocence cases for every rule.
+constraints:
+  - Change only sentences, table cells or FAQ entries that state something false or unsupported about E28 codes,
+    thresholds, durations, sponsor, work rights, passport, processing time, extension, permanence, price or E28E/E28G.
+  - Price is all-inclusive, never a government/service fee split; Golden Visa routes are price on consultation.
+  - MDX stays valid (bare '<' before a digit is &lt;), no new JSX, components or imports, frontmatter keys kept.
+  - Local commits only, no push, no npm install/ci, no Playwright on M5, no paid per-token API.
+acceptance:
+  - text: >-
+      WHEN any of the six articles or /visa/kitas states an E28G, a seven-sub-variant frame, "strictly passive" or
+      "passive investors", an 18/24-month passport, "5-7 working days", an IDR 350M threshold, "Golden Visa (ITAP)",
+      KPPA/representative office for E28D, paid-in capital as the E28A test, a fee split, or "renewable annually" for
+      E28A, the truth test SHALL go red naming file and line; WHEN the correct sentences are present it SHALL be green.
+    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (167 tests)"
+  - text: >-
+      WHEN the E28G sub-variant line is put back into the E28A guide the truth test SHALL go red, and green again once
+      the file is restored.
+    probe: "mutation in pack.yml mutation_receipts (cp backup, restore by cp)"
+  - text: >-
+      WHEN the six touched articles are compiled with the production MDX options they SHALL compile, and the en/id
+      corpus guards SHALL stay green.
+    probe: "src/components/blog/MDXContentRSC.all-articles-en/id/selftest.test.tsx"
+assumptions:
+  - text: The official imigrasi.go.id E28A-E28F pages saved on 2026-10-15 are the source of truth; E28E is published without content.
+    status: verified
+    probe: research/visa/2026-10-15-e28-pages/text/
+  - text: Owner rulings of 2026-10-15 (E28A sold for 2 years only, all-inclusive prices, 7-10 working day indicative window, Golden routes on consultation).
+    status: verified
+    note: given in the mission brief by the team lead
+consumer_map:
+  - balizero.com/immigration/e28a-investor-kitas-guide (EN and /id) renders the corrected E28A guide.
+  - balizero.com/visas/golden-visa-indonesia-complete-guide renders the corrected Golden Visa guide (EN and /id).
+  - balizero.com/immigration/investor-kitas-guide renders the corrected Investor KITAS guide (EN and /id).
+  - balizero.com/visa/kitas renders the corrected E28A and E28D rows and the E28D section.
+  - apps/mouth vitest (CI) runs src/content/e28-family-articles.truth.test.ts on every PR.
+risks:
+  - text: >-
+      The Golden Visa guide was built on a false premise end to end (ITAP, IDR 350M tiers, property and bank-deposit
+      vehicles, calculators, case studies); a sentence-level fix was impossible, so its body is replaced by a short true
+      body (1154 lines out, 47 in per language). Reviewer should judge that this is the smaller lie than 1100 lines of
+      surgical edits to a fiction.
+  - text: >-
+      The FR/IT/RU twins of the E28A, Golden and Investor guides still carry the old claims (out of scope for this PR,
+      follow-up needed); the truth test covers EN and ID only.
+  - text: >-
+      The diff budget of about 350 changed lines is exceeded on the E28A pair (about 340 across the pair) and by the
+      Golden body replacement; the deletions are mostly the removed sub-variants section and the false Golden body.
+grader: "Fresh Opus 5.5 final gate commissioned by the team lead"
