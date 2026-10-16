@@ -9,6 +9,9 @@ import { R19Presentation } from "@/components/r19/R19Presentation";
 export const metadata: Metadata = {
   title: "Tax Compliance Calendar",
   description: "Deadlines, reminders and compliance for businesses in Bali.",
+  alternates: {
+    canonical: "https://tax.balizero.com/",
+  },
 };
 
 export default function TaxCalendarLayout({

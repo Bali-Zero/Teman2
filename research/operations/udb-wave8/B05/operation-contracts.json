@@ -1,0 +1,3532 @@
+{
+  "schema_version": "udb-wave8-b05-v2",
+  "conventions_sha256": "a7feea89fa64000d76c18a52d705dd008b4a6336a6d58af98c2618a13048c559",
+  "base_commit_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "base_commit_timestamp": "2026-10-15T07:06:22Z",
+  "denominator_accounting": {
+    "consumer_matrix_csv_rows": 6029,
+    "lead_delta_rows": 1,
+    "total_leads": 6030,
+    "retained_test_source_rows": 1731,
+    "non_retained_test_plus_delta": 4299,
+    "active_consumer_denominator": "UNKNOWN",
+    "active_consumer_denominator_caveat": "LEAD-DELTA.json marks active_consumer_denominator='UNKNOWN' pending B03 reconciliation; 4299 is non_retained_test_plus_delta ((6029 - 1731) + 1).",
+    "instantiated_operation_contracts": 23,
+    "instantiated_status_breakdown": {
+      "CONFLICT": 3,
+      "PARTIAL": 19,
+      "BLOCKED": 1
+    },
+    "complete_operation_contracts": 0,
+    "uninstantiated_non_retained_leads": 4276,
+    "uninstantiated_reason": "Remaining 4276 non-retained-test leads (out of 4299 non_retained_test_plus_delta; active_consumer_denominator is UNKNOWN in LEAD-DELTA.json) remain in BLOCKED_DISCOVERY / PARTIAL_DISCOVERY / BLOCKED_RUNTIME_CONTRACT buckets across 33 computed census buckets in consumer-matrix.csv awaiting B02/B03/B06/B07 callsite, runtime unit, and store target resolution.",
+    "census_bucket_count": 33,
+    "census_buckets": [
+      {
+        "family": "src",
+        "contract_coverage_status": "NOT_ESTABLISHED",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 2704
+      },
+      {
+        "family": "src",
+        "contract_coverage_status": "TEST_SOURCE_CLASSIFICATION_ONLY",
+        "disposition": "RETAINED_TEST_SOURCE",
+        "count": 1731
+      },
+      {
+        "family": "index",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 678
+      },
+      {
+        "family": "runtime",
+        "contract_coverage_status": "NOT_ESTABLISHED",
+        "disposition": "BLOCKED_RUNTIME_CONTRACT",
+        "count": 249
+      },
+      {
+        "family": "job_pro",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 160
+      },
+      {
+        "family": "CI-REGISTRATION-UNMATCHED-GH",
+        "contract_coverage_status": "UNCLOSED",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 114
+      },
+      {
+        "family": "cron_pro",
+        "contract_coverage_status": "BASH_CST_SOURCE_CALL_CANDIDATES_OPERATION_CONTRACT_OPEN",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 70
+      },
+      {
+        "family": "NOTEBOOK-CONTAINER-REFERENCE-NLM",
+        "contract_coverage_status": "UNCLOSED",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 67
+      },
+      {
+        "family": "SOURCE-PATH-UNMATCHED-PRO",
+        "contract_coverage_status": "UNCLOSED",
+        "disposition": "UNMATCHED_CURRENT_SOURCE_PATH",
+        "count": 37
+      },
+      {
+        "family": "runtime-pro-plist",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 35
+      },
+      {
+        "family": "job_mini",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 33
+      },
+      {
+        "family": "job_pro",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 31
+      },
+      {
+        "family": "job_pro",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_RUNTIME_CONTRACT",
+        "count": 27
+      },
+      {
+        "family": "SOURCE-PATH-UNMATCHED-PRO",
+        "contract_coverage_status": "UNCLOSED",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 20
+      },
+      {
+        "family": "cron_pro",
+        "contract_coverage_status": "DECLARED_CONTEXT_INCOMPLETE_OPERATION_CONTRACT_OPEN",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 18
+      },
+      {
+        "family": "job_M5",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 10
+      },
+      {
+        "family": "mcp",
+        "contract_coverage_status": "NOT_ESTABLISHED",
+        "disposition": "BLOCKED_MCP_REACHABILITY",
+        "count": 8
+      },
+      {
+        "family": "job_M5",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_RUNTIME_CONTRACT",
+        "count": 5
+      },
+      {
+        "family": "cron_mini",
+        "contract_coverage_status": "DECLARED_CONTEXT_INCOMPLETE_OPERATION_CONTRACT_OPEN",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 4
+      },
+      {
+        "family": "cron_mini",
+        "contract_coverage_status": "SOURCE_BINDING_PARTIAL_OPERATION_CONTRACT_OPEN",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 3
+      },
+      {
+        "family": "job_mini",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_RUNTIME_CONTRACT",
+        "count": 3
+      },
+      {
+        "family": "runtime-mini-plist",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 3
+      },
+      {
+        "family": "runtime-pro-plist",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 3
+      },
+      {
+        "family": "engine_mini",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 2
+      },
+      {
+        "family": "engine_pro",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 2
+      },
+      {
+        "family": "runtime-mini-plist",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 2
+      },
+      {
+        "family": "src",
+        "contract_coverage_status": "PARTIAL_SOURCE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 2
+      },
+      {
+        "family": "src",
+        "contract_coverage_status": "SCOPED_ISOLATED_VERIFICATION_ONLY",
+        "disposition": "ADAPTED_ISOLATED_VERIFIED",
+        "count": 2
+      },
+      {
+        "family": "src",
+        "contract_coverage_status": "SCOPED_ISOLATED_VERIFICATION_ONLY",
+        "disposition": "ADAPTED_PARTIAL_VERIFIED",
+        "count": 2
+      },
+      {
+        "family": "SOURCE-TRACE-UNMATCHED-PRO",
+        "contract_coverage_status": "NOT_ESTABLISHED",
+        "disposition": "UNMATCHED_CURRENT_SOURCE_PATH",
+        "count": 1
+      },
+      {
+        "family": "engine_M5",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 1
+      },
+      {
+        "family": "job_mini",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "PARTIAL_DISCOVERY",
+        "count": 1
+      },
+      {
+        "family": "runtime-pro-backup",
+        "contract_coverage_status": "INCOMPLETE",
+        "disposition": "BLOCKED_DISCOVERY",
+        "count": 1
+      }
+    ]
+  },
+  "ast_counterexamples": {
+    "conversation_repository": {
+      "file": "apps/backend-rag/backend/db/repositories/conversation_repository.py",
+      "sha256": "c3a9c44b8f97b4ef2155194d440feb2f1a23216057eba94eb91d51e988dd15fe",
+      "methods": {
+        "save_messages": {
+          "lineno": 32,
+          "end_lineno": 136,
+          "has_conn_transaction": true,
+          "has_advisory_lock": false,
+          "has_for_update_row_lock": false,
+          "attribute_calls": [
+            "acquire",
+            "append",
+            "execute",
+            "fetchrow",
+            "now",
+            "transaction"
+          ]
+        },
+        "get_messages": {
+          "lineno": 138,
+          "end_lineno": 176,
+          "has_conn_transaction": false,
+          "has_advisory_lock": false,
+          "has_for_update_row_lock": false,
+          "attribute_calls": [
+            "acquire",
+            "fetchrow"
+          ]
+        },
+        "cleanup_old_conversations": {
+          "lineno": 183,
+          "end_lineno": 236,
+          "has_conn_transaction": false,
+          "has_advisory_lock": false,
+          "has_for_update_row_lock": false,
+          "attribute_calls": [
+            "acquire",
+            "execute",
+            "now",
+            "split"
+          ]
+        },
+        "anonymize_user_data": {
+          "lineno": 243,
+          "end_lineno": 290,
+          "has_conn_transaction": false,
+          "has_advisory_lock": false,
+          "has_for_update_row_lock": false,
+          "attribute_calls": [
+            "acquire",
+            "execute",
+            "now",
+            "split"
+          ]
+        }
+      },
+      "counterexample_proven": true
+    },
+    "migration_lock_busy": {
+      "migration_manager_sha256": "8e0afb54e3727d3b5935687e78f832589fa25e73e42c96f24b78e289c7a5ed03",
+      "migrate_sha256": "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b",
+      "apply_all_pending_lineno": 501,
+      "not_locked_return": {
+        "if_not_locked_lineno": 539,
+        "lineno": 541,
+        "keys": [
+          "applied",
+          "skipped",
+          "failed"
+        ],
+        "all_lists_empty": true
+      },
+      "cmd_apply_lineno": 77,
+      "cmd_apply_exit_zero_when_failed_empty": true,
+      "main_sys_exit_lineno": 170,
+      "main_sys_exit_zero_when_not_false": true,
+      "counterexample_proven": true
+    }
+  },
+  "live_db_md5_catalog_join": {
+    "live_db_metadata_sha256": "2bb691c347efd556eb106877e4a84b5c566f765edaa597a1c12ca73820dd56e6",
+    "pool_factory_source_sha256": "d93668cbd3bbc1e40352a333e3fd28ffa192909e4de7b9cc0f12dbfa9fb044b8",
+    "pool_factory_target_role": "UNOBSERVED",
+    "target_database": "nuzantara_rag",
+    "target_schema": "public",
+    "relation_id_derivation": "md5(database||chr(31)||schema||chr(31)||relation)",
+    "relation_id_derivation_evidence_ref": "approved-target.json (sha256: 95bb674b7433fbc7198bce7000d044854bf44ec63ecece7fc8726765ef5d9ba7); contract_metadata.py (sha256: 7b093d621878ae393522920814e685e29ed5e259a22fcca5d32f04af1d1a87a2); B05-DERIVATION-PROOF.json (sha256: 7bb91413c226a9466f36d1226449eb3086f5a6343f9b8adf9ae4c9dd16f0c4ef); FORCE-B05-RELATION-JOIN.json (sha256: e4a85ab8de1728059c66ba549fac0833124b9950538070215a0bb831152e37b2)",
+    "role_id_derivation": "md5(rolname)",
+    "public_schema_md5": "4c9184f37cff01bcdc32dc486ec36961",
+    "matched_relations": {
+      "conversations": {
+        "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": false,
+            "update": true,
+            "delete": false,
+            "truncate": false,
+            "column_write": true,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": false,
+            "update": true,
+            "delete": false,
+            "truncate": false,
+            "column_write": true,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "0ed159dd8d847c11aaae354ad479ae88",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "clients": {
+        "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "7457cee812eeb67564c33b7acf10e393",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "visa_decisions": {
+        "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": true,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "events_outbox": {
+        "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "7457cee812eeb67564c33b7acf10e393",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "visa_decision_retention_policies": {
+        "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "garuda_orders": {
+        "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "7457cee812eeb67564c33b7acf10e393",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "research_os_objects": {
+        "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "7457cee812eeb67564c33b7acf10e393",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      },
+      "schema_migrations": {
+        "relation_id": "1826524c0575d5e85ef553faf0748865",
+        "row_security": false,
+        "force_row_security": false,
+        "grants": [
+          {
+            "role_id": "0ed159dd8d847c11aaae354ad479ae88",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "231b80e4dff7870cc60669026cff2af7",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "7457cee812eeb67564c33b7acf10e393",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "7a9b224a52f369c66e350c7c19d6bda3",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "abf747499db17ced89f51cf68527a7f6",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "b33d4ce8083927697e8e21466f46987f",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "bfe45cabd74f3c7b0ff80f5ba731c399",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "e37bc4cabedfd41cd840c831c5e02720",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "e8a48653851e28c69d0506508fb27fc5",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          },
+          {
+            "role_id": "eae683d0abd9f25f81f608348cff1af6",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "f7d4a4fcafbd628b7e20de4d5194b5bc",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": false,
+            "insert": false,
+            "update": false,
+            "delete": false,
+            "truncate": false,
+            "column_write": false,
+            "trigger_reference": false
+          },
+          {
+            "role_id": "fa370e4fe6d5b07d6a1b14f757526fee",
+            "relation_id": "1826524c0575d5e85ef553faf0748865",
+            "select": true,
+            "insert": true,
+            "update": true,
+            "delete": true,
+            "truncate": true,
+            "column_write": true,
+            "trigger_reference": true
+          }
+        ],
+        "catalog_entry": {
+          "relation_id": "1826524c0575d5e85ef553faf0748865",
+          "schema_id": "4c9184f37cff01bcdc32dc486ec36961",
+          "owner_id": "7457cee812eeb67564c33b7acf10e393",
+          "kind": "r",
+          "persistence": "p",
+          "row_security": false,
+          "force_row_security": false
+        }
+      }
+    },
+    "unmatched_relations": [],
+    "matched_roles": {
+      "postgres": {
+        "role_id": "e8a48653851e28c69d0506508fb27fc5",
+        "catalog_entry": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "can_login": true,
+          "superuser": true,
+          "create_role": true,
+          "create_database": true,
+          "replication": true,
+          "bypass_rls": true,
+          "self_member": false,
+          "database_connect": true
+        }
+      },
+      "backend_rag_v2": {
+        "role_id": "7457cee812eeb67564c33b7acf10e393",
+        "catalog_entry": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "can_login": true,
+          "superuser": false,
+          "create_role": false,
+          "create_database": false,
+          "replication": false,
+          "bypass_rls": false,
+          "self_member": false,
+          "database_connect": true
+        }
+      },
+      "nuzantara_readonly": {
+        "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+        "catalog_entry": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "can_login": true,
+          "superuser": false,
+          "create_role": false,
+          "create_database": false,
+          "replication": false,
+          "bypass_rls": false,
+          "self_member": true,
+          "database_connect": true
+        }
+      }
+    },
+    "unmatched_roles": {
+      "nuzantara": "c26a539e3f8d7b0ad64ae547e534fb2f",
+      "nuzantara_app": "7946e0908809c2263937224bb83d4c77"
+    },
+    "role_grants_for_matched": {
+      "postgres": {
+        "conversations": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "clients": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "visa_decisions": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "events_outbox": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "visa_decision_retention_policies": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "garuda_orders": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "research_os_objects": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "schema_migrations": {
+          "role_id": "e8a48653851e28c69d0506508fb27fc5",
+          "relation_id": "1826524c0575d5e85ef553faf0748865",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        }
+      },
+      "backend_rag_v2": {
+        "conversations": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+          "select": true,
+          "insert": false,
+          "update": true,
+          "delete": false,
+          "truncate": false,
+          "column_write": true,
+          "trigger_reference": false
+        },
+        "clients": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "visa_decisions": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+          "select": true,
+          "insert": true,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": true,
+          "trigger_reference": false
+        },
+        "events_outbox": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "visa_decision_retention_policies": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": true
+        },
+        "garuda_orders": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "research_os_objects": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        },
+        "schema_migrations": {
+          "role_id": "7457cee812eeb67564c33b7acf10e393",
+          "relation_id": "1826524c0575d5e85ef553faf0748865",
+          "select": true,
+          "insert": true,
+          "update": true,
+          "delete": true,
+          "truncate": true,
+          "column_write": true,
+          "trigger_reference": true
+        }
+      },
+      "nuzantara_readonly": {
+        "conversations": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "6bf8265a5b6c8c9efbf1f00daa1a5a2a",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "clients": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "6d1a9af227fb77bf2422b93d0a48416a",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "visa_decisions": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "f3594f07e9ca218b9c1b4f96c2fcbb40",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "events_outbox": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "c95fb39e3b92734c455cac7e6fde2fb1",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "visa_decision_retention_policies": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "fcbefded0b552c071e364af34fbbc60f",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "garuda_orders": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "5a0dc2ef5b7441fe8eb8cfe69e304970",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "research_os_objects": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "c4b1160937328bd90e3102fccc51f2d9",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        },
+        "schema_migrations": {
+          "role_id": "b2c7eae2c3068e64c60902ef0ee59882",
+          "relation_id": "1826524c0575d5e85ef553faf0748865",
+          "select": true,
+          "insert": false,
+          "update": false,
+          "delete": false,
+          "truncate": false,
+          "column_write": false,
+          "trigger_reference": false
+        }
+      }
+    },
+    "principal_role_binding_closed": false,
+    "principal_role_binding_blocker": "LIVE-DB-METADATA.json proves table-level role_relation_grants for all 8 default relations via md5(database||chr(31)||schema||chr(31)||relation) and md5(rolname) (e.g. role backend_rag_v2=7457cee812eeb67564c33b7acf10e393), but POOL-FACTORY-SOURCE.json records target_role='UNOBSERVED', leaving runtime principal-to-DB-role binding PARTIAL."
+  },
+  "operation_contracts": [
+    {
+      "consumer_id": "src_6ad3cb3fa4349521",
+      "operation_id": "op:crm-conversations:write:conversation-messages",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "c3a9c44b8f97b4ef2155194d440feb2f1a23216057eba94eb91d51e988dd15fe",
+      "status": "CONFLICT",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "LOCKING_CLAIM_CONFLICT_NO_ADVISORY_OR_ROW_LOCK_IN_SAVE_MESSAGES",
+        "RESTORE_DRILL_CONVERSATIONS_CANNOT_VERIFY",
+        "RETENTION_STATUTE_CITATION_UNVERIFIED"
+      ],
+      "principal": {
+        "value": "app:backend-rag:ConversationRepository (src_6ad3cb3fa4349521, consumer-matrix.csv:L545)",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L23-L136"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role backend_rag_v2=7457cee812eeb67564c33b7acf10e393 in LIVE-DB-METADATA.json; pool target_role=UNOBSERVED)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "user_id + session_id application-scoped filter; Live DB row_security=false on public.conversations",
+        "status": "EVIDENCED",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.json:L185-L260"
+      },
+      "authorization": {
+        "value": "FastAPI get_current_user dependency at router; no PostgreSQL RLS (row_security=false)",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L32-L136"
+      },
+      "transaction": {
+        "value": "CONFLICT: consumer-matrix.csv:L545 claims 'One asyncpg transaction per save; two-int advisory session lock; row lock' (ADAPTED_PARTIAL_VERIFIED), but save_messages (L59-L132) has NO advisory lock and NO FOR UPDATE row lock, and anonymize_user_data (L265-L286) executes without conn.transaction()",
+        "status": "CONFLICT",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L59-L136"
+      },
+      "effects": {
+        "value": "SELECT id,messages FROM conversations; UPDATE conversations SET messages=$1::text::jsonb OR INSERT INTO conversations; @cache_invalidating Redis side effect",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L26-L132"
+      },
+      "retries": {
+        "value": "no repository-level retry loop; asyncpg pool command_timeout=60s",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L32-L136"
+      },
+      "idempotency": {
+        "value": "adjacent-message equality dedup only (L81); NOT_IDEMPOTENT under concurrent saves because SELECT+UPDATE lacks advisory or FOR UPDATE lock",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L62-L98"
+      },
+      "failure": {
+        "value": "catches Exception, logs error, and returns sentinel None (save_messages) or 0 (cleanup/anonymize) while @cache_invalidating still fires",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py:L134-L136"
+      },
+      "retention": {
+        "value": "RETENTION_MIN_DAYS=1826 (5-year floor) and CONVERSATION_RETENTION_ALLOW_CLOCK_DELETE gate in retention_policy.py (docstring cites UU PDP Art. 43 \u2014 unverified statutory citation)",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/core/retention_policy.py:L18-L84"
+      },
+      "recovery": {
+        "value": "BLOCKED: REAL-RUN-RECEIPT.json records conversations=CANNOT-VERIFY (UNMEASURED_CHECK: 1) and clients=FAIL (VIOLATION: 1); sub-check/SQL error unrecorded in receipt",
+        "status": "BLOCKED",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:L31-L76"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/repositories/conversation_repository.py"
+    },
+    {
+      "consumer_id": "src_4c49b82438955ab7",
+      "operation_id": "op:rag-router:query:agentic-rag-stream",
+      "store_id": "unknown:unknown:unknown",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "7454582231aaebbc6460c7839e26c3e3e948fc34ca611ecfd33df7dd77c72e25",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "STORE_ID_PROPOSED:redis:pro:6379/db0",
+        "REDIS_RUNTIME_KEYSPACE_AND_ACL_UNOBSERVED",
+        "RESTORE_DRILL_NOT_APPLICABLE_OR_UNPROVEN"
+      ],
+      "principal": {
+        "value": "app:backend-rag:agentic_rag.router (src_4c49b82438955ab7, consumer-matrix.csv:L163)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "role": {
+        "value": "redis default/ACL user unobserved in runtime evidence",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "tenant": {
+        "value": "authenticated user session scope passed from FastAPI request context",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "authorization": {
+        "value": "FastAPI get_current_user dependency on router endpoint",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "transaction": {
+        "value": "non-transactional cache/session lookup and RAG stream orchestration",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "effects": {
+        "value": "reads/writes ephemeral RAG cache and dispatches hybrid retrieval + conversation persistence",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "retries": {
+        "value": "degrades gracefully on cache miss/unavailable; stream errors emitted as SSE events",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "idempotency": {
+        "value": "read/query path idempotent; side-effecting conversation log write delegated to repository",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "failure": {
+        "value": "HTTPException / SSE error frame on downstream failure; isolated unit test only in Wave 7",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out:L1-L60"
+      },
+      "retention": {
+        "value": "ephemeral Redis TTL per cache key; live Redis TTL configuration unobserved",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "ephemeral cache rebuilt on miss; no live Redis persistence/restore receipt in Wave 7/8",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "x_evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out"
+    },
+    {
+      "consumer_id": "src_058ad32e4ad2e6a8",
+      "operation_id": "op:db-migrations:apply:pending-migrations",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "7454582231aaebbc6460c7839e26c3e3e948fc34ca611ecfd33df7dd77c72e25",
+      "status": "CONFLICT",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "LOCK_BUSY_EXIT_CODE_CONFLICT_CLAIMED_NONZERO_ACTUAL_ZERO",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:MigrationManager.apply_all_pending (src_058ad32e4ad2e6a8, consumer-matrix.csv:L343)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L501-L605"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (requires DDL privileges on public.schema_migrations / public.migration_history)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "global cluster-wide schema migration state (public schema)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L501-L605"
+      },
+      "authorization": {
+        "value": "PostgreSQL session advisory lock pg_try_advisory_lock(73491) + DDL role privileges",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L499-L545"
+      },
+      "transaction": {
+        "value": "per-migration SQL execution with tracking insert into migration ledger under advisory lock",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L546-L600"
+      },
+      "effects": {
+        "value": "executes pending SQL files in migrations_v2/ and records applied version rows",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L546-L600"
+      },
+      "retries": {
+        "value": "no automatic retry when pg_try_advisory_lock returns false; caller must re-invoke",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L531-L542"
+      },
+      "idempotency": {
+        "value": "skips already-applied migration numbers recorded in ledger table",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L546-L570"
+      },
+      "failure": {
+        "value": "CONFLICT: consumer-matrix.csv:L343 claims 'Lock-busy refusal is nonzero; applied numbers skipped' (ADAPTED_ISOLATED_VERIFIED), but MigrationManager.apply_all_pending (migration_manager.py:L501, L539-L541) returns {'applied': [], 'skipped': [], 'failed': []} when not locked, causing cmd_apply (migrate.py:L77 `return len(result['failed']) == 0`) and main (migrate.py:L170 `sys.exit(0 if success is not False else 1)`) to exit 0",
+        "status": "CONFLICT",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L501-L541"
+      },
+      "retention": {
+        "value": "permanent schema migration audit history in PostgreSQL",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:L546-L600"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (migration ledger tables not verified in restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L1-L162"
+      },
+      "x_evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out"
+    },
+    {
+      "consumer_id": "src_c8f206461cd9bf69",
+      "operation_id": "op:db-migrations:execute:cli-migrate-apply",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "7454582231aaebbc6460c7839e26c3e3e948fc34ca611ecfd33df7dd77c72e25",
+      "status": "CONFLICT",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "LOCK_BUSY_EXIT_CODE_CONFLICT_CLAIMED_NONZERO_ACTUAL_ZERO",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "cli:backend-rag:migrate.cmd_apply (src_c8f206461cd9bf69, consumer-matrix.csv:L4440)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L55-L80"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (reads DATABASE_URL env var at runtime)",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L55-L80"
+      },
+      "tenant": {
+        "value": "global cluster-wide schema migration CLI",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L55-L80"
+      },
+      "authorization": {
+        "value": "requires DATABASE_URL credentials and advisory lock via MigrationManager",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L55-L80"
+      },
+      "transaction": {
+        "value": "delegates per-migration execution to MigrationManager.apply_all_pending",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L60-L78"
+      },
+      "effects": {
+        "value": "applies pending migrations and exits with process return code",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L60-L78"
+      },
+      "retries": {
+        "value": "single-shot CLI invocation; no internal retry loop",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L60-L78"
+      },
+      "idempotency": {
+        "value": "delegates applied-version skip check to MigrationManager",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L60-L78"
+      },
+      "failure": {
+        "value": "CONFLICT: consumer-matrix.csv:L4440 claims 'Lock-busy refusal is nonzero; applied numbers skipped' (ADAPTED_ISOLATED_VERIFIED), but cmd_apply in migrate.py:L77 returns `len(result['failed']) == 0` (True) and main in migrate.py:L170 executes `sys.exit(0 if success is not False else 1)`, exiting 0 on advisory lock refusal",
+        "status": "CONFLICT",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L75-L170"
+      },
+      "retention": {
+        "value": "permanent migration ledger rows retained in PostgreSQL",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:L60-L78"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (migration ledger restore not proven in B01 receipt)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L1-L162"
+      },
+      "x_evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-01.out"
+    },
+    {
+      "consumer_id": "runtime_mini_46522da0ef79d3aa7422ca41",
+      "operation_id": "op:backup-restore:verify:restore-drill",
+      "store_id": "unknown:unknown:unknown",
+      "source_version": "prior:UNKNOWN",
+      "evidence_timestamp": "2026-10-15T08:31:00Z",
+      "evidence_sha256": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+      "status": "BLOCKED",
+      "unknowns": [
+        "STORE_ID_PROPOSED:pg:mini:restore-drill-target/public",
+        "RESTORE_DRILL_CLIENTS_FAIL_VIOLATION_1",
+        "RESTORE_DRILL_CONVERSATIONS_CANNOT_VERIFY_UNMEASURED_1",
+        "SYNTHETIC_PG_HARNESS_SKIPPED_DOCKER_DAEMON_DOWN"
+      ],
+      "principal": {
+        "value": "cron:mini:restore_drill_verify.py (lead_id=runtime_mini_46522da0ef79d3aa7422ca41 in LEAD-DELTA.json:L7)",
+        "status": "EVIDENCED",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json:L1-L23"
+      },
+      "role": {
+        "value": "local restore drill PostgreSQL role passed via --dsn / psql in restore_drill_verify.py",
+        "status": "PARTIAL",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L35-L90"
+      },
+      "tenant": {
+        "value": "full-database restore verification across public.clients and public.conversations",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "authorization": {
+        "value": "read-only SQL verification queries executed via psql --no-psqlrc -v ON_ERROR_STOP=1",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L40-L85"
+      },
+      "transaction": {
+        "value": "read-only verification queries per table check",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "effects": {
+        "value": "executes SELECT count/null/jsonb_typeof checks on public.clients and public.conversations and emits JSON receipt",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L162"
+      },
+      "retries": {
+        "value": "single-shot verification script; no internal retry",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L1-L162"
+      },
+      "idempotency": {
+        "value": "idempotent read-only verification queries against target DSN",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "failure": {
+        "value": "marks table FAIL on violation > 0 or CANNOT-VERIFY on unmeasured check / SQL error; exits non-zero if overall != PASS",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L120-L162"
+      },
+      "retention": {
+        "value": "emits restore drill JSON receipt; ephemeral scratch restore DB",
+        "status": "EVIDENCED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L140-L162"
+      },
+      "recovery": {
+        "value": "BLOCKED: REAL-RUN-RECEIPT.json (2026-10-15T03:00:43Z) recorded clients=FAIL (VIOLATION: 1) and conversations=CANNOT-VERIFY (UNMEASURED_CHECK: 1); SYNTHETIC-PG-RESULT.json skipped (docker daemon not running)",
+        "status": "BLOCKED",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/SYNTHETIC-PG-RESULT.json:L1-L15"
+      },
+      "x_evidence_ref": "scripts/ci/restore_drill_verify.py"
+    },
+    {
+      "consumer_id": "src_b76fd8a386284d6d",
+      "operation_id": "op:garuda:migrate:garuda-orders-schema",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql (consumer_matrix_line=510)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "DDL CREATE TABLE IF NOT EXISTS garuda_orders + indexes in migration transaction",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "creates public.garuda_orders table, status/quote_token/created_at indexes, and CHECK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "idempotent DDL via CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "PostgreSQL DDL error aborts migration 284",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_a3385c4f03c66ace",
+      "operation_id": "op:garuda:adapt:garuda-orders-pg-adapter",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/adapters_pg.py (consumer_matrix_line=882)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "asyncpg connection/transaction adapter calls over public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "executes parameterized SQL reads/writes on public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "enforced by quote_token UNIQUE constraint and PK (order_id) in 284_garuda_orders.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "raises asyncpg error / constraint violation on invalid state or duplicate key",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_a59306f68d76608c",
+      "operation_id": "op:garuda:read:garuda-orders-eligibility",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/eligibility_lookup.py (consumer_matrix_line=884)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "read-only SELECT query over public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "reads prior order/eligibility status from public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "read-only query is side-effect free and idempotent",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "propagates database read exception to caller",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_d5a8b07610fb5247",
+      "operation_id": "op:garuda:enforce:garuda-orders-idempotency",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/idempotency.py (consumer_matrix_line=885)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "single-statement or transactional idempotency key lookup/upsert on garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "prevents duplicate order creation via quote_token / idempotency key constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "enforced by UNIQUE quote_token / order_id constraints in 284_garuda_orders.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "rejects duplicate mutation or returns existing order state",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_ece991c081caeff3",
+      "operation_id": "op:garuda:append:garuda-orders-journal",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/journal.py (consumer_matrix_line=886)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "transactional state transition journal write tied to garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "records order lifecycle transition audit state",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "keyed by order_id transition sequence",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "aborts write on CHECK/FK constraint violation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_acdbfcfa16458d24",
+      "operation_id": "op:garuda:scan:garuda-orders-outbox-alarm",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/outbox_alarm.py (consumer_matrix_line=887)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "read-only diagnostic scan over stalled garuda_orders rows",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "queries orders stuck in non-terminal statuses past threshold",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "read-only scan is idempotent",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "logs/raises alarm on stalled outbox rows or query error",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_5c137f36a73ef536",
+      "operation_id": "op:garuda:consume:garuda-orders-outbox",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/outbox_consumer.py (consumer_matrix_line=888)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "polls and claims pending garuda_orders outbox rows for dispatch",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "updates order processing state in public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "guarded by status CHECK constraint and state transition predicates",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "records failure state / leaves row for retry on handler error",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_efd985c016f29c9e",
+      "operation_id": "op:garuda:handle:garuda-orders-outbox-event",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/outbox_handlers.py (consumer_matrix_line=889)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "executes side-effect handler and persists status update on garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "transitions garuda_orders status column within allowed 14-state CHECK enum",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "idempotent per terminal state transition check",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "CHECK constraint in 284_garuda_orders.sql rejects invalid status strings",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_593c6f23db50d688",
+      "operation_id": "op:garuda:reconcile:garuda-orders-payment-inbox",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/payment_inbox_watch.py (consumer_matrix_line=890)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "matches payment inbox events against public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "updates payment status fields on matched garuda_orders row",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "keyed by payment reference / order_id state guard",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "unmatched or invalid state transitions rejected by CHECK constraints",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_d9eac093b51823a0",
+      "operation_id": "op:garuda:reconcile:garuda-orders-ledger",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/reconciliation.py (consumer_matrix_line=891)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "reads and reconciles garuda_orders rows against payment/practice state",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "identifies or repairs drift on public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "idempotent reconciliation pass keyed by order_id",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "raises/logs discrepancy when order state violates invariants",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_c903fdf94bfdbcf9",
+      "operation_id": "op:garuda:write:garuda-orders-repository",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/garuda/repository.py (consumer_matrix_line=892)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "repository CRUD and status transition queries over public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "INSERT/SELECT/UPDATE on public.garuda_orders (PK order_id, UNIQUE quote_token)",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "UNIQUE (quote_token) and PK (order_id) prevent duplicate order rows",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "PostgreSQL CHECK constraints enforce valid 14-state status and non-negative amounts",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_053ab28e395ea84c",
+      "operation_id": "op:garuda:link:garuda-orders-portal-practice",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/portal/practice.py (consumer_matrix_line=896)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (candidate role in pg_roles MD5 catalog unjoined to DSN)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "single-tenant order scope (customer_email/passport_number columns; LIVE-DB-METADATA.json relation_id=d00ff231bc2883677ba59792bf517bd6 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "authorization": {
+        "value": "application-layer router/service guard; LIVE-DB-METADATA.json shows row_security=false and grants on relation_id=d00ff231bc2883677ba59792bf517bd6, but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "transaction": {
+        "value": "links portal practice workflow to public.garuda_orders record",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L1-L35"
+      },
+      "effects": {
+        "value": "reads/updates practice linkage on public.garuda_orders",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retries": {
+        "value": "outbox/worker retry state tracked via status/updated_at columns; caller retry policy not proven at runtime",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "idempotency": {
+        "value": "keyed by order_id / practice reference",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "failure": {
+        "value": "propagates DB error if referenced order row is missing or invalid",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql:L1-L78"
+      },
+      "retention": {
+        "value": "UNSPECIFIED_IN_SCHEMA (no TTL or retention purge job bound to garuda_orders)",
+        "status": "UNKNOWN",
+        "evidence_ref": null
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (garuda_orders relation_id=d00ff231bc2883677ba59792bf517bd6 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/284_garuda_orders.sql"
+    },
+    {
+      "consumer_id": "src_1db8d65b2fc3a96b",
+      "operation_id": "op:research-os:migrate:research-os-objects-schema",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql (consumer_matrix_line=506)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "DDL CREATE TABLE research_os_objects + append-only trigger enforce_research_os_append_only()",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    },
+    {
+      "consumer_id": "src_dd9f17226bfa686a",
+      "operation_id": "op:research-os:migrate:research-os-objects-truncate-guard",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/db/migrations_v2/280_research_os_objects_truncate_guard.sql (consumer_matrix_line=507)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "DDL BEFORE TRUNCATE trigger blocking TRUNCATE on public.research_os_objects",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    },
+    {
+      "consumer_id": "src_3c174975c88a0956",
+      "operation_id": "op:research-os:append:consul-executor-research-object",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/events/consul_executor.py (consumer_matrix_line=770)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "INSERT append-only execution receipt/object into public.research_os_objects",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    },
+    {
+      "consumer_id": "src_1c425138a2cbdbbc",
+      "operation_id": "op:research-os:append:consul-broker-research-object",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/events/consul_native_broker.py (consumer_matrix_line=771)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "INSERT append-only broker dispatch object into public.research_os_objects",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    },
+    {
+      "consumer_id": "src_46744d037fbfe8ea",
+      "operation_id": "op:research-os:backfill:naga-research-os-objects",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/rag/naga_backfill.py (consumer_matrix_line=1133)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "batch INSERT backfill of historical research objects into public.research_os_objects",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    },
+    {
+      "consumer_id": "src_1666fcd2655dbe71",
+      "operation_id": "op:research-os:append:naga-persistence-research-object",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "evidence_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "status": "PARTIAL",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_TO_DB_ROLE_UNOBSERVED",
+        "RESTORE_DRILL_RECEIPT_MISSING_FOR_RELATION"
+      ],
+      "principal": {
+        "value": "app:backend-rag:apps/backend-rag/backend/services/rag/naga_persistence.py (consumer_matrix_line=1134)",
+        "status": "PARTIAL",
+        "evidence_ref": "research/operations/udb-wave8/B05/dux-requests/DUX-B05-04.out:L36-L55"
+      },
+      "role": {
+        "value": "UNOBSERVED_AT_POOL_FACTORY (target_role=UNOBSERVED in POOL-FACTORY-SOURCE.json)",
+        "status": "PARTIAL",
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json:L1-L16"
+      },
+      "tenant": {
+        "value": "system-wide append-only research OS ledger (owner_lane column; LIVE-DB-METADATA.json relation_id=ffef8ec071b83da3ab9acbb16a9f0633 has row_security=false)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "authorization": {
+        "value": "DB trigger enforce_research_os_append_only blocks UPDATE/DELETE; TRUNCATE guard in migration 280; catalog grants present on relation_id=ffef8ec071b83da3ab9acbb16a9f0633 but runtime pool role is UNOBSERVED",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "transaction": {
+        "value": "single-statement INSERT / DDL execution; trigger raises exception aborting statement transaction on mutation",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "effects": {
+        "value": "INSERT runtime NAGA persistence record into public.research_os_objects",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retries": {
+        "value": "caller-dependent; duplicate content_hash or object_id rejected deterministically by UNIQUE/PK constraints",
+        "status": "PARTIAL",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "idempotency": {
+        "value": "enforced by PRIMARY KEY (object_id) and UNIQUE (object_kind, slug, version) in 279_research_os_contract_core.sql",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "failure": {
+        "value": "append-only trigger raises ERRCODE23514 / exception on UPDATE, DELETE, or TRUNCATE (migrations 279 & 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "retention": {
+        "value": "immutable append-only retention (DELETE/TRUNCATE forbidden by DB triggers in migrations 279 and 280)",
+        "status": "EVIDENCED",
+        "evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql:L1-L97"
+      },
+      "recovery": {
+        "value": "UNVERIFIED_RESTORE (research_os_objects relation_id=ffef8ec071b83da3ab9acbb16a9f0633 is present in LIVE-DB-METADATA.json, but is not among the 5 relations verified by restore_drill_verify.py)",
+        "status": "BLOCKED",
+        "evidence_ref": "scripts/ci/restore_drill_verify.py:L90-L155"
+      },
+      "x_evidence_ref": "apps/backend-rag/backend/db/migrations_v2/279_research_os_contract_core.sql"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ import {
   PortalEmptyState,
 } from "@/components/portal";
 import { Button } from "@/components/ui/button";
+import { PaymentProofPanel } from "@/components/portal/PaymentProofPanel";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
@@ -279,6 +280,10 @@ export default function BillingPage() {
                   </Button>
                 )}
               </div>
+              <PaymentProofPanel
+                invoice={invoice}
+                onUploaded={() => void refetch()}
+              />
             </div>
           ))
         )}

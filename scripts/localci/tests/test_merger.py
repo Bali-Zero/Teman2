@@ -91,13 +91,21 @@ class FakeGraphQL:
             if self.fail:
                 raise mg.GraphQLError(self.fail)
             return {"enqueuePullRequest": {"mergeQueueEntry": self.entry}}
+        if query == mg.REVIEWS_QUERY:   # B38: the open PRs' reviews, in one read; `reviews[n] = (reviewDecision, [states])` overrides the clean default
+            assert f"{variables['owner']}/{variables['name']}" == REPO and variables["base"] == "main", (query, variables)
+            reviews = getattr(self, "reviews", {})
+            return {"repository": {"pullRequests": {"pageInfo": {"hasNextPage": False}, "nodes": [
+                {"number": p["number"], "headRefOid": p["head"]["sha"], "reviewDecision": reviews.get(p["number"], (None, []))[0],
+                 "latestOpinionatedReviews": {"totalCount": len(reviews.get(p["number"], (None, []))[1]),
+                                              "nodes": [{"state": st} for st in reviews.get(p["number"], (None, []))[1]]}} for p in self.gh.prs]}}}
         assert query == mg.PR_QUERY and f"{variables['owner']}/{variables['name']}" == REPO, (query, variables)
         (p,) = [x for x in self.gh.prs if x["number"] == variables["number"]]
         names = [lb["name"] for lb in p["labels"]]
         return {"repository": {"pullRequest": {
             "id": f"PR_node_{p['number']}", "number": p["number"], "state": "OPEN", "isDraft": p["draft"], "isCrossRepository": False, "baseRefName": "main",
             "headRefOid": p["head"]["sha"], "body": BODY, "isInMergeQueue": False, "mergeQueueEntry": None, "labels": {"nodes": [{"name": n} for n in names]},
-            "timelineItems": {"nodes": [labelled(n, "maint") for n in names]}, **self.over}}}
+            "timelineItems": {"nodes": [labelled(n, "maint") for n in names]},
+            "reviewDecision": None, "latestOpinionatedReviews": {"totalCount": 0, "nodes": []}, **self.over}}}
 
     def mutations(self):
         return [v for q, v in self.calls if q == mg.ENQUEUE]
@@ -276,6 +284,17 @@ def test_a_runner_past_its_timeout_is_terminated_before_it_is_killed(tmp_path):
     assert res.returncode == 124 and "cleaned up" in res.stdout and "timed out" in res.stderr and time.monotonic() - t0 < 20
 
 
+def test_a_guarded_runner_is_given_the_whole_budget_it_was_handed(tmp_path, monkeypatch):
+    """B35: the guarded wait loop's deadline is the timeout it is handed, not a constant of its own. On a clock that jumps to RUN_TIMEOUT_S - 1
+    after the deadline is set, the budget still has a second left and the runner finishes; a loop that caps itself anywhere below it times out."""
+    ticks = iter([0.0])
+    fake = type("T", (), {"monotonic": staticmethod(lambda: next(ticks, mg.RUN_TIMEOUT_S - 1.0)), "__getattr__": lambda self, n: getattr(time, n)})()
+    monkeypatch.setattr(mg, "time", fake)
+    res = mg.runner_exec([sys.executable, "-c", "import time; time.sleep(0.3); print('done')"], tmp_path, dict(os.environ), mg.RUN_TIMEOUT_S,
+                         guard=mg.HostGuard(90.0, tmp_path, "/bin/false", measure=lambda: 300.0))
+    assert res.returncode == 0 and res.stdout.strip() == "done"
+
+
 def test_the_plan_step_outlasts_a_cold_deps_build(world, monkeypatch):
     """2026-10-11: a cold e2e-tests deps build took 3552 s on Pro while the plan step was capped at 900 s, so it was cancelled
     on every tick and every e2e candidate was ERROR for good. The plan step now gets --plan-timeout (default PLAN_TIMEOUT_S)."""
@@ -284,6 +303,7 @@ def test_the_plan_step_outlasts_a_cold_deps_build(world, monkeypatch):
     assert world.tick() == 0
     by_sub = {c["sub"]: c["timeout"] for c in mg.runner_exec.calls}
     assert by_sub["plan"] == mg.PLAN_TIMEOUT_S and by_sub["status"] == 900
+    assert by_sub["run"] == mg.RUN_TIMEOUT_S   # B35: the run step gets the budget, not a literal
 
 
 def test_the_timeouts_hold_a_cold_build_inside_one_tick():
@@ -316,7 +336,11 @@ def test_the_timeouts_hold_a_cold_build_inside_one_tick():
     finally:
         mg.argparse.ArgumentParser.parse_args = real
     assert ap_defaults["plan_timeout"] == mg.PLAN_TIMEOUT_S and ap_defaults["tick_timeout"] == mg.TICK_TIMEOUT_S
-    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 300
+    assert ap_defaults["run_timeout"] == mg.RUN_TIMEOUT_S
+    assert mg.TICK_TIMEOUT_S >= ap_defaults["plan_timeout"] + ap_defaults["run_timeout"] + 900 + 600
+    # B35: the run step is the sum of the checks, measured on Pro 2026-10-08..15: p95 4878 s, and #8523 needed ~5600 s (5486 s
+    # at the old 5400 s cap, the last check SIGTERMed). A budget under 1.25x that need turns a normal full-matrix run INTERRUPTED.
+    assert mg.RUN_TIMEOUT_S >= int(5600 * 1.25)
     # The heartbeat is written when the wrapper exits: the healer calls the organ dead past expected_hb_seconds x DEAD_MULTIPLIER
     # (3), so the longest legal tick plus one StartInterval must stay under it, or a slow cold tick opens a spurious cure session.
     reg = (_MODULE.parents[2] / "apps" / "organism" / "organism" / "organs_registry.yaml").read_text()
@@ -586,7 +610,7 @@ def test_every_github_call_is_a_get_or_the_graphql_read_and_unarmed_no_mutation_
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(9, "9" * 40, fork=True)]
     assert world.tick() == 0
     assert world.gh.paths and all(not re.search(r"/(merge|labels|comments|reviews)\b", p) for p in world.gh.paths)
-    assert [q for q, _ in world.gql.calls] == [mg.PR_QUERY] and world.gql.mutations() == []
+    assert [q for q, _ in world.gql.calls] == [mg.REVIEWS_QUERY, mg.PR_QUERY] and world.gql.mutations() == []   # B38: one batched reviews read, then the PR's
 
 
 def test_merge_refuses_with_exit_2_whatever_it_is_given(capsys):
@@ -656,7 +680,7 @@ def test_the_launchd_wrapper_runs_main_as_committed_and_survives_a_dead_remote(t
     origin.rename(tmp_path / "gone.git")
     dead = wrap(env)
     assert dead.returncode == 0 and "fetch failed" in dead.stderr and (tmp_path / "code").read_text() == "v2 --code-sha\n"
-    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(g(src, "rev-parse", "main")[:12])
+    assert heartbeat(tmp_path)["status"] == "ok" and heartbeat(tmp_path)["note"].endswith(f"code={g(src, 'rev-parse', 'main')[:12]} depth=0")
 
 
 def test_the_wrapper_leaves_a_heartbeat_on_every_exit_and_honours_its_kill_switch(tmp_path):
@@ -819,6 +843,10 @@ def _pr(**over):
     return lambda w: w.gql.over.update(over)
 
 
+def _reviews(*states):
+    return {"totalCount": len(states), "nodes": [{"state": st} for st in states]}
+
+
 def _timeline(*events):
     return _pr(timelineItems={"nodes": list(events)})
 
@@ -828,6 +856,12 @@ GUILT = {
                            _check("tests.frontend_mouth", "INTERRUPTED"), _check("ctx.a", "RUNNING"), _check("ctx.a", None),
                            _check("security.pysa_python", "QUEUED")],   # only the review may wait
     "review_independent": [_check("review.independent", "BLOCKED"), _check("review.independent", "FAIL"), _check("review.independent", "STALE")],
+    "review_not_blocking": [_pr(reviewDecision="CHANGES_REQUESTED", latestOpinionatedReviews=_reviews("CHANGES_REQUESTED")),
+                            _pr(reviewDecision=None, latestOpinionatedReviews=_reviews("CHANGES_REQUESTED")),   # the flip's world: no review is required, the decision reads null
+                            _pr(reviewDecision="CHANGES_REQUESTED", latestOpinionatedReviews=_reviews()),
+                            _pr(reviewDecision="APPROVED", latestOpinionatedReviews=_reviews("APPROVED", "CHANGES_REQUESTED")),   # one reviewer's approval does not lift another's
+                            _pr(reviewDecision=7), _pr(latestOpinionatedReviews=None), _pr(latestOpinionatedReviews={"totalCount": 2, "nodes": [{"state": "APPROVED"}]}),
+                            _pr(latestOpinionatedReviews=_reviews("LGTM"))],
     "executed_contexts_ok": [_result("ctx-a", verdict="FAIL"), _result("ctx-a", verdict="BLOCKED"),    # BLOCKED only when NOT executed
                              _result("CodeQL", mapping="executed"), _result("ctx-a", verdict="UNCOVERED"),
                              lambda w: w.status["contexts"]["results"].pop("ctx-a"), lambda w: w.status["contexts"].update(status="invalid")],
@@ -865,7 +899,11 @@ def test_each_sub_criterion_alone_refuses_the_enqueue_and_the_line_names_it(enq,
 
 
 @pytest.mark.parametrize("tweak", [None, _hosted(CodeQL="skipped"), _hosted(CodeQL="neutral"), _timeline(labelled(mg.ARM_LABEL, "boss")),
-                                   _check("review.independent", "PASS")], ids=["all-hold", "skipped", "neutral", "admin", "review-pass"])
+                                   _check("review.independent", "PASS"),
+                                   _pr(reviewDecision="APPROVED", latestOpinionatedReviews=_reviews("APPROVED")),   # a later approval by the reviewer who asked for changes
+                                   _pr(reviewDecision=None, latestOpinionatedReviews=_reviews("DISMISSED", "APPROVED", "COMMENTED")),
+                                   _pr(reviewDecision="REVIEW_REQUIRED", latestOpinionatedReviews=_reviews())],
+                         ids=["all-hold", "skipped", "neutral", "admin", "review-pass", "approved-after-changes", "dismissed", "no-review-yet"])
 def test_when_every_sub_criterion_holds_and_both_halves_are_armed_one_mutation_enqueues_the_decided_head(enq, capsys, tweak):
     if tweak:
         tweak(enq)
@@ -895,7 +933,7 @@ def test_an_unreadable_pull_request_refuses_every_sub_criterion_it_holds_with_th
         raise mg.GraphQLError(mg.redact("gh api graphql rc=1: Something went wrong ghp_" + "A" * 24))
     monkeypatch.setattr(mg, "gh_graphql", down)
     line = enq.run()
-    pr_side = ["head_unchanged", "same_repo", "not_draft", "base_main", "open", "not_in_queue", "first_enqueue", "label_privileged"]
+    pr_side = ["review_not_blocking", "head_unchanged", "same_repo", "not_draft", "base_main", "open", "not_in_queue", "first_enqueue", "label_privileged"]
     assert line["kind"] == "would_enqueue" and line["refused"] == pr_side and not any(line["criterion"][k] for k in pr_side)
     assert all("Something went wrong" in line["why"][k] and "ghp_" not in line["why"][k] for k in pr_side)
 
@@ -926,7 +964,7 @@ def test_an_armed_tick_enqueues_the_decided_head_once_and_a_decision_without_a_v
     world.runner.doc = {k: GOOD[k] for k in ("checks", "contexts")}
     world.gh.prs = [pr(1, world.head1, labels=[mg.ARM_LABEL]), pr(2, world.head2, labels=[mg.ARM_LABEL])]
     assert world.tick() == 0 and world.tick() == 0   # #1 decided and enqueued; #2 conflicts with main: no verdict, no criterion
-    assert [(r["kind"], r["pr"]) for r in world.journal()] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]
+    assert [(r["kind"], r["pr"]) for r in world.journal() if r["kind"] != "replay_deferred"] == [("decision", 1), ("enqueued", 1), ("would_merge", 1), ("decision", 2)]   # B28: a labelled #2 may forfeit the replay turn
     assert world.gql.mutations() == [{"pr": "PR_node_1", "oid": world.head1}]
 
 
@@ -1045,18 +1083,18 @@ def test_the_tick_decides_first_then_prunes_with_fstrim_and_passes_the_host_read
     assert res.returncode == 0, res.stderr
     lines = (tmp_path / "calls").read_text().splitlines()
     assert calls_of(tmp_path) == ["tick", "prune"]   # never the prune before the decision
-    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=100")
+    assert lines[0].endswith("--host-free-gb=200 --min-host-free-gb=60")
     assert re.search(rf"prune --state-dir {re.escape(env['MERGER_STATE_DIR'])} --fstrim --code-sha=[0-9a-f]{{40}}$", lines[1])
     assert heartbeat(tmp_path)["status"] == "ok" and "host_free_gb=200" in res.stdout
 
 
-@pytest.mark.parametrize("free,status", [(99, "warning"), (100, "ok")])
+@pytest.mark.parametrize("free,status", [(59, "warning"), (60, "ok")])
 def test_under_the_floor_the_tick_journals_its_skip_the_prune_still_runs_and_the_organ_says_warning(tmp_path, free, status):
     env = floor_world(tmp_path, free)
     assert wrap(env).returncode == 0
     assert calls_of(tmp_path) == ["tick", "prune"] and f"--host-free-gb={free} " in (tmp_path / "calls").read_text()
     hb = heartbeat(tmp_path)
-    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=99 start_floor_gb=100: no run started"))
+    assert hb["status"] == status and (status == "ok" or hb["note"].startswith("host_below_floor free_gb=59 start_floor_gb=60: no run started"))
 
 
 def test_a_merger_that_cannot_journal_the_floor_is_not_started_under_it_and_a_main_without_prune_still_ticks(tmp_path):
@@ -1088,11 +1126,11 @@ def test_a_failed_prune_is_a_warning_and_a_failed_tick_is_an_error_after_which_t
 def test_the_tick_refuses_to_start_a_run_under_the_floor_and_journals_why(world):
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
-    assert mg.main([*args, "--host-free-gb", "99.4"]) == 0
-    assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 99.4, "floor_gb": 90.0,
-                                   "start_floor_gb": 100.0}
+    assert mg.main([*args, "--host-free-gb", "59.4"]) == 0
+    assert world.journal()[-1] == {**world.journal()[-1], "kind": "skipped", "why": "host_below_floor", "free_gb": 59.4, "floor_gb": 50.0,
+                                   "start_floor_gb": 60.0}
     assert not [r for r in world.journal() if r["kind"] == "decision"]
-    assert mg.main([*args, "--host-free-gb", "100"]) == 0 and [r["kind"] for r in world.journal()][-3:] == ["decision", "would_enqueue", "would_merge"]
+    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r["kind"] for r in world.journal()][-3:] == ["decision", "would_enqueue", "would_merge"]
 
 
 # ------------------------------------------------------------------ phase F, shadow: the merge rehearsed, never made (F1)

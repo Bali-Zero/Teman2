@@ -134,6 +134,96 @@ yield_carried_paths() {
   done
 }
 
+# Content guards (scripts/mouth_content_guard.sh): the LLM translation can rewrite a
+# line the e33 income-basis / second-home claim ratchets pin, and the hourly PR then
+# goes red on both sides and never merges. The guards are right and the content is
+# wrong, so ask them before `git add`: green -> promote all; red -> try each slug
+# group alone, hold back the groups that fail (restored to HEAD, inside this
+# ephemeral worktree only), re-run on the final set, and promote nothing if that is
+# still red, if main itself is red, or if the guards cannot run at all.
+GUARD="$SCRIPT_DIR/mouth_content_guard.sh"
+ESCALATIONS="${MOUTH_GUARD_ESCALATIONS:-$REPO_ROOT/shared/escalations_pro.jsonl}"
+GUARD_MAX_GROUPS=60
+ART_DIR="apps/mouth/src/content/articles"
+SNAP=""
+typeset -A GROUP_FILES
+typeset -a HELD KEPT
+
+guard() { bash "$GUARD" "$@" >>"$LOG" 2>&1; }
+
+# slug group of an article path: strip the locale suffix, so .en/.id/.it of one slug travel together
+group_of() {
+  if [[ $1 =~ '^(.*)\.(en|it|id|fr|ru)\.mdx$' ]]; then print -r -- "$match[1]"; else print -r -- "${1:r}"; fi
+}
+
+reset_articles() {
+  if git -C "$WT_PATH" cat-file -e "HEAD:$ART_DIR" 2>/dev/null; then
+    git -C "$WT_PATH" checkout -q HEAD -- "$ART_DIR" || return 1
+  fi
+  git -C "$WT_PATH" clean -fdq -- "$ART_DIR"
+}
+
+# put exactly the given groups' translated files back on top of HEAD
+apply_groups() {
+  local g f
+  reset_articles || return 1
+  for g in "$@"; do
+    for f in ${(f)GROUP_FILES[$g]}; do
+      mkdir -p "$WT_PATH/${f:h}" && cp -p "$SNAP/$f" "$WT_PATH/$f" || return 1
+    done
+  done
+}
+
+# 0 = promote $KEPT, 1 = nothing to promote ($HELD says why), >1 = abort with that code
+prune_by_guards() {
+  local entry p g rc
+  local -a groups
+  SNAP=$(mktemp -d) || return 4
+  for entry in ${(0)"$(git -C "$WT_PATH" status --porcelain -z --untracked-files=all -- "$ART_DIR")"}; do
+    p=${entry[4,-1]}
+    [ -f "$WT_PATH/$p" ] || continue
+    mkdir -p "$SNAP/${p:h}" && cp -p "$WT_PATH/$p" "$SNAP/$p" || return 4
+    g=$(group_of "$p")
+    GROUP_FILES[$g]+="$p"$'\n'
+  done
+  groups=(${(ko)GROUP_FILES})
+  guard "$WT_PATH"; rc=$?
+  if [ "$rc" -eq 0 ]; then KEPT=($groups); return 0; fi
+  [ "$rc" -eq 3 ] && return 3
+  if [ ${#groups} -gt "$GUARD_MAX_GROUPS" ]; then log "${#groups} slug groups exceed $GUARD_MAX_GROUPS — cannot bisect"; return 4; fi
+  reset_articles || return 4
+  guard --base "$WT_PATH"; rc=$?
+  [ "$rc" -ne 0 ] && return "$rc"
+  for g in $groups; do
+    apply_groups "$g" || return 4
+    guard "$WT_PATH"; rc=$?
+    case "$rc" in 0) KEPT+=("$g") ;; 1) HELD+=("$g") ;; *) return "$rc" ;; esac
+  done
+  apply_groups $KEPT || return 4
+  if [ ${#KEPT} -gt 0 ]; then
+    guard "$WT_PATH" || { log "final set red after pruning — promoting nothing"; return 5; }
+  fi
+  [ ${#KEPT} -gt 0 ]
+}
+
+held_slugs() { local g; for g in $HELD; do print -rn -- "${g:t} "; done; }
+
+report_held() {
+  [ ${#HELD} -gt 0 ] || return 0
+  log "held back by content guards: $(held_slugs)"
+  python3 -c 'import json,sys,time,socket
+row={"ts":time.time(),"type":"mouth_content_guard_hold","job":"translate-hourly","priority":"NORMAL","status":"pending","machine":socket.gethostname(),"slugs":sys.argv[2:],"error_summary":"mouth hourly translation held back by content guards: "+" ".join(sys.argv[2:])}
+open(sys.argv[1],"a").write(json.dumps(row)+"\n")' "$ESCALATIONS" ${HELD:t} >>"$LOG" 2>&1 || log "WARN: could not append the escalation row"
+}
+
+abort_unpromotable() {  # abort_unpromotable <rc> <why>
+  log "ERROR: $2 — promoting nothing this run"
+  reset_articles
+  python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
+  heartbeat degraded "$2, nothing promoted (translate-articles.py exit=$RUN_RC)"
+  exit "$1"
+}
+
 CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
 if [ "$CHANGED" -gt 0 ]; then
   if ! yield_carried_paths; then
@@ -149,9 +239,25 @@ if [ "$CHANGED" -gt 0 ]; then
 fi
 
 if [ "$CHANGED" -gt 0 ]; then
+  prune_by_guards; GUARD_RC=$?
+  rm -rf "$SNAP"
+  case "$GUARD_RC" in
+    0|1) ;;
+    2) abort_unpromotable 2 "content guards are red on main itself" ;;
+    3) abort_unpromotable 3 "content guards cannot run (vitest/typescript/guard files missing)" ;;
+    5) report_held; abort_unpromotable 5 "content guards still red on the pruned set" ;;
+    *) abort_unpromotable 4 "content-guard pruning failed (rc=$GUARD_RC)" ;;
+  esac
+  report_held
+  CHANGED=$(git -C "$WT_PATH" status --porcelain -- apps/mouth/src/content/articles | wc -l | tr -d ' ')
+fi
+
+if [ "$CHANGED" -gt 0 ]; then
   log "$CHANGED file(s) changed — promoting via PR"
   BRANCH=$(git -C "$WT_PATH" branch --show-current)
 
+  HELD_NOTE=""
+  [ ${#HELD} -gt 0 ] && HELD_NOTE=$'\n\nHeld back by content guards (slugs, not promoted): '"$(held_slugs)"
   git -C "$WT_PATH" add apps/mouth/src/content/articles
   git -C "$WT_PATH" commit -m "$(
     cat <<EOF
@@ -176,7 +282,7 @@ EOF
 
   PR_URL=$(gh pr create --base main --head "$BRANCH" \
     --title "chore(mouth): promote hourly-translated articles ($CHANGED file(s))" \
-    --body "Automated promotion of scripts/translate-articles.py output. See scripts/translate-articles-cron-wrapper.sh for the pipeline." \
+    --body "Automated promotion of scripts/translate-articles.py output. See scripts/translate-articles-cron-wrapper.sh for the pipeline.${HELD_NOTE}" \
     2>>"$LOG")
   CREATE_RC=$?
   if [ "$CREATE_RC" -ne 0 ]; then
@@ -215,6 +321,7 @@ EOF
   # method and --squash is rejected outright (pipeline-ship skill, 2026-07-27+).
   RUN_NOTE=""
   [ "$RUN_RC" -ne 0 ] && RUN_NOTE=" (translate-articles.py exit=$RUN_RC — partial output)"
+  [ ${#HELD} -gt 0 ] && RUN_NOTE="$RUN_NOTE; held ${#HELD} slug(s): $(held_slugs)"
   # label + arm via the shared helper (falls back to the bare arm if this checkout predates it)
   if [ -x "$REPO_ROOT/scripts/signal_merge_intent.sh" ]; then
     "$REPO_ROOT/scripts/signal_merge_intent.sh" "$PR_NUM" >>"$LOG" 2>&1; ARM_RC=$?
@@ -224,14 +331,16 @@ EOF
   if [ "$ARM_RC" -eq 0 ]; then
     heartbeat ok "promoted $CHANGED file(s) via $PR_URL (auto-merge armed)$RUN_NOTE"
   else
-    log "WARN: could not arm auto-merge on PR #$PR_NUM — needs manual arm"
+    log "WARN: merge intent failed on PR #$PR_NUM (label and/or arm, rc=$ARM_RC — see SIGNAL_INTENT_FAIL above) — needs: scripts/signal_merge_intent.sh $PR_NUM"
     heartbeat degraded "promoted $CHANGED file(s) via $PR_URL but auto-merge did not arm$RUN_NOTE"
   fi
   log "worktree $WT_PATH left in place pending merge (next run's opportunistic --cleanup will collect it once merged)"
 else
   log "no mouth content changes this run — releasing worktree"
   python3 scripts/agent_start.py --release "$TASK_ID" >>"$LOG" 2>&1
-  if [ "$RUN_RC" -eq 0 ]; then
+  if [ ${#HELD} -gt 0 ]; then
+    heartbeat degraded "held ${#HELD} slug(s) by content guards, nothing to promote: $(held_slugs)"
+  elif [ "$RUN_RC" -eq 0 ]; then
     heartbeat ok "no content changes"
   else
     heartbeat error "translate-articles.py exit=$RUN_RC, no output to promote"

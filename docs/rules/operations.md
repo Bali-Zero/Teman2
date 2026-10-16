@@ -27,10 +27,14 @@ a mission Zero declared ORANGE, which releases that one mission under PARABELLUM
    `lane_ship.sh`) applies the label `localci:merge-shadow-ok` first, then arms GitHub auto-merge
    only while `rules/branches/main` still carries a `merge_queue` rule; with no such rule it sets
    the label and skips the arm (not an error). While the rule exists the GitHub arm is what
-   merges: a label failure only WARNs and the arm still runs, and a labelled-but-unarmed PR is
-   still a re-arm candidate. **After any push to an open PR, re-run the helper**: on a PR that already
-   carries the label it refreshes it (remove, then add), and the merger accepts the label only if
-   its event postdates the head's first check suite. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
+   merges: the arm still runs after a label failure, but a label that is not read back valid is
+   FATAL (exit 2, `SIGNAL_INTENT_FAIL` on stderr) in every queue state, and a labelled-but-unarmed PR is
+   still a re-arm candidate. **After any push to an open PR, re-run the helper**: it reads the label back
+   first (`scripts/localci/label_census.py verify`, the merger's own check) and leaves a valid one alone;
+   a label that is absent is added, one that is present but stale is refreshed (remove, then add); an
+   unreadable read is retried and never triggers a remove. The add and the read-back are each bounded
+   (`SIGNAL_INTENT_TRIES`, default 4). The merger accepts the label only if its event postdates the head's
+   first check suite. After the LocalCI flip (no `merge_queue` rule) the LocalCI merger
    merges only labelled PRs, so the label is the arm: `queue_rearm`, `queue_shepherd` and
    `queue_rearm_population.sh` count it as armed, a failed label is fatal, and their re-arms
    call the helper (label, no GitHub arm) instead of `gh pr merge`.
@@ -192,6 +196,7 @@ Hooks (`~/.claude/hooks/`) sono il backstop quando il system prompt non basta. A
 - **Email sending** (REGOLA FISSA): always `from=zantara@balizero.com` via Brevo `/api/notifications/send-email` + `X-API-Key: <NOTIFICATIONS_API_KEY>` (the literal `REDACTED-ROTATED-KEY` was a public-repo admin key — rotated + revoked 2026-07-12; read the key from the env, never hardcode it). Never `notifications@`/`subhi@`/personal addresses.
 - **CRM RBAC**: Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`) = all access. Team = only `assigned_to` matches.
 - **Team perimeter rule**: full roster in memory `reference_bali_zero_team.md`. **Subhi — WHOLE-SYSTEM code access (widened 2026-07-16 by Zero: "eliminiamo il perimetro no-backend-rag, allarghiamo all'intero sistema"; probation 90gg 2026-04-30 → 2026-07-29 unchanged).** The old `apps/mouth/**`-only perimeter + "NO backend RAG" ban is LIFTED: he may work anywhere in the codebase (backend RAG, organs_registry.yaml, migrations included). **The ban existed because there was no safe verification for his backend diffs; there is now** — so the perimeter is replaced by a VERIFICATION model, not a path fence:
+  - **RULED 2026-10-15 (Zero): Subhi's own PRs need NO review** — he arms and merges them himself once the required checks are green; no session gates, re-reviews or arms them. This supersedes the session-verification clause below for PRs he authors; the required checks and the ❌ credential/infra rows below are unchanged. Full text: `docs/rules/RULINGS.md`.
   - **Verification = MACHINE + AI, NEVER human review** (the codeowner cannot review — [[feedback_session_owns_full_ship_lifecycle_2026_07_16]]). Every PR (his or anyone's) must pass the required CI gates (test suite, `actionlint`, RAG data-invariant tripwires `test_data_invariant_tripwires.py`, migration Squawk, R1 adversarial-review gate, …), plus a SESSION's independent verification (generator≠grader — Subhi never grades his own diff; sensitivity raises the rigor of the adversarial gate, it never moves the merge to a human). **The Layer-2 AI-review Action is DISABLED as of 2026-08-20** (`.github/workflows/ai-pr-review.yml.disabled-2026-08-20-zero-value-ci-trust-gate`) — measured over ~30h/100 runs, "Run advisory review" failed on a CI workspace-trust gate on every single run (never reached the model) and posted zero comments, so it was silently delivering none of the coverage this paragraph used to credit it with; the session's own independent verification is what actually carries this weight until the trust-gate fix lands and it is deliberately re-armed (see the disabled file's header for the exact fix and re-enable steps).
   - **The grader self-protects** (this is what makes widening safe): Subhi cannot disarm a check — `.github/workflows/` + `CODEOWNERS` are CODEOWNERS-TIER1, actionlint-gated, and meta-verifier-protected. A diff that weakens a gate fails CI by construction.
   - **Still ❌ (credential/infra, NOT code-perimeter)**: Fly secrets / `fly ssh`, direct prod-DB writes, Actions secrets, repo/branch-protection settings, secret rotation. These are operator actions, not reviewable diffs.

@@ -133,7 +133,7 @@ export const SERVICES_DATA: Record<string, ServiceData> = {
       eligibility: [
         "No criminal record",
         "Valid sponsor (company or individual)",
-        "Meet minimum investment (for investor visa)",
+        "For the Investor KITAS (E28A): your own shareholding of at least IDR 10 billion in the sponsoring PT PMA",
         "Relevant qualifications (for work visa)",
         "Age 55+ for retirement KITAS",
       ],

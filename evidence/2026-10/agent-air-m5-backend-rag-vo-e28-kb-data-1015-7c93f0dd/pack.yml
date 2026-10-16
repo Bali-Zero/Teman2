@@ -1,0 +1,92 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "Lane VO-E28-KB-DATA-1015 (PR C2 of the E28 audit). Gear 3. Single implementer seat (Claude Sonnet 5) on a brief from
+  the orchestrator; local commits only, no push; production writes are run by the orchestrator after merge."
+lanes:
+  - lane: e28-kb-data
+    role: build
+    seat: "claude-sonnet-5 implementer, single round, TDD with one mutation proven red"
+
+seat_override: "R8 ground_truth: the ground truth is the six saved official Imigrasi page texts (research/visa/2026-10-15-e28-pages/, receipts e28-pages.receipts.jsonl) read and grepped on disk; no NotebookLM query was run, so no nb or query_hash exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4: code and public official page text only; no client data reached any seat."
+pii_scan_note: "Diff holds public immigration page text, catalogue wording and synthetic test strings only."
+
+grounding:
+  origin_main: "c68ae57f15 (branch base)"
+  head: "branch agent/air-m5/backend-rag/vo-e28-kb-data-1015 on c68ae57f15; the gate-B1 cure commit is the head (see the PR)"
+  saved_pages: "research/visa/2026-10-15-e28-pages/text/ (E28A df3ba889, E28B 4ba3c1a3, E28C 2cdb5b81, E28D dd5e2a06, E28E 5b9dd676 (no content), E28F 74e25e50), copied byte-identical from the audit worktree"
+  truth_table: "scratchpad e28-truth-table.md (signed pack seq-29 + pages)"
+  prod_before:
+    E28A: "cost_visa '17.000.000 - 19.000.000 IDR'; requirements carry 'Passport photo 4x6 red background' and 'Return/onward ticket'; allowed_activities carry document lines; processing '7-10 days'"
+    E28B: "name 'E28B - Investor KITAS (Golden Visa 5Y)'; allowed 'Investasi minimal Rp 2.5 miliar'; restrictions 'Wajib maintain investasi'"
+    E28C: "restrictions 'Dilarang bekerja'; allowed 'Tidak perlu mendirikan PT PMA', USD 350.000 only"
+    E28G: "name 'E28G - Investor KITAS (Golden Visa 10Y)'; allowed 'Golden Visa 10 tahun', 'Investasi Rp 5 miliar+'"
+    qdrant: "E28A stay_extension_days 730 + 'KITAP threshold INCREASED to Rp 15 billion'; E28B 'Direct KITAP-INV after 5y ... prior Indonesia entry'; E28D 'Branch/Representative Office'; E28F 'Real Estate ... Rp 5 billion+'; E28G point 225aed53 'Golden 10Y Real Estate'; concept b50440ec 'E28B/E28G Golden Visa' and 'Exemption: Golden Visa investors (E28B, E28G)'"
+  retire_mechanism: "no pre-existing flag; this PR adds metadata.retired=true (no schema change): GET /api/knowledge/visa/ skips retired rows, GET by code still returns E28G as 'not a current visa (see E28A, E28B or E28C)' with no threshold"
+  cost_visa_choice: "E28A 'IDR 17.000.000 (offshore) / IDR 19.000.000 (onshore), all-inclusive': two labelled prices for the two catalogue products, not a 17-19 range; offshore-only would under-quote an onshore client"
+  field_placement: "the API exposes requirements/restrictions/allowed_activities, not description; thresholds and the page's special requirements sit once in requirements (the page's own 'Persyaratan khusus'), allowed_activities holds only what the page allows"
+  workflow_auto_run: "fly-deploy.yml run-python-migrations runs named apply_migration_NNN.py files only; migration_128 does not run on merge, the orchestrator runs it by hand"
+
+verification:
+  red_on_main: "mutation in the migration (E28B tiers replaced by 'Rp 2.5 miliar') fails 4 tests (figures not on page, tier missing, forbidden claim, seed drift); file restored by cp"
+  green: "cure round after the Codex red team (FIX-FIRST on f5f5bce12f): new test file + tripwire + seed_e23_pricing + knowledge_visa_jsonb_cast + visa_check/test_catalogue: 107 passed, 1 skipped (gate-B1 cure round, 79 in the new file); loadavg was 10.8 so only the touched files were run"
+  cure_round: "visa_validity is the 90-day entry window, stay tiers 1825/3650 kept, unknown extension is None (absent), KITAP concept section removed in source and fixer; migration 128 atomic with PREIMAGE line and dry-run default; fixer --restore, first-error stop, anchor guard; E28G metadata.retired skipped by the list endpoint; cost_visa 'IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive'; seed names and every written field in the tripwire; cache note deleted (no reader of zantara:knowledge_visa:* exists)"
+  local_floor: "evidence_pack_lint --print-floor with the numstat of c68ae57f15...HEAD = 3 (churn above SIZE_GEAR3_THRESHOLD 1828); gear 3 declared"
+
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: "FIX-FIRST: 3 HIGH (visa_validity vs stay, KITAP concept republished, non-atomic migration without preimage), MEDIUM (restore, shape guard, cost_visa single price, E28G listed, shopping, loose tests, tripwire fields), LOW (cache note, enrich script embeds)"
+    status: CONFIRMED
+    resolution: "Cured in 4fdb37f5e2. Not adopted: single 17M cost_visa (coordinator ruling keeps the two labelled scenario prices, the seed precedent shape); decision-engine paid-up conflict is routed to seq-30 (SEQ29-A2)."
+  - seat: claude-opus-5-5
+    objection: "BLOCK B1: declared gear 2 below the deterministic floor 3 (churn 3048 > 1828); notices N1 (unreceipted 'no official page' clause for E28G), N2 (anchor surviving outside the stay block not refused), N3 (columns the API serves left untouched), N4 (stale evidence and docstrings)"
+    status: CONFIRMED
+    resolution: "Cured in the commit after e3b3de2748: gear 3 declared; N1 clause dropped; fixer refuses a surviving anchor before writing and in the verify; E28G name_id/renewable and E28A cost_extension written; docstrings and pack refreshed."
+
+out_of_scope_reported:
+  - "SEQ29-A2: the signed pack's E28A role and paid-up-capital rule contradict the ruling; routed to the conductor's seq-30."
+  - "E28A keeps its live name 'E28A - Investor KITAS (Standard)': migration 128 does not write a name for it; the seed keeps the legacy catalogue name 'Investor Visa' (visa_check VISA_META pins it)."
+  - "Audit matrix (F40-F44, F70-F74) ships later in the E28 ledger PR; it is not cited by path here."
+  - "Detail lookup of a retired row still returns it; only the list endpoint hides retired rows."
+
+bites:
+  consumer: "MCP get_visa_details / list_visa_types (PROD visa_types via GET /api/knowledge/visa) and Zantara's visa_oracle Qdrant retrieval of the E28 points"
+  observation: "after the orchestrator's authorized post-merge run (migration 128 --apply, then fix_visa_oracle_e28_points.py --backup then --apply): get_visa_details E28B shows the USD 2.500.000 / 5.000.000 tiers and no 'Rp 2.5 miliar', list_visa_types no longer lists E28G while get_visa_details E28G reads 'not a current visa', and a Qdrant scroll shows no E28G point, visa_validity '90 days from issuance' and the corrected E28F note"
+
+receipts:
+  - claim: "New tests plus the seed/migration tripwire green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/kb/test_e28_kb_data_follows_the_official_pages.py backend/tests/test_visa_types_seed_vs_migration_tripwire.py -p no:cacheprovider"
+    result: "55 passed"
+    exit: 0
+    ts: "2026-10-15T15:00Z"
+    seat: claude-sonnet-5
+  - claim: "Neighbouring visa-type and catalogue tests green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/test_visa_types_seed_e23_pricing.py backend/tests/scripts/test_visa_engine_compile_claims.py backend/tests/services/visa_check/test_catalogue.py -p no:cacheprovider"
+    result: "93 passed"
+    exit: 0
+    ts: "2026-10-15T15:00Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation of the E28B tiers in migration_128 is convicted; file restored by cp"
+    cmd: "sed on migration_128 (tiers -> 'Rp 2.5 miliar'), pytest the new test file, cp restore"
+    result: "4 failed, 46 passed; after restore 50 passed"
+    exit: 1
+    ts: "2026-10-15T14:55Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation: the migration's single transaction removed is convicted (atomicity + post-write rollback tests); file restored by cp"
+    cmd: "sed 'async with conn.transaction():' -> 'if True:' in migration_128, pytest the new test file, cp restore"
+    result: "2 failed, 66 passed; after restore 96 passed, 1 skipped on the touched set"
+    exit: 1
+    ts: "2026-10-15T15:55Z"
+    seat: claude-sonnet-5
+
+  - claim: "Mutation: the fixer's anchor-survives check disabled is convicted (refuse-before-write and verify tests); file restored by cp"
+    cmd: "sed 'if OLD_ANCHORS[code] in new_text' -> 'if False and ...' in fix_visa_oracle_e28_points.py, pytest the new test file, cp restore"
+    result: "2 failed, 77 passed; after restore 79 passed"
+    exit: 1
+    ts: "2026-10-15T16:55Z"
+    seat: claude-sonnet-5
+
+spend:
+  adversarial_rounds: 0

@@ -1,0 +1,245 @@
+# Gear-3 evidence pack — LocalCI B34 P1, the PR shepherd observe core (organ pro.localci_shepherd).
+# Written 2026-10-15 by an implementer/dossier session (Claude Sonnet 5.5, M5) for code head a24504f6b5 (local, not pushed; the builder was Claude Opus 5.5).
+# REBASED 2026-10-15 onto origin/main 57bb4d83ad (the spec file conflicted with B25-prime #8561; union kept, no code change). Shas in this pack and in
+# council-journal.jsonl name the pre-rebase commits: af081b6c68 = 14c900f11c, c202caec6f = 1a7a76b634, a24504f6b5 = 71ac0f63ac; the code blobs are identical (R13).
+# Every receipt is a command run in this session; ts is the clock read in the same shell call. Verbatim seat verdicts: council-verbatim.txt.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The titolare kimi-code/k3 is replaced by the reserve agy-gemini-4-argon (Gemini 4 Argon High): arsenal_probe --seats kimi,tp1-qwen3.8-max
+  read kimi QUOTA_DEAD (plan quota exhausted) at 2026-10-15T12:19:40Z and again at 2026-10-15T13:01:32Z, and tp1-qwen3.8-max MODEL_ERR
+  (HTTP 403, access to model denied) at both times, so the third titolare could not stand in either. codex-gpt-5.6-sol, the titolare that
+  answered (-m gpt-5.6-sol; the CLI default gpt-6-astra does not count), sat beside the reserve. Neither seat built or edited anything here.
+ruling: >-
+  LocalCI-SOVEREIGN spec B34 (docs/specs/localci-sovereign-2026-10-07.md, owner rulings in the B34 section): P1 is observe only with no write
+  verb; classes 4 and 7 only; class 10 and every write move to P2-P5. The first PR (#8558) failed Harness floor recompute because its brief
+  declared gear 2 under a floor of 3; this branch rebuilds it at gear 3.
+mission: >-
+  Give the three stranded-PR classes an owner after the phase F flip without giving the shepherd any way to write: read the open PRs, classify,
+  journal would_* rows, under a hard budget and a lease, so P2-P5 can arm real actions on a measured record.
+lanes:
+  - lane: shepherd-build
+    role: build
+    seat: Claude Opus 5.5 (built shepherd.py, the wrapper, the plist, the registry entry, the tests and 23 mutants; it is NOT a grader here)
+  - lane: shepherd-cure
+    role: build
+    seat: Claude Sonnet 5.5 (round-1 cures, commit c202caec6f; the cure author does not grade)
+  - lane: shepherd-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol (-m gpt-5.6-sol, read-only sandbox, prompt-only, 2 rounds)
+  - lane: shepherd-review-agy
+    role: review
+    seat: agy-gemini-4-argon (Gemini 4 Argon High, --sandbox, prompt-only, same prompt, 2 rounds)
+seat_diversity: >-
+  Builders: Anthropic (Claude Opus 5.5, Claude Sonnet 5.5). Reviewers: OpenAI (codex-gpt-5.6-sol) and Google (agy-gemini-4-argon); no reviewer built anything.
+pii_scan: clean
+pii_scan_note: >-
+  Code, a plist, a registry entry and synthetic fixtures. The shepherd reads GitHub PR metadata (numbers, logins, file paths, labels) and journals
+  PR numbers, head shas and class names only, never a title, body, diff or comment; no client data is read or printed here.
+what_changed: |
+  scripts/localci/shepherd.py (observe core: one bounded paginated GraphQL listing of at most 5 pages, aliased brief reads, classifier for
+  classes 4 and 7, lease, budget, would_* journal, no write verb), scripts/localci/localci_shepherd_tick.sh (wrapper: code from its own
+  clone --shared bare mirror at one sha, heartbeat on every exit path), infra/launchagents/com.balizero.localci-shepherd.plist (StartInterval 600,
+  no KeepAlive), organs_registry.yaml entry pro.localci_shepherd, a declared pair, scripts/localci/tests/test_shepherd.py (64 cases),
+  33 b34-* mutants in merger_mutants.py, the spec section. Round-1 cures: rate_limit counted in the 60, a truncated label set fails closed
+  (labels_truncated, no would_label, no role read), a PR in both classes journals both would_* actions, the wrapper's EXIT-trap cleanup can no
+  longer end the trap before the heartbeat and the trap removes HB_NEW.
+proof: |
+  See receipts. Round 1 on af081b6c68: codex REWORK with three real code defects, agy PASS; the defects were cured test-first (14 tests failed
+  on af081b6c68, R4) and round 2 on the cured head gave PASS from both seats with no defect. The Mini run of the whole localci suite
+  and of every b34-* mutant is clean.
+bites:
+  consumer: >-
+    The Pro launchd job com.balizero.localci-shepherd (every 600 s) and the organism bridge that reads its sidecar
+    ~/.organism/last_seen/pro.localci_shepherd.json (organs_registry.yaml, expected_hb_seconds 1200).
+  observation: >-
+    Owed to the shipping session after merge, the declared pair installed on Pro and the plist loaded: the sidecar reads ok within 20 minutes,
+    ~/.nuzantara-pilots/local-ci/shepherd/journal.jsonl carries an observe row with rest_calls <= 60 and armed false on every row, and no
+    would_* row is ever followed by a write on GitHub. This host-only Pro observation is posted later as a PR comment; it is not made here.
+ground:
+  ts: "2026-10-15T13:50:58Z"
+  siblings: >-
+    Rebased onto origin/main 57bb4d83ad (base was 8dbaf0aa25). A merge-tree of origin/main with the head is clean, and so is one with
+    origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 (B32, queued next). PR #8558 holds the same code at f258a46075 and is frozen; this branch supersedes it.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 1.2
+decisions:
+  - id: D-rate-limit-counted
+    decision: >-
+      GET rate_limit goes through the counter and takes the first of the 60 calls (at most 59 role reads). GitHub does not charge /rate_limit to the
+      core quota, but the written contract is 60 REST calls and a contract that exempts one call silently is the shape a later edit breaks.
+  - id: D-labels-fail-closed
+    decision: >-
+      A label set cut at 30 with no arm label in the page is not "no arm label": the PR gets class labels_truncated, no would_label and no role read.
+      A PR whose arm label is in the first 30 is decided as before.
+  - id: D-actions-list
+    decision: >-
+      The row carries actions (a list); each action is journaled as its own event with the row's fields, so a PR in classes 4 and 7 yields would_gate
+      and would_label. The single-valued action field is gone; nothing else read it.
+  - id: D-rebase-union
+    decision: >-
+      The only conflict of the rebase was docs/specs/localci-sovereign-2026-10-07.md, where B25-prime (#8561) appends a section at the same spot as the B34 section; both are kept.
+  - id: D-wrapper-notes-accepted
+    decision: >-
+      Wrapper clone/fetch before the Python host guard and the stderr fallback of a missing heartbeat library mirror the production merger wrapper and
+      stay NOTE; the plist is only installed on Pro (declared pair machines: pro).
+receipts:
+  - claim: "R1 — floor 3 via the hot-zone path terms: the 9 changed files compute 3."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only, council files excluded>
+    result: "3"
+    exit: 0
+    ts: "2026-10-15T13:07:45Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R2 — the B34 code of af081b6c68 is byte-identical to f258a46075 (PR #8558's head); the only merge work was merger_mutants.py (main's b33 block kept beside the b34 block), where 21 of the 23 original b34 mutant lines are still verbatim and 2 were later re-anchored by the cures."
+    cmd: git diff f258a46075 af081b6c68 --stat -- shepherd.py wrapper test_shepherd.py plist registry declared-pairs; git show f258a46075:<merger_mutants.py> | grep '^    "b34-' | grep -vxFf <current merger_mutants.py>
+    result: "stat empty (byte-identical); the two non-verbatim lines are b34-ratelimit-error-acts and b34-files-truncation-ignored (re-anchored by c202caec6f and a24504f6b5)"
+    exit: 0
+    ts: "2026-10-15T13:09:41Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R3 — round 1 council on af081b6c68: codex-gpt-5.6-sol REWORK (8 DEFECT, 7 NOTE), agy-gemini-4-argon PASS (2 NOTE); both found no write path."
+    cmd: scripts/with_seat.sh codex codex exec -m gpt-5.6-sol -s read-only ... ; scripts/with_seat.sh agy agy --sandbox --model 'Gemini 4 Argon (High)' -p <prompt>
+    result: "codex rc 0 VERDICT REWORK; agy rc 0 VERDICT PASS; verbatim in council-verbatim.txt"
+    exit: 0
+    ts: "2026-10-15T12:40:05Z"
+    seat: codex-gpt-5.6-sol and agy-gemini-4-argon
+  - claim: "R4 — test-first: the new and updated tests of the cure fail on af081b6c68's shepherd.py and wrapper (restored with cp and cmp, never git checkout --)."
+    cmd: git show af081b6c68:<file> > <file> for shepherd.py and the wrapper; python3 -m pytest -q scripts/localci/tests/test_shepherd.py; cp back; cmp
+    result: "14 failed, 50 passed on the old code (the 6 new tests plus 8 existing tests whose assertions moved to actions and the counted rate_limit); files restored byte-identical"
+    exit: 0
+    ts: "2026-10-15T13:07:59Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R5 — Mini (venv311, py3.11), code head a24504f6b5: test_shepherd.py."
+    cmd: "ssh mini: /Users/nuzantara/gate-tmp/venv311/bin/python -m pytest -q scripts/localci/tests/test_shepherd.py -p no:cacheprovider (archive of HEAD under /tmp/gate-tmp-impl-b34g3/run3)"
+    result: "64 passed"
+    exit: 0
+    ts: "2026-10-15T13:09:36Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
+  - claim: "R6 — Mini, every b34-* mutant (33: the 23 of the build, 10 new for the cures) against test_shepherd.py."
+    cmd: "ssh mini: merger_mutants.py --only $(merger_mutants.py --list | awk '$1 ~ /^b34-/ {print $1}')"
+    result: "33/33 killed; survivors: none; errors: none; stale: none"
+    exit: 0
+    ts: "2026-10-15T13:08:27Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
+  - claim: "R7 — Mini, the whole scripts/localci/tests suite on c202caec6f (the code of the reviewed head; a24504f6b5 differs only in merger_mutants.py)."
+    cmd: "ssh mini: venv311 python -m pytest -q scripts/localci/tests -p no:cacheprovider"
+    result: "2391 passed, 13 skipped, 1 warning in 626.59s"
+    exit: 0
+    ts: "2026-10-15T12:57:09Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
+  - claim: "R8 — plutil, bash -n and shellcheck -S warning are clean on the plist and the wrapper."
+    cmd: plutil -lint <plist>; bash -n <wrapper>; shellcheck -S warning <wrapper>
+    result: "plist OK; bashn-ok; shellcheck 0"
+    exit: 0
+    ts: "2026-10-15T13:08:13Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R9 — no textual conflict with current origin/main."
+    cmd: git merge-tree --write-tree origin/main HEAD
+    result: "exit 0, merge base 8dbaf0aa25"
+    exit: 0
+    ts: "2026-10-15T13:08:13Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R10 — seat liveness before the round-2 dispatch: kimi QUOTA_DEAD, tp1-qwen3.8-max MODEL_ERR (HTTP 403)."
+    cmd: python3 scripts/arsenal_probe.py --seats kimi,tp1-qwen3.8-max --table
+    result: "0 of 2 seats OK (also at 2026-10-15T12:19:40Z: kimi QUOTA_DEAD, tp1-qwen3.8-max MODEL_ERR; codex LIVE, agy LIVE at 12:20:18Z)"
+    exit: 0
+    ts: "2026-10-15T13:01:32Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R11 — round 2 council on a24504f6b5, codex-gpt-5.6-sol: PASS. Cures (a)-(d) complete, classifier, off-limits entities, no write path, budget (rate_limit is call 1, at most 59 role GETs, the 61st refused), lease, trap, plist and registry all found sound."
+    cmd: scripts/with_seat.sh codex codex exec -m gpt-5.6-sol -s read-only --skip-git-repo-check -c model_reasoning_effort=high <prompt> < /dev/null
+    result: "rc 0; VERDICT: PASS; 11 NOTE, no DEFECT; NOTE: the classify docstring still says singular action"
+    exit: 0
+    ts: "2026-10-15T13:06:22Z"
+    seat: codex-gpt-5.6-sol
+  - claim: "R12 — round 2 council on a24504f6b5, agy-gemini-4-argon: PASS. Cures verified at file:line, full re-review found nothing."
+    cmd: scripts/with_seat.sh agy agy --sandbox --model 'Gemini 4 Argon (High)' --print-timeout 900s -p <prompt> < /dev/null
+    result: "rc 0; VERDICT: PASS; 4 NOTE (stale docstring action, heartbeat-library stderr fallback, clone before host guard, registry prose 'one GraphQL query'), no DEFECT"
+    exit: 0
+    ts: "2026-10-15T13:06:22Z"
+    seat: agy-gemini-4-argon
+  - claim: "R13 — after the rebase every file the B34 mandate owns is blob-identical to the pre-rebase head ffc0658460 (code, wrapper, plist, registry with its checksum, declared pair, tests, mutants, pack)."
+    cmd: git diff --quiet backup/b34g3-ffc0658460 HEAD -- <each B34 file>; git diff --quiet 8dbaf0aa25 origin/main -- organs_registry.yaml declared-pairs.json merger_mutants.py
+    result: "same for all eight files; main touched none of the registry, the declared pair or the mutants file since the old base"
+    exit: 0
+    ts: "2026-10-15T13:50:58Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R14 — merge-tree against origin/main 57bb4d83ad and against origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 (B32), and the organs registry validator."
+    cmd: git merge-tree --write-tree origin/main HEAD; git merge-tree --write-tree origin/agent/air-m5/infra/infra-localci-stale-mutants-1015 HEAD; PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml
+    result: "both merge-trees exit 0; organs_registry.yaml valid"
+    exit: 0
+    ts: "2026-10-15T13:51:25Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5)
+  - claim: "R15 — Mini, rebased head: test_shepherd.py and every b34-* mutant."
+    cmd: "ssh mini: venv311 python -m pytest -q scripts/localci/tests/test_shepherd.py; merger_mutants.py --only <every b34-*> (archive under /tmp/gate-tmp-impl-b34g3/run4)"
+    result: "64 passed; 33/33 killed, survivors none, errors none, stale none"
+    exit: 0
+    ts: "2026-10-15T13:52:32Z"
+    seat: Claude Sonnet 5.5 (dossier session, M5; run on Mini)
+dissent:
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1)
+    objection: >-
+      shepherd.py:235 "The rate_limit GET bypasses Rest/CallCap, so 60 permission GETs plus this request produce 61 REST calls."
+    status: CONFIRMED
+    disposition: >-
+      CURED in c202caec6f: rate_limit goes through Rest and is call 1 of 60; test_the_rate_limit_read_is_counted_so_a_tick_never_makes_a_61st_rest_call
+      (70 authors, exactly 60 GETs) failed on af081b6c68 (R4) and passes; mutants b34-rate-limit-uncounted and b34-ratelimit-error-acts are killed.
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1)
+    objection: >-
+      shepherd.py:52 "Labels are limited to 30 without totalCount or truncation handling, so an arm label beyond the first 30 is falsely classified as absent."
+    status: CONFIRMED
+    disposition: >-
+      CURED in c202caec6f: totalCount is read, a cut set without the arm label gives labels_truncated, no would_label, no role read; three tests and four mutants.
+      Confirmed sound by both seats in round 2.
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1)
+    objection: >-
+      shepherd.py:187 "A PR in both classes records only its gate action; would_label is suppressed even though label_candidate is present."
+    status: CONFIRMED
+    disposition: >-
+      CURED in c202caec6f: actions is a list and every action is journaled as its own event; test_a_pr_in_both_classes_carries_and_journals_both_would_actions
+      and mutants b34-gate-suppresses-label, b34-journal-first-action-only.
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1)
+    objection: >-
+      shepherd.py:100 "Open-PR listing can execute up to five GraphQL calls, contradicting the ONE-query listing contract."
+    status: PLAUSIBLE
+    disposition: >-
+      Wording, not behaviour: the five pages are the bounded, already-tested design (a sixth page is refused as a truncated queue). Spec, brief and docstring now say
+      "one bounded paginated query (<= 5 pages)".
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1 — wrapper lines 34 and 81)
+    objection: >-
+      localci_shepherd_tick.sh:34 "Cleanup runs under set -e; a failed rm can abort the EXIT trap before heartbeat emission." and :81 "HB_NEW is not included in EXIT
+      cleanup and can be left behind if replacement fails or execution is interrupted."
+    status: CONFIRMED
+    disposition: >-
+      CURED in c202caec6f: || true scoped to the three cleanup commands only, HB_NEW removed by the trap; a failing-rm wrapper test and a SIGTERM-during-extraction test
+      failed on af081b6c68 and pass; four trap mutants killed. Round 2 confirmed the trap still exits with the original rc.
+  - seat: codex-gpt-5.6-sol (DEFECT, round 1 — wrapper lines 13 and 61)
+    objection: >-
+      localci_shepherd_tick.sh:13 "Heartbeat is not guaranteed: a missing, empty, or failing heartbeat library only emits stderr" and :61 "The wrapper creates state and
+      performs clone/fetch work before the Python host guard, so a wrong host still touches disk and network."
+    status: PLAUSIBLE
+    disposition: >-
+      NOT cured, accepted as NOTE by the coordinator: both shapes are the production merger wrapper's (localci_merger_tick.sh), the plist and declared pair name Pro only,
+      and a missing heartbeat is itself caught by the organ's expected_hb_seconds silence net. Both round-2 seats re-listed them as accepted NOTE.
+  - seat: agy-gemini-4-argon (NOTE, round 1)
+    objection: >-
+      shepherd.py:200 roles_for does not pre-filter PRs that classify will reject on a NEVER predicate (non-main base, fork, truncated files, off-limits, changes requested),
+      which can spend one counted REST call per distinct login on a PR that cannot become a label candidate.
+    status: PLAUSIBLE
+    disposition: >-
+      Bounded by the 60 cap and by one read per login per tick; the cost is a few wasted counted calls, never a wrong row. Left for P2 where the reads feed an action.
+  - seat: codex-gpt-5.6-sol and agy-gemini-4-argon (NOTE, round 2)
+    objection: >-
+      shepherd.py:165 the classify docstring still reads {classes, action, reason, ...}; organs_registry.yaml:3283 notes prose says "one GraphQL query" while list_open paginates.
+    status: PLAUSIBLE
+    disposition: >-
+      Stale words, no behaviour. Not edited after the council: the registry edit would recompute the file's checksum and the docstring edit would move a reviewed
+      head for a comment. Carried as residuals.
+residuals:
+  - "Final-gate LOWs, P2 prerequisites, deliberately not folded here: the mirror's refs/heads cleanup, fence L1, tests for SAFE_PATH and is_sha, and RENAMED files under never_auto."
+  - "R11/R12 NOTE: the classify docstring says singular action (shepherd.py:165); registry notes say one GraphQL query. Fix with the next shepherd change."
+  - "Accepted NOTE: wrapper clone/fetch runs before the Python host guard, and a missing heartbeat library falls back to stderr (same as the merger wrapper)."
+  - "roles_for spends counted reads on PRs classify will reject on a NEVER predicate (agy NOTE); bounded by the 60 cap; revisit when a role read feeds an action (P2)."
+  - "The arm label that predates the head (B2a) is not evaluated in P1; P5 adds the check-suite time comparison (brief residual)."
+  - "Live proof is owed after merge, the declared pair installed on Pro and the plist loaded; it is a Pro-only observation (bites) and is not made here."
+appetite_exceeded: false

@@ -1,0 +1,19 @@
+gear: 1
+gear_reason: >-
+  One concern in apps/mouth: the E33F card's sponsor sentence shown once and in Indonesian on the ID locale.
+  No catalogue JSON, no backend, no hot zone. Display-only.
+mission: >-
+  On /book the E33F card says the sponsor sentence once, and in Indonesian on the ID locale (Zero, 2026-10-15).
+objective: >-
+  The sentence is the card's first feature and is omitted from the displayed tagline. On the ID locale the feature
+  reads exactly 'Diperlukan penjamin; Bali Zero dapat menjadi penjamin Anda.'; EN stays exactly 'A sponsor (penjamin)
+  is required; Bali Zero can act as one.'. The catalogue and the backend JSON are not edited.
+scope:
+  - apps/mouth/src/components/book/book-data.ts
+  - apps/mouth/src/app/(book)/book/BookPage.tsx
+  - apps/mouth/src/components/book/book-sponsor-line.test.ts
+  - apps/mouth/e2e/book-pricing.spec.ts
+  - scripts/ci/observe_book_sponsor_line_1014.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

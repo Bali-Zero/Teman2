@@ -33,12 +33,12 @@ def tick(tmp_path: Path, free_gb: float | None, host: str = "Nuzantara", **env) 
     return res, hb, (tmp_path / "du.calls").read_text() if (tmp_path / "du.calls").exists() else ""
 
 
-@pytest.mark.parametrize("free,status", [(59, "error"), (59.9, "error"), (60, "warning"), (89, "warning"), (90, "warning"),
-                                         (90.5, "ok"), (91, "ok")])
-def test_ok_above_90_warning_from_60_to_90_failed_under_60(tmp_path, free, status):
+@pytest.mark.parametrize("free,status", [(49, "error"), (49.9, "error"), (50, "warning"), (59, "warning"), (60, "warning"),
+                                         (60.5, "ok"), (61, "ok")])
+def test_ok_above_60_warning_from_50_to_60_failed_under_50(tmp_path, free, status):
     res, hb, du = tick(tmp_path, free)
     assert res.returncode == 0 and hb["status"] == status
-    assert f"free_gb={free:.1f} on /System/Volumes/Data (ok > 90, failed < 60)" in hb["note"]
+    assert f"free_gb={free:.1f} on /System/Volumes/Data (ok > 60, failed < 50)" in hb["note"]
     assert hb["note"].startswith("failed: ") == (status == "error")
     if status == "ok":
         assert du == "" and "biggest" not in hb["note"]   # the 94-second walk only when the organ pages

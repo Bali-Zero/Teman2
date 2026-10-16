@@ -17,7 +17,7 @@ import { RUMAH_VARS, RUMAH_CLASS } from "@/lib/theme/rumahVars";
 export const metadata: Metadata = {
   title: "Services",
   description:
-    "Visa, PT PMA, tax, property — handled in Bali by a licensed Indonesian team since 2006.",
+    "Visa, PT PMA, tax, property — handled in Bali by a licensed Indonesian team since 2020.",
 };
 
 interface Service {
@@ -104,7 +104,7 @@ const TRUST_STRIP = [
   { value: "5,000+", label: "Cases handled" },
   { value: ratingBadge(), label: reviewsLabel() },
   { value: "18+", label: "Licensed specialists" },
-  { value: "2006", label: "Year founded" },
+  { value: "2020", label: "Year founded" },
 ];
 
 export default function ServicesPage() {
@@ -157,7 +157,7 @@ export default function ServicesPage() {
             Visa, company setup, tax compliance, property due diligence. Each
             product is fronted by an AI that reads Indonesian primary sources —
             but the filings are signed by licensed konsultan imigrasi, konsultan
-            pajak and registered notaries. Since 2006.
+            pajak and registered notaries. Since 2020.
           </p>
         </div>
       </section>

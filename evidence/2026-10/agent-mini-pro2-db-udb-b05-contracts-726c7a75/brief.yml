@@ -1,0 +1,17 @@
+mandate: universal-db-wave8-20261015-B05
+gear: 3
+colour: BLUE
+intent:
+  Deliver a truthful partial operation-contract dossier with23contracts,eight
+  catalog joins and explicit runtime binding blockers.
+scope:
+  - research/operations/udb-wave8/B05/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b05-contracts-726c7a75/
+  - .secrets.baseline
+constraints:
+  - Exactly one B05 PR; no operation-code,test,23contract ledger or runtime changes.
+  - Original armed PR8567 remains frozen; this isolated proposal grants no thaw or release
+    permission.
+  - Runtime principal-role bindings remain UNKNOWN; archived principal-role proposal
+    is BLOCKED for implementation.
+  - Fresh independent BLUE Opus5.5/xhigh exact-head final gate remains mandatory.

@@ -90,10 +90,10 @@ export default function TermsPage() {
           5. Service Pricing
         </h2>
         <p style={{ color: "var(--tx-secondary)" }}>
-          Prices shown are Bali Zero&apos;s service fees and are subject to
-          change without notice. Government fees are separate and are set by
-          Indonesian authorities. We have no control over government fee
-          changes.
+          Prices shown are all-inclusive: government fees and the Bali Zero
+          service are included in the price shown. Prices are subject to change
+          without notice. Indonesian authorities set their own fees and may
+          change them; the price confirmed when you book applies.
         </p>
       </section>
 

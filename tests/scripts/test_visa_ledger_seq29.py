@@ -52,12 +52,15 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-15 (M5")
-    assert "ledger wave 5 — the E33 family closes" in dated[0]
-    assert "ledger after E33 wave 4" in dated[1]
-    assert "ledger after E33 wave 3" in dated[2]
+    assert dated[0].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane)")
+    assert dated[1].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
+    assert dated[2].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
+    assert "ledger addendum after the E33 closure" in dated[3]
+    assert "ledger wave 5 — the E33 family closes" in dated[4]
+    assert "ledger after E33 wave 4" in dated[5]
+    assert "ledger after E33 wave 3" in dated[6]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 3
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 7
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -469,7 +472,7 @@ def test_wave5_entry_never_upgrades_a_partial_or_missing_proof():
     assert body.count("proof level: PARTIAL") == 2
     assert "golden route investor_kitas_retirement has no public URL, so it is PARTIAL" in body
     assert "merged without the harness/fable-gate status" in body and "the status was never published" in body
-    assert body.count("iQOO NOT run") >= 4 and "adb not installed on Pro" in body
+    assert body.count("iQOO NOT run") >= 4 and "adb is installed on Pro" in body and "adb not installed" not in body
     assert "E33C is not walkable in the browser (unit pins only)" in body
     assert "The Vercel deployment was not matched to the sha (the served bytes were checked instead)" in body
     assert "16 of 38 products with a permit-length line and 22 rendering none" in body
@@ -500,38 +503,40 @@ def test_skill_live_state_leads_with_wave5_and_stays_an_index():
 
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
-    assert block.index("2026-10-15 (newest): E33 family CLOSED 2026-10-15 (wave 5)") < block.index("2026-10-14 (wave 4)")
-    lead = block[block.index("- **2026-10-15 (newest)"):block.index("- **2026-10-14 (wave 4)")]
+    assert block.index("2026-10-15 (wave 5): E33 family CLOSED 2026-10-15 (wave 5)") < block.index("2026-10-14 (wave 4)")
+    lead = block[block.index("- **2026-10-15 (wave 5)"):block.index("- **2026-10-14 (wave 4)")]
     for pr, sha in E33_WAVE5:
         assert len(re.findall(rf"#{pr}\b", lead)) == 1, pr
         if pr not in ("8513", "8518", "8519", "8520"):
             assert lead.count(f"`{sha}`") == 1, sha
     for token in ("PARTIAL", "**Not done:**", "pre-delete backup was lost", "Backlog rows:", "no iQOO walk"):
         assert token in lead, token
-    assert len(lead) < 3200
-    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 1
+    assert len(lead) < 3300 and "adb not installed" not in lead and "adb is installed on Pro" in lead
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 4
     assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
     assert "(updated 2026-10-15;" in text
 
 
 WAVE5_CLOSED = (
     ("The Qdrant pricing collection no longer serves", "closed 2026-10-14T23:23Z", ("re-plan after the apply shows deletes=0", "returns 0 points")),
+    ("The Qdrant pricing collection now has a point for every public catalog row", "closed 2026-10-15T15:58Z", ("catalog_rows_without_point=0", "#8568", "'pensiun' (14.000.000, 10.000.000) and 'retirement' (14.000.000, 16.000.000)")),
+    ("The Qdrant pricing collection no longer carries the stale contact trailer or the 17 orphan points", "closed 2026-10-16T06:22Z", ("points_without_catalog_row=0", "#8594", "grep -c '3465 159'")),
+    ("The iQOO walk of the E33 public surfaces", "closed 2026-10-15", ("W1-W6 PASS comments", "pull/8511#issuecomment-6188925096", "pull/8533#issuecomment-6188925677", "pull/8512#issuecomment-6188926239", "20261015-e33-mobile")),
     ("The brochure now prints the E33F Altus/Onshore row", "closed 2026-10-15", ("26185b41341de17f", "Onshore, 1 year Rp 16.000.000", "#8528")),
     ("The gate's 'pensiun' live query of #8505 was run and passes", "closed 2026-10-15", ("2026-10-14T16:45Z", "3 E33F rows", "no generic Retirement row")),
     ("#8506 brochure guard LOW follow-ups: test_guilt_f now fails", "closed 2026-10-15", ("#8518", "17 passed", "printed the cure")),
 )
 WAVE5_OPENED = (
-    ("no iQOO walk of the E33 public surfaces", "owner: operator[physical]", "OPERATOR-GATED"),
+    ("the book-pricing.spec.ts ID test added by #8543", "owner: me (nuzantara-57)", "TECH-DEBT"),
     ("seq-30 candidate, the E33F `sponsor_types` is INDIVIDUAL", "owner: me (next session, visa-night conductor and signer)", "TECH-DEBT"),
     ("the E28A Indonesian article does not render in Indonesian", "owner: me (nuzantara-57)", "TECH-DEBT"),
-    ("has no point for 65 catalog rows, including all E33F rows", "owner: me (nuzantara-57)", "TECH-DEBT"),
     ("remaining LOWs of the E33 family (one row, no per-nit rows)", "owner: me (nuzantara-57)", "TECH-DEBT"),
 )
 
 
 def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
     closed = [r for r in ARMS_LINES if r.startswith("- closed 2026-10-1") and "VISA-ORACLE E33 wave 5" in r]
-    assert len(closed) == len(WAVE5_CLOSED) == 4
+    assert len(closed) == len(WAVE5_CLOSED) == 7
     for needle, prefix, proofs in WAVE5_CLOSED:
         rows = [r for r in closed if needle in r]
         assert len(rows) == 1, needle
@@ -544,7 +549,7 @@ def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
 
 def test_wave5_backlog_rows_each_open_once_with_owner_proof_and_class():
     opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)")]
-    assert len(opened) == len(WAVE5_OPENED) == 5
+    assert len(opened) == len(WAVE5_OPENED) == 4
     for needle, owner, _ in WAVE5_OPENED:
         rows = [r for r in opened if needle in r]
         assert len(rows) == 1, needle
@@ -560,11 +565,11 @@ def test_wave5_low_row_merges_the_nits_into_one_row_and_the_qdrant_gap_row_names
     assert len(low) == 1
     for token in ("BROCHURE_CURE == PDF_PARITY_CURE", "gate C5", "match='PRICE_E33E'", "'Claude Sonnet 5.5'", "claude-sonnet-5-5",
                   "'Dolar' casing", "harness/fable-gate status", "stay.kind", "36500", "39-case count", "says 1 where the floor is 2",
-                  "StayPolicy at models.py:301 has no cross-field validator"):
+                  "StayPolicy at models.py:301 has no cross-field validator", "(10) the Firefox project of the book-pricing e2e is not runnable on Pro"):
         assert low[0].count(token) == 1, token
     assert len(_rows("match='PRICE_E33E'")) == 1 and len(_rows("StayPolicy at models.py:301")) == 1
-    qdrant = _rows("has no point for 65 catalog rows")[0]
-    assert "a Qdrant-path pricing query" in qdrant.split(" | ")[4] and "re-ingest from the catalog rows" in qdrant
+    qdrant = _rows("still carries stale data after the backfill")[0]
+    assert "points_without_catalog_row=0" in qdrant.split(" | ")[3] and "patch_pricing_contact_block.py" in qdrant
     sponsor = _rows("seq-30 candidate, the E33F `sponsor_types`")[0]
     assert "e33f-sponsor-types-1014" in sponsor and "Pasal citation" in sponsor and "inert today" in sponsor
 
@@ -573,6 +578,252 @@ def test_wave5_leaves_the_council_and_the_wave3_rows_untouched():
     assert len(_rows("Council seats degraded")) == 1 and len(_rows("opened 2026-10-14 (M5, VISA-ORACLE E33 wave 3)")) == 6
     assert len(_rows("iQOO has not been attached to Pro since 2026-09-26")) == 1
     assert len(_rows("#8468 Indonesian surfaces not proven live")) == 1
+
+
+E33_ADDENDUM = (("8541", "66c7c706dd"), ("8543", "3d94f56a4c"))
+ADDENDUM_COMMENTS = (
+    "8511#issuecomment-6188925096", "8533#issuecomment-6188925677", "8512#issuecomment-6188926239",
+    "8543#issuecomment-6190499447",
+)
+
+
+def _addendum_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith("- 2026-10-15 (M5") and "ledger addendum after the E33 closure" in ln]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    return " ".join(text[start:text.index("\n- 20", start + 1)].split())
+
+
+def test_addendum_entry_carries_the_walks_the_two_prs_and_the_comment_urls_once():
+    body = _addendum_entry()
+    for pr, sha in E33_ADDENDUM:
+        assert body.count(f"merge `{sha}`") == 1 and body.count(f"#{pr} ") >= 1, sha
+    for c in ADDENDUM_COMMENTS:
+        assert body.count(f"pull/{c}") == 1, c
+    for token in ("W1-W6 of 2026-10-15, all PASS", "20261015-e33-mobile/receipt.md", "dpl_GqCCrtn9NeZ47hT5CwLcCndhrF69",
+                  "`vercel promote`", "chromium and webkit pass all 4 tests", "the Firefox project is not runnable on Pro",
+                  "`card.innerText()` is empty under reducedMotion", "a spec fragility, not a product defect",
+                  "`ssh pro '~/.local/bin/iqoo-unlock'`", "always-on VPN setting did NOT take", "phone is cabled to Pro by USB",
+                  "Not proved: unlock without the owner after a reboot, and wireless ADB returning after a reboot",
+                  "adb is installed on Pro; the blocker of the unrun iQOO walks was the missing device", "(6) NOT done:"):
+        assert body.count(token) == 1, token
+
+
+def test_addendum_never_writes_the_pin_or_overclaims_the_unlock():
+    body = _addendum_entry()
+    assert "one attempt per call, never looped, never read or printed" in body
+    assert "PIN lives only on Pro in a 0600 file" in body
+    assert "the Mobile Chrome spec is not cured" in body
+
+
+def test_skill_live_state_leads_with_the_addendum_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    lead = block[block.index("- **2026-10-15 (addendum)"):block.index("- **2026-10-15 (wave 5)")]
+    for token in ("#8511, #8512, #8533", "`3d94f56a4c`", "`66c7c706dd`", "Firefox is not installed on Pro", "~/.local/bin/iqoo-unlock"):
+        assert token in lead, token
+    assert len(lead) < 1800 and block.count("newest)") == 1
+
+
+def test_addendum_pending_rows_close_the_iqoo_walk_and_open_the_spec_fragility_once():
+    assert len(_rows("no iQOO walk of the E33 public surfaces was run")) == 0
+    spec = _rows("the book-pricing.spec.ts ID test added by #8543")
+    assert len(spec) == 1
+    fields = spec[0].split(" | ")
+    assert len(fields) == 5 and "textContent" in fields[2] and fields[3] == "owner: me (nuzantara-57)"
+    assert "Mobile Chrome against balizero.com" in fields[4]
+    assert "adb is installed" in _rows("The iQOO walk of the E33 public surfaces")[0]
+    assert "adb is not installed on Pro" not in ARMS.read_text(encoding="utf-8").split("opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)", 1)[1]
+
+
+def test_qdrant_backfill_row_is_closed_once_and_the_old_open_needle_is_gone():
+    closed = _rows("the backfill CLOSED it, by #8568")
+    assert len(closed) == 1
+    row = closed[0]
+    assert row.startswith("- closed 2026-10-15T15:58Z (M5, VISA-ORACLE E33 wave 5)")
+    assert "#8568" in row and "`b93adf342d`" in row and "catalog_rows_without_point=0" in row
+    assert not [r for r in ARMS_LINES if r.startswith("- opened") and "has no point for 65 catalog rows" in r]
+    assert len(_rows("has no point for 65 catalog rows")) == 0
+
+
+def test_qdrant_backfill_log_entry_is_second_and_carries_the_apply_facts():
+    text = LOG.read_text(encoding="utf-8")
+    dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
+    assert dated[2].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
+    start = text.index(dated[2])
+    body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
+    for token in ("`b93adf342d`", "CREATED 66", "in_sync=116", "`6321afd152`"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_second_bullet_is_the_qdrant_backfill_and_only_one_says_newest():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
+    assert bullets[0].startswith("- **2026-10-16 (Qdrant pricing cleanup, newest)**")
+    assert bullets[1].startswith("- **2026-10-15 (E28 close-out part 1)**")
+    assert bullets[2].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
+    assert len([ln for ln in bullets if "newest" in ln]) == 1
+
+
+E28_PRS = (("8572", "a5de6b1b3ac79975c5d38fbbb1c4a8280de3743e"), ("8573", "322ae68e3388a98a75097fd40682adc5ec450379"),
+           ("8574", "147cdf0adfae8f79262167f67b4dbcae1a92c1db"))
+E28_HEADS = "- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1"
+E28_AUDIT = REPO / "research/visa/2026-10-15-e28-family-audit.md"
+E28_PAGES = REPO / "research/visa/2026-10-15-e28-pages"
+
+
+def _e28_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith(E28_HEADS)]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    return " ".join(text[start:text.index("\n- 20", start + 1)].split())
+
+
+def test_e28_entry_carries_the_three_prs_with_full_merge_shas_once():
+    body = _e28_entry()
+    for pr, sha in E28_PRS:
+        assert body.count(f"#{pr},") == 1 and body.count(f"merge `{sha}`") == 1, pr
+    for token in ("run 38773190405", "2026-10-15T17:29:34Z", "dpl_AqVLBbqnCtsEgTzWyS9Py9oxrt97", "dpl_6CjUnBMaW3GVGT7RhAYDSAfj1pB5",
+                  "scripts/ci/observe_zantara_e28_1015.py", "scripts/ci/observe_visa_oracle_stay_permit_length.py",
+                  "Stay of 730 days (2 years), extendable online by the sponsor.", "All-inclusive price: government fees and Bali Zero service included.",
+                  "user-agent `bz-synthetic-prove-live-20261016`", "the renewal line is present, which is true per page df3ba889:69,72",
+                  "the lease was taken and released, the phone left locked", "session gate receipts, not repo paths; facts as held by the Dux",
+                  "B #8573: no Codex red team;", "(7) NOT done:"):
+        assert body.count(token) == 1, token
+
+
+def test_e28_entry_closes_only_c2_and_ships_the_audit_matrix_with_the_pages_on_main():
+    body = _e28_entry()
+    assert "Closed: C2, by PROD A + PROD B" in body and "No row is closed." not in body
+    assert "already on main via #8572" in body
+    assert E28_AUDIT.is_file() and E28_AUDIT.read_text(encoding="utf-8").startswith("---")
+    assert len(list(E28_PAGES.rglob("*.txt"))) == 6 and (E28_PAGES / "e28-pages.receipts.jsonl").is_file()
+
+
+def test_skill_live_state_leads_with_the_e28_closeout_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    lead = block[block.index("- **2026-10-15 (E28 close-out part 1)"):block.index("- **2026-10-15 (Qdrant pricing backfill)")]
+    for pr, sha in E28_PRS:
+        assert lead.count(f"#{pr} (`{sha[:10]}`") == 1, pr
+    for token in ("**Open:**", "C2", "SEQ29-A2", "SEQ29-D1", "READY-TO-SIGN", "research/visa/2026-10-15-e28-family-audit.md"):
+        assert token in lead, token
+    assert "C2 DONE" in lead and "**Open:** D (" in lead and "NOT RUN" not in lead and len(lead) < 3000
+
+
+E28_OPENED = (
+    ("D: the article PR", "/visa/kitas", "owner: me (next session)"),
+    ("E: seq-30 is owned by the Pro conductor", "SEQ29-D1", "owner: me (next session, visa-night conductor and signer)"),
+    ("BACKLOG of the E28 close-out", "F73", "owner: me (nuzantara-57)"),
+)
+
+
+def test_e28_opened_rows_each_appear_once_in_the_ledger_format():
+    opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E28 close-out)")]
+    assert len(opened) == len(E28_OPENED) == 3
+    for needle, token, owner in E28_OPENED:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5 and token in fields[1] and fields[3] == owner, needle
+        assert fields[2].startswith("missing arming step:") and fields[4].startswith("proof-of-armed:"), needle
+    closed = [r for r in ARMS_LINES if r.startswith("- closed") and "VISA-ORACLE E28 close-out" in r]
+    assert len(closed) == 1 and closed[0].startswith("- closed 2026-10-16 (M5, VISA-ORACLE E28 close-out)")
+    assert not [r for r in opened if "C2:" in r]
+    for r in opened:
+        assert "owner: operator" not in r and "owner=operator" not in r and "operator-run" not in r.split(" | ")[3]
+
+
+def test_e28_backlog_row_carries_every_item_once():
+    row = _rows("BACKLOG of the E28 close-out")[0]
+    for token in ("F5, the E28 documents catalogue", "F54, the Golden codes in the legacy enum", "F73, `services_data.ts:125` passport 18 months",
+                  "`golden-visa-2026-updates.mdx:49,65`", "`indonesia-golden-visa-2025-no-sponsor-no-merp-usd-25m-minimum.mdx:38`",
+                  "about 20 other investor/golden articles", "a Qdrant re-embed", "`visa_check.py:166` 25 days", "IMTA mentions left in KG routes",
+                  "`services_data.ts:165` KITAP", "`FunnelFeature.tsx:80`", "Last updated: April 2026", "government-fee inclusion for non-visa services",
+                  "Investor KITAS notes are empty", "extensions_possible 1 for E28A", "\"Covers 730 days\" but the pack has 180+180", "assumes a foreign branch",
+                  "(16) E28B-F metadata.bali_zero_service is false", "(17) the retired E28G row still has foreign_eligible true",
+                  "(18) the Qdrant E28 payloads keep the heading", "(19) MCP ask_legal routed an informational E28D question to client_journey",
+                  "(20) the Canva MCP client passes the httpx2-based OAuth provider", "(21) other FR/IT/RU articles may carry bare '<' MDX breaks"):
+        assert row.count(token) == 1, token
+
+
+def test_e28_gate_record_is_per_pr_and_8586_is_not_an_e28_closeout_pr():
+    body = _e28_entry()
+    gates = body[body.index("(4) Gates, per PR"):body.index("(5) Shipped")]
+    for token in ("A #8574: Codex gpt-5.6-sol red team FIX-FIRST on `b0346c2017` (HIGH-1 accepted and cured, HIGH-2 rejected)",
+                  "fresh Opus 5.5 gate PASS on `ecf7f92869`, delta PASS on `4d4923f557`",
+                  "B #8573: no Codex red team; fresh Opus 5.5 gate PASS on `77fb65f9d0`, delta PASSes on `0065c204f8` and `afc06c370e`",
+                  "C #8572: Codex red team; Opus PASS on `59d51750cc`, delta BLOCK on `c84ceb12b8`, delta PASS on `09b8fee900`",
+                  "C2 #8578: Codex red team FIX-FIRST on `f5f5bce12f`, cured in `4fdb37f5e2`; Opus BLOCK on `e3b3de2748` (gear floor), delta PASS on `804da11666`",
+                  "#8584 (the Qdrant fixer id fix, depth-1 follow-up of C2): Gear 1, no adversarial round; fresh Opus 5.5 gate PASS on `29778d03ed`",
+                  "#8586 (the mcp 2.2.0 CI unblock, not an E28 close-out PR): Gear 1, no adversarial round; Opus 5.5 gate BLOCK on `98f0ef51a8` (evidence pack only), cured in `845b3668da`"):
+        assert gates.count(token) == 1, token
+    assert gates.count("no adversarial round") == 2
+    head = body[:body.index("(1) PR C")]
+    assert "the mcp 2.2.0 CI unblock" in head and "named separately" in head and "E28 close-out PRs A, B, C, C2" in head
+    assert "each PR had a Codex" not in body and "(items (18)-(21) added)" in body and "(16)-(21)" not in body
+
+
+def test_e28_c2_is_closed_with_prod_a_and_prod_b_as_given_and_headline_leaves_only_d_and_e_open():
+    body = _e28_entry()
+    head = body[:body.index("(1) PR C")]
+    assert "C2 is DONE (PROD A committed, PROD B applied and verified); open = the article PR (D) and seq-30 (E) only." in head
+    assert "KB data PR not merged" not in body and "still open.**" not in body and "PROD B not run" not in body
+    for token in ("PR C2 #8578, merge `5fe495bb02`", 'printed "COMMITTED: 6 row(s) updated"', 'a second run printed "NO-OP: every row already matches every target field"',
+                  "2026-10-15T18:42:46Z", "PROD B (Qdrant visa_oracle payload fixer), first attempt: NOT RUN then", "nothing was written to Qdrant",
+                  "PR #8584, merged `fa07e40f82` (2026-10-16T01:41Z)", 'B1 dry-run exit 0 "7 change(s) planned (dry-run)" (01:42:17Z)',
+                  "B3 anchor check 5/5 OK", 'verified: re-read shows 0 pending changes", exit 0', 'B5 dry-run "0 change(s) planned"', "C2 is DONE (PROD A + PROD B).",
+                  "(3c) #8586, merge `0b1aef0928` (01:09Z): mcp 2.2.0 cured CVE-2026-59951", "healthy at 01:37:46Z", 'E28A cost_visa "IDR', "(7) NOT done: D and E are open;"):
+        assert body.count(token) == 1, token
+    closed = _rows("C2: the E28 KB data close-out is DONE")
+    assert len(closed) == 1 and closed[0].startswith("- closed 2026-10-16 (M5, VISA-ORACLE E28 close-out)")
+    fields = closed[0].split(" | ")
+    assert len(fields) == 4 and fields[2] == "owner: n/a (closed)" and fields[3].startswith("proof-of-armed:")
+    for token in ('"COMMITTED: 6 row(s) updated"', '"NO-OP: every row already matches every target field"', "`fa07e40f82`", "\"7 change(s) planned (dry-run)\"",
+                  "5/5 OK", "0 pending changes", "no E28G point"):
+        assert closed[0].count(token) >= 1, token
+    assert not [r for r in ARMS_LINES if r.startswith("- opened") and "C2:" in r and "VISA-ORACLE E28" in r]
+
+
+def test_no_open_e28_row_is_owned_by_operator():
+    open_rows = [r for r in ARMS_LINES if r.startswith("- opened") and "VISA-ORACLE E28 close-out" in r]
+    assert open_rows
+    for r in open_rows:
+        owner = r.split(" | ")[3]
+        assert owner.startswith("owner: me (") and "operator" not in owner, owner
+
+
+def test_qdrant_cleanup_row_is_closed_once_and_the_old_open_needle_is_gone():
+    closed = _rows("The Qdrant pricing collection no longer carries the stale contact trailer or the 17 orphan points")
+    assert len(closed) == 1
+    row = closed[0]
+    assert row.startswith("- closed 2026-10-16T06:22Z (M5, VISA-ORACLE E33 wave 5)")
+    assert "#8594" in row and "`d85145eb8b`" in row and "points_without_catalog_row=0" in row
+    assert "stale_3465_159=0 ari_3454_721=116" in row and "pull/8594#issuecomment-6209555948" in row
+    assert not [r for r in ARMS_LINES if r.startswith("- opened") and "still carries stale data after the backfill" in r]
+
+
+def test_qdrant_cleanup_log_entry_is_first_and_carries_the_apply_facts():
+    text = LOG.read_text(encoding="utf-8")
+    dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
+    assert dated[0].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane): **the two stale-data items in bali_zero_pricing_hybrid are CLOSED on Zero's go")
+    start = text.index(dated[0])
+    body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
+    for token in ("`d85145eb8b0fcc00df9e8cb4229b722c36fa2449`", "DELETED 17 orphan point(s)", "kept_identical 116 of 116",
+                  "SCROLL_TOTAL=116 stale_3465_159=0 ari_3454_721=116", "pull/8594#issuecomment-6209555948", "b7ffd20208733d7b92ac5c86ef94b5d3379ddace928d7514547202ae2ca80179"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_first_bullet_is_the_qdrant_cleanup_and_only_one_says_newest():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
+    assert bullets[0].startswith("- **2026-10-16 (Qdrant pricing cleanup, newest)**")
+    assert "#8594" in bullets[0] and "`d85145eb8b`" in bullets[0] and "points_without_catalog_row=0" in bullets[0]
+    assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
 def test_observer_floor_is_the_true_count_of_this_file():

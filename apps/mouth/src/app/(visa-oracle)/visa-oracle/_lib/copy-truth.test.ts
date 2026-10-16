@@ -107,12 +107,12 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
   [
     "why.investment_pt_pma",
     "Your answer can decide whether the investor visa fits and which questions come next. No amount or status is assumed from it.",
-    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
+    "Jawaban Anda dapat menentukan apakah visa investor sesuai dan pertanyaan apa yang muncul berikutnya. Tidak ada jumlah atau status yang diasumsikan dari jawaban ini.",
   ],
   [
     "why.investment_amount_usd",
     "We record the amount in the currency you chose. No threshold is shown or assumed here, and nothing is converted.",
-    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada ambang batas yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
+    "Kami mencatat jumlahnya dalam mata uang yang Anda pilih. Tidak ada batas minimum yang ditampilkan atau diasumsikan di sini, dan tidak ada yang dikonversi.",
   ],
   [
     "why.retirement_basis",
@@ -341,6 +341,11 @@ const FALSE_CLAIMS: readonly RegExp[] = [
   /only selects the next/i,
   /shorter code list/i,
   /needs human review/i,
+  // I-M03 (2026-10-15): the Golden Visa reasons once promised an advisor
+  // action ("We confirm ..."); the advisor is offered ("can"), never promised.
+  /we confirm/i,
+  /kami mengonfirmasi/i,
+  /kami memastikan/i,
   /in front of a person/i,
   /before the assessment continues/i,
   /selalu ditangani manusia/i,
@@ -979,5 +984,244 @@ describe("the retirement basis and income questions use the official page's word
       expect(dict.en[key]).toMatch(/allowance/);
       expect(dict.id[key]).toMatch(/tunjangan/);
     }
+  });
+});
+
+// I-M03 / I-T01 / I-T03 (2026-10-15): the investor copy says what the visitor
+// declared and what the official page for that code asks. Judged per ENTITY
+// (reason code -> sentence), with a guilt row (the claim the code proved
+// false) and an innocence row (the sentence the page does back) for each.
+describe("Golden Visa reasons say what was declared and what the official page asks", () => {
+  const GOLDEN = [
+    "E28B_COMPANY_ESTABLISHMENT_ELIGIBLE",
+    "E28C_CAPITAL_MARKET_ELIGIBLE",
+    "E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE",
+    "E28F_IKN_SUBSIDIARY_ELIGIBLE",
+  ] as const;
+  const PAGE = (code: string) =>
+    `https://www.imigrasi.go.id/wna/daftar-visa-indonesia/${code}`;
+
+  it.each(GOLDEN)(
+    "%s offers the advisor with can/dapat, promises no check, names no figure",
+    (key) => {
+      const { en, id } = SUPPORT_REASON_COPY[key];
+      expect(en).toMatch(/A Bali Zero advisor can go through/);
+      expect(id).toMatch(/Konsultan Bali Zero dapat membahas/);
+      for (const re of [/we confirm/i, /we check/i, /kami mengonfirmasi/i]) {
+        expect(en).not.toMatch(re);
+        expect(id).not.toMatch(re);
+      }
+      // No amount of any currency: the pack holds no figure, the page does.
+      // The product code and the 90-day deadline are the only digits allowed.
+      for (const text of [en, id]) {
+        const bare = text
+          .replace(/E28[A-F]/g, "")
+          .replace(/90 (days|hari)/, "");
+        expect(bare).not.toMatch(/\d|US\$|\bUSD\b|\bIDR\b|\bRp\b/);
+      }
+    },
+  );
+
+  it.each([
+    ["E28B_COMPANY_ESTABLISHMENT_ELIGIBLE", "E28B"],
+    ["E28C_CAPITAL_MARKET_ELIGIBLE", "E28C"],
+    ["E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE", "E28D"],
+    ["E28F_IKN_SUBSIDIARY_ELIGIBLE", "E28F"],
+  ])("%s points at its own official page, and only its own", (key, code) => {
+    const { en, id } = SUPPORT_REASON_COPY[key];
+    for (const text of [en, id]) {
+      expect(text).toContain(PAGE(code));
+      for (const other of ["E28A", "E28B", "E28C", "E28D", "E28F"]) {
+        if (other !== code) expect(text).not.toContain(PAGE(other));
+      }
+    }
+  });
+
+  it("turnover appears on E28B only (its page asks audited turnover); E28C, E28D and E28F have none", () => {
+    const turnover = /turnover|omzet/i;
+    // Guilt: the E28D reason once said the advisor confirms investment AND
+    // turnover figures; its page asks only the foreign company's commitment.
+    for (const key of GOLDEN.filter((k) => !k.startsWith("E28B"))) {
+      expect(SUPPORT_REASON_COPY[key].en).not.toMatch(turnover);
+      expect(SUPPORT_REASON_COPY[key].id).not.toMatch(turnover);
+    }
+    // Innocence: E28B's page does ask audited proof of shareholding and turnover.
+    const b = SUPPORT_REASON_COPY.E28B_COMPANY_ESTABLISHMENT_ELIGIBLE;
+    expect(b.en).toMatch(
+      /audited proof of shareholding .* outside Indonesia .* turnover/,
+    );
+    expect(b.id).toMatch(
+      /bukti kepemilikan saham .* di luar Indonesia dan bukti omzet\/penjualan .* laporan keuangan yang telah diaudit/,
+    );
+  });
+
+  it("E28C names Indonesian government bonds, shares of companies listed in Indonesia and mutual funds", () => {
+    const c = SUPPORT_REASON_COPY.E28C_CAPITAL_MARKET_ELIGIBLE;
+    expect(c.en).toContain(
+      "Indonesian government bonds, shares of companies listed in Indonesia, or mutual funds",
+    );
+    expect(c.id).toContain(
+      "obligasi pemerintah Indonesia, saham perusahaan terbuka di Indonesia, atau reksa dana",
+    );
+  });
+
+  it("E28D and E28F name the foreign company's commitment within 90 days; E28F names the foreign-parent condition and Ibu Kota Nusantara", () => {
+    const d = SUPPORT_REASON_COPY.E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE;
+    expect(d.en).toContain("foreign company's investment commitment");
+    expect(d.en).toContain("within 90 days of your entry");
+    expect(d.id).toContain("komitmen investasi dari perusahaan asing");
+    expect(d.id).toContain("dalam 90 hari sejak tanggal masuk Anda");
+    expect(d.id).not.toContain("hal itu");
+    const f = SUPPORT_REASON_COPY.E28F_IKN_SUBSIDIARY_ELIGIBLE;
+    expect(f.en).toContain(
+      "branch or subsidiary of a company outside Indonesia",
+    );
+    expect(f.id).toContain(
+      "cabang atau anak perusahaan dari perusahaan di luar Indonesia",
+    );
+    expect(f.en).toContain("Ibu Kota Nusantara (IKN)");
+    expect(f.id).toContain("Ibu Kota Nusantara (IKN)");
+    // The place phrase is the official "Ibu Kota"; the pack's product name
+    // after the dash stays verbatim until the pack renames it.
+    expect(f.id.split(" — ")[0]).not.toContain("Ibukota");
+  });
+});
+
+describe("investor interview questions say what the official pages ask, and anchor on no figure", () => {
+  const INVESTOR_Q = [
+    "q.investment_vehicle.opt.capital_market",
+    "q.investment_capital_market_only",
+    "q.investment_capital_market_only.hint",
+    "q.investment_ikn_subsidiary",
+    "q.investment_ikn_subsidiary.hint",
+    "q.investment_establishes_company.hint",
+    "q.investment_meets_threshold",
+    "q.investment_meets_threshold.hint",
+    "why.investment_meets_threshold",
+  ] as const;
+
+  it("no investor question or hint carries an amount of any currency (the only digits allowed are the 90-day deadline)", () => {
+    for (const language of ["en", "id"] as const) {
+      for (const key of INVESTOR_Q) {
+        const text = dict[language][key].replace(/90 (days|hari)/, "");
+        expect(text, `${language}:${key}`).not.toMatch(
+          /\d|US\$|\bUSD\b|\bIDR\b|\bRp\b/,
+        );
+      }
+    }
+  });
+
+  it("capital-market option and question name the three instruments the E28C page lists", () => {
+    for (const key of [
+      "q.investment_vehicle.opt.capital_market",
+      "q.investment_capital_market_only",
+    ] as const) {
+      expect(dict.en[key]).toContain("Indonesian government bonds");
+      expect(dict.en[key]).toContain("listed in Indonesia");
+      expect(dict.en[key]).toContain("mutual funds");
+      expect(dict.id[key]).toContain("obligasi pemerintah Indonesia");
+      expect(dict.id[key]).toContain("perusahaan terbuka di Indonesia");
+      expect(dict.id[key]).toContain("reksa dana");
+    }
+  });
+
+  it("the IKN question asks for a branch or subsidiary of a company outside Indonesia in Ibu Kota Nusantara", () => {
+    expect(dict.en["q.investment_ikn_subsidiary"]).toContain(
+      "branch or subsidiary of a company outside Indonesia",
+    );
+    expect(dict.en["q.investment_ikn_subsidiary"]).toContain(
+      "Ibu Kota Nusantara",
+    );
+    expect(dict.id["q.investment_ikn_subsidiary"]).toContain(
+      "kantor cabang atau anak perusahaan dari perusahaan di luar Indonesia",
+    );
+    expect(dict.id["q.investment_ikn_subsidiary"]).toContain(
+      "Ibu Kota Nusantara",
+    );
+    expect(dict.en["tree.investment_ikn_subsidiary"]).toMatch(
+      /branch or subsidiary/i,
+    );
+    expect(dict.en["q.investment_establishes_company.hint"]).toMatch(
+      /branch or subsidiary/,
+    );
+    expect(dict.id["q.investment_establishes_company.hint"]).toMatch(
+      /cabang atau anak perusahaan/,
+    );
+  });
+
+  it("the threshold question is neutral across routes: no commitment, no 90-day clause, no turnover, no 'route you chose'; the hint carries the route difference", () => {
+    const en = dict.en["q.investment_meets_threshold"];
+    const id = dict.id["q.investment_meets_threshold"];
+    expect(en).toContain("Can you meet the minimum amount");
+    expect(id).toContain("Dapatkah Anda memenuhi batas minimum");
+    for (const text of [
+      en,
+      id,
+      dict.en["q.investment_meets_threshold.hint"],
+      dict.id["q.investment_meets_threshold.hint"],
+    ]) {
+      expect(text).not.toMatch(
+        /turnover|omzet|route you chose|jalur yang Anda pilih/i,
+      );
+    }
+    for (const text of [en, id]) expect(text).not.toMatch(/90|commit|komit/i);
+    const hintEn = dict.en["q.investment_meets_threshold.hint"];
+    const hintId = dict.id["q.investment_meets_threshold.hint"];
+    expect(hintEn).toContain("within 90 days of entering Indonesia");
+    expect(hintEn).toContain("proof that you already hold them");
+    expect(hintId).toContain("dalam 90 hari sejak masuk ke Indonesia");
+    expect(hintId).toContain("bukti bahwa Anda sudah memilikinya");
+  });
+
+  it("E28C asks for proof of ownership, never a commitment or a 90-day clause (its page's 90 days is the visa's validity)", () => {
+    const c = SUPPORT_REASON_COPY.E28C_CAPITAL_MARKET_ELIGIBLE;
+    expect(c.en).toContain("told us your investment meets the minimum");
+    expect(c.en).toContain("proof that you own");
+    expect(c.id).toContain(
+      "menyatakan bahwa investasi Anda memenuhi batas minimum",
+    );
+    expect(c.id).toContain("bukti kepemilikan");
+    for (const text of [c.en, c.id]) {
+      expect(text).not.toMatch(/90|commit|komit/i);
+    }
+    // Innocence: E28B/D/F, whose pages do carry the commitment, keep the 90 days.
+    for (const key of [
+      "E28B_COMPANY_ESTABLISHMENT_ELIGIBLE",
+      "E28D_BRANCH_OR_SUBSIDIARY_ELIGIBLE",
+      "E28F_IKN_SUBSIDIARY_ELIGIBLE",
+    ]) {
+      expect(SUPPORT_REASON_COPY[key].en).toMatch(/can commit/);
+    }
+  });
+});
+
+describe("natural Bahasa Indonesia in the investor interview and confirmation screen (I-T03)", () => {
+  const INVESTOR_ID_KEYS = Object.keys(dict.id).filter((key) =>
+    /^(q|why)\.(investment_|unit\.idr)/.test(key),
+  );
+
+  it("the investor keys carry no calque the glossary retired", () => {
+    expect(INVESTOR_ID_KEYS.length).toBeGreaterThan(30);
+    for (const key of INVESTOR_ID_KEYS) {
+      const value = dict.id[key as keyof typeof dict.id];
+      expect(value, key).not.toMatch(
+        /antar mata uang|mengomitmenkan|dikomitmenkan|ambang batas|utuh|yang berikutnya/,
+      );
+    }
+  });
+
+  it.each([
+    [
+      "q.investment_capital_idr.hint",
+      "Masukkan jumlah rupiah bulat yang tepat dan dapat Anda dukung dengan bukti.",
+    ],
+    [
+      "q.investment_amount_usd.hint",
+      "Masukkan jumlah dolar bulat yang tepat dan dapat Anda dukung dengan bukti.",
+    ],
+    ["q.unit.idr", "IDR"],
+    ["confirmation.group.details", "Detail rencana Anda"],
+  ] as const)("%s reads %j", (key, expected) => {
+    expect(dict.id[key]).toBe(expected);
   });
 });

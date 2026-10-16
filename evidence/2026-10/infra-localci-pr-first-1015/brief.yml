@@ -1,0 +1,27 @@
+task_id: infra-localci-pr-first-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  tick() alternated replays (B11) and PR decisions. Measured read-only on Pro's journal over 48 h: 23 PR decisions
+  against 23 replays, the runner busy 14.7 h on PR decisions and 13.6 h on replays. The mergeable rows the phase F
+  liveness gate counts (B24: at least 10 in 48 h, 3 so far) come only from PR decisions, and replay_pending returns
+  None with LOCALCI_MERGER_PHASE_F=1 (B21), so the gate was measured under a schedule that vanishes at the flip;
+  compared_merges (READY) is already 58 against 50, yet replays still carry READY evidence over the 5-day window.
+  B28: when B23's triage yields a selectable PR with the arm label, it is decided and the replay waits (journalled
+  replay_deferred {reason, skipped_n, pr}); a replay runs on a tick with no labelled PR selectable. Unlabelled PRs
+  keep today's alternation. A starvation bound (6 deferred replay turns, or the oldest 12 h old, counted from the
+  journal since the newest replay) lets one replay run anyway; a bound turn that finds nothing to replay journals
+  skipped replay_none and resets the count. Under PHASE_F=1, the gate, phase_f_arming, the merge criterion, B19's
+  retry order and B20's refresh tick are unchanged. Gear is 2 via the SIZE term (mostly tests, mutants and docs);
+  a fresh Opus gate reads the diff.
+residuals:
+  - >-
+    The estimate of +2-3 mergeable rows a day is population-dependent. It holds only while labelled PRs are
+    waiting; with none waiting the schedule is exactly the old one.
+  - >-
+    A forfeited replay turn is journalled even when no replay was pending (replay_pending is not asked, to spare
+    GitHub reads), so the count can reach the bound with nothing to replay. The bound turn then journals
+    replay_none and the PR is decided. No replay turn is counted before the journal holds a first PR decision.
+  - >-
+    The thresholds 6 and 12 h are picked from the measured 11 PR decisions a day (6 is about 13 h of them).

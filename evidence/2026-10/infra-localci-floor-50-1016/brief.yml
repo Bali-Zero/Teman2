@@ -1,0 +1,25 @@
+task_id: infra-localci-floor-50-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B40: Zero's ruling of 2026-10-16 ("abbassa blocco a 50Gb") lowers LocalCI's host disk floor on Pro
+  from 90 GB to 50 GB. HOST_FLOOR_GB 50, start floor 60 (the merger default and the tick wrapper's
+  MERGER_MIN_HOST_FREE_GB default), eviction at 51.5, the pro.disk_floor organ reads ok above 60 and
+  failed under 50, the prune host_pressure line is 75. The lane has been idle on disk since
+  2026-10-16T03:21Z at 88-96 GB free against a start floor of 100.
+constraints:
+  - "Constants and their pinned tests/mutants only: the eviction guard and every verdict rule are unchanged."
+  - "The floor-organ mutants keep every boundary (at-floor, floor+1, floor-1) at the new numbers and stay KILLED."
+  - "The registry checksum line is set by hand; --update-checksum is never used."
+acceptance:
+  - text: "The merger defaults are floor 50, start 60, evict 51.5."
+    probe: "grep -n 'HOST_FLOOR_GB = 50.0' scripts/localci/merger.py"
+  - text: "The wrapper and the organ carry the new numbers."
+    probe: "grep -n 'MERGER_MIN_HOST_FREE_GB:-60' scripts/localci/localci_merger_tick.sh; grep -n 'OK_ABOVE_MB=60000\\|FAIL_UNDER_MB=50000' scripts/ops/pro_disk_floor_tick.sh"
+consumer_map:
+  - "The merger tick on Pro (start floor) and the pro.disk_floor organ (heartbeat note 'ok > 60, failed < 50')."
+risks:
+  - "The live wrapper and organ copies on Pro are home-fork pairs: the lead deploys both after merge."
+grader: |
+  Fresh Opus gate on an immutable archive: full scripts/localci/tests, the floor mutants, registry validator, prettier.
