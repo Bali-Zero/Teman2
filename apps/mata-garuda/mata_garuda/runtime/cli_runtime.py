@@ -5,13 +5,15 @@ Subprocess wrapper per LLM CLI/local tools (claude, agy, codex, ollama).
 Vincolo inviolabile: MAI API HTTP, MAI SDK import.
 Tutto passa via subprocess blocking.
 
-Multi-account fallback for Claude CLI (the ORDER is the rule: 5 MAX seats
-tried first, the Team seat last because it is weekly-capped and the MAX
-seats are not — never reorder slot 6 ahead of 1-5):
+Multi-account fallback for Claude CLI (the ORDER is the rule: the live MAX
+seats tried first, the Team seat last because it is weekly-capped and the MAX
+seats are not — never reorder slot 6 ahead of 1 and 5). Slots 2, 3 and 4 are
+RETIRED (accounts closed, Zero 2026-10-17) and never attempted, see
+RETIRED_OAUTH_SLOTS:
   CLAUDE_CODE_OAUTH_TOKEN_1 → antonellosiano@gmail.com (MAX 20x, try first)
-  CLAUDE_CODE_OAUTH_TOKEN_2 → sianoantonello@gmail.com (MAX 20x)
-  CLAUDE_CODE_OAUTH_TOKEN_3 → applevisionpro1987@gmail.com (MAX 20x)
-  CLAUDE_CODE_OAUTH_TOKEN_4 → antozero1987@gmail.com (MAX 20x)
+  CLAUDE_CODE_OAUTH_TOKEN_2 → RETIRED (sianoantonello@gmail.com)
+  CLAUDE_CODE_OAUTH_TOKEN_3 → RETIRED (applevisionpro1987@gmail.com)
+  CLAUDE_CODE_OAUTH_TOKEN_4 → RETIRED (antozero1987@gmail.com)
   CLAUDE_CODE_OAUTH_TOKEN_5 → kaiser198719871987@gmail.com (MAX 20x)
   CLAUDE_CODE_OAUTH_TOKEN_6 → zero@balizero.com (Team premium, weekly-capped, LAST RESORT)
   CLAUDE_CODE_OAUTH_TOKEN   → legacy single-token fallback
@@ -55,11 +57,19 @@ DEFAULT_TIMEOUT = 300
 # was wrong on every slot but 1: slot 3 was re-armed the same day the old
 # comment was written and the "RETIRED" note was never updated to match —
 # replaced here, not conserved. The Team seat is slot 6, not 5.
+# Retired token slots: pinned to FLEET_TOPOLOGY.json (slots with status
+# "retired") by apps/mata-garuda/tests/test_cli_runtime_retired_seats.py, the
+# same set as RETIRED_OAUTH_SLOTS in claude-cascade.sh. A retired slot is never
+# attempted even when its variable is set, and its VALUE is excluded wherever
+# else it shows up (a live slot, the legacy name), so the closed account is not
+# spent under another label.
+RETIRED_OAUTH_SLOTS = frozenset({"2", "3", "4"})
+
 CLAUDE_TOKEN_VARS = [
     "CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com (MAX 20x)
-    "CLAUDE_CODE_OAUTH_TOKEN_2",  # sianoantonello@gmail.com (MAX 20x)
-    "CLAUDE_CODE_OAUTH_TOKEN_3",  # applevisionpro1987@gmail.com (MAX 20x) — re-armed, previous RETIRED note was stale
-    "CLAUDE_CODE_OAUTH_TOKEN_4",  # antozero1987@gmail.com (MAX 20x)
+    "CLAUDE_CODE_OAUTH_TOKEN_2",  # RETIRED (sianoantonello@gmail.com, closed)
+    "CLAUDE_CODE_OAUTH_TOKEN_3",  # RETIRED (applevisionpro1987@gmail.com, closed 2026-10-17)
+    "CLAUDE_CODE_OAUTH_TOKEN_4",  # RETIRED (antozero1987@gmail.com, closed 2026-10-17)
     "CLAUDE_CODE_OAUTH_TOKEN_5",  # kaiser198719871987@gmail.com (MAX 20x)
     "CLAUDE_CODE_OAUTH_TOKEN_6",  # zero@balizero.com (Team premium seat — weekly-capped, LAST RESORT)
 ]
@@ -397,8 +407,9 @@ def claude_token_chain() -> list[tuple[str, str]]:
     """Build the ordered list of (label, token_value) to try.
 
     Aligned with bali-intel-scraper/scripts/claude_cli_enricher.py:
-      1. CLAUDE_CODE_OAUTH_TOKEN_1/2/3/4/5/6 (explicit chain — 6 is the Team
-         seat, weekly-capped, tried last by position, never reordered)
+      1. CLAUDE_CODE_OAUTH_TOKEN_1/5/6 (explicit chain, slots 2/3/4 retired —
+         6 is the Team seat, weekly-capped, tried last by position, never
+         reordered)
       2. CLAUDE_CODE_OAUTH_TOKEN (legacy single token, if different from above)
       3. "" (keychain — CLI uses whatever account is logged in)
 
@@ -408,6 +419,13 @@ def claude_token_chain() -> list[tuple[str, str]]:
     chain: list[tuple[str, str]] = []
     seen: set[str] = set()
     for var_name in CLAUDE_TOKEN_VARS:
+        if var_name.rsplit("_", 1)[-1] in RETIRED_OAUTH_SLOTS:
+            retired_value = os.environ.get(var_name, "").strip()
+            if retired_value:
+                seen.add(retired_value)
+    for var_name in CLAUDE_TOKEN_VARS:
+        if var_name.rsplit("_", 1)[-1] in RETIRED_OAUTH_SLOTS:
+            continue
         token = os.environ.get(var_name, "").strip()
         if token and token not in seen:
             chain.append((var_name, token))
@@ -788,12 +806,19 @@ class CLIRuntime:
                 )
                 continue
 
-            # Non-rate-limit failure: return the error, don't try next token
+            # Unclassified failure on one seat (a closed account answers 403,
+            # not a recognised auth string): move on to the next seat, once.
+            # Not latched: the cause may be transient, and the loop is bounded
+            # by the chain, each seat tried at most once per call.
             logger.warning(
-                f"[CLIRuntime] {label} failed (non-rate-limit), "
-                f"exit={result.returncode}"
+                f"[CLIRuntime] {label} failed (unclassified), "
+                f"exit={result.returncode}; trying next seat"
             )
-            return result
+            if result.returncode == -2:
+                logger.error(
+                    "[CLIRuntime] claude binary missing; skipping remaining seats"
+                )
+                break
 
         # All Claude tokens exhausted — fallback to agy.
         logger.warning(
