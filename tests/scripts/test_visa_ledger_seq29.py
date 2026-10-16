@@ -747,9 +747,13 @@ def test_e28_c2_production_addendum_is_stated_as_given_and_the_row_stays_open():
     body = _e28_entry()
     for token in ("PR C2 #8578, merge `5fe495bb02`", 'printed "COMMITTED: 6 row(s) updated"', 'a second run printed "NO-OP: every row already matches every target field"',
                   "2026-10-15T18:42:46Z", "PROD B (Qdrant visa_oracle payload fixer): NOT RUN", "Nothing was written to Qdrant",
-                  "stated as given by the Dux, not re-measured", "vo-e28-qdrant-id-1016", "C2 stays OPEN after PROD A"):
+                  "stated as given by the Dux, not re-measured", "vo-e28-qdrant-id-1016", "C2 stays OPEN after PROD A",
+                  "PROD A committed, PROD B not run; open = the Qdrant run (fix PR #8584, armed), the article PR (D) and seq-30 (E)",
+                  "PR #8584 (head `29778d03ed`, gate PASS, armed", 'E28A cost_visa "IDR'):
         assert body.count(token) == 1, token
+    assert "KB data PR not merged" not in body and "still open.**" not in body
     row = _rows("C2: the KB data PR #8578 is MERGED")[0]
+    assert 'E28A cost_visa "IDR' in row and "PR #8584 (head `29778d03ed`" in row
     assert row.startswith("- opened 2026-10-15") and "so the row stays OPEN" in row
     for token in ('"COMMITTED: 6 row(s) updated"', '"NO-OP: every row already matches every target field"', "PROD B (Qdrant visa_oracle payload fixer): the dry-run refused with exit 3",
                   "plans 7 changes", "0 pending", "no E28G point is left"):
