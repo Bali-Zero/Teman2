@@ -1,4 +1,4 @@
-gear: 1
+gear: 2
 brief_ref: evidence/brief.yml
 ruling: >-
   Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15 -
@@ -11,6 +11,8 @@ lanes:
     role: build
     seat: claude-sonnet-5 (Claude Code session)
 pii_scan: clean
+floor_note: >-
+  The floor is 2 by size (churn about 468 > 400); the brief now declares gear 2 and matches it.
 bites: >-
   Consumer: the next session reading LIVE STATE and PENDING-ARMS. Observation: the ledger test and the observer
   (python3 scripts/ci/observe_visa_ledger_seq29.py prints '51 passed' and 'seq-29 ledger holds') green on main.
