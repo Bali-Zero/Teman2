@@ -459,3 +459,59 @@ def test_on_a_case_INSENSITIVE_volume_the_shell_answers_for_the_wrong_name(
         "the volume reported itself case-insensitive but the uppercase lookup failed"
     )
     assert pp._git_tracked_names(root, ["QWEN.md"], 15) == set()
+
+
+# --- mutation round (lane 4, 2026-10-12): the UNPROBEABLE returns carried no count
+# assertion, and two `continue`s were unpinned. "Could not look" is a third state and
+# its finding count is 0 — a non-zero count under UNPROBEABLE would let a healer read
+# "N findings" off a probe that observed nothing.
+
+
+def test_UNPROBEABLE_returns_carry_ZERO_findings_on_every_path(tmp_path: Path) -> None:
+    # reference not tracked
+    a = _repo(tmp_path / "a", {n: _door() for n in ALL_FOUR if n != "CLAUDE.md"})
+    s, n, ev = _probe(a)
+    assert (s, n) == (pp.UNPROBEABLE, 0), ev
+    # reference tracked but unreadable
+    b = _repo(tmp_path / "b", {n: _door() for n in ALL_FOUR})
+    (b / "CLAUDE.md").unlink()
+    s, n, ev = _probe(b)
+    assert (s, n) == (pp.UNPROBEABLE, 0), ev
+    # reference carries no canon markers at all
+    c = _repo(tmp_path / "c", {n: _door(block=None) for n in ALL_FOUR})
+    s, n, ev = _probe(c)
+    assert (s, n) == (pp.UNPROBEABLE, 0), ev
+    assert len(ev) == 1, ev
+
+
+def test_a_malformed_REFERENCE_block_is_reported_exactly_once(tmp_path: Path) -> None:
+    """The reference is skipped in the per-door loop. If it were compared to itself,
+    its malformed marker would be reported a second time — one disease counted as two
+    findings."""
+    doors = {n: _door() for n in ALL_FOUR}
+    doors["CLAUDE.md"] = doors["CLAUDE.md"].replace(
+        "<!-- /CANON:builder-contract -->", ""
+    )
+    s, n, ev = _probe(_repo(tmp_path, doors))
+    assert s == pp.DIVERGED, ev
+    # The three peers still carry the (now reference-less) block, so each is its own
+    # honest "ABSENT from CLAUDE.md" finding; the malformed marker must be exactly one.
+    assert len([e for e in ev if "malformed in CLAUDE.md" in e]) == 1, ev
+    assert n == len(ev) == 4, (n, ev)
+
+
+def test_an_UNTRACKED_door_is_one_finding_and_its_disk_content_is_not_compared(
+    tmp_path: Path,
+) -> None:
+    """Git says the door does not exist for this seat; the file still sitting on disk
+    (the case-insensitive-volume shape) must not be read and compared on top, or the
+    one fact 'not tracked' becomes two findings, the second about bytes no fresh
+    clone has."""
+    doors = {n: _door() for n in ALL_FOUR}
+    doors["QWEN.md"] = _door().replace("One PR, one concern.", "Many PRs, many concerns.")
+    root = _repo(tmp_path, doors, untracked=("QWEN.md",))
+    s, n, ev = _probe(root)
+    assert s == pp.DIVERGED, ev
+    assert n == 1 and len(ev) == 1, (n, ev)
+    assert "QWEN.md is not tracked" in ev[0]
+    assert "differs" not in ev[0]
