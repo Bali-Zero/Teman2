@@ -1,0 +1,133 @@
+{
+  "mandate": "universal-db-foundation",
+  "phase": "completion-20261015-0831",
+  "colour": "BLUE",
+  "gear": 3,
+  "role": "COORDINATOR_PREPARE_ONLY;NO_DUX",
+  "observed_at": "2026-10-15T03:28:29.868658+00:00",
+  "baseline_leads_preserved": 6029,
+  "additional_runtime_observations": 1,
+  "union_lead_rows": 6030,
+  "active_consumer_denominator": "UNKNOWN",
+  "complete_operation_contracts": 0,
+  "complete_root_classes": 0,
+  "native_selected_database": {
+    "relations": 557,
+    "actors": 13,
+    "triggers": 112,
+    "functions": 85,
+    "grant_pairs": 4628,
+    "dependencies": 0,
+    "foreign_keys": 240,
+    "activity_groups": 2
+  },
+  "mini_installed_pin_matches": {
+    "payload": true,
+    "scanner": true,
+    "verifier": true,
+    "wrapper": true,
+    "plist": true
+  },
+  "mini_loaded_job_observed": true,
+  "mini_observed_sidecar": {
+    "status": "error",
+    "timestamp": "2026-10-12T15:07:50+00:00",
+    "age_hours": 57.635,
+    "known_success_note": false,
+    "raw_note_exported": false
+  },
+  "real_backup_run_triggered": true,
+  "real_backup_owner_authorization": "APPROVED_ONE_EXISTING_JOB",
+  "real_backup_restore_success_proved": false,
+  "qdrant_local_collection_count": 2,
+  "qdrant_model_binding_proved": false,
+  "redis": {
+    "pro": "AUTHORIZATION_REQUIRED",
+    "mini": "AUTHORIZATION_REQUIRED"
+  },
+  "readonly_schema_and_aggregate_shape_checks_succeeded": 5,
+  "production_conversations_probe": "SKIPPED_TEMP_FUNCTION_REQUIRED",
+  "application_rows_or_counts_exported": false,
+  "server_application_aggregates_requested": true,
+  "aggregate_adapter_predefined_role_memberships_checked": false,
+  "candidate_files": 2,
+  "candidate_tests": 60,
+  "metadata_boundary_tests": 42,
+  "real_pg_synthetic_proofs": {
+    "synthetic_only": true,
+    "production_connections_requested": false,
+    "tcp_listener_requested": false,
+    "owned_cluster_guard_passed": true,
+    "conversations_temp_helper_exercised": true,
+    "malformed_json_failed": true,
+    "valid_json_passed": true,
+    "missing_role_failure_reproduced": true,
+    "nologin_role_bootstrap_passed": true,
+    "table_sequence_function_ownership_and_acl_preserved": true,
+    "original_missing_column_diagnostic": false,
+    "candidate_missing_column_diagnostic": true,
+    "conservative_priority_preserved": true,
+    "complete_synthetic_schema_passed": true,
+    "owned_server_stopped": true,
+    "graceful_owned_cleanup": true,
+    "temporary_files_removed": true
+  },
+  "candidate_independent_on_disk_gate": "LGTM",
+  "whole_mandate_blue_gate": "BLOCKER",
+  "production_acceptance": false,
+  "universal_design_gate": "CLOSED",
+  "universal_mandate_complete": false,
+  "real_backup_observation": {
+    "event": "TERMINAL",
+    "job_trigger_requested": true,
+    "elapsed_seconds": 87.337,
+    "sidecar": {
+      "status": "error",
+      "timestamp": "2026-10-15T03:02:11+00:00",
+      "age_hours": 0.0,
+      "known_success_note": false,
+      "raw_note_exported": false
+    },
+    "verifier_summary": {
+      "aggregate": "CANNOT-VERIFY",
+      "invariants": [
+        {
+          "relation": "conversations",
+          "status": "CANNOT-VERIFY",
+          "reason_classes": {
+            "UNMEASURED_CHECK": 1
+          }
+        },
+        {
+          "relation": "clients",
+          "status": "FAIL",
+          "reason_classes": {
+            "VIOLATION": 1
+          }
+        },
+        {
+          "relation": "visa_decisions",
+          "status": "PASS",
+          "reason_classes": {}
+        },
+        {
+          "relation": "events_outbox",
+          "status": "PASS",
+          "reason_classes": {}
+        },
+        {
+          "relation": "visa_decision_retention_policies",
+          "status": "PASS",
+          "reason_classes": {}
+        }
+      ],
+      "top_level_error_present": false,
+      "raw_report_sha256": "1d368c2d16d32a0834bb7d120d75005423227b77239107b1dc1873f8140b5744",
+      "rows_counts_and_raw_errors_exported": false
+    },
+    "status": "FAILED_OR_CANNOT_VERIFY",
+    "raw_logs_or_records_exported": false
+  },
+  "updated_at": "2026-10-15T03:55:57.986325+00:00",
+  "metadata_probe_independent_on_disk_gate": "LGTM"
+}

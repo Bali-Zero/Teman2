@@ -1,0 +1,83 @@
+{
+  "exit": 0,
+  "elapsed_seconds": 87.658,
+  "events": [
+    {
+      "event": "REQUEST_ACCEPTED",
+      "job_trigger_requested": true,
+      "started_at": "2026-10-15T03:00:43.925327+00:00",
+      "source_pin_matches": 6
+    },
+    {
+      "event": "OBSERVING",
+      "elapsed_seconds": 0.0,
+      "private_report_fd_observed": false
+    },
+    {
+      "event": "OBSERVING",
+      "elapsed_seconds": 30.0,
+      "private_report_fd_observed": false
+    },
+    {
+      "event": "OBSERVING",
+      "elapsed_seconds": 60.1,
+      "private_report_fd_observed": false
+    },
+    {
+      "event": "TERMINAL",
+      "job_trigger_requested": true,
+      "elapsed_seconds": 87.337,
+      "sidecar": {
+        "status": "error",
+        "timestamp": "2026-10-15T03:02:11+00:00",
+        "age_hours": 0.0,
+        "known_success_note": false,
+        "raw_note_exported": false
+      },
+      "verifier_summary": {
+        "aggregate": "CANNOT-VERIFY",
+        "invariants": [
+          {
+            "relation": "conversations",
+            "status": "CANNOT-VERIFY",
+            "reason_classes": {
+              "UNMEASURED_CHECK": 1
+            }
+          },
+          {
+            "relation": "clients",
+            "status": "FAIL",
+            "reason_classes": {
+              "VIOLATION": 1
+            }
+          },
+          {
+            "relation": "visa_decisions",
+            "status": "PASS",
+            "reason_classes": {}
+          },
+          {
+            "relation": "events_outbox",
+            "status": "PASS",
+            "reason_classes": {}
+          },
+          {
+            "relation": "visa_decision_retention_policies",
+            "status": "PASS",
+            "reason_classes": {}
+          }
+        ],
+        "top_level_error_present": false,
+        "raw_report_sha256": "1d368c2d16d32a0834bb7d120d75005423227b77239107b1dc1873f8140b5744",
+        "rows_counts_and_raw_errors_exported": false
+      },
+      "status": "FAILED_OR_CANNOT_VERIFY",
+      "raw_logs_or_records_exported": false
+    }
+  ],
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "raw_stderr_saved": false,
+  "operator_sha256": "caa4e67070eb74c1a2e41f9f48c436b9246eb82f67d88eaf98c4d33aabb1aa08",
+  "metadata_dependency_sha256": "d11ad9c5315600bb868f18378e3596e99413cd7550becff8596075584bea06f2",
+  "bundle_sha256": "6ed38f416ca7e9a76c7b6a7762d3486d6eeb27ef4e5e8e24a99bf8a3355c9566"
+}

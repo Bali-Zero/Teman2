@@ -1,0 +1,85 @@
+{
+  "block_closed": false,
+  "block_id": "B08",
+  "campaign_id": "universal-db-wave8-20261015",
+  "corrected_findings": [
+    "B08-FG-01",
+    "B08-FG-02"
+  ],
+  "credential_access": false,
+  "mission_colour": "BLUE_WITH_EXPLICIT_OWNER_NAMED_SEAT_EXCEPTION",
+  "native_probes": false,
+  "original_source_sha256": "1718f618c14fc9b3fa390e93471f30fb3018903c0718eba5b4f08420e28e6aa5",
+  "original_test_prefix": {
+    "bytes": 38301,
+    "legacy_asserts": 88,
+    "legacy_pytest_raises": 23,
+    "original_test_cases": 37,
+    "sha256": "4b8d2379c50a834e123b1850b2209f49736e61391f95b99a4aaaa01eaa865ca4",
+    "unchanged": true
+  },
+  "phase": "bounded_output_boundary_correction",
+  "pins": {
+    "b08_crossstore_adapter.py": "7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae",
+    "b08_crossstore_ledger.json": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+    "test_b08_crossstore_adapter.py": "e988c28495dcc34ba3639a8447a7230cb4459c56090498254f1486557c3404e7"
+  },
+  "prepared_at": "2026-10-16T07:41:57.833911+00:00",
+  "raw_rejected_values_in_receipt": false,
+  "release_approved": false,
+  "remaining": [
+    "Fresh independent acceptance by coordinator",
+    "Parent packaging and release disposition"
+  ],
+  "retained_prior_failure_proofs": {
+    "probe_receipt": "final-astra/independent-probes.json",
+    "probe_receipt_sha256": "dc04de92b961732f44e50455e551aff1fdda59d5815a696c6f0df6e232202103",
+    "raw_payloads_retained": false,
+    "rejected_census_previously_exported": true,
+    "review": "final-astra/SOURCE-R1-CHECKPOINT.json",
+    "sibling_prefix_previously_wrote_outside": true
+  },
+  "scope": [
+    "source",
+    "tests",
+    "this_integration_receipt"
+  ],
+  "status": "FIXED_TESTED_FROZEN_PENDING_INDEPENDENT_REVIEW",
+  "verification": {
+    "agent_receipts_absent": true,
+    "all_contract_error_messages_constant": true,
+    "clean_cli_exit_code": 0,
+    "clean_cli_stdout_stderr_empty": true,
+    "clean_physical_copy_suite": {
+      "exit_code": 0,
+      "passed": 102,
+      "seconds": 1.48,
+      "skips": false
+    },
+    "constant_contract_error_sites": 67,
+    "dux_requests_absent": true,
+    "invariants": {
+      "active_denominator": "UNKNOWN",
+      "block_closed": false,
+      "counterexamples": [
+        "CE-01_restore_precedence_and_epistemology",
+        "CE-02_polymorphic_provenance",
+        "CE-03_organism_bridge_truncation_and_correlation",
+        "CE-04_qdrant_zero_io_health_probe",
+        "CE-05_war_room_42p01_false_zero_cost",
+        "CE-06_outbox_orphan_gap_and_jsonl_retention"
+      ],
+      "dimensions": 8,
+      "instances": 9,
+      "ledger_bytes": 77786,
+      "ledger_sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13"
+    },
+    "regression_cases_added": 65,
+    "worktree_suite": {
+      "exit_code": 0,
+      "passed": 102,
+      "seconds": 1.51,
+      "skips": false
+    }
+  }
+}

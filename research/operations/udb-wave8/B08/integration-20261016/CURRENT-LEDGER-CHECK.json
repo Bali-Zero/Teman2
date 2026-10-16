@@ -1,0 +1,21 @@
+{
+  "scope": "PREPARER_LEDGER_CHECK_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:27:01.265455+00:00",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-I",
+    "-B",
+    "-c",
+    "import hashlib,json,pathlib; p=pathlib.Path(\"research/operations/udb-wave8/B08/b08_crossstore_ledger.json\"); d=json.loads(p.read_text()); print(json.dumps({\"ledger_sha256\":hashlib.sha256(p.read_bytes()).hexdigest(),\"instances\":len(d[\"operation_instances\"]),\"dimensions\":len(d[\"dimensions\"]),\"block_closed\":d[\"block_closed\"],\"active_consumer_denominator\":d[\"census_summary\"][\"active_consumer_denominator\"]}))"
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b08-crossstore",
+  "exit_code": 0,
+  "observation": {
+    "ledger_sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+    "instances": 9,
+    "dimensions": 8,
+    "block_closed": false,
+    "active_consumer_denominator": "UNKNOWN"
+  },
+  "block_closed": false
+}

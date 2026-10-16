@@ -1,0 +1,87 @@
+{
+  "base_commit": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "block_id": "B08",
+  "entries": [
+    {
+      "fixture": "STATE.json",
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "output_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs/STATE.json",
+      "source_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "transform": "byte-identical copy"
+    },
+    {
+      "fixture": "REAL-RUN-RECEIPT.json",
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "output_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+      "source_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "transform": "byte-identical copy"
+    },
+    {
+      "fixture": "DUX-REQ-B08-01.out",
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "output_sha256": "74d784664ffca2b9b268738641880b9adc0d56e128319e80b61cad9048cbfaf2",
+      "source_rel_path": "research/operations/udb-wave8/B08/dux-requests/DUX-REQ-B08-01.out",
+      "source_sha256": "74d784664ffca2b9b268738641880b9adc0d56e128319e80b61cad9048cbfaf2",
+      "transform": "byte-identical copy"
+    },
+    {
+      "fixture": "consumer-matrix.projection.csv",
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "omitted": "all columns other than consumer_id and store (the only columns the adapter reads) are dropped; source header names are recorded here so csv_column_count stays the measured source value",
+      "output_sha256": "496d0897cab7f3b0a3827239caf89c6878dd212419af8f914a662e7e24c1ad50",
+      "projected_columns": [
+        "consumer_id",
+        "store"
+      ],
+      "row_order": "source order preserved, one output row per source row",
+      "rows": 6029,
+      "source_column_count": 36,
+      "source_columns": [
+        "consumer_id",
+        "domain",
+        "entry_point",
+        "evidence",
+        "runtime_registration",
+        "operations",
+        "store",
+        "schemas_tables_keys",
+        "owner",
+        "authority",
+        "identity_relationships",
+        "transaction_boundary",
+        "authorization",
+        "locality_sensitivity",
+        "retention",
+        "concurrency_idempotency",
+        "latency_availability",
+        "test_coverage",
+        "disposition",
+        "blocker",
+        "domain_hint",
+        "domain_classification",
+        "store_signal_hint",
+        "persistence_client_hints",
+        "activation_status",
+        "production_execution_evidence",
+        "contract_coverage_status",
+        "phase_source_path_evidence",
+        "phase_factory_candidate_count",
+        "phase_source_scope_status",
+        "phase_registered_ingress_evidence",
+        "phase_registered_source_route_candidates",
+        "phase_registered_source_scope",
+        "phase_ci_registration_evidence",
+        "phase_ci_reported_states",
+        "phase_ci_actor_identity"
+      ],
+      "source_columns_sha256": "f3cf1ed7a1b1508b4556cc1b6096a935dd2b22e75a5892333b41cb816dd3d286",
+      "source_rel_path": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+      "source_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "transform": "projection"
+    }
+  ],
+  "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+  "note": "Frozen metadata copies/projections of the gitignored .agent-receipts/udb-wave8-inputs inputs and the untracked B08/dux-requests census receipt, so the B08 adapter and tests run from committed files only. They are not new native observations. Byte-identical entries are re-checked against the PINNED_* sha256 constants in b08_crossstore_adapter.py; the projection is re-checked against its own pinned projected-identity constants."
+}

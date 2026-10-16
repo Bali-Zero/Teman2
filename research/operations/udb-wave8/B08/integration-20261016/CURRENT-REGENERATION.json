@@ -1,0 +1,48 @@
+{
+  "scope": "PREPARER_REGENERATION_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:25:14.326527+00:00",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-I",
+    "-B",
+    "research/operations/udb-wave8/B08/b08_crossstore_adapter.py",
+    "--repo-root",
+    "."
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b08-crossstore",
+  "exit_code": 0,
+  "stdout_bytes": 0,
+  "stderr_bytes": 0,
+  "source_sha256": {
+    "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py": "4b8d2379c50a834e123b1850b2209f49736e61391f95b99a4aaaa01eaa865ca4",
+    "research/operations/udb-wave8/B08/b08_crossstore_adapter.py": "1718f618c14fc9b3fa390e93471f30fb3018903c0718eba5b4f08420e28e6aa5"
+  },
+  "previous_disk_ledger_sha256": "c2f0c5eb8ea3f231760f5c3148cbfc60272def4998e2616184b8340d0732e7f3",
+  "artifact": {
+    "path": "research/operations/udb-wave8/B08/b08_crossstore_ledger.json",
+    "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+    "bytes": 77786
+  },
+  "artifact_equals_historical_regeneration_pin": true,
+  "source_finding_ids_preserved": {
+    "b08_crossstore_adapter.py": [
+      "B08-F1",
+      "B08-F3",
+      "B08-F5"
+    ],
+    "test_b08_crossstore_adapter.py": [
+      "B08-F1",
+      "B08-F3",
+      "B08-F5"
+    ]
+  },
+  "counterexample_ids_preserved": [
+    "CE-01_restore_precedence_and_epistemology",
+    "CE-02_polymorphic_provenance",
+    "CE-03_organism_bridge_truncation_and_correlation",
+    "CE-04_qdrant_zero_io_health_probe",
+    "CE-05_war_room_42p01_false_zero_cost",
+    "CE-06_outbox_orphan_gap_and_jsonl_retention"
+  ],
+  "block_closed": false
+}
