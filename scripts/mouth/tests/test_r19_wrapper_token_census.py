@@ -10,8 +10,10 @@ import collections
 import copy
 import json
 import re
+import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 
 import pytest
@@ -898,6 +900,114 @@ def test_guilt_a_scratch_edit_to_the_r19_presentation_styles_is_unpinned(tmp_pat
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 1"
 
 
+CONTRACT = census_mod.CONTRACT.read_text()
+NAMES = {sc[0] for sc in census_mod.SCENARIOS}
+
+
+def test_innocence_every_overlay_on_the_tree_has_a_section_8_7_row_and_no_row_is_stale():
+    """W0d-3: on this tree U is 0, and every row still names a hit."""
+    hits, rows = census_mod.overlay_hits(), census_mod.parse_overlays(CONTRACT, NAMES)
+    assert census_mod.unclaimed_verdict(hits, rows) == ["surfaces-unclaimed: 0"]
+    assert sorted(rows) == sorted(hits)
+
+
+def test_guilt_g30_a_new_portal_in_the_fence_with_no_row_is_unclaimed(tmp_path):
+    """G30: a createPortal( in a fence file, and a class-string overlay in a file it imports, with no section 8.7
+    row: U counts both, keyed file::pattern::ordinal. Comments, closing tags and URL strings are not hits."""
+    fence = tmp_path / "apps/mouth/src/components/kbli"
+    fence.mkdir(parents=True)
+    (tmp_path / "apps/mouth/src/lib").mkdir(parents=True)
+    (fence / "Pop.tsx").write_text(
+        'import { Sheet } from "@/lib/sheet";\n// createPortal( in a comment is not a hit\n'
+        'const u = "https://example.invalid/x";\nexport const Pop = () => createPortal(<Sheet />, document.body);\n')
+    (tmp_path / "apps/mouth/src/lib/sheet.tsx").write_text(
+        'export const Sheet = () => <div className="fixed inset-0 z-50 bg-black/70" />;\n')
+    (fence / "Pop.test.tsx").write_text('createPortal(<div role="dialog" />, document.body);\n')
+    hits = census_mod.overlay_hits(tmp_path)
+    assert hits == {"apps/mouth/src/components/kbli/Pop.tsx::createPortal(::0": 4,
+                    "apps/mouth/src/lib/sheet.tsx::overlay::0": 1}
+    rows = census_mod.parse_overlays(CONTRACT, NAMES)
+    assert census_mod.unclaimed_verdict(hits, rows) == [
+        "  apps/mouth/src/components/kbli/Pop.tsx::createPortal(::0 (line 4) has no section 8.7 row",
+        "  apps/mouth/src/lib/sheet.tsx::overlay::0 (line 1) has no section 8.7 row", "surfaces-unclaimed: 2"]
+
+
+@pytest.mark.parametrize("source,key", [
+    ('<div className="fixed inset-0\n z-50 bg-black/70" />', "overlay::0"),
+    ("<div className='fixed inset-0\n z-50 bg-black/70' />", "overlay::0"),
+    ('<div role = "dialog" />', "role::0"),
+    ('<div role={ "dialog" } />', "role::0"),
+    ("<p>Don't miss this</p>\n// <div role=\"dialog\" />\n<p>It's fine</p>\n<div role=\"listbox\" />", "role::0"),
+], ids=["multiline-double-quote", "multiline-single-quote", "spaced-role", "expression-role", "prose-apostrophes-keep-comments"])
+def test_guilt_b1_valid_jsx_overlay_forms_do_not_bypass_surfaces_unclaimed(tmp_path, source, key):
+    """B1 (#8617 gate): multiline className strings, spaced/expression role attributes, and prose apostrophes must
+    produce the exact unclaimed overlay hit without swallowing comments."""
+    f = tmp_path / "apps/mouth/src/components/kbli/Overlay.tsx"
+    f.parent.mkdir(parents=True)
+    f.write_text("export const Overlay = () => (<>" + source + "</>);\n")
+    hits = census_mod.overlay_hits(tmp_path)
+    assert list(hits) == [f"apps/mouth/src/components/kbli/Overlay.tsx::{key}"]
+    assert census_mod.unclaimed_verdict(hits, {})[-1] == "surfaces-unclaimed: 1"
+
+
+def test_guilt_g31_the_floating_results_row_is_false_the_day_they_fill():
+    """G31 + B2 (#8617 gate): section 8.7 declares the explorer's floating results unreachable because every
+    setSearchResults call empties them. The static fact holds on this tree and fails on any call or reference
+    that is not proved to pass []."""
+    page = (census_mod.ROOT / "apps/mouth/src/app/kbli-explorer/page.tsx").read_text()
+    assert census_mod.floating_results_unreachable(page)
+    for call in (
+        "setSearchResults(r)",
+        "setSearchResults(results.filter(Boolean))",
+        "setSearchResults(await loadResults())",
+        "Promise.resolve([]).then(setSearchResults)",
+    ):
+        assert not census_mod.floating_results_unreachable(page.replace("setSearchResults([])", call, 1)), call
+
+
+@pytest.mark.parametrize("row,error", [
+    ("| `x.tsx::toast::0` | no-such-walk | why |", "neither a census scenario"),
+    ("| `x.tsx::toast::0` | unreachable |  |", "needs its reason"),
+    ("| `apps/mouth/src/components/kbli/KBLISearch.tsx::role::0` | search-dropdown | again |", "expected a new key"),
+], ids=["an unknown claim", "a declared row without a reason", "a duplicate key"])
+def test_the_overlay_table_refuses_a_row_it_cannot_trust(row, error):
+    text = CONTRACT.replace("<!-- overlays:end -->", row + "\n\n<!-- overlays:end -->")
+    with pytest.raises(census_mod.ContractError, match=error):
+        census_mod.parse_overlays(text, NAMES)
+    bad_sep = re.sub(r"(<!-- overlays:begin -->\s*\|[^\n]+\n)\|[^\n]+", r"\1| bad | sep | line |", CONTRACT, count=1)
+    with pytest.raises(census_mod.ContractError, match="header must be"):
+        census_mod.parse_overlays(bad_sep, NAMES)
+
+
+def test_a_token_with_two_roles_needs_its_per_surface_row_declared():
+    """W0d-3 (ii-2): bg-black/60 is section 5's wash on the /kbli card (app/kbli/page.tsx:187) and a scrim behind
+    the explorer sidebar (app/kbli-explorer/page.tsx:1124). Its section 8.1 row is accepted only as a declared
+    per-surface row, and both rows cross-reference each other."""
+    contract = census_mod.load_contract(CONTRACT)
+    states = census_mod.parse_states(CONTRACT, contract)
+    surfaces = census_mod.parse_surfaces(CONTRACT, contract, states)
+    assert surfaces["bg-black/60"]["ground"] == "scrim"
+    assert "app/kbli-explorer/page.tsx:1124" in surfaces["bg-black/60"]["surface"]
+    assert "on the /kbli card it is §5's wash" in surfaces["bg-black/60"]["reason"]
+    assert "(`app/kbli/page.tsx:187`); the explorer sidebar backdrop is a scrim (§8.1)" in contract[("class", "bg-black/60")]["reason"]
+    undeclared = CONTRACT.replace("Per-surface row (W0d-3)", "Second row (W0d-3)", 1)
+    with pytest.raises(census_mod.ContractError, match="already has a section 5 or 7 row"):
+        census_mod.parse_surfaces(undeclared, contract, states)
+
+
+def test_the_section_8_5_shared_component_counts_and_cells_match_the_contract():
+    """ii-4: section 8.5's NavShell and Footer cells and every count in section 8.5 match the pins and mutants."""
+    assert "/visa/*` but `/visa/voa` (default); `/tax-calendar`, `/property/eligibility`, BlogNav, `/visa/voa` (paper once hydrated)" in CONTRACT
+    assert "the marketing home mounts `components/r19/home/Footer`, another component" in CONTRACT
+    assert sum(len(rs) for rs in census_mod.SHARED_PAIRS.values()) == 10 and "ten (pair,\n  route) pins" in CONTRACT
+    assert len(PIN) == 24 and "24 walks in all" in CONTRACT
+    assert {k: drift_of(MUTANTS[k]["shared"])[1] for k in ("I9", "A", "B", "I10")} == {
+        "I9": "0", "A": "84", "B": "108", "I10": "0"}
+    assert "D 84, all on `/v2`, `/v2/news` and `/visa/second-home`" in CONTRACT
+    assert "D 108, on all six MobileNav pins" in CONTRACT
+
+
+
 def test_the_census_walks_51_opened_surfaces_on_9_pages():
     """SPEC-W0d section 1.a: 9 pages (the sector route resolved at run time), 25 + 26 opened walks."""
     walks = {"all": 6, "walk": 2, "mobile": 1, "mobile-all": 3}
@@ -1292,8 +1402,11 @@ CASES = [
     ("I-drop-shadow-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
      appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
               'filter:drop-shadow(0 12px 2px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
-    # The #8560 gate's N1: a fixed element whose only paint is a drop-shadow() cast toward the run reaches nothing.
-    ("I-drop-shadow-only-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+    # The #8560 gate's N1 and M10 (ii-6): a fixed element whose only paint is a drop-shadow() cast toward the run
+    # reaches nothing, even when every sample point of the run sits within one blur radius (<= 6px) of the bar.
+    ("I-drop-shadow-only-no-reach",
+     surface("position:absolute;left:7px;top:calc(100vh - 10px);padding:0;background:#FFFCF7",
+             p(INK, "Villa", "font-size:6px;line-height:1")) + p(INK), "",
      appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;'
               'filter:drop-shadow(0 0 8px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
     # A transparent shadow paints nothing, so it reaches nothing.
@@ -1310,6 +1423,68 @@ CASES = [
     # The dev server's query devtools button sits in the same corner as its indicator: never painted.
     ("I-query-devtools", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "", REVEAL + QUERY, ["#s"],
      (0, 0, 0, "ok", None)),
+    # W0d-3b-2b-ii (ii-11, mixed-point cause reduction): S covers only the run's centre and top corners (height 100vh-15px),
+    # while S's child shadow (MIX-reach) or child ink bar (MIX-main), or the same bar outside S, covers the bottom corners
+    # where S is absent. The non-exempt bottom points decide: counted.
+    ("G-mix-reach", surface(STRIP, p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:calc(100vh - 15px);z-index:30;'
+              'background:rgba(29,44,59,.45)"><div id="bar" style="position:fixed;left:0;right:0;top:calc(100vh - 60px);'
+              'height:4px;background:#1D2C3B;box-shadow:0 40px 6px 10px rgba(0,0,0,.85)"></div></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-mix-reach-outside", surface(STRIP, p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:calc(100vh - 15px);z-index:30;'
+              'background:rgba(29,44,59,.45)"></div><div id="bar" style="position:fixed;left:0;right:0;'
+              'top:calc(100vh - 60px);height:4px;background:#1D2C3B;box-shadow:0 40px 6px 10px rgba(0,0,0,.85);'
+              'z-index:31"></div>' + MENU_TOP), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-mix-main", surface(STRIP, p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:calc(100vh - 15px);z-index:30;'
+              'background:rgba(29,44,59,.45)"><div id="bar" style="position:absolute;left:0;width:100%;'
+              'top:calc(100vh - 32px);height:32px;background:#1D2C3B"></div></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-mix-main-outside", surface(STRIP, p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:calc(100vh - 15px);z-index:30;'
+              'background:rgba(29,44,59,.45)"></div><div id="bar" style="position:fixed;left:0;width:100%;'
+              'top:calc(100vh - 32px);height:32px;background:#1D2C3B;z-index:31"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # S as its own reacher: when S ends above the run, its shadow over the run is counted; when S covers the run, exempt.
+    ("G-self-shadow-scrim-absent", surface("position:absolute;left:7px;top:calc(100vh - 34px);padding:8px;"
+                                           "background:#FFFCF7;z-index:10;", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:calc(100vh - 40px);z-index:30;'
+              'background:rgba(29,44,59,.45);box-shadow:0 24px 8px 8px rgba(0,0,0,.85)"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("I-self-shadow-scrim-covers", surface("position:absolute;left:7px;top:calc(100vh - 34px);padding:8px;"
+                                           "background:#FFFCF7;z-index:10;", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45);box-shadow:0 24px 8px 8px rgba(0,0,0,.85)"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 0, 0, "ok", None)),
+    # Two scrims: S1 flat (under the z10 surface) holds a reaching glow bar; S2 fixed z20 covers the run. S1 is under the run, so counted.
+    ("G-two-scrims-wrong-one-covers", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;"
+                                              "background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div id="bar" style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px);'
+              'z-index:30"></div></div><div id="S2" style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:20;'
+              'background:rgba(29,44,59,.35)"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # W0d-3b-2b-ii (ii-12, simultaneous occluder precedence): at p, S (fixed z30) covers the run and holds an exempt
+    # reaching glow, while a non-scrim opaque toast (fixed z40, main stack) or a non-scrim reacher also covers the run.
+    # The non-exempt occluder takes precedence over the exempt one.
+    ("G-near-first-reacher-and-toast", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45)"><div id="bar" style="position:fixed;left:0;right:0;bottom:0;height:4px;'
+              'background:#25D366;filter:blur(8px)"></div></div><div id="toast" style="position:fixed;left:0;bottom:0;'
+              'width:240px;height:60px;z-index:40;background:#1D2C3B"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-near-first-toast-only", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45)"></div><div id="toast" style="position:fixed;left:0;bottom:0;'
+              'width:240px;height:60px;z-index:40;background:#1D2C3B"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-two-reachers-exempt-first", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div id="S" style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45)"><div id="bar1" style="position:fixed;left:0;right:0;bottom:0;height:4px;'
+              'background:#25D366;filter:blur(8px)"></div></div><div id="bar2" style="position:fixed;left:0;right:0;'
+              'bottom:0;height:4px;background:#25D366;filter:blur(8px);z-index:40"></div>' + MENU_TOP),
+     ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
 ]
 
 
@@ -1432,6 +1607,28 @@ def test_e2e_page_grounds_at_rest(tmp_path, case):
 
 
 @needs_browser
+def test_e2e_the_capture_pass_asks_for_reduced_motion(tmp_path, monkeypatch):
+    """ii-5 (N3 / G6): capture_pages() itself runs under reduced motion, so a page whose script cycles its ground
+    unless prefers-reduced-motion is reduce is read at its paper frame, and a mutant that drops reduced motion or
+    calls page.emulate_media(reduced_motion='no-preference') inside capture_pages() fails behaviorally."""
+    from playwright.sync_api import sync_playwright
+    monkeypatch.setattr(census_mod, "SETTLE", {"load": 50, "ready": 100, "open": 150, "scroll": 50})
+    body = f'<div id="s" style="background:#FFFCF7;padding:16px">{p(INK)}</div>' + SCRIPTED
+    server = serve(tmp_path, PAGE.format(css="", body=body, tail=""))
+    m = census_mod._load_measure()
+    census = {"captures": [], "failed": [], "reads": {}, "colors": {}}
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            census_mod.capture_pages(browser, m, f"http://127.0.0.1:{server.server_port}", census,
+                                     [("rest", "capture", "/o.html desktop/light", ("/o.html", "desktop", "light"))])
+            browser.close()
+    finally:
+        server.shutdown()
+    assert census_mod.page_verdict(census) == ["page-grounds-off-contract: 0"]
+
+
+@needs_browser
 def test_e2e_a_static_page_reads_the_same_with_and_without_reduced_motion(tmp_path):
     """W0d-3b-2, innocence: asking for reduced motion changes nothing on a page that does not move."""
     from playwright.sync_api import sync_playwright
@@ -1471,7 +1668,7 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
     out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 50 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 18"
-    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 188"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 189"
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
@@ -1509,12 +1706,99 @@ def test_guilt_8161s_head_reads_ink_titles_on_the_dark_dropdown():
     assert out[-1] == "opened-text-below-4.5: 108"
 
 
+# Section 8.3, Zero's Q11 (SPEC-W0d section 4): the five proofs of the re-cut explorer logo.
+def png_bytes(rows: list[list[tuple]]) -> bytes:
+    """An 8-bit PNG, RGB or RGBA by the pixel tuples' length, every row unfiltered."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    head = struct.pack(">IIBBBBB", len(rows[0]), len(rows), 8, 6 if len(rows[0][0]) == 4 else 2, 0, 0, 0)
+    raw = b"".join(b"\x00" + bytes(v for px in row for v in px) for row in rows)
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", head) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+
+def roundel(x: int, y: int) -> str:
+    """A 64x64 logo: a red 3 inside a black disc inside a white ring, on a black field."""
+    r = ((x - 32) ** 2 + (y - 32) ** 2) ** 0.5
+    return "three" if 28 <= x < 36 and 26 <= y < 38 else "disc" if r < 20 else "ring" if r < 26 else "field"
+
+
+RGB = {"three": (164, 32, 32), "disc": (1, 0, 0), "ring": (250, 250, 250), "field": (1, 1, 0)}
+LOGO_RGB = png_bytes([[RGB[roundel(x, y)] for x in range(64)] for y in range(64)])
+SRC = f'<img src="{census_mod.LOGO_ALPHA_SRC}" alt="Zantara Logo" />'
+ON_PAPER = {"src": census_mod.LOGO_ALPHA_SRC, "corners": ["#F7F4EE"] * 4}
+
+
+def logo_cut(alpha=lambda part, x, y: 0 if part == "field" else 255, rgb=lambda part, x, y: RGB[part]) -> bytes:
+    return png_bytes([[(*rgb(roundel(x, y), x, y), alpha(roundel(x, y), x, y)) for x in range(64)] for y in range(64)])
+
+
+def test_innocence_the_logo_cut_on_its_black_field_passes_the_five_proofs():
+    assert census_mod.logo_proof(LOGO_RGB, logo_cut(), SRC, ON_PAPER) == []
+
+
+@pytest.mark.parametrize("new, page_text, record, failed", [
+    (LOGO_RGB, SRC, ON_PAPER, "IHDR: 64x64 colour type 2, not 64x64 RGBA (6)"),
+    (logo_cut(alpha=lambda part, x, y: 255 if (x, y) == (63, 0) else 0 if part == "field" else 255), SRC, ON_PAPER,
+     "corners: alpha [0, 255, 0, 0], not 0"),
+    (logo_cut(alpha=lambda part, x, y: 0 if (x, y) in ((0, 0), (63, 0), (0, 63), (63, 63)) else 255), SRC, ON_PAPER,
+     "corners: "),
+    (logo_cut(alpha=lambda part, x, y: 0 if part in ("field", "disc") else 255), SRC, ON_PAPER, "roundel: "),
+    (logo_cut(rgb=lambda part, x, y: (255, 255, 255) if part == "three" else RGB[part]), SRC, ON_PAPER, "roundel: 96 "),
+    (logo_cut(), '<img src="/images/logo-zantara.png" />', ON_PAPER, "img: the explorer does not point at"),
+    (logo_cut(), SRC, {"src": "/images/logo-zantara.png", "corners": ["#010100"] * 4}, "render: "),
+    (logo_cut(), SRC, {**ON_PAPER, "corners": ["#F7F4EE"] * 3 + ["#080A0E"]}, "render: "),
+    (logo_cut(), SRC, None, "render: "),
+], ids=["the RGB original", "a corner left opaque", "corners cut only field left opaque", "the disc cut too",
+        "the 3 recoloured", "the img not repointed", "the old logo rendered", "a corner off paper", "no render read"])
+def test_guilt_each_logo_proof_names_its_failure(new, page_text, record, failed):
+    bad = census_mod.logo_proof(LOGO_RGB, new, page_text, record)
+    assert len(bad) == 1 and bad[0].startswith(failed), bad
+
+
+def test_the_explorer_logo_today_is_rgb_and_its_mask_keeps_the_disc():
+    w, h, ctype, rows = census_mod.png_rows(census_mod.LOGO.read_bytes())
+    field = census_mod.black_field(w, h, rows)
+    assert (w, h, ctype) == (1024, 1024, 2)
+    assert field[0] and not field[512 * w + 512]  # the corner is field, the black disc at the centre is not
+    assert census_mod.logo_proof(census_mod.LOGO.read_bytes(), census_mod.LOGO.read_bytes(),
+                                 census_mod.LOGO_PAGE.read_text(), None)[0].startswith("IHDR: 1024x1024 colour type 2")
+
+
+@pytest.mark.skipif(not census_mod.LOGO_ALPHA.exists(), reason="W2''' ships the transparent logo (section 8.3)")
+def test_the_transparent_logo_keeps_the_roundel_and_sits_on_paper():
+    record = census_mod.load(FIXTURE).get("logo")
+    assert census_mod.logo_proof(census_mod.LOGO.read_bytes(), census_mod.LOGO_ALPHA.read_bytes(),
+                                 census_mod.LOGO_PAGE.read_text(), record) == []
+
+
+@needs_browser
+@pytest.mark.parametrize("png, corners", [(logo_cut(), "#F7F4EE"), (LOGO_RGB, "#010100")], ids=["cut", "original"])
+def test_e2e_the_logo_corners_are_read_from_the_render(tmp_path, png, corners):
+    from playwright.sync_api import sync_playwright
+    (tmp_path / "logo-zantara-transparent.png").write_bytes(png)
+    server = serve(tmp_path, '<body style="margin:0;background:#F7F4EE"><div style="width:40px;height:40px;'
+                             'margin:32px"><img src="logo-zantara-transparent.png" style="width:100%;height:100%">'
+                             '</div></body>')
+    m = census_mod._load_measure()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            page = browser.new_context(viewport={"width": 1440, "height": 900}).new_page()
+            page.goto(f"http://127.0.0.1:{server.server_port}/o.html", wait_until="load")
+            record = census_mod.logo_corners(page)
+            browser.close()
+    finally:
+        server.shutdown()
+    assert record == {"src": "logo-zantara-transparent.png", "corners": [corners] * 4}
+
+
+
 # Section 9 (W0d-3a): the census in parts. The fixture is one full run; cut by part, it is what the four
 # `wrapper-census-part` jobs dump for the aggregate.
 UNITS = census_mod.scenarios(*census_mod.measure_literals())
 WORKFLOW = (census_mod.ROOT / ".github/workflows/r19-wrapper-census-tests.yml").read_text()
 EXIT_LINES = ["scenarios-off-manifest: 0", "captures: 54 ok, 0 failed",
-              "opened-surfaces: 50 ok, 0 failed", "shared-touched-unpinned: 0", "shared-component-drift: 0"]
+              "surfaces-unclaimed: 0", "opened-surfaces: 50 ok, 0 failed", "shared-touched-unpinned: 0", "shared-component-drift: 0"]
 EXIT_BLOCK = re.search(r"### 8\.8 .*?```\n(.*?)```", CONTRACT, re.S).group(1)
 
 
@@ -1775,9 +2059,14 @@ def test_the_drop_shadow_statement_is_in_the_contract_and_the_code_reads_only_bl
 
 
 def test_the_bring_fallback_keeps_the_occluder_and_why_it_is_exempt():
-    """The #8249 gate's binding 4: a run still pending after it was brought keeps occludedBy and why it is exempt, if it is."""
+    """The #8249 gate's binding 4 and ii-11/ii-12: decode(), bring() and pointB() prefer a non-exempt occluder."""
+    decode = census_mod.RESOLVE_JS.split("async decode(", 1)[1].split("bring() {", 1)[0]
     fallback = census_mod.RESOLVE_JS.split("bring() {", 1)[1].split("return true;", 1)[0]
+    pointb = census_mod.RESOLVE_JS.split("const pointB =", 1)[1].split("const ls =", 1)[0]
+    assert "const occ = bs.find((b) => b.occluded && !b.exempt) || bs.find((b) => b.occluded);" in decode
+    assert "(r.trial.bs.find((b) => b.occluded && !b.exempt) || r.trial.bs.find((b) => b.occluded))" in fallback
     assert "if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }" in fallback
+    assert "if (hits.length) return hits.find((h) => !h.exempt) || hits[0];" in pointb
 
 
 def test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree_incomplete(census):
