@@ -1,0 +1,24 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, one runbook note, two test files and the
+  observer floor constant. No production runtime code path or live data mutation in this PR; the production reads
+  quoted in the ledger were made by the Dux's verifier, read-only.
+mission: >-
+  Reconcile the PENDING-ARMS E28 row E with what is live after seq-30 (#8624) became the active RulePack in
+  production: record the activation facts, and narrow the row to the one SEQ29-A2 clause the signed pack does not
+  contain (the applicant's own-shareholding test on E28A).
+objective: >-
+  PENDING-ARMS row E no longer says seq-30 is owned by the Pro conductor; it carries the measured activation facts
+  and names the missing clause; live-state-log.md has a dated 2026-10-17 newest entry; the SKILL.md Open clause and
+  the runbook seq-30 activation note agree; the seq-29 observer floor equals 61, the file's test count.
+scope:
+  - .claude/skills/modus/PENDING-ARMS.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - docs/runbooks/visa-engine-key-ceremony.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

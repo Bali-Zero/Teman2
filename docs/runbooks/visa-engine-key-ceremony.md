@@ -392,8 +392,11 @@ post-Prettier file sha256 prefix `31c611994ea43a9d`; JCS `payload_sha256` unchan
 in the same PR as the source, with `scripts/ci/observe_visa_seq30_signed.py` replacing
 `scripts/ci/observe_visa_seq29_signed.py`.
 
-**Activation: PENDING.** Runs from Pro right after merge via the two-login ceremony on the PG primary;
-the `activation_id` and timestamp are recorded in the follow-up closing ledger PR.
+**Activation: done 2026-10-16T14:35:48Z** (measured 2026-10-17 by the Dux's verifier with a read-only SELECT,
+the sentinel's own active-pack query on `visa_ruleset_activations`: exactly one open activation, rule pack
+`2e113982-c3ec-59f4-bfe5-88ec87f298a2`, sequence 30, version `2026.10.16`; seq-29's system period closed at the
+same instant; #8624 merged 2026-10-16T14:20:35Z as `3f23a84da7`; backend /health build_sha `7163570a88` contains it).
+The `activation_id` itself was not read in that measurement.
 
 ## Rotation
 

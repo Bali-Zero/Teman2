@@ -1,0 +1,62 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15
+  E28 close-out prompt - the ledger must say what is live. BLUE mission under the Dux session; local commit only.
+mission: >-
+  Reconcile PENDING-ARMS row E with seq-30 active in production (#8624, merge 3f23a84da7, activation
+  2026-10-16T14:35:48Z) and narrow it to the clause the signed pack lacks.
+lanes:
+  - lane: vo-e28-e-row-1017
+    role: build
+    seat: claude-sonnet-5-5 (M5 builder)
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '61 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: The signed seq-30 source pack drops the role conjunct from el.e28a.investment, requires the director/commissioner role in el.e28d.branch-or-subsidiary and el.e28f.ikn-subsidiary, and has no own-shareholding fact anywhere.
+    cmd: "grep -n for the three rule_ids, proposed_role and shareholding in apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-030.source.json"
+    result: "el.e28a.investment rule_id line 521 with required_facts 530-535 free of proposed_role; el.e28d proposed_role in SHAREHOLDER_DIRECTOR/COMMISSIONER lines 5456-5457; el.e28f lines 5512-5513; no 'shareholding' match"
+    exit: 0
+    ts: "2026-10-17T00:00:00Z"
+    seat: this session
+  - claim: The ledger, observer and pending-arms report test suites pass with the narrowed E row pinned.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py scripts/tests/test_pending_arms_report.py
+    result: "238 passed in 3.92s (load average 5.27 at the end, no other pytest running)"
+    exit: 0
+    ts: "2026-10-17T00:00:00Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 60 to 61, the true count of the ledger test file; the seq-28 observer holds.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py; python3 scripts/ci/observe_visa_ledger_seq28.py
+    result: "61 passed in 0.89s, seq-29 ledger holds (rc 0); 12 passed in 0.05s, seq-28 ledger holds (rc 0)"
+    exit: 0
+    ts: "2026-10-17T00:00:00Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (the row stays open, count unchanged).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 610 -> head 610 (delta 0)"
+    exit: 0
+    ts: "2026-10-17T00:00:00Z"
+    seat: this session
+  - claim: The activation facts in the ledger (merge 3f23a84da7 at 2026-10-16T14:20:35Z; one open activation, pack 2e113982-c3ec-59f4-bfe5-88ec87f298a2, sequence 30, 2026-10-16T14:35:48Z; build_sha 7163570a88) were measured by the Dux's verifier this session and are stated in the ledger as such, not re-measured by this builder.
+    cmd: gh pr view 8624 (merge), read-only SELECT on visa_ruleset_activations, curl /health - all run by the Dux's verifier
+    result: "as quoted by the Dux in the task brief"
+    exit: 0
+    ts: "2026-10-17T00:00:00Z"
+    seat: dux verifier (not this session)
+decisions:
+  - id: D-narrow-not-close-row-e
+    text: >-
+      Row E is narrowed instead of closed because the brief asked for a rule testing the applicant's own shareholding
+      at or above IDR 10 billion, and the signed pack's el.e28a.investment still tests the company thresholds
+      (paid-up 2.5bn, investment capital 10bn, PT PMA committed); no own-shareholding fact exists in the pack. The
+      key-ceremony runbook also describes SEQ29-A2 as the role drop only.
+  - id: D-runbook-seq30-activation-note
+    text: >-
+      The seq-30 runbook note said Activation: PENDING and, being the next section after the seq-29 note, broke
+      test_runbook_records_the_seq29_activation_done; it now records the measured activation (activation_id not read).
+dissent: []
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
