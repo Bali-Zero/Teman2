@@ -90,7 +90,7 @@ struct RootView: View {
             sidebarColumn
                 .safeAreaInset(edge: .top) { brandHeader }
                 .safeAreaInset(edge: .bottom) { sidebarFooterBand }
-                .navigationSplitViewColumnWidth(min: 200, ideal: 232, max: 300)
+                .navigationSplitViewColumnWidth(min: 200, ideal: Self.sidebarIdeal, max: 300)
         } detail: {
             mainColumn
         }
@@ -102,6 +102,13 @@ struct RootView: View {
         }
         .tint(Theme.accent)
         .background(Theme.antracite)
+    }
+
+    /// The sidebar's width a window opens at. The census can open it at its 300 pt maximum (`--sidebar 300`, a collecting run only): the pane is
+    /// narrowest there, which is the worst case for the sheet (gate #8550 F3).
+    private static var sidebarIdeal: CGFloat {
+        guard CensusFrame.collecting, let v = ProcessInfo.processInfo.environment["KBLI_CENSUS_SIDEBAR"], let w = Double(v) else { return 232 }
+        return min(max(CGFloat(w), 200), 300)
     }
 
     private var brandHeader: some View {

@@ -19,6 +19,10 @@ struct RegistryVerdictSheet: View {
     /// When false (the text census), the `ScrollView` is dropped so an off-screen renderer draws the
     /// whole sheet — `KBLIRegistryView`'s convention.
     var scrolls: Bool = true
+    /// The rows of the head the COLLAPSED sheet draws (H1d O1, whole rows only): the band always, the plate and the EN official title when
+    /// `SearchListView` found them whole under its cap. A row it does not draw stays laid out (so it is measured, and a taller window brings
+    /// it back) but is invisible, unmarked and out of reach. Standalone renders draw all three.
+    var collapsedRows: SheetRows = .official
 
     /// Pure, headless-callable (`Tests/semantictest`) — the sheet's national-axis card delegates
     /// entirely to `KBLIVerdict.ownershipLine` (OPEN-1, 2026-09-17). The national plate calls
@@ -49,7 +53,14 @@ struct RegistryVerdictSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             grabber
-            if scrolls { ScrollView { content } } else { content }
+            if scrolls && expanded { ScrollView { content } }
+            else if scrolls {
+                // The collapsed sheet has no scroll view at all: its rows are whole or not drawn (H1d O1), and a scroll view reserves a
+                // scroller's width on a Mac that shows scroll bars always, which wrapped the band one line more (id 56102 at 1040x648).
+                // The content is an overlay of a flexible clear, so it takes its height and the frame's height stays the proposal: a
+                // rigid child taller than the frame would be centred in it and the sheet's own frame would read taller than it draws.
+                Color.clear.frame(maxHeight: .infinity).overlay(alignment: .top) { content.fixedSize(horizontal: false, vertical: true) }
+            } else { content }
         }
         .background(Theme.ink)
         .overlay(alignment: .top) { Rectangle().fill(Theme.hairlineHi).frame(height: 1) }
@@ -64,8 +75,8 @@ struct RegistryVerdictSheet: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             head
-            actions
             if expanded {
+                actions
                 Divider().overlay(Theme.hairline)
                 KBLIRegistryView(kbli: kbli, scrolls: false, showsIdentityAndVerdict: false)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,26 +117,40 @@ struct RegistryVerdictSheet: View {
 
     private var head: some View {
         let v = verdict
-        return VStack(alignment: .leading, spacing: expanded ? 18 : 10) {
+        return VStack(alignment: .leading, spacing: expanded ? 18 : SheetFit.margin) {
             if expanded {
                 WideOrStacked(side: 330, wideFrom: 780, spacing: 32) {
                     identity()
                     nationalPlate(v)
                 }
                 verdictBand(v)
+                baliBlock(v)
+                riskRow(v)
             } else {
                 // The collapsed sheet is verdict-first at every width: the app's real main pane is about 807 pt at the minimum window (the
                 // sidebar takes 232 of 1040), under the 780 where a plate sits beside the title, and the card is half the window tall. So
                 // title, the band, and the plate as one thin row after it (D2 VERDICT-FIRST, #8492 gate).
                 identity(official: false)
                     .censusFrame("head.compact")   // on the title block, which stands wherever the band does: the head's own frame runs below the fold
-                verdictBand(v).background(SheetFit.reader)
-                nationalPlate(v)
-                if !isID { officialTitle }
+                verdictBand(v).background(SheetFit.reader(.band))
+                compactPlate(v)
+                if !isID { compactOfficial }
             }
-            baliBlock(v)
-            riskRow(v)
         }
+    }
+
+    /// The collapsed head's plate and official title: measured always, drawn only when `collapsedRows` holds them (the 12 pt spacing under
+    /// the last drawn row is then the sheet's own margin, never a sliver of the next row).
+    private func compactPlate(_ v: KBLIVerdict) -> some View {
+        let on = collapsedRows >= .plate
+        return nationalPlate(v, drawn: on).censusFrame("plate.hidden", when: !on).background(SheetFit.reader(.plate))
+            .opacity(on ? 1 : 0).allowsHitTesting(on).accessibilityHidden(!on)
+    }
+
+    private var compactOfficial: some View {
+        let on = collapsedRows >= .official
+        return officialTitle.censusFrame("official", when: on).censusFrame("official.hidden", when: !on).background(SheetFit.reader(.official))
+            .opacity(on ? 1 : 0).allowsHitTesting(on).accessibilityHidden(!on)
     }
 
     /// The record's own title in Bahasa Indonesia, labelled (EN only): the collapsed sheet shows it after the verdict band and the plate.
@@ -166,7 +191,7 @@ struct RegistryVerdictSheet: View {
 
     /// The national answer, from `KBLIVerdict.ownershipLine` and nothing else (IMM-L binding (a)): the word is its first half, the
     /// figure its cap. The cap counts up to its value (M2); the axis's own source line stays behind "Source".
-    private func nationalPlate(_ v: KBLIVerdict) -> some View {
+    private func nationalPlate(_ v: KBLIVerdict, drawn: Bool = true) -> some View {
         let parts = v.ownershipLine(isID: isID).components(separatedBy: " · ")
         let tone: Theme.Tone = { switch v.national { case .open: return .open; case .restricted: return .restricted
                                                     case .closed: return .closed; case .undetermined: return .neutral } }()
@@ -180,7 +205,7 @@ struct RegistryVerdictSheet: View {
                     if immersive { CountUpPercent(p: arrival, value: cap) } else { Text("\(cap)%") }
                 }
                 .font(Theme.display(compact ? 34 : 64)).monospacedDigit().foregroundStyle(Theme.white)
-                .censusFrame("cap")
+                .censusFrame("cap", "", when: drawn)
                 Text(lang.t("rich.fact.pma")).font(Theme.scalable(11)).foregroundStyle(Theme.muted)
             }
         }
@@ -189,7 +214,7 @@ struct RegistryVerdictSheet: View {
         let chip = Text(parts[0]).font(Theme.scalable(11, weight: .semibold)).foregroundStyle(c.fg).textCase(isID ? .uppercase : nil)
             .padding(.vertical, 4).padding(.horizontal, 8)
             .background(c.bg, in: RoundedRectangle(cornerRadius: 2))
-            .censusFrame("chip.national", CensusTone.national(verdict: v))
+            .censusFrame("chip.national", CensusTone.national(verdict: v), when: drawn)
         return VStack(alignment: .leading, spacing: compact ? 6 : 10) {
             if compact {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -214,7 +239,7 @@ struct RegistryVerdictSheet: View {
         .overlay(RoundedRectangle(cornerRadius: 2).strokeBorder(Theme.lineSoft, lineWidth: 1))
         .shadow(color: .black.opacity(immersive ? Elevation.raised.alpha : 0), radius: Elevation.raised.radius, y: Elevation.raised.dy)
         .modifier(Beat(p: immersive ? arrival : 1, from: 0.1, to: 0.45, dy: 6))
-        .censusFrame("plate")
+        .censusFrame("plate", when: drawn)
     }
 
     /// Bali: the axis's own claim, its source behind "Source". (The map beside it is the next PR.)
@@ -485,18 +510,51 @@ struct StepDownTitle: View {
 /// the verdict is on the screen at every window, for every title, and nothing is cut to get it there).
 enum SheetFit {
     static let space = "sheet-fit"
-    /// Below the band, so its last line is not on the sheet's edge.
+    /// Below the last drawn row, so its last line is not on the sheet's edge.
     static let margin: CGFloat = 12
-    static var reader: some View {
+    static func reader(_ row: SheetRows) -> some View {
         GeometryReader { g in
-            Color.clear.preference(key: SheetFitKey.self, value: g.frame(in: .named(space)).maxY + margin)
+            let end = g.frame(in: .named(space)).maxY + margin
+            Color.clear.preference(key: SheetFitKey.self, value: SheetFitValue(
+                band: row == .band ? end : 0, plate: row == .plate ? end : 0, official: row == .official ? end : 0))
         }
     }
 }
 
+/// The collapsed sheet's rows, top to bottom: each one is drawn only when it and every row above it fit whole (H1d O1).
+enum SheetRows: Int, Comparable {
+    case band, plate, official
+    static func < (a: SheetRows, b: SheetRows) -> Bool { a.rawValue < b.rawValue }
+}
+
+/// Where each collapsed row ends in the sheet, plus the margin below it: the three cumulative fits. An unmeasured row is 0 (the EN official
+/// title does not exist in Indonesian).
+struct SheetFitValue: Equatable {
+    var band: CGFloat = 0, plate: CGFloat = 0, official: CGFloat = 0
+
+    /// The most rows that fit WHOLE under `cap`; the band is always in.
+    func rows(cap: CGFloat) -> SheetRows {
+        if official > 0, official <= cap { return .official }
+        if plate > 0, plate <= cap { return .plate }
+        return .band
+    }
+
+    /// The collapsed sheet's height: the last drawn row and the margin under it, nothing more (no slack for a sliver of the next row to
+    /// show in), and never past the cap. 0 until the band is measured.
+    func height(cap: CGFloat) -> CGFloat {
+        guard band > 0 else { return 0 }
+        let fit: CGFloat
+        switch rows(cap: cap) { case .band: fit = band; case .plate: fit = plate; case .official: fit = official }
+        return min(fit, max(cap, 0))
+    }
+}
+
 struct SheetFitKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+    static let defaultValue = SheetFitValue()
+    static func reduce(value: inout SheetFitValue, nextValue: () -> SheetFitValue) {
+        let n = nextValue()
+        value.band = max(value.band, n.band); value.plate = max(value.plate, n.plate); value.official = max(value.official, n.official)
+    }
 }
 
 /// Takes its first subview's size, or reports a height no frame can hold when that subview wraps to more than `lines` lines (its second

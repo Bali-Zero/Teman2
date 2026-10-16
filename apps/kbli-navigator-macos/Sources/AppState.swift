@@ -43,6 +43,8 @@ final class AppState: ObservableObject {
     @Published var section: AppSection = .search
     @Published var query: String = ""
     @Published var selected: KBLI?
+    /// Census only (FoldCensus --open): the harness expands and collapses the sheet the way a click on the grabber does.
+    @Published var censusExpand = false
     /// The browsed sector (A–U). nil = showing the 21-sector grid; non-nil = showing that sector's
     /// codes. A live search (`query` non-empty) overrides this and searches across ALL sectors.
     @Published var browsedSector: String?

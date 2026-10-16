@@ -74,6 +74,33 @@ enum CensusTone {
     }
 }
 
+/// A scroll view reaches an unbuilt row of a lazy stack only inside a window (measured 2026-10-15 with a bare ScrollViewReader over a
+/// LazyVStack: `scrollTo` left an off-screen NSHostingView at its top in every variant, ticks and a second pass included, and centred the
+/// row to the point once the same view sat in a borderless window ordered front). The bands that mount the real list live in one, far off
+/// every screen, as the app does.
+enum CensusWindow {
+    @MainActor private static var kept: [NSWindow] = []
+
+    /// `KBLI_CENSUS_NOWINDOW=1` is the control: the same band in a bare hosting view, as the harness drew it before (its `scrollTo` does not
+    /// reach an unbuilt row, and its text metrics are not the window's: id 56102 wraps one line less).
+    @MainActor static func attach(_ view: NSView, size: CGSize) {
+        if ProcessInfo.processInfo.environment["KBLI_CENSUS_NOWINDOW"] != nil { return }
+        let win = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: size.width, height: size.height),
+                           styleMask: [.borderless], backing: .buffered, defer: false)
+        win.contentView = view
+        win.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
+        win.makeKey()
+        kept.append(win)
+    }
+
+    /// Takes the windows down (the fold census mounts one per language and size).
+    @MainActor static func closeAll() {
+        for w in kept { w.contentView = nil; w.orderOut(nil) }
+        kept.removeAll()
+    }
+}
+
 /// The mark itself: a clear background that reports its frame while a band snapshot collects, and nothing otherwise,
 /// so render_set's identity run (CENSUS_IDENTITY=1) proves a render byte-identical with and without the collector.
 struct CensusMark: ViewModifier {
