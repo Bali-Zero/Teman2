@@ -36,6 +36,13 @@ by default; ``--purge-internal --apply`` deletes those exact point IDs and also
 applies pending price updates in the same run — use ``--only`` to narrow).
 Any refusal (old price not found exactly once, ambiguous name) exits non-zero and
 ``--apply`` then applies NOTHING.
+``--delete-orphans`` is a delete-only mode: it plans the deletion of every point whose
+payload ``name`` matches no catalog row (matched by ``row.get("name", key)`` over public
+AND internal rows, so a point of either kind is protected regardless of price). A point
+with no usable name, or a catalog with no rows, is a refusal. ``--apply`` needs
+``--expect-orphans N``, the count the reviewed dry run printed; any other count applies
+nothing. It writes deletes only and refuses ``--create-missing``, ``--purge-internal``
+and ``--only``.
 
 Usage:
     QDRANT_URL=... QDRANT_API_KEY=... python scripts/sync_pricing_collection_prices.py
@@ -46,6 +53,8 @@ Usage:
     ... --catalog PATH     # default: the canonical JSON in the repo; "-" reads stdin
     ... --only "New Company (PT PMA)"   # scope to one catalog name (repeatable)
     ... --create-missing [--apply]       # plan [and write] points for rows that have none
+    ... --delete-orphans                 # dry run: list points with no catalog row
+    ... --delete-orphans --expect-orphans N --apply   # delete exactly those N points
 """
 
 from __future__ import annotations
@@ -140,6 +149,23 @@ def internal_catalog_names(catalog: dict[str, Any]) -> frozenset[str]:
     return frozenset(
         row.get("name", key)
         for _cat, key, row in _iter_internal_service_rows(catalog.get("services", {}))
+    )
+
+
+def catalog_names(catalog: dict[str, Any]) -> frozenset[str]:
+    """Every catalog row name, public AND internal, whatever its price.
+
+    Same name rule as the price sync and the create path (``row.get("name", key)``).
+    Unlike ``catalog_prices`` it ignores price and duplicates: a row with no price or a
+    repeated name is still a catalog name.
+    """
+    services = catalog.get("services", {})
+    return frozenset(
+        row.get("name", key)
+        for _cat, key, row in (
+            *_iter_service_rows(services),
+            *_iter_internal_service_rows(services),
+        )
     )
 
 
@@ -351,6 +377,33 @@ def plan_creates(
     return creates, refusals
 
 
+def plan_orphan_deletes(
+    points: list[dict[str, Any]], catalog: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Points whose payload name matches no catalog row, and the refusals.
+
+    A point that cannot be named is never deleted, and an empty catalog never turns
+    every point into an orphan.
+    """
+    names = catalog_names(catalog)
+    if not names:
+        return [], [
+            "delete-orphans: the catalog has no rows - refusing to orphan every point"
+        ]
+    deletes: list[dict[str, Any]] = []
+    refusals: list[str] = []
+    for p in points:
+        name = (p.get("payload") or {}).get("name")
+        if not isinstance(name, str) or not name:
+            refusals.append(
+                f"{p['id']}: payload name missing or not a string - cannot be classified"
+            )
+            continue
+        if name not in names:
+            deletes.append({"id": p["id"], "name": name})
+    return deletes, refusals
+
+
 def print_plan(plan: Plan) -> None:
     for c in plan.creates:
         print(f"CREATE id={c['id']} {c['name']!r}: {c['payload']['price']}")
@@ -550,9 +603,21 @@ async def run(
     purge_internal: bool = False,
     create_missing: bool = False,
     embed: Embedder | None = None,
+    delete_orphans: bool = False,
+    expect_orphans: int | None = None,
 ) -> int:
     if create_missing and purge_internal:
         logger.error("--create-missing never deletes: drop --purge-internal")
+        return 1
+    if delete_orphans and (create_missing or purge_internal or only):
+        logger.error(
+            "--delete-orphans is delete-only: drop --create-missing, --purge-internal and --only"
+        )
+        return 1
+    if delete_orphans and apply and expect_orphans is None:
+        logger.error(
+            "--delete-orphans --apply needs --expect-orphans N (the count the dry run printed)"
+        )
         return 1
     url = os.environ.get("QDRANT_URL")
     key = os.environ.get("QDRANT_API_KEY")
@@ -577,12 +642,28 @@ async def run(
         if create_missing:
             plan.creates, create_refusals = plan_creates(points, catalog, today, only)
             plan.refusals.extend(create_refusals)
+        if delete_orphans:
+            plan.deletes, orphan_refusals = plan_orphan_deletes(points, catalog)
+            plan.refusals.extend(orphan_refusals)
         print_plan(plan)
         if plan.refusals:
             print("REFUSALS PRESENT - nothing applied")
             return 2
         if not apply:
             print("Dry-run only (default) - pass --apply to write")
+            return 0
+        if delete_orphans:
+            if len(plan.deletes) != expect_orphans:
+                print(
+                    f"ORPHAN COUNT {len(plan.deletes)} != --expect-orphans {expect_orphans} - nothing applied"
+                )
+                return 2
+            if plan.updates:
+                print(
+                    f"{len(plan.updates)} UPDATE(s) reported, not applied: --delete-orphans writes deletes only"
+                )
+            await _delete_points(client, url, headers, [d["id"] for d in plan.deletes])
+            print(f"DELETED {len(plan.deletes)} orphan point(s) from {COLLECTION_NAME}")
             return 0
         if create_missing:
             if plan.updates:
@@ -626,6 +707,21 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--delete-orphans",
+        action="store_true",
+        help=(
+            "plan deletion of points whose name matches no catalog row, public or "
+            "internal (delete-only; dry-run by default)"
+        ),
+    )
+    parser.add_argument(
+        "--expect-orphans",
+        type=int,
+        default=None,
+        metavar="N",
+        help="with --delete-orphans --apply: the orphan count the dry run printed",
+    )
+    parser.add_argument(
         "--catalog", default=str(DEFAULT_CATALOG), help="catalog JSON path or -"
     )
     parser.add_argument(
@@ -638,6 +734,14 @@ def main() -> int:
     args = parser.parse_args()
     if args.create_missing and args.purge_internal:
         parser.error("--create-missing never deletes: drop --purge-internal")
+    if args.delete_orphans and (
+        args.create_missing or args.purge_internal or args.only
+    ):
+        parser.error(
+            "--delete-orphans is delete-only: drop --create-missing, --purge-internal and --only"
+        )
+    if args.expect_orphans is not None and not args.delete_orphans:
+        parser.error("--expect-orphans only makes sense with --delete-orphans")
     only = frozenset(args.only) if args.only else None
     return asyncio.run(
         run(
@@ -646,6 +750,8 @@ def main() -> int:
             only=only,
             purge_internal=args.purge_internal,
             create_missing=args.create_missing,
+            delete_orphans=args.delete_orphans,
+            expect_orphans=args.expect_orphans,
         )
     )
 

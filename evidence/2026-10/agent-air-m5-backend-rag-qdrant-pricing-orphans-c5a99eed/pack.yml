@@ -1,0 +1,92 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-16, "go" in reply to the explicit yes/no asked after #8575 on two writes the
+  2026-10-15 ADD-ONLY authorization did not cover: (1) UPDATE the contact trailer of the 67
+  older points of bali_zero_pricing_hybrid with scripts/patch_pricing_contact_block.py, dry run
+  first; (2) DELETE the 17 points with no catalog row after mapping them one by one.
+mission: >-
+  Remove from the live pricing collection the 17 stale 2025 points that match no row of the
+  canonical 2026 catalog, so Zantara's pricing retrieval stops surfacing duplicates and prices
+  that are not official. This PR ships the delete-only tool; the apply runs from Pro with the
+  merged script. Write (1) needed no code and was applied with the merged patcher.
+lanes:
+  - lane: qdrant-pricing-orphans
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: qdrant-pricing-orphans
+    role: build
+    seat: claude-sonnet-5 (subagent, same worktree)
+pii_scan: clean
+bites: >-
+  Consumer: Zantara's agentic RAG vector_search and POST /api/search on
+  bali_zero_pricing_hybrid. Observation: after the merge, the merged script's --delete-orphans
+  dry run on Pro shows deletes=17 updates=0 creates=0, the apply with --expect-orphans 17
+  deletes them, the separate re-plan shows points_without_catalog_row=0 and in_sync=116, and
+  /api/search "KITAP MERP dependent price" no longer returns 'Dependent KITAP MERP' or
+  'MERP 1 Year' (both in its top 5 before).
+receipts:
+  - claim: The 22 new guilt/innocence tests and the 27 existing sync/purge/create tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py tests/scripts/test_sync_pricing_collection_prices_internal_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py scripts/test_sync_pricing_collection_prices.py
+    result: "49 passed in 0.19s"
+    exit: 0
+    ts: "2026-10-16T05:36:09Z"
+    seat: this session
+  - claim: Three mutants of the script are killed (catalog_names public-only; expect-count check removed; --only refusal dropped) and the script is restored byte-identical.
+    cmd: per mutant, a one-site edit then python3 -m pytest -q tests/scripts/test_sync_pricing_collection_prices_*.py, then cp back and compare
+    result: "5 / 1 / 1 tests red; restored, 39 passed"
+    exit: 0
+    ts: "2026-10-16T05:35:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Read-only dry run of this branch's script against the live collection from Pro plans exactly the 17 orphans and nothing else.
+    cmd: ssh pro, backend venv, wrapper loading only QDRANT_URL/QDRANT_API_KEY from apps/backend-rag/.env (never printed), sync_pricing_collection_prices.py --delete-orphans --catalog <branch catalog>
+    result: "SUMMARY updates=0 deletes=17 internal_points=0 refused=0 in_sync=116 catalog_rows_without_point=0 points_without_catalog_row=17 creates=0"
+    exit: 0
+    ts: "2026-10-16T05:36:22Z"
+    seat: this session
+  - claim: Write (1) - full backup before the patch (133 points, all with a 1536 dense vector), mirrored to M5 ~/Backups/qdrant, 0444.
+    cmd: ssh pro, backup_collection.py; scp to M5; shasum -a 256 on both
+    result: "qdrant-backup-20261016T053228Z.json points_count 133 with_dense_1536 133 sha256 b2534f4b9099ba8236a20a8b4f8c5f2f23585dc569d04cf51adaaeb3f3055af9"
+    exit: 0
+    ts: "2026-10-16T05:32:28Z"
+    seat: this session
+  - claim: Write (1) - the merged patcher (origin/main 6a5364540b, blob cb4433fd70) found 67 points with the bot's inbound number and patched them.
+    cmd: ssh pro, run_q.py merged/scripts/patch_pricing_contact_block.py, then --apply
+    result: "Found 67 point(s) with the retired contact block; Patched 67 point(s); 67 set-payload calls, no other write"
+    exit: 0
+    ts: "2026-10-16T05:32:59Z"
+    seat: this session
+  - claim: Write (1) - independent verification against the backup.
+    cmd: ssh pro, verify_patch.py qdrant-backup-20261016T053228Z.json
+    result: "live 133 backup 133 extra_ids 0 vectors_identical 133 payload_identical 66 whatsapp_line_only 67 bad 0 stale_numbers_left 0"
+    exit: 0
+    ts: "2026-10-16T05:33:30Z"
+    seat: this session
+  - claim: Write (1) - live, POST /api/search on the collection returns only the client-facing number.
+    cmd: curl /api/search collection=bali_zero_pricing_hybrid level=0 limit=5 for "Urgent 2 Hari price", "Investor KITAS price", "KITAP MERP dependent price"
+    result: "15 results: +62 821 3454 721 in 15, +62 821 3465 159 in 0, +62 813 3805 1876 in 0"
+    exit: 0
+    ts: "2026-10-16T05:34:30Z"
+    seat: this session
+decisions:
+  - id: D-names-not-prices
+    text: >-
+      Orphan detection uses every catalog row name, public and internal, whatever its price.
+      catalog_prices drops unpriced and duplicated names, so using it would turn the point of a
+      real row into an orphan.
+  - id: D-count-binds-apply
+    text: >-
+      --apply needs --expect-orphans N equal to the reviewed dry run's count, so a catalog that
+      changed or loaded short between review and apply deletes nothing.
+  - id: D-delete-only
+    text: >-
+      --delete-orphans refuses --create-missing, --purge-internal and --only and never applies
+      price updates: one mode, one kind of write.
+  - id: D-info-email-kept
+    text: >-
+      The older trailers keep info@balizero.com: it is the live settings.SUPPORT_EMAIL, not a
+      retired address. Only the WhatsApp line was wrong, which is what the patcher rewrites.
+dissent: []
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0

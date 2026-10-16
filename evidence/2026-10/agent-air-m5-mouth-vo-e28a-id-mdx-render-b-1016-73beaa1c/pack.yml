@@ -1,0 +1,912 @@
+gear: 3
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  Branch agent/air-m5/mouth/vo-e28a-id-mdx-render-b-1016 on origin/main (superseding frozen PR #8599 and #8604). Round 1 and the locale twins (ea2dc2429e) were
+  judged FIX-FIRST by two council seats; round 2 replaces the E28A and Investor KITAS bodies by short true bodies,
+  completes every twin, rewrites the truth test, updates test_e33_forbidden_claims.py and records the verdicts below.
+mission: >-
+  The E28A, Golden Visa and Investor KITAS guides (EN, ID, IT, FR, RU) and /visa/kitas state only what is traceable to
+  the official E28A-E28F pages (read 2026-10-15), the owner rulings of 2026-10-15 or Bali Zero's 2026 price list;
+  a truth test keeps them that way. Untraceable text is deleted, not softened.
+lanes:
+  - lane: e28-close-pr-d
+    role: build
+    seat: "claude-sonnet-5 implementer (worktree mouth-vo-e28a-id-mdx-render-1014 -> -1016)"
+  - lane: e28-close-pr-d-council-codex
+    role: review
+    seat: "codex-gpt-5.6-sol, read-only review: round 1 on ea2dc2429e FIX-FIRST (18 findings); round 2 on 76404e4c85 FIX-FIRST (15 of 18 cured, 3 partial)"
+  - lane: e28-close-pr-d-council-agy
+    role: review
+    seat: "agy-gemini-4-argon, read-only review: round 1 on ea2dc2429e FIX-FIRST; round 2 on 76404e4c85 PASS (LOW findings only)"
+  - lane: e28-close-pr-d-gate-astra
+    role: review
+    seat: "codex-gpt-6-astra, read-only final gate (owner override 2026-10-16: all Claude seats at quota limit): PASS on 0e9ecf604e, delta gate on successor branch"
+pii_scan: clean
+bites: >-
+  Consumer: the balizero.com article pages /immigration/e28a-investor-kitas-guide (EN and /id),
+  /visas/golden-visa-indonesia-complete-guide, /immigration/investor-kitas-guide and /visa/kitas, plus the apps/mouth
+  vitest run on every PR. Observation: after vercel promote, a live curl of each page shows the corrected sentence
+  (own shareholding of Rp 10 billion, all-inclusive price, USD tiers for E28B/C/D/F, ITAS and re-entry permit issued
+  automatically) and none of the guilt strings (E28G, KITAP pathway, embassy sticker, 183-day tax advice, IDR 350M,
+  Golden Visa (ITAP), a denial of directorship). The truth test (816 tests) guards the same in five locales.
+spend:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
+  paid_api: none
+  note: "One implementer session on subscription seats; no paid per-token API, no external seat in this lane."
+receipts:
+  - claim: "Truth test alone, first green run (167 tests), machine loaded so only the new file was run."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
+    result: "Test Files 1 passed (1); Tests 167 passed (167)"
+    exit: 0
+    ts: "2026-10-15T16:04:30Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation: the E28G sub-variant block appended to the E28A guide turns the truth test red on the guilt rule."
+    cmd: "cp e28a-investor-kitas-guide.mdx backup; append '### E28G: Representative of Parent Company' + IDR 10B+ line; npx vitest run src/content/e28-family-articles.truth.test.ts; cp backup back"
+    result: "1 failed | 166 passed: 'E28G does not exist :: e28a-investor-kitas-guide.mdx'; after cp restore the file is byte-equal (cmp) and the run is green, exit 0"
+    exit: 1
+    ts: "2026-10-15T16:04:42Z"
+    seat: claude-sonnet-5
+  - claim: "The six touched articles compile with the production MDX options (temporary one-off test, deleted afterwards)."
+    cmd: "vitest run of a temp test calling compileArticlesInChunks on the 6 files"
+    result: "1 passed"
+    exit: 0
+    ts: "2026-10-15T16:05:09Z"
+    seat: claude-sonnet-5
+  - claim: "Quiet window (load 7.5, no vitest/pytest) run: en + id + selftest MDX corpus guards, the truth test and three content integrity tests."
+    cmd: "cd apps/mouth && npx vitest run src/components/blog/MDXContentRSC.all-articles-en.test.tsx src/components/blog/MDXContentRSC.all-articles-id.test.tsx src/components/blog/MDXContentRSC.all-articles-selftest.test.tsx src/content/e28-family-articles.truth.test.ts src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts src/content/content-freshness-sentinel.test.ts"
+    result: "Test Files 8 passed (8); Tests 200 passed (200)"
+    exit: 0
+    ts: "2026-10-15T16:10:48Z"
+    seat: claude-sonnet-5
+  - claim: "After the readingTime edit: truth test plus three integrity tests re-run."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts"
+    result: "Test Files 4 passed (4); Tests 181 passed (181)"
+    exit: 0
+    ts: "2026-10-16T00:06:24Z"
+    seat: claude-sonnet-5
+    ts_note: "taken from date -u at the time; the host clock reads eight hours after the earlier receipts"
+  - claim: "Five-locale truth test (424 tests) first green run after the IT/FR/RU twins; it caught a real defect first (IT investor description 'IDR 10M')."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
+    result: "Test Files 1 passed (1); Tests 424 passed (424); quiet window load 3.9, no vitest/pytest"
+    exit: 0
+    ts: "2026-10-16T00:15:42Z"
+    seat: claude-sonnet-5
+    ts_note: "the first run at this stamp had 9 failures (IT description IDR 10M, RU regexes using \\w on Cyrillic, number normaliser); the green run followed after the cures, before 00:16:38Z"
+  - claim: "Compile guard over all fifteen E28 family articles; the first run was red on a pre-existing bare '<183' in the IT E28A twin (line 490), cured with &lt;."
+    cmd: "cd apps/mouth && npx vitest run src/components/blog/MDXContentRSC.e28-family.test.tsx"
+    result: "Test Files 1 passed (1); Tests 2 passed (2) after the cure"
+    exit: 0
+    ts: "2026-10-16T00:16:38Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation: an old ITAP / IDR 350.000.000 / USD 23.333 paragraph appended to golden-visa-indonesia-complete-guide.it.mdx turns the truth test red on three rules; restored by cp, byte-equal, green again."
+    cmd: "cp golden it backup; append old ITAP paragraph; npx vitest run src/content/e28-family-articles.truth.test.ts; cp backup back; rerun"
+    result: "red run: 3 failed | 421 passed (no IDR 350M; ITAP/permanent; ITAP at most once). Green run after cp restore: 424 passed"
+    exit: 1
+    ts: "2026-10-16T00:16:47Z"
+    seat: claude-sonnet-5
+  - claim: "Quiet-window full run: en + id corpus guards, self-test, E28 family compile guard, five-locale truth test, four content integrity tests."
+    cmd: "cd apps/mouth && npx vitest run src/components/blog/MDXContentRSC.all-articles-en.test.tsx src/components/blog/MDXContentRSC.all-articles-id.test.tsx src/components/blog/MDXContentRSC.all-articles-selftest.test.tsx src/components/blog/MDXContentRSC.e28-family.test.tsx src/content/e28-family-articles.truth.test.ts src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts src/content/content-freshness-sentinel.test.ts"
+    result: "Test Files 9 passed (9); Tests 459 passed (459); load 5.05, no vitest/pytest"
+    exit: 0
+    ts: "2026-10-16T00:17:12Z"
+    seat: claude-sonnet-5
+  - claim: "Floor recomputed the CI way: 43 files, +3722/-11532 against origin/main."
+    cmd: "python3 scripts/ci/evidence_paths.py --ref <branch>; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt --numstat-file numstat.txt"
+    result: "slug agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c; floor printed 3 (source: size)"
+    exit: 0
+    ts: "2026-10-16T00:18:30Z"
+    seat: claude-sonnet-5
+  - claim: "Round 2: truth test rewritten (whole-body match, forbidden families, required sentences, structure); first green run."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
+    result: "Test Files 1 passed (1); Tests 642 passed (642). The first run of the new file (00:58:48Z) had 10 failures, all in my own rules (a guilt sample the KITAP regex missed, the E25B pattern matching the year 2025, the company paid-up rule over-matching a sentence on the kitas page, a wrong Russian needle, one rule with a single guilt sample); cured, then this green run."
+    exit: 0
+    ts: "2026-10-16T01:00:29Z"
+    seat: claude-sonnet-5
+  - claim: "Round 2: fourteen mutations, one per new rule family, each red then restored by cp (cmp equal) and green again; the first truncation mutation (cut at line 200 of a 169-line file) was a no-op and stayed green, so it was repeated with a cut at line 110."
+    cmd: "python3 mut.py (scratchpad): cp backup, inject, vitest run src/content/e28-family-articles.truth.test.ts, cp restore, cmp"
+    result: "all fourteen red on the named rule, all restored equal, final run 642 passed; see mutation_receipts"
+    exit: 0
+    ts: "2026-10-16T01:02:05Z"
+    seat: claude-sonnet-5
+  - claim: "Round 2: quiet-window combined run of my own test files: five-locale truth test, E28 family compile guard (15 files), MDX corpus guards en and id, self-test, four content integrity tests."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts src/components/blog/MDXContentRSC.e28-family.test.tsx src/components/blog/MDXContentRSC.all-articles-selftest.test.tsx src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts src/content/content-freshness-sentinel.test.ts src/components/blog/MDXContentRSC.all-articles-en.test.tsx src/components/blog/MDXContentRSC.all-articles-id.test.tsx"
+    result: "Test Files 9 passed (9); Tests 677 passed (677)"
+    exit: 0
+    ts: "2026-10-16T01:02:37Z"
+    ts_note: "load average at start 8.27 (1 min), no vitest/pytest of other sessions; the same files without the truth test had finished green at 01:01:04Z (8 files, 35 tests, exit 0)"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: truth test extended (unit-error and extension-length guards restored, E28A prices bound to offshore/onshore/extension, KITAP guarantee, director prohibition, dividend withholding, E28D/E28F director-only, E28C establishment/salary, E28C ninety days, real FAQ YAML reader, ITAP negation scrub, 90-day visa validity and IDR 2,500,000,000 now innocent)."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
+    result: "Test Files 1 passed (1); Tests 784 passed (784). First runs of the new rules had 7 then 2 failures, all in my own rules (Cyrillic needle, 'né' matching 'négocier', price nearest-figure on 'offshore, 19 000 000'); cured, then green."
+    exit: 0
+    ts: "2026-10-16T04:55:00Z"
+    ts_note: "minute of the green run; log in the scratchpad"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: fifteen mutations, one per new rule (Codex's seven appended claims in EN, plus ID/IT/FR variants, the unit error, the extension length, the English FAQ question in the FR E28A twin, a non-negated ITAP sentence), each red then restored by cp (cmp equal) and green again."
+    cmd: "python3 mut3.py (scratchpad): cp backup, inject, vitest run src/content/e28-family-articles.truth.test.ts, cp restore, cmp"
+    result: "all fifteen red on the named rule, all restored equal, final run 784 passed; EN unit-error mutation re-run separately (red on 'the E28A threshold is 10 billion, never 10 million', restored equal)"
+    exit: 0
+    ts: "2026-10-16T04:57:39Z"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: quiet-window combined run of my own test files (truth test, 15-file compile guard, en/id corpus guards, selftest, four content-integrity tests)."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts src/components/blog/MDXContentRSC.e28-family.test.tsx src/components/blog/MDXContentRSC.all-articles-selftest.test.tsx src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts src/content/content-freshness-sentinel.test.ts src/components/blog/MDXContentRSC.all-articles-en.test.tsx src/components/blog/MDXContentRSC.all-articles-id.test.tsx"
+    result: "Test Files 9 passed (9); Tests 819 passed (819); load average 2.99 (1 min), no other vitest/pytest running"
+    exit: 0
+    ts: "2026-10-16T04:58:11Z"
+    seat: claude-sonnet-5
+  - claim: "Final-gate block cured: the FULL apps/mouth suite had 2 files / 3 tests red because of this branch (the Second Home claim-ratchet baseline listed 42 entries for text removed here; the E33 income-basis test pinned a line in the E28A guide). Full suite after the cure."
+    cmd: "cd apps/mouth && npx vitest run"
+    result: "Test Files 652 passed (652); Tests 10062 passed | 8 skipped (10070); 0 failed; duration 345 s"
+    exit: 0
+    ts: "2026-10-16T05:50:24Z"
+    ts_note: "started 05:44:38Z; load average 4.73 at start (1 min), no vitest/pytest running (the quiet-window probe counted its own shell once; the second probe, after one 120 s wait, read load 4.73)"
+    seat: claude-sonnet-5
+  - claim: "Final-gate block cured: my nine test files after the touch-up commit (truth test with Golden tier and swapped-price bindings, compile guard, en/id corpus guards, selftest, four content-integrity tests)."
+    cmd: "cd apps/mouth && npx vitest run <the nine files>"
+    result: "Test Files 9 passed (9); Tests 851 passed (851)"
+    exit: 0
+    ts: "2026-10-16T05:50:44Z"
+    ts_note: "load average 7.89 at start, no vitest/pytest running"
+    seat: claude-sonnet-5
+  - claim: "Six mutations for the new rules, each cp backup, red, cp restore, cmp equal, final run green (816 passed): ID Golden E28C 5-year tier 350.000 to 300.000 in the table row; EN Golden E28D 10-year tier 50M to 25M; EN E28A FAQ answer with offshore and onshore prices swapped; FR Investor FAQ answer swapped; 'BKPM Regulation 5/2025' appended to the EN E28A guide; 'Peraturan BKPM 5/2025' appended to the ID Investor guide."
+    cmd: "python3 mut5.py (scratchpad)"
+    result: "all six red on the named rule (Golden USD tiers match their code and duration; E28A prices match their service; the company threshold carries no regulation citation), all restored equal. The first run of the ID tier mutation replaced the frontmatter occurrence, not the table row, and stayed green; it was repeated on the table row and went red."
+    exit: 0
+    ts: "2026-10-16T05:40:30Z"
+    seat: claude-sonnet-5
+  - claim: "CI Backend Shard 2 cross-surface pin cured: test_e33_forbidden_claims.py updated so test_innocence_real_conjunction_sentences_stay_clean pins the new ITAS 5-or-10-year sentences in all 5 locales of golden-visa-indonesia-complete-guide.*.mdx, while the slash and repeated-unit regex branches exercise the Golden Visa fixtures and scan the 5 real files for 0 offenders."
+    cmd: "PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/pytest apps/backend-rag/backend/tests/services/visa_check/test_e33_forbidden_claims.py && python3 scripts/docs_sync.py --check"
+    result: "75 passed in 5.54s; DOCSYNC OK (generator valid; no protected hand-edits)"
+    exit: 0
+    ts: "2026-10-16T07:24:03Z"
+    seat: agy-gemini-4-argon
+mutation_receipts:
+  - mutant: "KITAP pathway: 'After 3 consecutive years on E28A you can apply for Investor KITAP.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no KITAP pathway or KITAP timeline :: e28a-investor-kitas-guide.mdx"
+    ts: "2026-10-16T01:01:28Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "embassy sticker / 7 days: Italian sentence 'Ritira l'adesivo del visto in ambasciata entro 7 giorni' appended to e28a-investor-kitas-guide.it.mdx"
+    killed_by: "no embassy Telex, visa sticker or 7-day conversion :: e28a...it.mdx"
+    ts: "2026-10-16T01:01:30Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "tax / 183 days: Indonesian '183 hari ... resident pajak' appended to investor-kitas-guide.id.mdx"
+    killed_by: "no tax percentages or 183-day advice :: investor...id.mdx"
+    ts: "2026-10-16T01:01:32Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "RPTKA price: French 'Le RPTKA coûte 1 200 USD' appended to e28a-investor-kitas-guide.fr.mdx"
+    killed_by: "no E25B / RPTKA / DKP-TKA prices :: e28a...fr.mdx"
+    ts: "2026-10-16T01:01:34Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "passive investment visa: Russian 'пассивная инвестиционная виза E28A' appended to investor-kitas-guide.ru.mdx"
+    killed_by: "no 'pure investor' and no passive-investment visa :: investor...ru.mdx"
+    ts: "2026-10-16T01:01:35Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "denial of directorship: 'You cannot sign contracts as director on an E28A.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no denial of directorship, supervision or signing on E28A :: e28a...mdx"
+    ts: "2026-10-16T01:01:37Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "fee split / PNBP: 'Government fees are separate; PNBP visa fee applies.' appended to investor-kitas-guide.mdx"
+    killed_by: "no E28A price other than 17/19/18M, no fee split, no PNBP :: investor...mdx"
+    ts: "2026-10-16T01:01:38Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "stray price: Indonesian 'Harga Rp 20.000.000 offshore' appended to e28a-investor-kitas-guide.id.mdx"
+    killed_by: "E28A / Investor figures :: e28a...id.mdx"
+    ts: "2026-10-16T01:01:39Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "E28C 90-day commitment: 'E28C requires a commitment fulfilled within 90 days after entry.' appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "no 90-day commitment on E28C and no 'commits within 90 days' wording :: golden...mdx"
+    ts: "2026-10-16T01:01:41Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "'commits within 90 days': Italian 'si impegna entro 90 giorni dall'ingresso' appended to golden-visa-indonesia-complete-guide.it.mdx"
+    killed_by: "no 'commits within 90 days' wording :: golden...it.mdx"
+    ts: "2026-10-16T01:01:42Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "E28G as a route: Russian E28G sentence appended to e28a-investor-kitas-guide.ru.mdx"
+    killed_by: "E28G is not a route :: e28a...ru.mdx"
+    ts: "2026-10-16T01:01:44Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "required sentence removed: 're-entry permit are issued automatically' reworded in golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "Golden guide [en] states re-entry permit are issued automatically"
+    ts: "2026-10-16T01:01:48Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "untranslated frontmatter: golden-visa-indonesia-complete-guide.fr.mdx title set to the English title"
+    killed_by: "golden...fr.mdx translates every user-visible frontmatter field"
+    ts: "2026-10-16T01:01:50Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "truncated twin: e28a-investor-kitas-guide.fr.mdx cut at line 110 (the first attempt at line 200 cut nothing, the file has 169 lines)"
+    killed_by: "three required sentences missing and the word ratio below 0.6x (7 failed)"
+    ts: "2026-10-16T01:02:01Z"
+    restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "E28A offshore 19M (Codex): 'E28A offshore costs IDR 19,000,000.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "E28A prices match their service :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28A offshore Rp 27 juta (ID): appended to e28a-investor-kitas-guide.id.mdx"
+    killed_by: "E28A prices match their service :: e28a...id.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28A guarantees KITAP (Codex): 'E28A guarantees KITAP.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no E28A KITAP guarantee :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "prohibited from acting as directors (Codex): appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no denial of directorship, supervision or signing on E28A :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "dividend withholding 10% (Codex): appended to investor-kitas-guide.mdx"
+    killed_by: "no tax percentages or 183-day advice :: investor...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28D neither directors nor commissioners (Codex): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "E28D and E28F are for a director or commissioner only :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28D non-directors (FR): French sentence appended to golden-visa-indonesia-complete-guide.fr.mdx"
+    killed_by: "E28D and E28F are for a director or commissioner only :: golden...fr.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28C company establishment and salary (Codex): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "E28C carries no company establishment and no post remuneration :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28C commitment within ninety days (Codex, spelled out): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "no 90-day commitment on E28C :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "unit error IDR 10M: 'The E28A shareholding minimum is IDR 10M.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "the E28A threshold is 10 billion, never 10 million :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "unit error Rp 10 juta (ID): appended to investor-kitas-guide.id.mdx"
+    killed_by: "the E28A threshold is 10 billion, never 10 million :: investor...id.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "renewable annually: appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no invented E28A extension length :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "extend for another 2 years (IT): 'Rinnova l'E28A per altri 2 anni' appended to e28a-investor-kitas-guide.it.mdx"
+    killed_by: "no invented E28A extension length :: e28a...it.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "English FAQ question in the FR E28A twin: the FR question line replaced by the English question"
+    killed_by: "e28a...fr.mdx translates every user-visible frontmatter field"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "non-negated ITAP sentence: 'The Golden Visa (ITAP) grants permanent residence.' appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "Golden Visa is an ITAS, not ITAP / permanent residence :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+defect_map:
+  e28a_en_and_id:
+    D1_work_rights: "frontmatter FAQ 1-3 and answerSnippet; title/H1/intro/'What is E28A' paragraph; key-characteristics Work Permission row; threshold scenarios 1-2; cost-comparison intro and Choose-E28A/E25B bullets; KITAP table Work permission row; Restrictions section (rewritten prohibited/can lists, dual-track option 1 and 2); body FAQ: can I work, below 10B, cost compare tail, become director, work for another company; Getting Started 'passive residence'"
+    D2_sub_variants_E28G: "intro 'seven sub-variants'; the whole '7 E28 Sub-Variants' section replaced by 'E28A and the Golden Visa Routes (E28B-E28F)' (E28E listed with no details, no E28G)"
+    D3_passport: "document checklist: 18 months -> at least 6 months (ID: minimal 6 bulan)"
+    D4_processing: "key table, step 4, extension processing, action plan: 5-7 -> 7-10 working days indicative, official stage five working days"
+    D5_extension: "KITAP plan 'Validity: 1 year' line; 'Extend for Another 2 Years' heading; extension price lines; price lists '(2 years)' removed; extension online by the sponsor, no length stated"
+    D6_sponsor: "key table Sponsor row; threshold paragraph states the PT PMA is the sponsor; PT PMA needs IDR 2.5 billion paid-up (BKPM 5/2025); 'Paid-up capital' bullet replaced by own shares"
+    D7_price: "Step 2 pricing, action-plan price list and extension: all-inclusive wording; description/excerpt/seoDescription"
+    other: "updatedAt 2026-10-15; tag 'passive investor Indonesia' -> 'investor visa Indonesia'"
+  golden_en_and_id:
+    G1_permanence: "title, H1 intro, 2026 Update card, Overview card ('Golden Visa (ITAP) grants permanent residence'), Golden-vs-KITAP comparison: replaced by ITAS 5 or 10 years, not ITAP/KITAP"
+    G2_thresholds: "IDR 350M/700M individual tiers and IDR 2.5B/5B corporate tiers, calculator, case studies, cost examples: replaced by the route table E28B/C/D/F in USD with the 90-day commitments and the E28C apartment option (USD 1,000,000, 10 years), E28E listed without details"
+    G3_vehicles: "property, bank deposit, 'PT PMA business investment' and SBN-only vehicle sections: not on the official pages; E28C vehicles are bonds, listed shares, mutual funds, apartment"
+    G4_sponsor_price_time: "'some types need a sponsor', 'Bali Zero can act as sponsor', itemised government fees and the 4-8 weeks processing: replaced by no sponsor, price on consultation, official stage five working days"
+    G5_frontmatter: "description, excerpt, tags, seoDescription, answerSnippet, 3 FAQ answers, updatedAt, readingTime 12 -> 4 (measured: EN 750 words, ID 702 words, ceil(words/200))"
+  investor_en_and_id:
+    I1_faq_director: "FAQ 'Can I work in my company' answer"
+    I2_paid_up: "requirements table: total company paid-up capital IDR 10 billion -> IDR 2.5 billion (BKPM 5/2025)"
+    I3_passport: "document checklist: 24+ months -> at least 6 months"
+    I4_director_box: "'Can you work' info card: investor + director paragraph"
+    I5_family_list: "other E28 categories list: E28B-E28F corrected, E28E no details"
+    I6_price: "costs section: Investor KITAS prices all-inclusive"
+    I7_id_description: "ID seo description 'IDR 10M' -> 'Rp 10 miliar'"
+    I8_work_row: "comparison table Work Allowed row"
+    I9_meta: "updatedAt 2026-10-15"
+  kitas_page:
+    K1_E28A_row_and_paragraph: "table row and section: own shareholding, sponsor, 2-year, all-inclusive prices, 7-10 hari kerja"
+    K2_E28D: "TOC entry, table row, section: representative office/KPPA replaced by the Golden Visa E28D (foreign company commits USD 25M/50M within 90 days), link to the Golden Visa guide; E28F noted; processing cell '5 hari kerja (official visa stage)'"
+golden_deleted_sections:
+  - section: "## What is the Golden Visa? (ITAP overview card)"
+    reason: "wrong: ITAP and permanent residence; superseded by the intro paragraph"
+  - section: "## Investment Tiers & Requirements (individual and corporate)"
+    reason: "wrong figure: IDR 350M/700M and IDR 2.5B/5B; superseded by '## The Golden Visa Routes'"
+  - section: "## Investment Vehicles (What Qualifies) (SBN, property, stocks, bank deposit, PT PMA)"
+    reason: "unsourced: property and deposit are not on the pages; real vehicles kept in the E28C row and details"
+  - section: "## Golden Visa vs KITAP Comparison"
+    reason: "wrong: compared two permanent permits; superseded by a short '## Golden Visa vs KITAP' plus the E28A comparison table"
+  - section: "## Application Process"
+    reason: "unsourced: 4-8 weeks, sponsor step, ITAP card; superseded by '## How to Apply' (e-visa, five working days)"
+  - section: "## Document Checklist"
+    reason: "unsourced: IDR 350M proof, sponsor letter; official documents kept in '## How to Apply'"
+  - section: "## Rights and Limitations"
+    reason: "unsourced and ITAP-based; superseded by '## What the Golden Visa Lets You Do'"
+  - section: "## Costs and Fees"
+    reason: "unsourced: itemised government fees and service fees; price on consultation, no split"
+  - section: "## Family Inclusion"
+    reason: "unsourced: ITAP dependent rules; the pages say only that family may be brought, kept as one bullet"
+  - section: "## Maintenance and Renewal"
+    reason: "wrong: 'full re-application at end', annual proof of investment; extendability is the official statement"
+  - section: "## Real-World Case Studies"
+    reason: "invented cases with IDR 350M thresholds and property/deposit vehicles"
+  - section: "## Who Should Consider Golden Visa?"
+    reason: "wrong figure: IDR 350M candidate profile"
+  - section: "## Common Questions"
+    reason: "wrong: ITAP, IDR 350M, vehicle-change questions"
+  - section: "## Golden Visa vs Other Long-Term Visa Options"
+    reason: "wrong: Golden Visa as permanent card, E28A 'renewable annually'; E28A comparison kept in a smaller table"
+  - section: "## Action Steps: How to Get Started"
+    reason: "unsourced: choose-vehicle and execute-investment steps for the wrong vehicles"
+twin_defect_map:
+  e28a_it_fr_ru:
+    D1_work_rights: "frontmatter FAQ and answerSnippet (English strings in FR/RU), title/H1/intro/what-is, key table Work Permission, scenarios, cost-comparison intro and Choose bullets, KITAP table work row, Restrictions section, option 1/2; IT also the body FAQ (can I work, below 10B, cost tail, become director, work elsewhere) and Getting Started"
+    D2_sub_variants_E28G: "the seven-sub-variant section replaced by 'E28A and the Golden Visa routes' (E28B-E28F, E28E no details, no E28G); intro sentence"
+    D3_passport: "18 months -> at least 6 months"
+    D4_processing: "key table, step 4, extension processing (IT also action plan): 5-7 -> 7-10 working days indicative, five working days official stage"
+    D5_extension: "'Validity: 1 year' line, 'Extend for another 2 years' heading and price lines; extended online by the sponsor, no length stated"
+    D6_sponsor: "Sponsor row; threshold paragraph names the PT PMA as sponsor and its IDR 2.5 billion paid-up capital; 'paid-up capital' bullet replaced by own shares"
+    D7_price: "step 2 pricing, extension price and (IT) action-plan list: all-inclusive wording"
+    other: "updatedAt; tag; IT bare '<183' escaped to &lt;183 (pre-existing compile break found by the new compile guard)"
+  golden_it_fr_ru:
+    G1_G5: "same as the EN/ID map: title, intro, body replaced by the short true body with the E28C apartment row (USD 1,000,000, 10 years), frontmatter, disclaimer date, sources line; readingTime by words/200 per file (IT 4, FR 5, RU 4)"
+    deleted_sections: "the same fifteen sections listed in golden_deleted_sections, per locale: IT, FR and RU carried the translations of the same headings"
+  investor_it_fr_ru:
+    I1_faq_director: "IT body of FAQ answer; FR and RU FAQ answers (English strings) set to the corrected English text"
+    I2_paid_up: "requirements table: total company paid-up capital IDR 10 billion -> IDR 2.5 billion"
+    I3_passport: "24+ months -> at least 6 months"
+    I4_director_box: "investor + director info card"
+    I5_family_list: "E28B-E28F list rewritten (E28F added, E28E no details, apartment option on E28C)"
+    I6_price: "costs section all-inclusive line"
+    I8_work_row: "comparison Work Allowed value"
+    I7_it_description: "IT description 'minima IDR 10M' -> 'IDR 10 miliardi' (found by the five-locale test)"
+    I9_meta: "updatedAt"
+decisions:
+  - id: D-gear-3
+    decision: "scripts/evidence_pack_lint.py --print-floor printed 3 (size: 43 files, +3722/-11532 against origin/main, evidence staged, computed the CI way from evidence_paths.py and a changed-files and numstat pair); the brief declares gear 3 with no gear_override. The council_run journal now records the two review seats that ran (codex-gpt-5.6-sol, agy-gemini-4-argon); seat_fallback_reason says why agy replaced kimi."
+  - id: D-golden-replace-not-patch
+    decision: "The Golden Visa guide rested on IDR 350M tiers, an ITAP permanent card and property/deposit vehicles end to end, so the body is replaced by a short true body (EN 48 lines in, 1155 out; ID the same; round 2 rewrote it again, now 125 lines per EN); the list above is the audit trail. Related Articles and Disclaimer kept, dated."
+  - id: D-other-locales
+    decision: "The ID, IT, FR and RU twins are live (?lang=) and are generated complete from the corrected English in this PR; the truth test and a compile guard cover all five locales, and each twin carries source_sha256 of the new English body."
+  - id: D-short-true-bodies
+    decision: "The E28A guide (167 lines EN, was about 720) and the Investor KITAS guide (137 lines EN, was about 470) are short true bodies under the traceability rule; the deleted sections and reasons are in deleted_sections_round2 and the kept claims in claim_map."
+dissent:
+  - seat: "team-lead Dux (coordinator message during the build)"
+    objection: "The Golden Visa guide going from 1261 to 154 lines in both locales is acceptable only if auditable, since the deleted body rested on the wrong thresholds."
+    status: CONFIRMED
+    disposition: "CURED: golden_deleted_sections lists every deleted section with a reason, readingTime is measured, the E28C apartment row is kept."
+  - seat: "codex-gpt-5.6-sol (council, review of ea2dc2429e)"
+    objection: "FIX-FIRST: substantial unsupported material remains (KITAP promises, company-capital eligibility, work-right contradictions, sticker journey, tax advice, incomplete documents), the FR/RU E28A twins are truncated and the truth guard accepts violations of its own mandate."
+    status: CONFIRMED
+    disposition: "Round 1 verdict, superseded by council_round2: 15 of 18 findings were cured by 76404e4c85 and 3 (10, 15, 16) only partly, cured in the touch-up round; per finding in council_verdicts and council_round2; the E28A and Investor KITAS bodies are rewritten, every twin is complete, the truth test is rewritten and mutation-tested."
+  - seat: "agy-gemini-4-argon (council, review of ea2dc2429e)"
+    objection: "FIX-FIRST: the same defect classes plus two points that are wrong: the Golden route link and the 'Investor KITAS 2 Years (Extend)' row name."
+    status: CONFIRMED
+    disposition: "CURED where confirmed; REJECTED with a reason for the link (route returns 200, owner ruling 11) and for the row name (exact Bali Zero price-row name); see council_verdicts."
+mutation_note: "An English-body mutation also turns the digest check red in the four twins (source_sha256 no longer matches), the intended coupling to scripts/translate-articles.py's stale detection."
+seat_fallback_reason: "kimi-code/k3 QUOTA_DEAD and tp1-qwen3.8-max MODEL_ERR in the arsenal probe of 2026-10-15 (SessionStart organism report, 2026-10-16T00:0xZ); agy-gemini-4-argon replaced kimi-code/k3."
+council_run: journal.jsonl
+council_verdicts:
+  - seat: codex-gpt-5.6-sol
+    verdict: FIX-FIRST
+    on: ea2dc2429e
+    findings:
+      - {
+          n: 1,
+          sev: HIGH,
+          what: "KITAP promises in both investor guides",
+          disposition: "CURED: the KITAP pathway, timelines and every KITAP promise are deleted from all ten E28A and Investor files; truth rule 'no KITAP pathway or KITAP timeline'",
+        }
+      - {
+          n: 2,
+          sev: HIGH,
+          what: "eligibility steps substitute company capital for own shareholding (e28a lines 204, 221)",
+          disposition: "CURED: both steps deleted with the whole application-process section; eligibility is the applicant's own IDR 10 billion, the IDR 2.5 billion is named only as the PT PMA's own figure; truth rule 'the E28A test is own shareholding'",
+        }
+      - {
+          n: 3,
+          sev: HIGH,
+          what: "work-right corrections contradict surviving restrictions",
+          disposition: "CURED: the restrictions sections, the 'cannot work/supervise/sign as director' lines and the dual-track strategy are deleted; the page's own prohibitions are the only ones stated; truth rule 'no denial of directorship'",
+        }
+      - {
+          n: 4,
+          sev: HIGH,
+          what: "journey contradicts automatic issuance (embassy sticker, 7-day conversion, card collection)",
+          disposition: "CURED: journey rewritten from df3ba889 lines 102-104 and 113; truth rule 'no embassy Telex, visa sticker or 7-day conversion' and a required sentence per locale",
+        }
+      - {
+          n: 5,
+          sev: HIGH,
+          what: "actionable tax advice (183 days, 10% withholding)",
+          disposition: "CURED: the whole tax section is deleted; truth rule 'no tax percentages or 183-day advice'",
+        }
+      - {
+          n: 6,
+          sev: MEDIUM,
+          what: "document checklists omit official items and invent others",
+          disposition: "CURED: the nine documents of df3ba889 lines 93-100 are listed in full, nothing else; required-sentence needles for each item in all five locales",
+        }
+      - {
+          n: 7,
+          sev: MEDIUM,
+          what: "family eligibility, C317, under-21, dependent prices beyond the source",
+          disposition: "CURED: family is one sentence plus the six Dependent KITAS price rows of the price list; C317, the under-21 rule and the family cost example are deleted",
+        }
+      - {
+          n: 8,
+          sev: MEDIUM,
+          what: "other unsupported commercial and operational claims",
+          disposition: "CURED: E25B/RPTKA/DKP-TKA comparison, case studies, calculator, blacklist durations, retirement/E33 content deleted; truth rules for E25B/RPTKA prices and hands-on-work",
+        }
+      - {
+          n: 9,
+          sev: MEDIUM,
+          what: "E28D/E28F eligibility incomplete (director or commissioner, committing company, 90 days)",
+          disposition: "CURED: director or commissioner appointment, the foreign company as committing party and fulfilment within 90 days after entry are in the Golden guide, and the E28A comparison points to it; required-sentence needles in five locales",
+        }
+      - {
+          n: 10,
+          sev: MEDIUM,
+          what: "Golden rights overgeneralised to E28C",
+          disposition: "CURED: rights are listed per code (B/D/F company establishment, board post, production supervision, post remuneration; D/F negotiate and sign; B education; C business and investment only)",
+        }
+      - {
+          n: 11,
+          sev: MEDIUM,
+          what: "commitment timing ambiguous (IT 'si impegna entro')",
+          disposition: "CURED: 'the statement of commitment goes with the application and the investment is fulfilled within 90 days after entry' in every locale (IT 'realizzato entro 90 giorni dall'ingresso'); no 90 days on E28C; truth rules 'no commits within 90 days wording' and 'no 90-day commitment on E28C'",
+        }
+      - {
+          n: 12,
+          sev: MEDIUM,
+          what: "official qualifications omitted",
+          disposition: "CURED: conversion to another limited-stay permit, automatic re-entry permit, international accounting firm for E28B, statement holder, photo spec, stateless and non-passport travel-document clause added to the Golden guide",
+        }
+      - {
+          n: 13,
+          sev: MEDIUM,
+          what: "FR and RU E28A twins truncated",
+          disposition: "CURED: every twin is generated from the same eleven-section structure; test: same number of ## sections as EN and a 0.6x-1.6x word ratio per twin",
+        }
+      - {
+          n: 14,
+          sev: MEDIUM,
+          what: "served locale metadata untranslated",
+          disposition: "CURED: every user-visible frontmatter field (title, description, excerpt, seoTitle, seoDescription, primaryQuestion, answerSnippet, faq questions and answers, coverImageAlt, investor seo.title/description/keywords and image.alt) is translated; test: no field byte-identical to EN",
+        }
+      - {
+          n: 15,
+          sev: MEDIUM,
+          what: "truth guard accepts concrete violations",
+          disposition: "CURED: whole-body matching, new rule families with guilt in EN plus other locales, stray-price check, required sentences; fourteen mutations in mutation_receipts",
+        }
+      - {
+          n: 16,
+          sev: MEDIUM,
+          what: "innocence coverage rejects permitted statements",
+          disposition: "CURED: innocence samples for passive shareholders, 'E28G is not a current visa', the PT PMA's own IDR 2.5 billion, negated KITAP, 'Investor KITAS 2 Years (Extend)', all asserted",
+        }
+      - {
+          n: 17,
+          sev: LOW,
+          what: "translation wording (rotte, su consulenza, surat penutup)",
+          disposition: "CURED: IT 'percorsi', 'prezzo su richiesta', 'lettera di richiesta del visto'; ID 'surat permohonan', 'rekening giro'; FR no 'famille de routes'; RU 'цена по запросу'; the '40% cheaper' comparison is deleted",
+        }
+      - {
+          n: 18,
+          sev: LOW,
+          what: "E28A reading times understated",
+          disposition: "CURED: readingTime is ceil(words/200) on each body and a test pins it",
+        }
+  - seat: agy-gemini-4-argon
+    verdict: FIX-FIRST
+    on: ea2dc2429e
+    findings:
+      - {
+          n: "1.1",
+          sev: HIGH,
+          what: "investor guide denies signing as director; 'pure investors' framing",
+          disposition: "CURED: the investor guide is now a short overview of the same facts; rules 'no denial of directorship' and 'no pure investor'",
+        }
+      - {
+          n: "1.2",
+          sev: HIGH,
+          what: "embassy sticker and 7-day conversion in E28A and investor guides",
+          disposition: "CURED: see Codex 4",
+        }
+      - {
+          n: "1.3",
+          sev: HIGH,
+          what: "E28A omits USD 2,000 statement, CV, itinerary, 90-day grace; conflates company capital with own shareholding",
+          disposition: "CURED: see Codex 2 and 6",
+        }
+      - {
+          n: "1.4",
+          sev: HIGH,
+          what: "'Investor KITAS 2 Years (Extend)' implies a 2-year extension",
+          disposition: "REJECTED: that is the exact name of the Bali Zero price row (apps/backend-rag/backend/data/bali_zero_official_prices_2026.json, services kitas_permits, 18,000,000); the row name stays and a test asserts it",
+        }
+      - {
+          n: "1.5",
+          sev: MEDIUM,
+          what: "passive-investment headings and case study; E28D/E28F without director-only and 90 days",
+          disposition: "CURED: the tax section and case studies are deleted; see Codex 9; rule 'no pure investor and no passive-investment visa'",
+        }
+      - {
+          n: "1.6",
+          sev: MEDIUM,
+          what: "investor calculator models shareholding as a share of company paid-up capital; ID 'Modal Dasar'",
+          disposition: "CURED: the calculator is deleted from every investor file",
+        }
+      - {
+          n: "2.1",
+          sev: HIGH,
+          what: "FR and RU E28A twins truncated",
+          disposition: "CURED: see Codex 13",
+        }
+      - {
+          n: "2.2",
+          sev: MEDIUM,
+          what: "frontmatter left in English across twins",
+          disposition: "CURED: see Codex 14",
+        }
+      - {
+          n: "2.3",
+          sev: LOW,
+          what: "calques and untranslated table labels",
+          disposition: "CURED: see Codex 17; all table labels are translated",
+        }
+      - {
+          n: "3",
+          sev: MEDIUM,
+          what: "Golden guide drops re-entry permit, status conversion, E28B education, accounting-firm requirement",
+          disposition: "CURED: see Codex 12",
+        }
+      - {
+          n: "4.1",
+          sev: MEDIUM,
+          what: "'/visas/golden-visa-indonesia-complete-guide' is a broken link",
+          disposition: "REJECTED: that route returns 200 and '/immigration/...' redirects (308) to it; it is owner ruling 11; the links are kept",
+        }
+      - {
+          n: "4.2",
+          sev: LOW,
+          what: "inconsistent readingTime and source_sha256; unused MDX imports",
+          disposition: "CURED: readingTime by words/200, source_sha256 recomputed with scripts/translate-articles.py's own functions from each new EN body in every twin, unused imports removed; all three asserted by the test",
+        }
+      - {
+          n: "5",
+          sev: HIGH,
+          what: "truth test blind spots (narrow director regex, no pure-investor pattern, no extend rule, no E28C 90-day, line-by-line, no parity)",
+          disposition: "CURED: see Codex 15; whole-body matching, structure and frontmatter parity added (the 'Extend' point is REJECTED as in 1.4 and inverted into a required sentence)",
+        }
+claim_map:
+  e28a-investor-kitas-guide.mdx:
+    - {
+        claim: "E28A is a limited-stay visa (ITAS), extendable, convertible to another limited-stay permit",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:69",
+      }
+    - {
+        claim: "It needs a sponsor, the PT PMA invested in",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:88",
+      }
+    - {
+        claim: "Bali Zero sells the E28A for 2 years",
+        source: "owner ruling 3",
+      }
+    - {
+        claim: "Own shareholding of at least IDR 10 billion in the sponsoring company registered with the Ministry of Investment/BKPM",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:98; owner ruling 1",
+      }
+    - {
+        claim: "Passive shareholders admitted; no post required",
+        source: "owner ruling 2",
+      }
+    - {
+        claim: "Below IDR 10 billion with a post (director or commissioner): a work visa for that post",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:98",
+      }
+    - {
+        claim: "The PT PMA's own paid-up capital of IDR 2.5 billion is the company's threshold",
+        source: "owner ruling 1 (company figure only, no regulation citation)",
+      }
+    - {
+        claim: "Rights: invest, business/investment/company-establishment, board of directors or commissioners, supervise production, family, exit and re-enter, education via Rangkap Kegiatan Izin Tinggal, investment, tourism, visiting",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:67",
+      }
+    - {
+        claim: "Prohibitions: overstaying, work not matching the permit, selling goods or services unless the work requires it",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:105",
+      }
+    - {
+        claim: "Nine documents: application letter; passport 6 months; 3-month statement of USD 2,000 in the foreigner's or sponsor's name; recent colour photo within a year; CV; itinerary; shareholding proof; Ministry of Law decision; company current-account statements for 2 months with the 90-day exception",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:93-100",
+      }
+    - {
+        claim: "Apply online at evisa.imigrasi.go.id with an account",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:90-92",
+      }
+    - {
+        claim: "Visa stage five working days after the visa fee is paid",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:113",
+      }
+    - {
+        claim: "Bali Zero typically 7-10 working days (indicative)",
+        source: "owner ruling 8",
+      }
+    - {
+        claim: "Visa valid 90 days from issuance for entry",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:102",
+      }
+    - {
+        claim: "ITAS and re-entry permit issued automatically on admission at the checkpoint",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:104",
+      }
+    - {
+        claim: "Stay counts from the date of arrival",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:71",
+      }
+    - {
+        claim: "Sponsor extends the stay online through its evisa.imigrasi.go.id account; Imigrasi states no extension length",
+        source: "research/visa/2026-10-15-e28-pages/text/df3ba889:72",
+      }
+    - {
+        claim: "Price all-inclusive: Offshore 17,000,000; Altus/Onshore 19,000,000; Extend 18,000,000",
+        source: "owner ruling 4; apps/backend-rag/backend/data/bali_zero_official_prices_2026.json rows Investor KITAS 2 Years (Offshore), (Altus/Onshore), (Extend)",
+      }
+    - {
+        claim: "Dependent KITAS for children or dependent family members of a primary KITAS/KITAP holder: 1 Year 11,000,000 / 13,500,000 / 9,000,000; 2 Years 15,000,000 / 18,000,000 / 15,000,000",
+        source: "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json rows Dependent 1 Year and Dependent 2 Years",
+      }
+    - {
+        claim: "E28A vs Golden table: Golden is ITAS 5 or 10 years, no sponsor, USD amounts, price on consultation",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:84; owner ruling 5",
+      }
+    - {
+        claim: "Links to the Golden guide, the investor overview, E25B, E23 and KBLI guides",
+        source: "internal links, targets exist (git ls-files)",
+      }
+  golden-visa-indonesia-complete-guide.mdx:
+    - {
+        claim: "Golden Visa is a family of E28 investor visas, each an ITAS of 5 or 10 years, extendable, convertible, no sponsor, not ITAP or KITAP",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:74,84; research/visa/2026-10-15-e28-pages/text/2cdb5b81:73,83; research/visa/2026-10-15-e28-pages/text/dd5e2a06:74,85; research/visa/2026-10-15-e28-pages/text/74e25e50:74,85",
+      }
+    - {
+        claim: "Bali Zero handles E28B/C/D/F at price on consultation",
+        source: "owner ruling 5",
+      }
+    - {
+        claim: "E28B: company establishment with issued capital or investment of at least USD 2,500,000 (5 y) / USD 5,000,000 (10 y), commitment fulfilled within 90 days after entry",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:109,113",
+      }
+    - {
+        claim: "E28C: Indonesian government bonds, listed shares or mutual funds of at least USD 350,000 (5 y) / USD 700,000 (10 y), or an apartment of at least USD 1,000,000 (10 y); no 90-day commitment",
+        source: "research/visa/2026-10-15-e28-pages/text/2cdb5b81:108-109; owner ruling 7",
+      }
+    - {
+        claim: "E28D: director or commissioner of a branch or subsidiary of a foreign company, commitment USD 25,000,000 (5 y) / USD 50,000,000 (10 y) by the foreign company within 90 days of entry",
+        source: "research/visa/2026-10-15-e28-pages/text/dd5e2a06:69-71,108-110; owner ruling 6",
+      }
+    - {
+        claim: "E28F: the same in IKN, USD 5,000,000 / USD 10,000,000",
+        source: "research/visa/2026-10-15-e28-pages/text/74e25e50:69-71,108-110; owner ruling 6",
+      }
+    - {
+        claim: "E28E: listed by Imigrasi with no published details",
+        source: "research/visa/2026-10-15-e28-pages/text/5b9dd676 (no details)",
+      }
+    - {
+        claim: "E28B also requires proof of shares in a company outside Indonesia and of its turnover, in financial statements audited to international standards; list of international public accounting firms",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:107-114",
+      }
+    - {
+        claim: "Rights per code (B/D/F company establishment, board post, production supervision, post remuneration; D/F negotiate and sign; B education via Rangkap Kegiatan Izin Tinggal; C business and investment and returns on investment)",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:76-78; research/visa/2026-10-15-e28-pages/text/2cdb5b81:74-77; research/visa/2026-10-15-e28-pages/text/dd5e2a06:76-79; research/visa/2026-10-15-e28-pages/text/74e25e50:76-79",
+      }
+    - {
+        claim: "Prohibitions on all four",
+        source: "research/visa/2026-10-15-e28-pages/text/2cdb5b81:79-81 (same wording on B, D, F)",
+      }
+    - {
+        claim: "Application: account at evisa.imigrasi.go.id; passport 6 months; 3-month statement USD 2,000; recent colour photo within a year; CV; itinerary",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:100-102",
+      }
+    - {
+        claim: "Stateless or non-passport travel-document clause: re-entry permit to the country where the visa is applied for and a return or onward ticket, except crew",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:136; research/visa/2026-10-15-e28-pages/text/2cdb5b81:111; research/visa/2026-10-15-e28-pages/text/dd5e2a06:112; research/visa/2026-10-15-e28-pages/text/74e25e50:112",
+      }
+    - {
+        claim: "Visa stage five working days; visa valid 90 days; ITAS and re-entry permit automatic",
+        source: "research/visa/2026-10-15-e28-pages/text/4ba3c1a3:137-139; research/visa/2026-10-15-e28-pages/text/2cdb5b81:112-114",
+      }
+    - {
+        claim: "Comparison with E28A (sponsor, own shareholding of IDR 10 billion, 17,000,000 offshore all-inclusive)",
+        source: "same sources as the E28A claim map",
+      }
+  investor-kitas-guide.mdx:
+    - {
+        claim: "Every fact in the table, eligibility, rights, price and next steps is the same as the E28A guide and links to it",
+        source: "see the e28a-investor-kitas-guide.mdx entries; no fact appears here that does not appear there",
+      }
+deleted_sections_round2:
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "Key Characteristics; The IDR 10 Billion Threshold (what counts, below 10B, example scenarios)",
+      reason: "company-capital framing and invented scenarios; replaced by Who Qualifies",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A vs E25B: Cost Comparison and When to Choose E28A",
+      reason: "E25B/RPTKA/DKP-TKA prices and savings are in no source",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A and the Golden Visa Routes (E28B-E28F) summary bullets",
+      reason: "incomplete restatement of the Golden pages; replaced by a short table and a link",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A Document Requirements Checklist (personal, company, proof of investment, additional)",
+      reason: "omitted official items and invented others; replaced by the nine documents of the page",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A Application Process: Step-by-Step (7 steps)",
+      reason: "Step 1 company capital commitment, embassy sticker, 7-day conversion, physical card; replaced by The Journey",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "Tax Implications of E28A Passive Investment (residency, dividend withholding, planning)",
+      reason: "no source; 183-day advice and rates",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "The KITAP Pathway: From E28A to Permanent Residence (eligibility, benefits, 3-year plan)",
+      reason: "no source for any KITAP promise",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A Restrictions: What You CANNOT Do (prohibited activities, working on E28A, dual-track strategy)",
+      reason: "contradicted the page's grant of directorship and production supervision; the page's own prohibitions kept",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "Real-World Use Cases (three case studies)",
+      reason: "invented cases",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A Extension After 2 Years (extend or upgrade to KITAP)",
+      reason: "no extension length and no KITAP route in the sources; one sentence kept in The Journey",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "E28A + Family: Dependent Visas (C317, under 21, total family cost, restrictions)",
+      reason: "rules and prices not in the sources; replaced by the Dependent KITAS price rows",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "Frequently Asked Questions (eleven sections in the body)",
+      reason: "KITAP, tax, E25B, C317, time-abroad questions untraceable; five FAQ entries kept in the frontmatter",
+    }
+  - {
+      file: "e28a-investor-kitas-guide.mdx",
+      section: "Getting Started: Action Plan",
+      reason: "repeated unsupported steps and price lists; Contact Bali Zero kept",
+    }
+  - {
+      file: "investor-kitas-guide.mdx",
+      section: "What is Investor KITAS; Investor vs Worker KITAS; Investment Requirements; Application Process; Document Requirements",
+      reason: "calculator of company paid-up capital, 6-10 week timeline, documents not on the page; replaced by At a Glance and Who Qualifies",
+    }
+  - {
+      file: "investor-kitas-guide.mdx",
+      section: "Can You Work on Investor KITAS?; What Not Working Means",
+      reason: "denied directorship and signing; pure-investor framing",
+    }
+  - {
+      file: "investor-kitas-guide.mdx",
+      section: "Benefits of Investor KITAS",
+      reason: "KITAP pathway and tax promises",
+    }
+  - {
+      file: "investor-kitas-guide.mdx",
+      section: "Common Questions; Related Investor Visa Options",
+      reason: "KITAP, timeline and E25B/RPTKA questions; the E28B-E28F list lives in the Golden guide",
+    }
+  - {
+      file: "golden-visa-indonesia-complete-guide.mdx",
+      section: "round 2 edits only: rights paragraph made per-code; What Each Route Requires and the stateless clause added; unused imports removed",
+      reason: "Codex 10-12, Gemini 3 and 4.2 (nothing further deleted; the fifteen round-1 sections are in golden_deleted_sections)",
+    }
+council_round2:
+  note: "Round-2 councils on 76404e4c85: agy-gemini-4-argon PASS (LOW findings only, gates/council-D2-agy-verdict.md); codex-gpt-5.6-sol FIX-FIRST, 15 of 18 round-one findings cured, 3 partial (gates/council-D2-codex-verdict.md). Seats and start times in journal.jsonl lines 3 and 4."
+  codex:
+    - {
+        n: 10,
+        was: "PARTIAL: E28C unrestricted mutual funds",
+        disposition: "CURED here: E28C mutual funds are funds in publicly listed companies in Indonesia in the table, the E28C bullet, the answerSnippet, the excerpt and the FAQ, all five locales (official E28C page line 106)",
+      }
+    - {
+        n: 15,
+        was: "PARTIAL: numeric check does not bind amounts to services; seven appended claims pass",
+        disposition: "CURED here: E28A offshore/onshore/extension prices are bound to their service (Dependent rows excluded), plus targeted entity-bound rules for KITAP guarantee, director prohibition, dividend withholding, E28D/E28F director-only, E28C establishment and salary, E28C ninety days incl. spelled-out numbers; one mutation each",
+      }
+    - {
+        n: 16,
+        was: "PARTIAL: negated (ITAP) sample rejected",
+        disposition: "CURED here: negated ITAP sentences are scrubbed before matching; 'not an ITAP', 'not permanent residence (ITAP)' and the IT form are innocence samples; a non-negated '(ITAP)' sentence is still red",
+      }
+    - {
+        n: "new 1",
+        was: "IDR 10M and 'renewable annually' guards lost in the rewrite",
+        disposition: "CURED here: 'the E28A threshold is 10 billion, never 10 million' and 'no invented E28A extension length' rules with guilt in five locales; 'Investor KITAS 2 Years (Extend)' stays an innocence sample",
+      }
+    - {
+        n: "new 2",
+        was: "rules reject source-backed statements (90-day visa validity, IDR 2,500,000,000)",
+        disposition: "CURED here: the E28C 90-day rule is bound to commitment/fulfilment wording; 'E28C visas must be used within 90 days of issuance' is an innocence sample; 2500000000 joins the E28A figures and has its own test",
+      }
+    - {
+        n: "new 3",
+        was: "translation assertion ignored '- question:' lines",
+        disposition: "CURED here: the reader parses the real YAML '- question:' / 'answer:' lines and block scalars; a unit test pins the reader; mutation: the English FAQ question in the FR E28A twin is red",
+      }
+    - {
+        n: "retained BKPM",
+        was: "BKPM Regulation 5/2025 attribution unsupported",
+        disposition: "CURED here: removed from the 15 files and visa/kitas/page.mdx; the IDR 2.5 billion stays only as the PT PMA's own paid-up threshold (owner ruling 1)",
+      }
+    - {
+        n: "retained K E33E",
+        was: "HIGH: E33E work-rights prohibition contradicts the price source (kitas page line 81)",
+        disposition: "BACKLOG, not touched: not E28 and pre-existing; visa/kitas/page.mdx is not routed live (https://balizero.com/visa/kitas is a soft 404, checked by the Dux), so no live page states it",
+      }
+    - {
+        n: "retained K marriage/student",
+        was: "marriage-processing and student-transfer instructions on visa/kitas/page.mdx unsupported (lines 69, 91)",
+        disposition: "BACKLOG, not touched: not E28, pre-existing, page not routed live",
+      }
+    - {
+        n: "retained K MDX",
+        was: "visa/kitas/page.mdx fails the article MDX parser on the {#...} heading ids",
+        disposition: "BACKLOG, not touched: the heading ids are pre-existing and content/visa/* is not routed live, so the article compile guard rightly does not cover it",
+      }
+  agy:
+    - {
+        verdict: PASS,
+        note: "only LOW findings; none requires a change in this round",
+      }
+  documented_limit: "The truth test is a canned-pattern guard: entity-scoped rules with guilt and innocence samples, whole-body matching, required sentences, price binding and structure. It does not establish sentence-level truth; a new false claim phrased outside the patterns passes. The claim_map and the per-claim sources are the audit of truth; the test keeps the known defect classes from coming back."
+backlog:
+  - "visa/kitas/page.mdx E33E blanket work prohibition vs price source (not E28; page not routed live)"
+  - "visa/kitas/page.mdx marriage-processing and student-transfer instructions (not E28; page not routed live)"
+  - "visa/kitas/page.mdx {#...} heading ids fail the article MDX parser (page not routed live; fix only if the route is ever enabled)"
+backlog_added_after_final_gate:
+  - "second-home-visa-indonesia (EN, ID) lines 121-122 still call the E33E/E33F income basis 'proven passive income' (E33 content, not E28, pre-existing); the retargeted e33-income-basis test is scoped to the E28 family and does not claim this file"
+final_gate_cure:
+  - {
+      block: "B1 secondhome-article-claims.test.ts: baseline listed 42 entries for text this branch removed (E28A 5, Golden 37; no new hits)",
+      cure: "42 stale entries removed from secondhome-article-claims.baseline.json (273 to 231 entries), exactly the ones the test run listed as missing; the test's own message says 'remove stale baseline entries', so shrinking is the convention; the ratchet test passes with no other change",
+    }
+  - {
+      block: "B1 e33-income-basis-copy.test.ts pinned an E33E/E33F 'income or allowance' line in the E28A guide (EN and ID)",
+      cure: "No article still carries that comparison line, so there was nothing to retarget to. The E28A guide now says only what the E28A page says and no E33 text was put back. The test keeps its purpose, re-scoped: no line of the 15 E28 family files states an E33E/E33F passive-income basis, with EN and ID guilt and innocence fixtures",
+    }
+  - {
+      notice: "N1 price binding gaps",
+      cure: "Golden USD tiers are bound per code and per duration in the route-table rows (E28B 2.5M/5M, E28C 350k and 700k or the 1M apartment, E28D 25M/50M, E28F 5M/10M) in all five locales; E28A offshore/onshore/extension prices are bound on every line of the E28A and Investor files (not only lines naming the visa) and paired in order inside a sentence, so a swap is red",
+    }
+  - {
+      notice: "N3 stale BKPM 5/2025",
+      cure: "removed from the claim map; the test fixture no longer carries it as an innocence sample; new rule 'the company threshold carries no regulation citation' holds it only as a GUILT sample in four locales. The defect_map lines that mention it are history of what was removed",
+    }
+  - {
+      notice: "N4 bookkeeping",
+      cure: "adversarial_rounds 2 (round 1 both seats, round 2 both seats); lanes describe both rounds plus Astra gate; bites and brief.yml say 816 tests and 35 mutations; brief.yml gear_reason numstat updated; journal.jsonl line 2 records seat_fallback_reason and line 5 records the Astra gate",
+    }
+  - {
+      block: "CI Backend Shard 2 on PR #8599: test_e33_forbidden_claims.py TestMouthContentSecondHomeDuration pinned 11 pre-rewrite sentences in golden-visa-indonesia-complete-guide.{mdx,it.mdx,id.mdx,fr.mdx,ru.mdx}",
+      cure: "test_innocence_real_conjunction_sentences_stay_clean updated to pin the 5 new true ITAS 5-or-10-year sentences in golden-visa-indonesia-complete-guide.{mdx,it.mdx,id.mdx,fr.mdx,ru.mdx}; test_innocence_real_golden_slash_stays_clean and test_innocence_real_golden_repeated_unit_stays_clean exercise the slash and repeated-unit regex branches on the Golden Visa fixtures and scan all 5 real files for 0 offenders (75 passed, DOCSYNC OK)",
+    }

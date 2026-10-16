@@ -1,4 +1,4 @@
-"""B15: Pro's host floor of 90 GB, held through the run — the start floor, the mid-run eviction and its no-verdict."""
+"""B15: Pro's host floor of 50 GB, held through the run — the start floor, the mid-run eviction and its no-verdict."""
 from __future__ import annotations
 
 import json
@@ -42,14 +42,14 @@ def fast(monkeypatch):
     monkeypatch.setattr(mg, "EVICT_SAMPLE_S", 0.2)
 
 
-def test_the_floor_is_90_and_a_run_starts_at_100_by_default(world):   # noqa: F811
-    assert (mg.HOST_FLOOR_GB, mg.START_MARGIN_GB, mg.EVICT_MARGIN_GB) == (90.0, 10.0, 1.5)
+def test_the_floor_is_50_and_a_run_starts_at_60_by_default(world):   # noqa: F811
+    assert (mg.HOST_FLOOR_GB, mg.START_MARGIN_GB, mg.EVICT_MARGIN_GB) == (50.0, 10.0, 1.5)
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
-    assert mg.main([*args, "--host-free-gb", "99.9"]) == 0
-    assert world.journal()[-1]["why"] == "host_below_floor" and world.journal()[-1]["start_floor_gb"] == 100.0
+    assert mg.main([*args, "--host-free-gb", "59.9"]) == 0
+    assert world.journal()[-1]["why"] == "host_below_floor" and world.journal()[-1]["start_floor_gb"] == 60.0
     assert not [r for r in world.journal() if r["kind"] == "decision"]
-    assert mg.main([*args, "--host-free-gb", "100"]) == 0 and [r for r in world.journal() if r["kind"] == "decision"]
+    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r for r in world.journal() if r["kind"] == "decision"]
 
 
 def test_the_runner_is_guarded_in_plan_and_run_and_the_status_read_is_not(world):   # noqa: F811
@@ -58,7 +58,7 @@ def test_the_runner_is_guarded_in_plan_and_run_and_the_status_read_is_not(world)
     by = {c["sub"]: c["guard"] for c in world.runner.calls}
     assert by["status"] is None
     for sub in ("plan", "run"):
-        assert by[sub].floor_gb == 90.0 and by[sub].evict_gb == 91.5
+        assert by[sub].floor_gb == 50.0 and by[sub].evict_gb == 51.5
 
 
 def test_a_guard_off_flag_runs_the_runner_unguarded(world):   # noqa: F811
@@ -68,20 +68,20 @@ def test_a_guard_off_flag_runs_the_runner_unguarded(world):   # noqa: F811
     assert {c["guard"] for c in world.runner.calls} == {None}
 
 
-@pytest.mark.parametrize("free,low", [(91.5, False), (91.49, True), (140.0, False), (89.6, True)])
+@pytest.mark.parametrize("free,low", [(51.5, False), (51.49, True), (140.0, False), (49.6, True)])
 def test_the_eviction_floor_is_the_floor_plus_one_and_a_half(free, low):
-    assert mg.HostGuard(90.0, Path("/x"), measure=lambda: free).breach() == (low, free)
+    assert mg.HostGuard(50.0, Path("/x"), measure=lambda: free).breach() == (low, free)
 
 
 def test_a_statvfs_that_fails_three_times_in_a_row_is_below_the_floor(tmp_path):
     reads = iter([None, None, None])
-    guard = mg.HostGuard(90.0, tmp_path, measure=lambda: next(reads))
+    guard = mg.HostGuard(50.0, tmp_path, measure=lambda: next(reads))
     assert [guard.breach()[0] for _ in range(3)] == [False, False, True]
 
 
 def test_a_good_reading_resets_the_blind_count(tmp_path):
     reads = iter([None, None, 150.0, None, None])
-    guard = mg.HostGuard(90.0, tmp_path, measure=lambda: next(reads))
+    guard = mg.HostGuard(50.0, tmp_path, measure=lambda: next(reads))
     assert [guard.breach()[0] for _ in range(5)] == [False] * 5
 
 
@@ -93,8 +93,8 @@ def test_a_sample_under_the_eviction_floor_stops_the_group_and_removes_exactly_t
     argv = ["sh", "-c", f"sleep 60 & echo $! > {pidfile}; wait"]
     t0 = time.monotonic()
     with pytest.raises(mg.HostEvicted) as ev:
-        mg.runner_exec(argv, tmp_path, dict(os.environ), 120, guard=mg.HostGuard(90.0, run_a, docker, measure=lambda: 88.0))
-    assert time.monotonic() - t0 < 30 and ev.value.free_gb == 88.0 and ev.value.floor_gb == 90.0 and ev.value.removed == 2
+        mg.runner_exec(argv, tmp_path, dict(os.environ), 120, guard=mg.HostGuard(50.0, run_a, docker, measure=lambda: 48.0))
+    assert time.monotonic() - t0 < 30 and ev.value.free_gb == 48.0 and ev.value.floor_gb == 50.0 and ev.value.removed == 2
     child = int(pidfile.read_text())
     for _ in range(50):   # the whole process group went, the sleep the shell started included
         try:
@@ -112,7 +112,7 @@ def test_a_sample_under_the_eviction_floor_stops_the_group_and_removes_exactly_t
 
 def test_a_host_above_the_floor_never_evicts_and_the_runner_finishes(tmp_path, fast):
     res = mg.runner_exec([sys.executable, "-c", "import time; time.sleep(1); print('done')"], tmp_path, dict(os.environ), 30,
-                         guard=mg.HostGuard(90.0, tmp_path, "/bin/false", measure=lambda: 300.0))
+                         guard=mg.HostGuard(50.0, tmp_path, "/bin/false", measure=lambda: 300.0))
     assert res.returncode == 0 and res.stdout.strip() == "done"
 
 
@@ -120,8 +120,8 @@ def test_an_eviction_reads_the_checks_in_flight_from_the_run_state(tmp_path):
     (tmp_path / "state").mkdir()
     (tmp_path / "state" / "state.json").write_text(json.dumps({"checks": {"ctx.b": {"status": "RUNNING"}, "ctx.a": {"status": "RUNNING"},
                                                                           "ctx.c": {"status": "PASS"}}}))
-    assert mg.HostGuard(90.0, tmp_path).in_flight() == ["ctx.a", "ctx.b"]
-    assert mg.HostGuard(90.0, tmp_path / "none").in_flight() == []
+    assert mg.HostGuard(50.0, tmp_path).in_flight() == ["ctx.a", "ctx.b"]
+    assert mg.HostGuard(50.0, tmp_path / "none").in_flight() == []
 
 
 def test_the_merger_label_is_the_runners(tmp_path):
@@ -137,7 +137,7 @@ def evicting(overall_run_rc=0):
     def run(argv, cwd, env, timeout, guard=None):
         if argv[3] == "run" and state["evict"]:
             inner(argv, cwd, env, timeout, guard)   # plan was seen; the run is cut
-            raise mg.HostEvicted(89.2, 90.0, ["ctx.backend-tests"], 3)
+            raise mg.HostEvicted(49.2, 50.0, ["ctx.backend-tests"], 3)
         return inner(argv, cwd, env, timeout, guard)
     return run, state, inner
 
@@ -148,7 +148,7 @@ def test_an_eviction_is_the_hosts_no_verdict_never_a_decision_and_the_pr_is_deci
     world.gh.prs = [pr(1, world.head1)]
     assert world.tick() == 0
     (ev,) = [r for r in world.journal() if r["kind"] == "evicted"]
-    assert ev["why"] == "host_below_floor_during_run" and (ev["free_gb"], ev["floor_gb"], ev["context_in_flight"]) == (89.2, 90.0, ["ctx.backend-tests"])
+    assert ev["why"] == "host_below_floor_during_run" and (ev["free_gb"], ev["floor_gb"], ev["context_in_flight"]) == (49.2, 50.0, ["ctx.backend-tests"])
     assert ev["pr"] == 1 and ev["head_sha"] == world.head1 and ev["containers_removed"] == 3
     assert not [r for r in world.journal() if r["kind"] in ("decision", "would_enqueue", "would_merge")]
     assert world.gql.mutations() == [] and not (world.state / "lease.json").exists() and not list((world.state / "cand").glob("*"))
@@ -247,7 +247,7 @@ def test_the_floor_print_names_both_floors(world, capsys):   # noqa: F811
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
     assert mg.main([*args, "--host-free-gb", "50"]) == 0
-    assert "floor_gb=90 start_floor_gb=100" in capsys.readouterr().out
+    assert "floor_gb=50 start_floor_gb=60" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("raw,watched", [("", False), ("abc", False), ("1", False), ("0", False), ("4242", True)])

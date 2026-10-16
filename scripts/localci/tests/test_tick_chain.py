@@ -45,41 +45,55 @@ def run_predicate(tmp_path, before, after, rc=0, raw_after=None):
     [row("pushed", pr=1)],
     [row("lease_reclaimed"), SEALED, row("would_enqueue"), row("would_merge")],
     [row("skipped", why="head_moved"), SEALED],
-], ids=["sealed-decision", "ready-refreshed", "ready-refresh-failed", "pushed", "decision-among-neutral-rows", "skip-then-decision"])
+    [row("decision", error=None, seal=SEAL, overall="PASS", host_no_verdict={})],   # merger.py journals the field on every sealed decision: empty is the verdict case
+], ids=["sealed-decision", "ready-refreshed", "ready-refresh-failed", "pushed", "decision-among-neutral-rows", "skip-then-decision", "empty-host-no-verdict"])
 def test_each_verdict_kind_chains(tmp_path, rows):
     ok, why = run_predicate(tmp_path, [], rows)
     assert ok, why
 
 
-@pytest.mark.parametrize("rows", [
-    [row("decision", error="boom", seal=SEAL, overall="ERROR")],
-    [row("decision", error=None, seal=None, overall="ERROR")],
-    [row("decision", error=None, seal=SEAL[:63])],
-    [row("decision", error=None, seal=SEAL.upper())],
-    [row("decision", error=None, seal=SEAL + "0")],
-    [row("decision", error=None, seal=SEAL + "\n")],
-    [row("decision", error=None)],
-    [row("decision", error=None, seal=SEAL, host_no_verdict=["host_disk_full"])],
-    [row("evicted", why="host_below_floor_during_run")],
-    [SEALED, row("merge_error", error="x")],
-    [SEALED, row("merged"), row("push_refused")],
-    [SEALED, row("merged"), row("push_unlanded")],
-    [SEALED, row("storage_diverged")],
-    [row("merge_error", error="x")],
-    [row("push_unlanded")],
-    [row("push_refused")],
-    [row("storage_diverged")],
-    [row("error", error="fetch")],
-    [SEALED, row("evicted")],
-    [row("pushed"), row("push_unlanded")],
-    [row("skipped", why="lease")],
-    [row("skipped", why="host_below_floor"), row("refused", why="fork")],
-    [],
-], ids=["error-set", "seal-null", "seal-63-hex", "seal-uppercase", "seal-65-hex", "seal-trailing-newline", "host-no-verdict", "stop-merge_error-beside-sealed", "stop-push_refused-beside-sealed", "stop-push_unlanded-beside-sealed", "stop-storage_diverged-beside-sealed", "seal-absent", "evicted", "merge_error", "push_unlanded", "push_refused",
-        "storage_diverged", "error-row", "evicted-beside-sealed", "stop-beside-pushed", "skip-lease", "only-skips", "nothing-appended"])
+NON_VERDICTS = {
+    "error-set": [row("decision", error="boom", seal=SEAL, overall="ERROR")],
+    "seal-null": [row("decision", error=None, seal=None, overall="ERROR")],
+    "seal-63-hex": [row("decision", error=None, seal=SEAL[:63])],
+    "seal-uppercase": [row("decision", error=None, seal=SEAL.upper())],
+    "seal-65-hex": [row("decision", error=None, seal=SEAL + "0")],
+    "seal-trailing-newline": [row("decision", error=None, seal=SEAL + "\n")],
+    "seal-absent": [row("decision", error=None)],
+    "host-no-verdict": [row("decision", error=None, seal=SEAL, host_no_verdict=["host_disk_full"])],
+    "host-no-verdict-mapping": [row("decision", error=None, seal=SEAL, host_no_verdict={"ctx.e2e-tests": "host_disk_below_floor"})],
+    "evicted": [row("evicted", why="host_below_floor_during_run")],
+    "stop-merge_error-beside-sealed": [SEALED, row("merge_error", error="x")],
+    "stop-push_refused-beside-sealed": [SEALED, row("merged"), row("push_refused")],
+    "stop-push_unlanded-beside-sealed": [SEALED, row("merged"), row("push_unlanded")],
+    "stop-storage_diverged-beside-sealed": [SEALED, row("storage_diverged")],
+    "merge_error": [row("merge_error", error="x")],
+    "push_unlanded": [row("push_unlanded")],
+    "push_refused": [row("push_refused")],
+    "storage_diverged": [row("storage_diverged")],
+    "error-row": [row("error", error="fetch")],
+    "evicted-beside-sealed": [SEALED, row("evicted")],
+    "push_unlanded-beside-pushed": [row("pushed"), row("push_unlanded")],
+    "skip-lease": [row("skipped", why="lease")],
+    "only-skips": [row("skipped", why="host_below_floor"), row("refused", why="fork")],
+    "nothing-appended": [],
+}
+
+
+@pytest.mark.parametrize("rows", list(NON_VERDICTS.values()), ids=list(NON_VERDICTS))
 def test_each_non_verdict_does_not_chain(tmp_path, rows):
     ok, why = run_predicate(tmp_path, [], rows)
     assert not ok and why
+
+
+def test_each_id_names_its_own_case():
+    """The ids once drifted against their cases (B33 S1 L2): a case holding a stop row or a host no-verdict says so in its id, and only then."""
+    for name, rows in NON_VERDICTS.items():
+        kinds = {r["kind"] for r in rows}
+        for kind in ("merge_error", "push_refused", "push_unlanded", "storage_diverged", "evicted"):
+            assert (kind in kinds) == (kind in name.replace("-", "_")), (name, kind)
+        assert any(r.get("host_no_verdict") for r in rows) == name.startswith("host-no-verdict"), name
+        assert (not rows) == (name == "nothing-appended"), name
 
 
 def test_rc_not_zero_never_chains_even_beside_a_sealed_decision(tmp_path):

@@ -272,4 +272,19 @@ describe("BillingPage", () => {
     render(<BillingPage />);
     expect(screen.getByText("No invoices yet")).toBeInTheDocument();
   });
+
+  it("payment proof: hidden until payment_proofs is served, then only on the unpaid invoice", () => {
+    mockState({ data: BILLING });
+    const { unmount } = render(<BillingPage />);
+    expect(screen.queryByText("Upload payment proof")).not.toBeInTheDocument();
+    unmount();
+    const invoices = BILLING.invoices.map((i) => ({
+      ...i,
+      payment_proofs: [],
+    }));
+    mockState({ data: { ...BILLING, invoices } });
+    render(<BillingPage />);
+    expect(screen.getAllByText("Upload payment proof")).toHaveLength(1);
+    expect(screen.getByLabelText("Upload payment proof for INV-2026-002"));
+  });
 });

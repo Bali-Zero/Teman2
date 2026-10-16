@@ -1,0 +1,51 @@
+brief_ref: evidence/2026-10/agent-air-m5-ops-nlm-0155-update-0ee25fe7/brief.yml
+pii_scan: clean
+dissent: []
+receipts:
+  - claim: Bridge, auth sentinel, watchdog and export-client tests passed (82 tests).
+    cmd:
+      ssh pro 'cd ~/nuzantara/.worktrees/ops-nlm-0155-verify && ~/venvs/nlm-bridge-0155-candidate/bin/python
+      -m pytest -q apps/nlm-bridge/test_nlm_bridge.py scripts/tests/test_auth_sentinel_nlm.py scripts/tests/test_nlm_watchdog.py
+      scripts/tests/test_nb_export_client.py'
+    exit: 0
+    ts: "2026-10-16T05:56:33.600020+00:00"
+    seat: codex-builder
+  - claim: Candidate 0.15.5 client authenticated and notebook-list response was a list; content withheld.
+    cmd:
+      Candidate Python loaded cached profile, constructed NotebookLMClient and called list_notebooks
+      with output reduced to booleans.
+    exit: 0
+    ts: "2026-10-16T05:56:33.600020+00:00"
+    seat: codex-builder
+  - claim: Candidate environment has no broken package requirements.
+    cmd: ssh pro '~/venvs/nlm-bridge-0155-candidate/bin/python -m pip check'
+    exit: 0
+    ts: "2026-10-16T05:56:33.600020+00:00"
+    seat: codex-builder
+  - claim: Working-tree patch has no whitespace errors.
+    cmd: git diff --check
+    exit: 0
+    ts: "2026-10-16T05:56:33.600020+00:00"
+    seat: codex-builder
+runtime:
+  cli_target: 0.15.5
+  bridge_candidate_validated: true
+  bridge_runtime_switch: pending_independent_release
+  skills_installed:
+    - M5
+    - Pro
+    - Mini
+  mcp_server_identity: notebooklm-mcp
+lanes:
+  - lane: nlm-runtime
+    role: build
+    seat: codex
+  - lane: independent-review
+    role: review
+    seat: claude-opus-5-5
+independent_review:
+  status: SUSPENDED
+  reason:
+    Approved Claude OAuth seats are organization-disabled, unavailable or capped. Last seat reached
+    its session limit during review. No reviewer verdict was produced.
+  reset_hint: 15:30 Asia/Makassar, 2026-10-16

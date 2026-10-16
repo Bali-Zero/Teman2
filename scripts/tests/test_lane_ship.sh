@@ -105,6 +105,12 @@ echo "FAKE_GH: unhandled invocation: $*" >&2
 exit 99
 FAKEGH
   chmod +x "$W/bin/gh"
+  # B31: the helper reads the label back; the fake answers "valid" once the fake gh saw an --add-label
+  cat > "$W/bin/verify" <<'FAKEVERIFY'
+#!/usr/bin/env bash
+grep -q -e '--add-label' "$FAKE_GH_LOG" 2>/dev/null
+FAKEVERIFY
+  chmod +x "$W/bin/verify"
 
   # Real bare "origin" — a local filesystem remote, no network involved.
   git init --quiet --bare "$W/origin.git"
@@ -137,6 +143,7 @@ run() {
   shift 2
   OUT="$(env LANE_SHIP_REPO="test-owner/test-repo" \
              FAKE_GH_LOG="$LOG" FAKE_GH_STATE="$W/fgh" \
+             SIGNAL_INTENT_VERIFY="$W/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 \
              PATH="$W/bin:$PATH" \
              bash "$LANE_SHIP" "$wt" "$title" "$@" 2>"$W/stderr")"
   RC=$?
