@@ -1126,8 +1126,8 @@ def test_headroom_at_120_nothing_is_shed(tmp_path, monkeypatch):   # innocence
 
 
 def test_headroom_leaves_the_start_floor_where_it_was(tmp_path, monkeypatch):
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 100)   # at the start floor, under the pressure line: a prune sheds, no run is blocked
-    assert mg.HOST_FLOOR_GB + mg.START_MARGIN_GB == 100 and mg.RUN_HEADROOM_GB == 15
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 60)   # at the start floor, under the pressure line: a prune sheds, no run is blocked
+    assert mg.HOST_FLOOR_GB + mg.START_MARGIN_GB == 60 and mg.RUN_HEADROOM_GB == 15
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
     line = prune_line(state, docker)
     assert line["pressure_gb"] == 115 and line["host_pressure"] is True

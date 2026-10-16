@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: a61258be72b0c0e267bae9ee930199f7f57e61d7b02851024b35e61b8bbea812 # pragma: allowlist secret
+checksum: 973e64735c9464f7ba4692396c559e20e7e024d900c185a84cb1cd95f18bf963 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3303,9 +3303,9 @@ organs:
     label: com.nuzantara.disk-floor
   severity_on_silence: warning
   notes: 'LOCALCI-SOVEREIGN B6 (docs/specs/localci-sovereign-2026-10-07.md, RULED 2026-10-08:
-    Pro keeps > 90 GB free, always; Zero 2026-10-11, lowered from 100): reads df -Pk /System/Volumes/Data every 30 min
-    (StartInterval 1800, no KeepAlive). ok above 90 GB, warning 60-90, failed under
-    60 (written as error); the note carries the free GB and, when not ok, the three
+    Pro keeps > 50 GB free, always; Zero 2026-10-16, lowered from 90): reads df -Pk /System/Volumes/Data every 30 min
+    (StartInterval 1800, no KeepAlive). ok above 60 GB, warning 50-60, failed under
+    50 (written as error); the note carries the free GB and, when not ok, the three
     biggest top-level directories of ~. Kill switch PRO_DISK_FLOOR_ENABLED=false.
     Born via organ_birth.py.'
   cicatrix_refs: []

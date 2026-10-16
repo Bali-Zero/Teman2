@@ -451,16 +451,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
     "b6-undated-run-trimmed": (PRUNE, '        if age_h is None or age_h < TREE_PACK_STALE_H:', '        if age_h is not None and age_h < TREE_PACK_STALE_H:', (PRUNE_T,)),
-    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
+    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free (start floor) no run starts
+    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
-    # B15: Pro's host floor of 90 GB, held through the run
-    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "b6-merger-floor-59": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "59.0"), B6_FLOOR),
+    # B15: Pro's host floor of 50 GB, held through the run
+    "floor-start-50": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "50.0"), HF),
     "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
     "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
     "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
@@ -593,10 +593,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
     "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
     # B6-4: pro.disk_floor — ok above 90 GB, warning 60-90, failed under 60
-    "b6-floor-organ-ok-at-90": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
-    "b6-floor-organ-ok-above-91": (FLOOR_SH, "OK_ABOVE_MB=90000 ", "OK_ABOVE_MB=91000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-ok-at-60": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-61": (FLOOR_SH, "OK_ABOVE_MB=60000 ", "OK_ABOVE_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-49": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=49000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-51": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=51000 ", (FLOOR_T,)),
     "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',

@@ -515,8 +515,8 @@ def drop_worktree(repo: Path, path: Path) -> None:
 # own pip install, re-run verbatim on purpose). kubelet's node-pressure model: a soft threshold to START (floor + START_MARGIN_GB),
 # a hard one to EVICT mid-run (floor + EVICT_MARGIN_GB), and image GC under pressure (prune.py). An eviction is the host's
 # no-verdict, never the candidate's: it is journalled apart from `decision`, so the same (pr, head, base) is decided again.
-HOST_FLOOR_GB = 90.0     # Zero, 2026-10-11, lowered from 100
-START_MARGIN_GB = 10.0     # the start floor is 100
+HOST_FLOOR_GB = 50.0     # Zero, 2026-10-16, lowered from 90 (was 100 before 2026-10-11)
+START_MARGIN_GB = 10.0     # the start floor is 60
 EVICT_MARGIN_GB = 1.5
 RUN_HEADROOM_GB = 15.0      # prune sheds second slots under start floor + this. Measured on Pro 2026-10-13: a prune at 19:21Z saw 104.9 GB free and PR 8441 was evicted at 19:44Z at 91.48, so one run uses >= 13.4 GB
 EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
