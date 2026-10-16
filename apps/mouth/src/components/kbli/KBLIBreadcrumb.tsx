@@ -19,11 +19,7 @@ export function KBLIBreadcrumb({ items }: Props) {
     >
       {items.map((item, i) => (
         <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && (
-            <span className="opacity-40" aria-hidden="true">
-              /
-            </span>
-          )}
+          {i > 0 && <span aria-hidden="true">/</span>}
           {item.href ? (
             <Link
               href={item.href}

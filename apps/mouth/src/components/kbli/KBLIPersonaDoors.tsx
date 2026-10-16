@@ -48,7 +48,7 @@ export function KBLIPersonaDoors() {
             key={id}
             href="#search"
             onClick={() => handleDoorClick(id)}
-            className="block p-4 rounded-xl transition-all duration-200 cursor-pointer no-underline bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.07)] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)]"
+            className="block p-4 rounded-xl transition-all duration-200 cursor-pointer no-underline bg-[var(--kbli-bg-surface)] border border-[var(--border)] hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.12)]"
           >
             <Icon size={18} strokeWidth={1.8} className="text-zinc-400 mb-2" />
             <div className="text-[14px] font-semibold text-zinc-100 mb-1">

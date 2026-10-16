@@ -41,7 +41,7 @@ export function KBLISectorBrowser({ sections }: { sections: KBLISection[] }) {
   const tab = (active: boolean) =>
     `inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-300 ${
       active
-        ? "bg-white/[0.10] text-white border border-white/[0.14]"
+        ? "bg-[var(--kbli-bg-surface)] text-white border border-[color:var(--border-strong)]"
         : "text-zinc-400 border border-transparent hover:text-white hover:bg-white/[0.06]"
     }`;
 
@@ -50,7 +50,7 @@ export function KBLISectorBrowser({ sections }: { sections: KBLISection[] }) {
       <div
         role="tablist"
         aria-label="Sector view"
-        className="mb-4 inline-flex gap-1 rounded-full border border-white/[0.08] bg-white/[0.03] p-1 backdrop-blur-md"
+        className="mb-4 inline-flex gap-1 rounded-full border border-[var(--border)] bg-[var(--kbli-bg-surface)] p-1 backdrop-blur-md"
       >
         <button
           type="button"

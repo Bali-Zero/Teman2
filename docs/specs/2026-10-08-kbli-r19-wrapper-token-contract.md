@@ -1061,17 +1061,14 @@ by the painters (`SPEC-W0d-census.md` §2).
 - **Nine pages, 54 captures.** `/kbli/sectors`, its first sector (`/kbli/sectors/[id]`, the
   first card the server links, resolved at run time), `/kbli/builder` and `/kbli/decoder` join
   the five. The armed apps/mouth test loads the eight fixed routes.
-- **One walk is declared not judgeable: `zantara-pending` at `mobile/system-dark`.** Every text
-  run of the state is over-image (a gradient-clip title, the "OSS Intelligence System" badge on a
+- **One walk was declared not judgeable on `origin/main`, and W2''' puts it back: `zantara-pending` at `mobile/system-dark`.** On `origin/main` every text
+  run of the state was over-image (a gradient-clip title, the "OSS Intelligence System" badge on a
   non-uniform ground with a spread of 15 against the limit of 6, a bubble on a gradient); the
   composer holds a placeholder, which the probe does not read, and the typing line is `sr-only`.
-  The walk would end `failed:over-image-only`, and that rule is unchanged. The scenario leaves
-  the list under a named row (`NOT_JUDGEABLE` in the census), the census prints
-  `declared-not-judgeable: zantara-pending mobile/system-dark` after `opened-surfaces:`, and a
-  test pins the declared list to exactly that variant: another variant without a row here fails.
-  **Binding for W2''':** the badge gets a solid plate (constraint C2, text never over imagery);
-  W2''' then puts the variant back in the walks and shows it `ok`. The exemption ends there.
-  That makes 50 opened walks, and 146 scenarios (rest 72, kbli 33, explorer 17, shared 24).
+  The walk would end `failed:over-image-only`, and that rule is unchanged. W2''' gives the badge
+  and bubble solid plates and removes the gradient clip, empties `NOT_JUDGEABLE`, puts the variant
+  back in the walks and shows it `ok`.
+  That makes 51 opened walks, and 147 scenarios (rest 72, kbli 34, explorer 17, shared 24).
 
 **Verdict states.** Each walk prints one state:
 
@@ -1382,8 +1379,7 @@ state-rows-unseen: 0
 state-colors-off-contract: 0
 page-grounds-off-contract: 0
 surfaces-unclaimed: 0
-opened-surfaces: 50 ok, 0 failed
-declared-not-judgeable: zantara-pending mobile/system-dark
+opened-surfaces: 51 ok, 0 failed
 opened-outside-wrapper: 0
 opened-grounds-off-contract: 0
 ground-resolver-disagree: 0
@@ -1392,20 +1388,21 @@ shared-component-drift: 0
 opened-text-below-4.5: 0
 ```
 
-- **W0d asserts the instrument lines only:** `scenarios-off-manifest: 0`, `captures: 54 ok, 0 failed`,
-  `surfaces-unclaimed: 0`, `opened-surfaces: 50 ok, 0 failed`, `shared-touched-unpinned: 0` and
-  `shared-component-drift: 0`. The others are reported on `origin/main` (§8.4) and gated by
-  W2'''.
-- **A declared walk is listed.** `declared-not-judgeable:` follows `opened-surfaces:` while
-  `NOT_JUDGEABLE` holds a variant (W0d-3b-2a); the exit step prints it with the other lines, and W2'''
-  removes it with the exemption.
+- **W0d asserted the instrument lines only; W2''' gates all fifteen:** `scenarios-off-manifest: 0`, `captures: 54 ok, 0 failed`,
+  `read-but-undefined: 0`, `colors-outside-direction-a: 0`, `state-rows-unseen: 0`,
+  `state-colors-off-contract: 0`, `page-grounds-off-contract: 0`, `surfaces-unclaimed: 0`,
+  `opened-surfaces: 51 ok, 0 failed`, `opened-outside-wrapper: 0`,
+  `opened-grounds-off-contract: 0`, `ground-resolver-disagree: 0`,
+  `shared-touched-unpinned: 0`, `shared-component-drift: 0` and `opened-text-below-4.5: 0`.
+- **A declared walk is listed when `NOT_JUDGEABLE` is non-empty.** `declared-not-judgeable:` followed `opened-surfaces:` while
+  `NOT_JUDGEABLE` held a variant (W0d-3b-2a); W2''' empties `NOT_JUDGEABLE` and removes the line with the exemption.
 - **The assert step proves itself.** CI replays it on a log carrying `: 1` and on an INCOMPLETE
   log; both must exit 1.
 
 ## 9. Amendment 2026-10-10: the census in parts (W0d-3a)
 
 In one CI job the census took 28 min 39 s on its 30 captures (W0d-2'), against a 75-minute
-timeout, and W0d-3 grows it to 54 captures and 50 walks. CI therefore runs it in parts, side by
+timeout, and W0d-3 grows it to 54 captures and 51 walks. CI therefore runs it in parts, side by
 side. Every count it prints is unchanged.
 
 **The one list.** `scenarios()` lists every scenario of a full run in the order the run takes
@@ -1414,11 +1411,11 @@ them, each with the one part that runs it:
 | part       | scenarios                                                            | count |
 | ---------- | -------------------------------------------------------------------- | ----- |
 | `rest`     | the 54 captures (9 pages in 6 states) and the 18 state walks of §7.5 | 72    |
-| `kbli`     | the opened-surface walks of §8.4 on `/kbli` and the three code pages | 33    |
+| `kbli`     | the opened-surface walks of §8.4 on `/kbli` and the three code pages | 34    |
 | `explorer` | the opened-surface walks of §8.4 on `/kbli-explorer`                 | 17    |
 | `shared`   | the shared-component walks of §8.5                                   | 24    |
 
-W0d-3b-2 grew the list from 89 to 146 (rest 40 → 72, kbli 18 → 33, explorer 7 → 17).
+W0d-3b-2 grew the list from 89 to 146, and W2''' puts `zantara-pending mobile/system-dark` back to make 147 (rest 40 → 72, kbli 18 → 34, explorer 7 → 17).
 
 `--part P` runs the scenarios of P and nothing else. With no `--part`, the census runs the whole
 list in one job, as before. Either way the server answers every route the scenarios load before
@@ -1448,12 +1445,7 @@ holds. A dump from before the parts has no list, and its replay prints no S line
   timeout each, except the `full` dispatch, which has 75: it ran 39m06s on #8488's head (a part ran at most
   20m03s), so 40 left 54 seconds (W0d-3b-2b). Each job prints `phase-seconds:` for its part on stderr, never in the verdict.
 - `wrapper-census-states` keeps its name. It downloads the dumps and replays them. It then asserts
-  these five lines exactly:
-  - `scenarios-off-manifest: 0`;
-  - `captures: 54 ok, 0 failed`;
-  - `opened-surfaces: 50 ok, 0 failed`;
-  - `shared-touched-unpinned: 0`;
-  - `shared-component-drift: 0`.
+  all fifteen lines of the §8.8 exit block exactly.
 - The aggregate also fails when any part job did not succeed. The browser guilt and innocence
   tests run in the `explorer` job, after its census.
 - The aggregate runs after a failed part, and reads that part's scenarios as missing.

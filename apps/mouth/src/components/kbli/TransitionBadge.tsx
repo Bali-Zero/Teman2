@@ -43,8 +43,8 @@ export function TransitionBadge({ transition }: TransitionBadgeProps) {
       className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
       style={{
         color,
-        borderColor: `color-mix(in srgb, ${color} 30%, transparent)`,
-        backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+        borderColor: "var(--kbli-border)",
+        backgroundColor: "var(--kbli-bg-surface)",
       }}
     >
       {label}

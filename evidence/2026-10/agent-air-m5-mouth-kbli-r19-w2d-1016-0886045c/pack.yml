@@ -1,0 +1,59 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  Mission kbli-nav-design-loop Track W lot W2''' (BLUE), successor of #8161 (W2''), #8139 and #8118,
+  built on top of the merged W0d-3b-2b-i''' (#8583) and W0d-3b-2b-ii' (#8620) census instruments.
+  Per Zero's ruling in session (Claude at session usage limit), Astra (gpt-6-astra xhigh) is
+  commissioned as the independent gate reviewer to sign harness/fable-gate.
+plan_ref: >-
+  docs/plans/2026-10-08-kbli-navigator-design-loop.md section 1 row W2;
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md sections 5, 7, 8 and 9;
+  merged prerequisites #8583 (W0d-3b-2b-i''') and #8620 (W0d-3b-2b-ii').
+lanes:
+  - lane: kbli-r19-w2d-1016
+    role: build
+    seat: "agy (conductor/builder)"
+pii_scan: clean
+pii_scan_note: "KBLI classification data and UI CSS tokens are public. No client data."
+provenance: >-
+  Replayed W2''' on fresh origin/main (0886045c2f, after #8583 and #8620). Ported the R19 wrapper
+  token stylesheet (apps/mouth/src/styles/kbli-r19-wrapper.css) and the /kbli* and /kbli-explorer
+  surface updates, re-cut the transparent explorer logo (/images/logo-zantara-transparent.png),
+  converted MatchScoreRing.tsx and RiskGauge.tsx to R19 CSS variables, fixed mobile overflow on
+  KBLISectorTable.tsx (sm:min-w-[560px]) and LicensingSection.tsx (flex-wrap on TierTabs), made
+  decorative hero overlays faint (opacity-[0.02]) on /kbli and /kbli/[code], and suppressed
+  NavShell's glass shadow inside .kbli-r19 per the contract row NavShell { shadow } = not painted.
+diff:
+  net_lines: |
+    apps/mouth + wrapper CSS + workflow + contract + census + tests: re-pins the census fixture at
+    the W2''' head with all 15 lines of section 8.8 at 0.
+  behaviour_change: >-
+    All 9 /kbli* routes and all 51 opened surfaces paint on R19 Direction A + the PMA triad across
+    all 6 viewport/theme states, with 0 undefined reads, 0 off-palette colours, 0 unseen/off-contract
+    state rows, 0 off-contract page or opened grounds, 0 resolver disagreements, 0 opened text runs
+    below 4.5:1, and 0 drift on the 24 shared-component walks outside /kbli*.
+receipts:
+  - claim: "All 4 census parts (rest, kbli, explorer, shared) run live and replay together with all 15 lines of the section 8.8 exit block at 0."
+    cmd: "python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl --diff-base origin/main"
+    result: "scenarios-off-manifest: 0; captures: 54 ok, 0 failed; read-but-undefined: 0; colors-outside-direction-a: 0; state-rows-unseen: 0; state-colors-off-contract: 0; page-grounds-off-contract: 0; surfaces-unclaimed: 0; opened-surfaces: 51 ok, 0 failed; opened-outside-wrapper: 0; opened-grounds-off-contract: 0; ground-resolver-disagree: 0; shared-touched-unpinned: 0; shared-component-drift: 0; opened-text-below-4.5: 0"
+    exit: 0
+    ts: "2026-10-16T14:55:13Z"
+    seat: agy
+  - claim: "W1 live palette guard and contrast guard pass on 48/48 r19 captures (8 fixed routes x 6 states)."
+    cmd: "cd apps/mouth && R19_WRAPPER_LIVE=1 npx vitest run src/test/r19-wrapper.test.ts src/app/kbli-explorer/components/compare-and-thinking-contrast-aa.guard.test.ts"
+    result: "Test Files 2 passed (2), Tests 8 passed (8); palette-outside-direction-a (r19 scope, 48/48 captures): 0"
+    exit: 0
+    ts: "2026-10-16T15:07:02Z"
+    seat: agy
+  - claim: "Offline and browser e2e census test suites (302 tests) and tsc pass against the re-pinned W2''' fixture."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider && cd apps/mouth && npx tsc --noEmit -p tsconfig.json"
+    result: "302 passed (189 offline + 113 e2e); tsc 0 errors"
+    exit: 0
+    ts: "2026-10-16T15:14:53Z"
+    seat: agy
+dissent:
+  - seat: agy
+    objection: "On the first rest + kbli pass at this head, 13 page_grounds runs and 3 opened_grounds runs were flagged over-image (non-uniform/gradient): NavShell's inline box-shadow (0 8px 24px rgba(0,0,0,0.35)) darkened the breadcrumb and scrolled paragraphs near the top of the viewport; /kbli and /kbli/[code] hero decorative layers had opacity >= 0.03; and KBLISectorTable (min-w-[560px]) and LicensingSection TierTabs overflowed their 310px mobile cards."
+    status: CONFIRMED
+    resolution: "Suppressed NavShell's box-shadow inside .kbli-r19 per contract row NavShell { shadow } = not painted; set decorative hero layers to opacity-[0.02]; changed KBLISectorTable to sm:min-w-[560px] and added flex-wrap to LicensingSection TierTabs. Re-ran kbli and rest parts: both page-grounds-off-contract and opened-grounds-off-contract dropped to 0."
+grader: |
+  Astra (gpt-6-astra xhigh) signs harness/fable-gate on the head sha.

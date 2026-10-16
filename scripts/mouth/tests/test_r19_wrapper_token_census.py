@@ -60,7 +60,8 @@ def test_innocence_the_committed_contract_defines_every_live_read(census):
 
 
 def test_the_two_reds_of_7508_are_in_the_census(census):
-    assert census["reads"]["var --color-text-secondary"]["defined"] == "above"
+    # Since W2''' the fixture is the walk at the wrapper's head: the alias resolves on the wrapper.
+    assert census["reads"]["var --color-text-secondary"]["defined"] == "wrapper"
     assert "class brand-tagline" in census["reads"]
 
 
@@ -293,14 +294,19 @@ def test_the_rest_copper_borders_were_ruled_to_line():
 
 
 def test_the_origin_main_walk_is_the_pre_w2_number(census):
-    """The fixture is the live walk on origin/main 463ec63b76 (apps/mouth unchanged through f75a4fee92), dumped by
-    W0d-2: 10 walks, 51 state classes off contract, 0 unseen. W2''' regenerates it and the pin moves to 0."""
+    """The fixture is the live walk at the W2''' head (it was origin/main 463ec63b76 with 51 off, 0 unseen):
+    18 walks, every verdict line 0, and the rows the #8139 gate caught now paint their own hex."""
     assert len(census["walks"]) == 18 and census["walk_failed"] == []
     out = verdict(census)
-    assert out[-1] == "state-colors-off-contract: 51"
-    assert "state-rows-unseen: 0" in out
-    assert any(ln.strip().startswith("hover:bg-surface-editorial-elevated  expected #EAE3D8") for ln in out)
-    assert any(ln.strip().startswith("group-hover:text-[color:var(--accent-zantara)]  expected #233D52") for ln in out)
+    assert out[-1] == "state-colors-off-contract: 0"
+    for line in ("state-rows-unseen: 0", "read-but-undefined: 0", "colors-outside-direction-a: 0"):
+        assert line in out
+    caught = {"hover:bg-surface-editorial-elevated": "#EAE3D8",
+              "group-hover:text-[color:var(--accent-zantara)]": "#233D52",
+              "group-hover:bg-[color-mix(in_srgb,var(--accent-zantara)_10%,transparent)]": "#EAE3D8",
+              "selection:bg-accent-sand/30": "#EAE3D8", "selection:text-accent-sand": "#1D2C3B"}
+    for token, hx in caught.items():
+        assert census["state_obs"][token]["observed"] == [hx], token
 
 
 # ---- the real walk, end to end, on a page we write --------------------------------------------
@@ -1014,15 +1020,18 @@ def test_the_census_walks_51_opened_surfaces_on_9_pages():
     assert len(census_mod.PAGES) == 9 and census_mod.SECTOR_PAGE in census_mod.PAGES
     assert sum(walks[sc[2]] for sc in census_mod.SCENARIOS) == 51
     opened = [u for u in census_mod.scenarios(*census_mod.measure_literals()) if u[1] == "opened"]
-    assert len(opened) == 51 - len(census_mod.NOT_JUDGEABLE) == 50
+    assert len(opened) == 51 - len(census_mod.NOT_JUDGEABLE) == 51
 
 
-def test_the_declared_not_judgeable_walks_are_exactly_the_pending_mobile_variant():
-    """W0d-3b-2a: the exemption is a named row, one variant, and it leaves the list rather than hiding in it."""
-    assert set(census_mod.NOT_JUDGEABLE) == {("zantara-pending", "mobile/system-dark")}
+def test_the_declared_not_judgeable_walks_are_exactly_the_pending_mobile_variant(monkeypatch):
+    """W0d-3b-2a: on origin/main the exemption was a named row; W2''' empties NOT_JUDGEABLE and returns the walk."""
+    assert census_mod.NOT_JUDGEABLE == {}
     names = {n for _, _, n, _ in census_mod.scenarios(*census_mod.measure_literals())}
-    assert "zantara-pending desktop/light" in names and "zantara-pending mobile/system-dark" not in names
-    assert "declared-not-judgeable: zantara-pending mobile/system-dark" in CONTRACT
+    assert "zantara-pending desktop/light" in names and "zantara-pending mobile/system-dark" in names
+    assert "declared-not-judgeable:" not in census_mod.opened_verdict({"opened": []}, {}, {}, None, [])
+    monkeypatch.setattr(census_mod, "NOT_JUDGEABLE", {("zantara-pending", "mobile/system-dark"): "over-image"})
+    names_exempt = {n for _, _, n, _ in census_mod.scenarios(*census_mod.measure_literals())}
+    assert "zantara-pending mobile/system-dark" not in names_exempt
     assert "declared-not-judgeable: zantara-pending mobile/system-dark" in census_mod.opened_verdict(
         {"opened": []}, {}, {}, None, [])
 
@@ -1663,16 +1672,18 @@ def test_e2e_i11_two_walks_print_the_same_verdict(tmp_path, monkeypatch):
 
 
 def test_the_origin_main_opened_walk_is_the_guilt(census):
-    """Main today, by pixels: every surface opens; the dropdown titles and the red code chips read at 4.5 or more (the chips were 3.3 and 3.26 on the tree of the 3b-2a census),
-    and the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
+    """W2''' head, by pixels: every surface opens inside the wrapper, every ground is on contract, and every run
+    clears 4.5:1 (including zantara-pending mobile/system-dark, returned from NOT_JUDGEABLE)."""
     out = verdict_of(census, PIN, [])
-    assert out[0] == "opened-surfaces: 50 ok, 0 failed"
-    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 18"
-    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 189"
+    assert out[0] == "opened-surfaces: 51 ok, 0 failed"
+    assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 0"
+    assert lines_of(out, "opened-grounds-off-contract:") == "opened-grounds-off-contract: 0"
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 741"
+    assert out[-1] == "opened-text-below-4.5: 0"
+    pending = next(o for o in census["opened"] if o["name"] == "zantara-pending" and o["walk"] == "mobile/system-dark")
+    assert pending["state"] == "ok"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
@@ -1681,12 +1692,16 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
 
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
-    """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 577"
-    card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
-            for ln in c["page_off"].values()
-            if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}
-    assert card == set(census["states"])
+    """G25: on W2''' KBLIConsultationCTA sits on solid elevated ground (page-grounds-off-contract: 0); a capture
+    carrying the pre-W2 inline gradient is named over-image (gradient)."""
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 0"
+    guilty = copy.deepcopy(census)
+    guilty["captures"][0]["page_off"] = {
+        "g25": "  ground #1E1B1A over-image (gradient) under 'Need custom KBLI guidance?' at "
+               "section.rp-dark-island.mt-12>div.rounded-2xl, on /kbli/55203 desktop/light"}
+    verdict_lines = census_mod.page_verdict(guilty)
+    assert verdict_lines[-1] == "page-grounds-off-contract: 1"
+    assert "over-image (gradient)" in verdict_lines[0] and "section.rp-dark-island.mt-12>div.rounded-2xl" in verdict_lines[0]
 
 
 def test_guilt_8161s_head_reads_ink_titles_on_the_dark_dropdown():
@@ -1797,9 +1812,8 @@ def test_e2e_the_logo_corners_are_read_from_the_render(tmp_path, png, corners):
 # `wrapper-census-part` jobs dump for the aggregate.
 UNITS = census_mod.scenarios(*census_mod.measure_literals())
 WORKFLOW = (census_mod.ROOT / ".github/workflows/r19-wrapper-census-tests.yml").read_text()
-EXIT_LINES = ["scenarios-off-manifest: 0", "captures: 54 ok, 0 failed",
-              "surfaces-unclaimed: 0", "opened-surfaces: 50 ok, 0 failed", "shared-touched-unpinned: 0", "shared-component-drift: 0"]
 EXIT_BLOCK = re.search(r"### 8\.8 .*?```\n(.*?)```", CONTRACT, re.S).group(1)
+EXIT_LINES = [ln for ln in EXIT_BLOCK.splitlines() if ln.strip()]
 
 
 def cut(census: dict) -> dict[str, dict]:
@@ -1834,11 +1848,11 @@ def replay(capsys, path: Path) -> str:
 def test_the_parts_cut_from_one_list_cover_it_once():
     keys = [f"{kind} {name}" for _, kind, name, _ in UNITS]
     by_part = {p: {f"{k} {n}" for q, k, n, _ in UNITS if q == p} for p in census_mod.PARTS}
-    assert len(keys) == len(set(keys)) == 54 + 18 + 50 + 24
+    assert len(keys) == len(set(keys)) == 54 + 18 + 51 + 24
     assert {q for q, *_ in UNITS} == set(census_mod.PARTS) and all(by_part.values())
     assert set().union(*by_part.values()) == set(keys)
     assert all(not (by_part[a] & by_part[b]) for a in by_part for b in by_part if a < b)
-    assert {p: len(v) for p, v in by_part.items()} == {"rest": 72, "kbli": 33, "explorer": 17, "shared": 24}
+    assert {p: len(v) for p, v in by_part.items()} == {"rest": 72, "kbli": 34, "explorer": 17, "shared": 24}
 
 
 def test_each_part_waits_for_every_route_it_loads():
@@ -1881,6 +1895,8 @@ def test_a_live_census_and_its_dump_print_the_same_colour_lines(tmp_path):
     """A live run keeps its colours in the order it met them, its dump sorts them by hex: colours tied on their
     count print by hex either way, so the single job's live verdict is the aggregate's text."""
     census = census_mod.load(FIXTURE)
+    census["colors"]["#010203"] = {"hex": "#010203", "prop": "color", "count": 7, "selector": "a", "page": "/kbli", "state": "desktop/light"}
+    census["colors"]["#040506"] = {"hex": "#040506", "prop": "color", "count": 7, "selector": "b", "page": "/kbli", "state": "desktop/light"}
     counts = [c["count"] for c in census["colors"].values()]
     assert len(counts) > len(set(counts))
     census["colors"] = dict(reversed(census["colors"].items()))
@@ -1894,7 +1910,7 @@ DROPS = {"capture": ("captures", lambda c: (c["page"], c["state"]) == ("/kbli-ex
          "walk": ("walks", lambda w: w == "/kbli/56101 mobile/system-dark", "walk /kbli/56101 mobile/system-dark",
                   "state-colors-off-contract: INCOMPLETE (1 walks failed, 17 ok, not a verdict)"),
          "opened": ("opened", lambda o: (o["name"], o["walk"]) == ("explorer-compare", "desktop/light"),
-                    "opened explorer-compare desktop/light", "opened-surfaces: 49 ok, 1 failed"),
+                    "opened explorer-compare desktop/light", "opened-surfaces: 50 ok, 1 failed"),
          "shared": ("shared", lambda s: (s["name"], s["walk"]) == ("Footer R19 blog /news", "mobile/light"),
                     "shared Footer R19 blog /news mobile/light",
                     "shared-component-drift: INCOMPLETE (1 shared walks failed, not a verdict)")}
@@ -1936,8 +1952,8 @@ def test_guilt_a_missing_part_is_every_one_of_its_scenarios_missing(tmp_path, ca
 def test_guilt_no_dump_at_all_is_the_whole_list_missing(tmp_path, capsys):
     (tmp_path / "census.jsonl").write_text("")
     out = replay(capsys, tmp_path / "census.jsonl").splitlines()
-    assert out[0] == "scenarios-off-manifest: 146 (INCOMPLETE: 146 scenarios not received, not a verdict)"
-    assert "captures: 0 ok, 54 failed" in out and "opened-surfaces: 0 ok, 50 failed" in out
+    assert out[0] == "scenarios-off-manifest: 147 (INCOMPLETE: 147 scenarios not received, not a verdict)"
+    assert "captures: 0 ok, 54 failed" in out and "opened-surfaces: 0 ok, 51 failed" in out
 
 
 def test_guilt_a_part_twice_and_a_scenario_off_the_list_are_named(tmp_path, capsys):
@@ -2023,7 +2039,7 @@ def test_guilt_the_exit_step_fails_a_log_carrying_1(tmp_path, want):
 
 
 def test_guilt_the_exit_step_fails_an_incomplete_log(tmp_path):
-    log = (EXIT_BLOCK.replace("opened-surfaces: 50 ok, 0 failed", "opened-surfaces: 49 ok, 1 failed")
+    log = (EXIT_BLOCK.replace("opened-surfaces: 51 ok, 0 failed", "opened-surfaces: 50 ok, 1 failed")
            .replace("captures: 54 ok, 0 failed", "captures: 53 ok, 1 failed")
            .replace("shared-component-drift: 0", "shared-component-drift: 0 (INCOMPLETE: 1 walk failed, not a verdict)"))
     r = run_exit_step(tmp_path, log)
