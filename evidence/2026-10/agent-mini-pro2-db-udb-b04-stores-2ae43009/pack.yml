@@ -1,0 +1,52 @@
+mandate: universal-db-wave8-20261015-B04
+brief_ref: evidence/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim:
+      Current scoped source suite passes; source/preparer and independent physical clean copies preserve
+      artifact bytes. Earlier14-pass stage remains historical.
+    cmd:
+      /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest
+      -p no:cacheprovider -q research/operations/udb-wave8/B04/tests/test_store_catalog.py
+    exit: 0
+    ts: "2026-10-16T08:11:38.349836+00:00"
+    seat: codex-coordinator
+    result:
+      18 passed and67subtests passed; official scoped rerun passed. Fresh independent reviewer also
+      reproduced18P and frozen outputs.
+    evidence_ref: research/operations/udb-wave8/B04/integration-20261016/BOUNDARY-CORRECTION.json
+dissent:
+  - seat: campaign-independent-adversary
+    objection:
+      Actual active denominator, native store/operation compatibility and dependent recovery evidence
+      remain unknown; source reproducibility is not operational closure.
+    status: CONFIRMED
+pii_scan: clean
+block_closed: false
+native_probe_executed: false
+production_adoption: false
+final_gate: PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD
+lanes:
+  - lane: B04-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B04-bounded-prepared-integration
+    role: build
+    seat: codex-coordinator
+  - lane: B04-outside-contribution-final
+    role: review
+    seat: /root/b04_available_final_gate
+seat_override:
+  Owner explicitly selected Gemini Argon/high with Astra6/xhigh and Opus5.5/xhigh support.
+  Latest authenticated owner instruction removes Claude availability as a blocker and permits available
+  independent review. No unavailable model is claimed as observed; independent different-family grading
+  relative to main Gemini builder and exact-head gate remain required.
+limitations:
+  - Runtime roles, active denominator and Qdrant dimensions/model/version remain unknown; Redis authentication
+    snapshots are historical.
+  - Original source/testing pass counts are retained as history, current suite18P+67subcases.
+  - Current-main baseline plus individually proved false-positive records only; no blanket exclusions.
+  - No new native exercises or source correction rounds after original deadline; user resumed packaging.
+deadline_status:
+  Original 2026-10-16T08:23:00.050644Z elapsed; administrative packaging continued under
+  explicit owner order. No on-time completion claimed, no reset.

@@ -1,0 +1,12 @@
+{
+  "native_metadata": {
+    "summary": {
+      "actors": 13,
+      "foreign_keys": 240,
+      "functions": 85,
+      "grant_pairs": 4628,
+      "relations": 557,
+      "triggers": 112
+    }
+  }
+}

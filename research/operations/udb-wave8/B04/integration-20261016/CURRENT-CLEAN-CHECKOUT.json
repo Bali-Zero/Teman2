@@ -1,0 +1,68 @@
+{
+  "scope": "PREPARER_CLEAN_INPUT_EXECUTION_NOT_INDEPENDENT_GRADE",
+  "recorded_at": "2026-10-16T06:16:56.371697+00:00",
+  "scenario": "Current source and fixtures copied into temporary root within owned B04 directory; no .agent-receipts; no installation or network calls.",
+  "source_sha256": {
+    "apps/admin-dashboard-local/app/lib/db.ts": "826a41c8e532f3d2ce267b25c34c208d203b6d669fb4b4033cdce82cb9bc0919",
+    "apps/backend-rag/backend/app/core/config.py": "1e103424bc2cba0bfb1a432c6ca43ee581d41ab182507a6c1740c3bd30092f3e",
+    "apps/backend-rag/backend/app/core/database.py": "b4c8d3b606e7d8eac8795c9a9fe08595a8d2fd1b8d0be4e405d304490c8163bf",
+    "apps/backend-rag/backend/app/setup/service_initializer.py": "6b02f424902a7d791713a81e52fc44e30a49201f263616bf36a0f71db25f0f09",
+    "apps/backend-rag/backend/core/collection_registry.py": "e3fa7082b36e52f2099be36eab013c6c7b02a4175c1a125a38be5b494add4abf",
+    "apps/backend-rag/backend/core/embeddings.py": "fd6b78142b20ae1b6eba8567c18af2852c293b57280e95533e9ec13f5f73f358",
+    "apps/backend-rag/backend/core/qdrant_db.py": "5b67c71400cbb38154f32c7f85ddf6b1fa8ec24e5d54c4c05de84fa4ceac400e",
+    "apps/backend-rag/backend/core/redis_manager.py": "5b8640c2eae6dec947b57dd043a769ee4dd8d10c690a9605504e0c9276202840",
+    "apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py": "2d482289001cf327bcbe12e27a61f56981c7172eba94db21758d94a574f066b4",
+    "apps/backend-rag/backend/services/ingestion/collection_manager.py": "16ef3e7bd869e4f47db715f84f3552ad4c0015d6e877cd7605de2fa83030e39a",
+    "apps/backend-rag/backend/services/misc/graph_service.py": "ae2e7a536b5bb64643b6122050663056d51a9a72816531e238cf86b1522e9283",
+    "apps/bali-intel-scraper/scripts/load_intel_sources.py": "38bee1ee3c2e85f8eef09fca3c059e5673f12caa6ffc971190c4c51781383faa",
+    "apps/graph-engine/src/nuzantara_graph/services/collection_registry.py": "998bf4f47a405c86682b59f5b8aa289910d75b4dea8fd4252c78044b3bfc25ad",
+    "apps/remediator/main.py": "fdad97917a049906f7a75d75e8d8d242924beb9eb3ac6a06b1295c021bf09f67",
+    "apps/wa-mirror/bridge/pg.ts": "baa7b55798c0e909623dce0c7629baada04a3a34ebaaff2ac8dcc3d9882e865b",
+    "research/operations/udb-wave8/B04/store_catalog.py": "53f2776b124c7e23a03a58a57d2fc2a68f591901be480e68625e10ab5324721a",
+    "research/operations/udb-wave8/B04/tests/test_store_catalog.py": "d59a95b3a3f4a9b7dacb8445a095b9c9cd71b1175813e947f52619ae071429ee"
+  },
+  "tests": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "-m",
+      "pytest",
+      "-c",
+      "/dev/null",
+      "--noconftest",
+      "-p",
+      "no:cacheprovider",
+      "research/operations/udb-wave8/B04/tests/test_store_catalog.py",
+      "-q"
+    ],
+    "exit_code": 0,
+    "summary": [
+      "14 passed in 0.99s"
+    ],
+    "stdout_sha256": "1ca077c2ebd8061ff04005144e98195bd3ff2353f24dd7be97d759b04622df3f",
+    "stderr_bytes": 0
+  },
+  "cli": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "research/operations/udb-wave8/B04/store_catalog.py"
+    ],
+    "exit_code": 0,
+    "stderr_bytes": 0
+  },
+  "artifacts": {
+    "store-catalog.json": {
+      "sha256": "2b9c7d6492e8689dadc924e868f5f3548d48622db2561bae03cbacd4648c89e4",
+      "bytes": 25291
+    },
+    "store-bindings.csv": {
+      "sha256": "712e98d987c4c1c38533e2bbbbd3f93366735d031219b107113a2971e6e29582",
+      "bytes": 1615095
+    }
+  },
+  "artifacts_byte_equal_current_receipts_run": true,
+  "block_closed": false
+}

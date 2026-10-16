@@ -1,0 +1,715 @@
+{
+  "block_id": "B04",
+  "campaign_id": "universal-db-wave8-20261015",
+  "consumer_denominators": {
+    "database_consumer_candidate_rows": 5962,
+    "delta_lead_id": "runtime_mini_46522da0ef79d3aa7422ca41",
+    "excluded_non_db_notebook_container_rows": 67,
+    "frozen_consumer_matrix_rows": 6029,
+    "historical_source_references_retained": [
+      "src_307bea3dfb94ec31",
+      "src_d073f505ff1671ad",
+      "src_def7a4c288a552af",
+      "src_cdf3ae5e4ecf861c",
+      "src_2f350566b97aee80"
+    ],
+    "state_json_union_lead_rows": 6030
+  },
+  "contract_conventions_sha256": "a7feea89fa64000d76c18a52d705dd008b4a6336a6d58af98c2618a13048c559",
+  "defects": {
+    "D1": {
+      "file": "apps/backend-rag/backend/core/embeddings.py:160-163,205",
+      "status": "PARTIAL",
+      "title": "_global_embedding_cache._get_key omits (provider, model, dimensions)",
+      "verified": true
+    },
+    "D2": {
+      "file": "apps/backend-rag/backend/core/collection_registry.py:34-82; apps/graph-engine/src/nuzantara_graph/services/collection_registry.py:9-26",
+      "status": "CONFLICT",
+      "title": "Cross-registry alias asymmetry and producer/consumer conflict on balizero_news vs intel_authoritative_sources",
+      "verified": true
+    },
+    "D3": {
+      "file": "apps/backend-rag/backend/services/ingestion/collection_manager.py:51-158; apps/backend-rag/backend/core/qdrant_db.py:289",
+      "status": "PARTIAL",
+      "title": "Qdrant estate drift between CollectionManager.collection_definitions, default 'knowledge_base', and collection_registry.py",
+      "verified": true
+    },
+    "D4": {
+      "file": "apps/backend-rag/backend/core/qdrant_db.py:464-478; apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py:340-400",
+      "primary_code_keys": [
+        "kode",
+        "kode_kbli",
+        "kode_kbli_2025"
+      ],
+      "status": "CONFLICT",
+      "title": "Writer flat-payload layout (kode/kode_kbli/kode_kbli_2025) vs QdrantClient._FLAT_PAYLOAD_COLLECTIONS omission for kbli_2025_final",
+      "verified": true
+    },
+    "D5": {
+      "file": "apps/backend-rag/backend/app/core/database.py:16-43; apps/backend-rag/backend/app/setup/service_initializer.py:495-538",
+      "status": "PARTIAL",
+      "title": "PostgreSQL pool parameter and env-var resolution divergence across backend-rag, graph-engine, wa-mirror, and admin-dashboard-local",
+      "verified": true
+    },
+    "D6": {
+      "file": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv:2",
+      "status": "EVIDENCED",
+      "title": "Lexical store signals on non-consumer config rows and 67 NOTEBOOK_CONTAINER_REFERENCE rows in consumer-matrix.csv",
+      "verified": true
+    }
+  },
+  "dux_scope_correction_sha256": "440edee150a91dbe49468de768b11aec3b07366a462f0abebd5eb2b8e53afac5",
+  "evidence_timestamp": "2026-10-15T07:06:22Z",
+  "qdrant_model_binding_proved": false,
+  "qdrant_registries": {
+    "backend_rag": {
+      "aliases": {
+        "bali_zero_pricing_hybrid": "bali_zero_pricing_hybrid",
+        "bali_zero_skills_hybrid": "bali_zero_skills_hybrid",
+        "balizero_news": "balizero_news",
+        "curated_qa": "curated_qa",
+        "immigration_circulars": "immigration_circulars",
+        "intel_authoritative_sources": "balizero_news",
+        "kbli_2025_final": "kbli_2025_final",
+        "kbli_2025_final_hybrid": "kbli_2025_final",
+        "legal_architect": "legal_unified",
+        "legal_intelligence": "legal_unified",
+        "legal_unified": "legal_unified",
+        "legal_unified_hybrid": "legal_unified",
+        "legal_unified_hybrid_hybrid": "legal_unified",
+        "legal_updates": "legal_unified",
+        "nlm_shadow_hybrid": "nlm_shadow_hybrid",
+        "tax_genius": "tax_genius",
+        "tax_genius_hybrid": "tax_genius",
+        "tax_knowledge": "tax_genius",
+        "tax_updates": "tax_genius",
+        "training_conversations_hybrid": "training_conversations_hybrid",
+        "visa_oracle": "visa_oracle"
+      },
+      "aliases_count": 21,
+      "canonical_logical": [
+        "bali_zero_pricing_hybrid",
+        "visa_oracle",
+        "kbli_2025_final",
+        "tax_genius",
+        "legal_unified",
+        "training_conversations_hybrid",
+        "immigration_circulars",
+        "balizero_news",
+        "bali_zero_skills_hybrid",
+        "nlm_shadow_hybrid",
+        "curated_qa"
+      ],
+      "canonical_logical_count": 11,
+      "distinct_alias_targets_count": 11,
+      "distinct_physical_count": 11,
+      "distinct_physical_targets": [
+        "bali_zero_pricing_hybrid",
+        "bali_zero_skills_hybrid",
+        "balizero_news",
+        "curated_qa",
+        "immigration_circulars",
+        "kbli_2025_final_hybrid",
+        "legal_unified_hybrid_hybrid",
+        "nlm_shadow_hybrid",
+        "tax_genius_hybrid",
+        "training_conversations_hybrid",
+        "visa_oracle"
+      ],
+      "logical_to_physical": {
+        "bali_zero_pricing_hybrid": "bali_zero_pricing_hybrid",
+        "bali_zero_skills_hybrid": "bali_zero_skills_hybrid",
+        "balizero_news": "balizero_news",
+        "curated_qa": "curated_qa",
+        "immigration_circulars": "immigration_circulars",
+        "kbli_2025_final": "kbli_2025_final_hybrid",
+        "legal_architect": "legal_unified_hybrid_hybrid",
+        "legal_intelligence": "legal_unified_hybrid_hybrid",
+        "legal_unified": "legal_unified_hybrid_hybrid",
+        "legal_unified_hybrid": "legal_unified_hybrid_hybrid",
+        "legal_updates": "legal_unified_hybrid_hybrid",
+        "nlm_shadow_hybrid": "nlm_shadow_hybrid",
+        "tax_genius": "tax_genius_hybrid",
+        "tax_genius_hybrid": "tax_genius_hybrid",
+        "tax_knowledge": "tax_genius_hybrid",
+        "tax_updates": "tax_genius_hybrid",
+        "training_conversations_hybrid": "training_conversations_hybrid",
+        "visa_oracle": "visa_oracle"
+      },
+      "logical_to_physical_count": 18,
+      "module_path": "apps/backend-rag/backend/core/collection_registry.py",
+      "sha256": "e3fa7082b36e52f2099be36eab013c6c7b02a4175c1a125a38be5b494add4abf",
+      "shared_physical_targets": {
+        "legal_unified_hybrid_hybrid": [
+          "legal_architect",
+          "legal_intelligence",
+          "legal_unified",
+          "legal_unified_hybrid",
+          "legal_updates"
+        ],
+        "tax_genius_hybrid": [
+          "tax_genius",
+          "tax_genius_hybrid",
+          "tax_knowledge",
+          "tax_updates"
+        ]
+      },
+      "string_constants": {
+        "SKILLS_MIRROR_COLLECTION": "bali_zero_skills_hybrid"
+      }
+    },
+    "cross_registry_analysis": {
+      "comparisons": {
+        "bali_zero_pricing_hybrid": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "bali_zero_pricing_hybrid",
+          "graph_engine_physical": "bali_zero_pricing_hybrid",
+          "logical_name": "bali_zero_pricing_hybrid",
+          "status": "PARTIAL"
+        },
+        "balizero_news": {
+          "backend_alias_for_scraper_target": "balizero_news",
+          "backend_physical": "balizero_news",
+          "defect_id": "D2",
+          "graph_engine_physical": "intel_authoritative_sources",
+          "logical_name": "balizero_news",
+          "scraper_writer_physical": "intel_authoritative_sources",
+          "status": "CONFLICT"
+        },
+        "immigration_circulars": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "immigration_circulars",
+          "graph_engine_physical": "immigration_circulars",
+          "logical_name": "immigration_circulars",
+          "status": "PARTIAL"
+        },
+        "kbli_2025_final": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "kbli_2025_final_hybrid",
+          "graph_engine_physical": "kbli_2025_final_hybrid",
+          "logical_name": "kbli_2025_final",
+          "status": "PARTIAL"
+        },
+        "legal_architect": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "legal_unified_hybrid_hybrid",
+          "graph_engine_physical": "legal_unified_hybrid_hybrid",
+          "logical_name": "legal_architect",
+          "status": "PARTIAL"
+        },
+        "legal_intelligence": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "legal_unified_hybrid_hybrid",
+          "graph_engine_physical": "legal_unified_hybrid_hybrid",
+          "logical_name": "legal_intelligence",
+          "status": "PARTIAL"
+        },
+        "legal_unified": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "legal_unified_hybrid_hybrid",
+          "graph_engine_physical": "legal_unified_hybrid_hybrid",
+          "logical_name": "legal_unified",
+          "status": "PARTIAL"
+        },
+        "legal_unified_hybrid": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "legal_unified_hybrid_hybrid",
+          "graph_engine_physical": "legal_unified_hybrid_hybrid",
+          "logical_name": "legal_unified_hybrid",
+          "status": "PARTIAL"
+        },
+        "legal_updates": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "legal_unified_hybrid_hybrid",
+          "graph_engine_physical": "legal_unified_hybrid_hybrid",
+          "logical_name": "legal_updates",
+          "status": "PARTIAL"
+        },
+        "tax_genius": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "tax_genius_hybrid",
+          "graph_engine_physical": "tax_genius_hybrid",
+          "logical_name": "tax_genius",
+          "status": "PARTIAL"
+        },
+        "tax_genius_hybrid": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "tax_genius_hybrid",
+          "graph_engine_physical": "tax_genius_hybrid",
+          "logical_name": "tax_genius_hybrid",
+          "status": "PARTIAL"
+        },
+        "tax_knowledge": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "tax_genius_hybrid",
+          "graph_engine_physical": "tax_genius_hybrid",
+          "logical_name": "tax_knowledge",
+          "status": "PARTIAL"
+        },
+        "tax_updates": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "tax_genius_hybrid",
+          "graph_engine_physical": "tax_genius_hybrid",
+          "logical_name": "tax_updates",
+          "status": "PARTIAL"
+        },
+        "training_conversations_hybrid": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "training_conversations_hybrid",
+          "graph_engine_physical": "training_conversations_hybrid",
+          "logical_name": "training_conversations_hybrid",
+          "status": "PARTIAL"
+        },
+        "visa_oracle": {
+          "Unknowns": [
+            "LIVE_QDRANT_ESTATE_UNOBSERVED"
+          ],
+          "backend_physical": "visa_oracle",
+          "graph_engine_physical": "visa_oracle",
+          "logical_name": "visa_oracle",
+          "status": "PARTIAL"
+        }
+      },
+      "only_in_backend_rag": [
+        "bali_zero_skills_hybrid",
+        "curated_qa",
+        "nlm_shadow_hybrid"
+      ],
+      "only_in_graph_engine": [
+        "v6_cache_vectors"
+      ]
+    },
+    "graph_engine": {
+      "aliases_count": 0,
+      "canonical_logical_count": 0,
+      "distinct_physical_count": 9,
+      "distinct_physical_targets": [
+        "bali_zero_pricing_hybrid",
+        "immigration_circulars",
+        "intel_authoritative_sources",
+        "kbli_2025_final_hybrid",
+        "legal_unified_hybrid_hybrid",
+        "tax_genius_hybrid",
+        "training_conversations_hybrid",
+        "v6_cache_vectors",
+        "visa_oracle"
+      ],
+      "logical_to_physical": {
+        "bali_zero_pricing_hybrid": "bali_zero_pricing_hybrid",
+        "balizero_news": "intel_authoritative_sources",
+        "immigration_circulars": "immigration_circulars",
+        "kbli_2025_final": "kbli_2025_final_hybrid",
+        "legal_architect": "legal_unified_hybrid_hybrid",
+        "legal_intelligence": "legal_unified_hybrid_hybrid",
+        "legal_unified": "legal_unified_hybrid_hybrid",
+        "legal_unified_hybrid": "legal_unified_hybrid_hybrid",
+        "legal_updates": "legal_unified_hybrid_hybrid",
+        "tax_genius": "tax_genius_hybrid",
+        "tax_genius_hybrid": "tax_genius_hybrid",
+        "tax_knowledge": "tax_genius_hybrid",
+        "tax_updates": "tax_genius_hybrid",
+        "training_conversations_hybrid": "training_conversations_hybrid",
+        "v6_cache_vectors": "v6_cache_vectors",
+        "visa_oracle": "visa_oracle"
+      },
+      "logical_to_physical_count": 16,
+      "module_path": "apps/graph-engine/src/nuzantara_graph/services/collection_registry.py",
+      "sha256": "998bf4f47a405c86682b59f5b8aa289910d75b4dea8fd4252c78044b3bfc25ad",
+      "shared_physical_targets": {
+        "legal_unified_hybrid_hybrid": [
+          "legal_architect",
+          "legal_intelligence",
+          "legal_unified",
+          "legal_unified_hybrid",
+          "legal_updates"
+        ],
+        "tax_genius_hybrid": [
+          "tax_genius",
+          "tax_genius_hybrid",
+          "tax_knowledge",
+          "tax_updates"
+        ]
+      },
+      "string_constants": {
+        "DEFAULT_COLLECTION": "legal_unified"
+      }
+    }
+  },
+  "schema_version": "udb-wave8-b04-v3",
+  "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "static_config_discrepancies": [
+    {
+      "defect_id": "D1",
+      "discrepancy_id": "STATIC-EMBED-CACHE-KEY",
+      "file": "apps/backend-rag/backend/core/embeddings.py:160-163,205",
+      "proof_class": "STATIC_SOURCE_DISCREPANCY_NOT_LIVE_PROOF",
+      "status": "PARTIAL",
+      "summary": "EmbeddingCache._get_key hashes json.dumps(texts) only, omitting (provider, model, dimensions).",
+      "verified_in_source": true
+    },
+    {
+      "defect_id": "D1",
+      "discrepancy_id": "STATIC-PROVIDER-DIM-FALLBACK",
+      "file": "apps/backend-rag/backend/core/qdrant_db.py:81-82; apps/backend-rag/backend/app/core/config.py:132-139; apps/backend-rag/backend/core/embeddings.py:288,313",
+      "openai_dimensions": 1536,
+      "proof_class": "STATIC_SOURCE_DISCREPANCY_NOT_LIVE_PROOF",
+      "sentence_transformers_fallback_dimensions": 384,
+      "status": "PARTIAL",
+      "summary": "OpenAI path uses 1536 dims (text-embedding-3-small) while non-OpenAI fallback declares 384 dims (all-MiniLM-L6-v2).",
+      "verified_in_source": true
+    }
+  ],
+  "stores": [
+    {
+      "dsn_env_vars": [
+        "DATABASE_URL",
+        "WA_MIRROR_DATABASE_URL"
+      ],
+      "engine": "pg",
+      "evidence_sha256": "2bb691c347efd556eb106877e4a84b5c566f765edaa597a1c12ca73820dd56e6",
+      "evidence_timestamp": "2026-10-15T00:53:34.907490Z",
+      "instance": "sha8-2bb691c3",
+      "metrics": {
+        "actors_total": 13,
+        "foreign_keys_total": 240,
+        "functions_total": 85,
+        "grant_pairs_total": 4628,
+        "relations_total": 557,
+        "triggers_total": 112
+      },
+      "platform": "fly",
+      "source_version": "prior:UNKNOWN",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:sha8-2bb691c3/public",
+      "subcontainer": "public",
+      "unknowns": [
+        "PG_TARGET_DEPLOYMENT_HASHED_IDENTITY"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "DATABASE_URL_LOCAL",
+        "FLY_TUNNEL_URL",
+        "DATABASE_URL"
+      ],
+      "engine": "pg",
+      "evidence_sha256": "d93668cbd3bbc1e40352a333e3fd28ffa192909e4de7b9cc0f12dbfa9fb044b8",
+      "evidence_timestamp": "2026-10-13T11:04:22.578497Z",
+      "instance": "localhost-5432",
+      "platform": "pro",
+      "source_version": "prior:2bf9ed3c93",
+      "status": "PARTIAL",
+      "store_id": "pg:pro:localhost-5432/public",
+      "subcontainer": "public",
+      "unknowns": [
+        "PRO_LOCAL_PG_CATALOG_UNOBSERVED",
+        "STATIC_SOURCE_ONLY"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "QDRANT_URL",
+        "QDRANT_API_KEY"
+      ],
+      "engine": "qdrant",
+      "evidence_sha256": "af100a6d86c337947cb3cb8fd90fff0e329807b1d0fa0cebc70c2482811555c2",
+      "evidence_timestamp": "2026-10-15T03:28:29.868658Z",
+      "instance": "localhost-6333",
+      "platform": "pro",
+      "qdrant_metadata_observation": {
+        "access_principal": "UNOBSERVED",
+        "collection_count": 2,
+        "collection_observations": [
+          {
+            "collection_sha256": "89ce6e199fd05c3301546dd4d16d742a6d8c3e19b9727b6218131850082c3822",
+            "dimension_consistent": null,
+            "identity_only": true,
+            "live_dimension_mismatch_implied": false,
+            "model_binding_proved": false,
+            "status": "UNKNOWN",
+            "store_id": "qdrant:pro:sha8-89ce6e19",
+            "unknowns": [
+              "QDRANT_DIMENSION_UNOBSERVED",
+              "QDRANT_MODEL_BINDING_UNPROVED"
+            ]
+          },
+          {
+            "collection_sha256": "9b3006ccbd028dd90443b74afbbb0d774df7e0f09eb562fc98cd0fcc10f94067",
+            "dimension_consistent": null,
+            "identity_only": true,
+            "live_dimension_mismatch_implied": false,
+            "model_binding_proved": false,
+            "status": "UNKNOWN",
+            "store_id": "qdrant:pro:sha8-9b3006cc",
+            "unknowns": [
+              "QDRANT_DIMENSION_UNOBSERVED",
+              "QDRANT_MODEL_BINDING_UNPROVED"
+            ]
+          }
+        ],
+        "hashed_collections": [
+          "89ce6e199fd05c3301546dd4d16d742a6d8c3e19b9727b6218131850082c3822",
+          "9b3006ccbd028dd90443b74afbbb0d774df7e0f09eb562fc98cd0fcc10f94067"
+        ],
+        "live_dimension_mismatch_implied": false,
+        "model_binding_proved": false,
+        "points_or_payloads_requested": false,
+        "raw_collection_names_exported": false,
+        "status": "COLLECTION_METADATA_OBSERVED"
+      },
+      "source_version": "prior:UNKNOWN",
+      "status": "PARTIAL",
+      "store_id": "qdrant:pro:localhost-6333",
+      "unknowns": [
+        "QDRANT_COLLECTION_NAME_HASHED_ONLY",
+        "QDRANT_DIMENSION_UNOBSERVED",
+        "QDRANT_MODEL_BINDING_UNPROVED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "QDRANT_URL",
+        "QDRANT_API_KEY"
+      ],
+      "engine": "qdrant",
+      "evidence_sha256": "1e103424bc2cba0bfb1a432c6ca43ee581d41ab182507a6c1740c3bd30092f3e",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "nuzantara-qdrant",
+      "platform": "fly",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "BLOCKED",
+      "store_id": "qdrant:fly:nuzantara-qdrant",
+      "unknowns": [
+        "FLY_QDRANT_PROD_LIVE_UNOBSERVED",
+        "QDRANT_DIMENSION_UNOBSERVED",
+        "QDRANT_MODEL_BINDING_UNPROVED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "REDIS_URL"
+      ],
+      "engine": "redis",
+      "evidence_sha256": "5b8640c2eae6dec947b57dd043a769ee4dd8d10c690a9605504e0c9276202840",
+      "evidence_timestamp": "2026-10-15T03:28:29.868658Z",
+      "instance": "localhost-6379",
+      "platform": "pro",
+      "prior_receipt_status": "AUTHORIZATION_REQUIRED",
+      "source_version": "prior:UNKNOWN",
+      "status": "BLOCKED",
+      "store_id": "redis:pro:localhost-6379/db0",
+      "subcontainer": "db0",
+      "unknowns": [
+        "REDIS_AUTHORIZATION_REQUIRED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "REDIS_URL"
+      ],
+      "engine": "redis",
+      "evidence_sha256": "5b8640c2eae6dec947b57dd043a769ee4dd8d10c690a9605504e0c9276202840",
+      "evidence_timestamp": "2026-10-15T03:28:29.868658Z",
+      "instance": "localhost-6379",
+      "platform": "mini",
+      "prior_receipt_status": "AUTHORIZATION_REQUIRED",
+      "source_version": "prior:UNKNOWN",
+      "status": "BLOCKED",
+      "store_id": "redis:mini:localhost-6379/db0",
+      "subcontainer": "db0",
+      "unknowns": [
+        "REDIS_AUTHORIZATION_REQUIRED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "SQLITE_DB_PATH"
+      ],
+      "engine": "sqlite",
+      "evidence_sha256": "fdad97917a049906f7a75d75e8d8d242924beb9eb3ac6a06b1295c021bf09f67",
+      "evidence_timestamp": "2026-10-15T08:45:28.257193Z",
+      "instance": "local-sqlite",
+      "platform": "pro",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "sqlite:pro:local-sqlite",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_CWD_DEPENDENT"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "DATABASE_URL"
+      ],
+      "engine": "graph",
+      "evidence_sha256": "ae2e7a536b5bb64643b6122050663056d51a9a72816531e238cf86b1522e9283",
+      "evidence_timestamp": "2026-10-15T00:53:34.907490Z",
+      "instance": "sha8-2bb691c3",
+      "platform": "fly",
+      "source_version": "prior:UNKNOWN",
+      "status": "PARTIAL",
+      "store_id": "graph:fly:sha8-2bb691c3/kg_tables",
+      "subcontainer": "kg_tables",
+      "unknowns": [
+        "NEO4J_ABSENT_PG_BACKED_GRAPH",
+        "GRAPH_ENGINE_LEGACY_SCHEMAS_UNVERIFIED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "GOOGLE_CREDENTIALS_JSON",
+        "GOOGLE_SERVICE_ACCOUNT_JSON",
+        "GOOGLE_DRIVE_FOLDER_ID"
+      ],
+      "engine": "object",
+      "evidence_sha256": "1e103424bc2cba0bfb1a432c6ca43ee581d41ab182507a6c1740c3bd30092f3e",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "google-drive-api",
+      "platform": "gdrive",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "object:gdrive:google-drive-api",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "EXTERNAL_DRIVE_UNOBSERVED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET_NAME",
+        "R2_ENDPOINT_URL"
+      ],
+      "engine": "object",
+      "evidence_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "cloudflare-r2",
+      "platform": "unknown",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "object:unknown:cloudflare-r2",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "R2_BUCKET_UNOBSERVED",
+        "STORE_PLATFORM_UNRESOLVED"
+      ]
+    },
+    {
+      "declared_by": [
+        "apps/backend-rag/scripts/update_master_sheet.py"
+      ],
+      "dsn_env_vars": [
+        "DATABASE_URL",
+        "GOOGLE_SA_KEY"
+      ],
+      "engine": "sheet",
+      "evidence_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "google-sheets-api",
+      "platform": "gcloud",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "sheet:gcloud:google-sheets-api",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "EXTERNAL_SA_TARGET_UNOBSERVED"
+      ]
+    },
+    {
+      "dsn_env_vars": [
+        "STAGING_DIR"
+      ],
+      "engine": "file",
+      "evidence_sha256": "1e103424bc2cba0bfb1a432c6ca43ee581d41ab182507a6c1740c3bd30092f3e",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "local-filesystem",
+      "platform": "unknown",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "file:unknown:local-filesystem",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PATH_UNOBSERVED"
+      ]
+    },
+    {
+      "dsn_env_vars": [],
+      "engine": "browser",
+      "evidence_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "instance": "web-storage",
+      "platform": "client",
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "browser:client:web-storage",
+      "unknowns": [
+        "STATIC_SOURCE_ONLY"
+      ]
+    }
+  ],
+  "writer_reader_flat_payload_analysis": {
+    "collections": {
+      "curated_qa": {
+        "in_qdrant_db_flat_payload_set": true,
+        "status": "PARTIAL",
+        "writer_flat_payload": true
+      },
+      "kbli_2025_final": {
+        "defect_id": "D4",
+        "emits_legacy_code_key": false,
+        "in_qdrant_db_flat_payload_set": false,
+        "status": "CONFLICT",
+        "writer_code_keys": [
+          "kode",
+          "kode_kbli",
+          "kode_kbli_2025"
+        ],
+        "writer_flat_payload": true
+      },
+      "legal_unified": {
+        "in_qdrant_db_flat_payload_set": true,
+        "status": "PARTIAL",
+        "writer_flat_payload": true
+      },
+      "tax_genius": {
+        "in_qdrant_db_flat_payload_set": true,
+        "status": "PARTIAL",
+        "writer_flat_payload": true
+      }
+    },
+    "reader_flat_payload_collections": [
+      "curated_qa",
+      "legal_unified",
+      "tax_genius"
+    ]
+  }
+}

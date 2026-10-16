@@ -1,0 +1,238 @@
+{
+  "block_id": "B04",
+  "campaign_id": "universal-db-wave8-20261015",
+  "title": "Physical stores and connections",
+  "host": "Mini",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b04-stores",
+  "base_commit": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_sha": "PENDING_DUX_COMMIT",
+  "colour": "BLUE",
+  "gear": 3,
+  "role": "EXTERNAL_PREPARER_NO_DUX",
+  "status": "PARTIAL",
+  "block_closed": false,
+  "runtime_identity": {
+    "requested_model": "Gemini 4 Argon",
+    "requested_effort": "high",
+    "effective_runtime_model": "UNOBSERVED",
+    "effective_runtime_effort": "UNOBSERVED",
+    "session_handle": "0db3627f-7483-4259-98e1-4bf16babad18"
+  },
+  "summary": "The already prepared hermetic B04 patch was integrated once after exact baseline/source hash checks and git apply --check. Current-source execution and a clean root without .agent-receipts each passed 14 tests with zero skips; both CLI paths regenerated the same pinned artifacts. All 8 original tests and 106 assertion ASTs are preserved. These are preparer execution observations awaiting independent acceptance, not a block-closure or live-store claim. Physical bindings, Qdrant model/version/dimensions and authenticated Redis metadata remain UNKNOWN or blocked.",
+  "metrics": {
+    "backend_rag_registry": {
+      "canonical_logical_count": 11,
+      "logical_to_physical_count": 18,
+      "distinct_physical_count": 11,
+      "alias_count": 21,
+      "distinct_alias_targets_count": 11,
+      "shared_physical_targets": {
+        "tax_genius_hybrid": [
+          "tax_genius",
+          "tax_knowledge",
+          "tax_updates",
+          "tax_ practices"
+        ],
+        "legal_unified_hybrid_hybrid": [
+          "legal_unified",
+          "legal_unified_hybrid",
+          "visa_oracle",
+          "kbli_eye",
+          "kbli_comprehensive"
+        ]
+      }
+    },
+    "graph_engine_registry": {
+      "default_collection": "legal_unified",
+      "canonical_logical_count": 0,
+      "logical_to_physical_count": 16,
+      "distinct_physical_count": 9,
+      "alias_count": 0
+    },
+    "cross_registry_diff": {
+      "only_in_backend_rag": [
+        "bali_zero_skills_hybrid",
+        "curated_qa",
+        "nlm_shadow_hybrid"
+      ],
+      "only_in_graph_engine": [
+        "v6_cache_vectors"
+      ],
+      "physical_target_conflicts": {
+        "balizero_news": {
+          "backend_rag": "balizero_news",
+          "graph_engine": "intel_authoritative_sources"
+        }
+      },
+      "kbli_2025_final_consistent": true
+    },
+    "live_db_metadata_summary": {
+      "sha256_prefix": "2bb691c3",
+      "observed_at": "2026-10-15T00:53:34.907490+00:00",
+      "relations": 557,
+      "actors": 13,
+      "triggers": 112,
+      "functions": 85,
+      "grant_pairs": 4628,
+      "dependencies": 0,
+      "foreign_keys": 240,
+      "activity_groups": 2
+    },
+    "qdrant_metadata_summary": {
+      "sha256_prefix": "af100a6d",
+      "endpoint_kind": "local_http_6333",
+      "collection_count": 2,
+      "hashed_collection_identities_count": 2,
+      "raw_collection_names_exported": false,
+      "points_or_payloads_requested": false,
+      "model_binding_proved": false,
+      "access_principal": "UNOBSERVED"
+    },
+    "redis_metadata_summary": {
+      "redis_pro_status": "AUTHORIZATION_REQUIRED",
+      "redis_mini_status": "AUTHORIZATION_REQUIRED",
+      "authentication_attempted": false,
+      "effective_principal": "UNOBSERVED"
+    },
+    "consumer_matrix_summary": {
+      "total_csv_rows": 6029,
+      "union_with_lead_delta": 6030,
+      "notebook_container_exclusions": 67,
+      "db_consumer_candidates": 5962,
+      "distinct_store_combinations": 167,
+      "status_counts": {
+        "BLOCKED_DISCOVERY": 3647,
+        "RETAINED_TEST_SOURCE": 1731,
+        "PARTIAL_DISCOVERY": 317,
+        "BLOCKED_RUNTIME_CONTRACT": 284,
+        "UNMATCHED_CURRENT_SOURCE_PATH": 38,
+        "BLOCKED_MCP_REACHABILITY": 8,
+        "ADAPTED_PARTIAL_VERIFIED": 2,
+        "ADAPTED_ISOLATED_VERIFIED": 2
+      }
+    }
+  },
+  "proofs": [
+    {
+      "id": "PROOF-B04-PRIOR-TEST-FAILURE-ACCOUNTING",
+      "kind": "parent_test_observation",
+      "status": "PRESERVED_FAILED_RECEIPT",
+      "detail": "Prior synthesis turn parent pytest run recorded 2 passed, 6 failed due to (1) INPUT-MANIFEST.json string digest vs dict assumption, (2) QDRANT-METADATA.json 2-hashed-identity list vs named-collection dict assumption, and (3) false 20/20/4/10 collection registry counts vs real 11/18/11/21 (backend-rag) and 16/9 (graph-engine)."
+    },
+    {
+      "id": "PROOF-B04-REPAIRED-ADAPTER-AND-TESTS",
+      "kind": "source_and_unit_test_repair",
+      "status": "PREPARER_EXECUTED_PENDING_INDEPENDENT_ACCEPTANCE",
+      "files": [
+        "research/operations/udb-wave8/B04/store_catalog.py",
+        "research/operations/udb-wave8/B04/tests/test_store_catalog.py",
+        "research/operations/udb-wave8/B04/DEFECTS.md"
+      ],
+      "detail": "Pinned hermetic adapter and fixtures passed 14 meaningful tests on current source both with admitted receipts and without receipts; all 8 original tests and 106 assertion ASTs remain unchanged. Frozen source-derived artifacts are reproducible; projected identities and digest-only inputs do not claim original source bytes or fresh physical observations.",
+      "receipts": [
+        "integration-20261016/PATCH-INTAKE.json",
+        "integration-20261016/CURRENT-SOURCE-TESTS.json",
+        "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+        "integration-20261016/CURRENT-REGENERATION.json"
+      ]
+    },
+    {
+      "id": "PROOF-B04-STATIC-DEFECTS-D1-D6",
+      "kind": "static_source_audit",
+      "status": "VERIFIED",
+      "files": [
+        "apps/backend-rag/backend/core/collection_registry.py",
+        "apps/graph-engine/src/nuzantara_graph/services/collection_registry.py",
+        "apps/backend-rag/backend/core/embeddings.py",
+        "apps/backend-rag/backend/core/qdrant_db.py",
+        "apps/backend-rag/backend/scripts/reindex_kbli_2025_final.py",
+        "apps/bali-intel-scraper/scripts/load_intel_sources.py"
+      ],
+      "detail": "Verified D1 (EmbeddingCache._get_key omits model/provider/dims; 1536 vs 384 fallback config), D2 (cross-registry divergence on balizero_news and 4 asymmetric keys), D3 (174 pool factory candidates across 206 files), D4 (reindex_kbli_2025_final.py flat payload keys kode/kode_kbli/kode_kbli_2025 vs QdrantClient._FLAT_PAYLOAD_COLLECTIONS omitting kbli_2025_final), D5 (ingest_target_lint.py scope), and D6 (67 NOTEBOOK_CONTAINER_REFERENCE exclusions)."
+    }
+  ],
+  "missing": [
+    "Parent coordinator acceptance and its official source-bound verification receipt, then a fresh independent final gate under the owner's recorded Claude-availability exception. The committed head is bound externally by the parent; head_sha remains PENDING_DUX_COMMIT.",
+    "Qdrant embedding model and version, live dimensions, producer/consumer compatibility and deployed endpoint/principal/store bindings remain UNKNOWN until actually measured under existing authority.",
+    "U1: Live unhashed Qdrant collection inventory, vector dimensions, distance metrics, point counts, and payload key schemas behind the 2 hashed local identities in QDRANT-METADATA.json and any Qdrant Cloud deployment.",
+    "U2: Live Qdrant access principal (`access_principal: UNOBSERVED`) and authentication posture.",
+    "U3/U7: Unhashed target PostgreSQL deployment identity (`PG_TARGET_DEPLOYMENT_HASHED_IDENTITY`, `sha8-2bb691c3`).",
+    "U4: Live PostgreSQL `max_connections`, `PgBouncer` pooling mode, and per-role connection limits.",
+    "U5/U8: Authenticated Redis `INFO` / `ACL WHOAMI` / keyspace metadata on Pro and Mini (currently `AUTHORIZATION_REQUIRED`).",
+    "U6/U10: Live SQLite/DuckDB/RocksDB/filesystem store file sizes, WAL modes, and lock states across hosts.",
+    "U9: Resolution of 3,647 `BLOCKED_DISCOVERY` and 284 `BLOCKED_RUNTIME_CONTRACT` rows in `consumer-matrix.csv`."
+  ],
+  "tests": {
+    "prior_synthesis_parent_run": {
+      "command": "pytest research/operations/udb-wave8/B04/tests/test_store_catalog.py",
+      "status": "FAILED",
+      "passed": 2,
+      "failed": 6,
+      "notes": "Failed in prior synthesis turn due to ungrounded INPUT-MANIFEST.json, QDRANT-METADATA.json, and collection_registry.py schema/count assumptions. Historical receipt retained; it is not the result of the current hermetic candidate."
+    },
+    "correction_candidate": {
+      "command": "pytest research/operations/udb-wave8/B04/tests/test_store_catalog.py",
+      "status": "HISTORICAL_PREPARED_CANDIDATE_SUPERSEDED",
+      "test_file": "research/operations/udb-wave8/B04/tests/test_store_catalog.py",
+      "test_count": 8,
+      "notes": "The prior prepared correction is historical. Its baseline has 8 test methods, including the R2 regression test, established from the pinned original AST. A later isolated receipt recorded 8 passed. Current 14-test candidate execution is recorded separately below."
+    },
+    "historical_isolated_regeneration": {
+      "status": "HISTORICAL_EXECUTION_RECEIPT",
+      "passed": 8,
+      "failed": 0,
+      "receipt": "ISOLATED-REGENERATION-RECEIPT.json",
+      "receipt_sha256": "ef415d8bb0c369091e3554c6ddadda9b6fb78acd3b618e37c8efbbd65cd6c1ed",
+      "notes": "Historical source pins differ from the integrated hermetic candidate; output artifact pins are reproduced by current execution."
+    },
+    "current_source": {
+      "status": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-SOURCE-TESTS.json",
+      "receipt_sha256": "f31354d45616633298bf3d1f99da0017d3a20508746e86b9667f9be571a5a0ff",
+      "source_sha256": {
+        "research/operations/udb-wave8/B04/store_catalog.py": "53f2776b124c7e23a03a58a57d2fc2a68f591901be480e68625e10ab5324721a",
+        "research/operations/udb-wave8/B04/tests/test_store_catalog.py": "d59a95b3a3f4a9b7dacb8445a095b9c9cd71b1175813e947f52619ae071429ee"
+      },
+      "observed_at": "2026-10-16T06:13:56.977891+00:00"
+    },
+    "current_clean_checkout": {
+      "status": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+      "receipt_sha256": "3dae9f5e3635cdf06e92742ec468329f704d3a6f56f6897cb12f37fb4c218f88",
+      "notes": "Current candidate and fixtures in a clean temporary root without .agent-receipts; CLI exit 0 and exact artifact parity."
+    },
+    "current_regeneration": {
+      "status": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B research/operations/udb-wave8/B04/store_catalog.py",
+      "exit_code": 0,
+      "receipt": "integration-20261016/CURRENT-REGENERATION.json",
+      "receipt_sha256": "c59ce101c871fb883b6747a4ca77aa39db87a4d0951062f0e0db17cfdf619228",
+      "artifacts": {
+        "store-bindings.csv": {
+          "bytes": 1615095,
+          "sha256": "712e98d987c4c1c38533e2bbbbd3f93366735d031219b107113a2971e6e29582"
+        },
+        "store-catalog.json": {
+          "bytes": 25291,
+          "sha256": "2b9c7d6492e8689dadc924e868f5f3548d48622db2561bae03cbacd4648c89e4"
+        }
+      }
+    }
+  },
+  "boundary_correction": {
+    "status": "SOURCE_REVIEW_PASS_FINAL_HEAD_PENDING",
+    "source_sha256": "e12c366a1e82731b54c4b679dd3abdf320213d9544b94eebcad5c14e9793a9c5",
+    "tests_passed": 18,
+    "clean_reproduction": true,
+    "independent_source_verdict_sha256": "3a293fe4753c70bdca213f577522d037d5bf5c69a08282633fb77b91e858715b",
+    "native_operational_closure": false
+  }
+}
