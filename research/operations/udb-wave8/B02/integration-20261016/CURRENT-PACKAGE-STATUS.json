@@ -1,0 +1,14 @@
+{
+  "block": "B02",
+  "observed_at": "2026-10-16T09:10:44.985449+00:00",
+  "state": "PREPARED_FOR_REVIEW_NOT_OPERATIONALLY_CLOSED",
+  "tests_previously_passed": 153,
+  "source_sha256": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+  "source_file": "redis_observer_probe.py",
+  "document_gate": "INCOMPLETE_SCOPED_R1_HISTORY_ONLY",
+  "final_commit_gate": "PENDING_INDEPENDENT",
+  "native_probe_executed": true,
+  "block_closed": false,
+  "original_deadline_elapsed": true,
+  "note": "Both one-shot native observer exercises completed on Pro and Mini. Each verified metadata, policy-off/policy-on behavior, 6 positive and 17 negative permissions, and temporary-role removal. The preparation document and run template remain immutable historical pre-execution evidence. Current focused source suite: 153 passed. Active actor coverage remains UNKNOWN; no repeat execution is authorized. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted."
+}

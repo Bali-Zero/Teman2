@@ -1,0 +1,37 @@
+mandate: universal-db-wave8-20261015-B02
+brief_ref: evidence/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim: Exact frozen source identity checked; prior focused suite 153P remains the recorded source execution.
+    cmd: /opt/homebrew/bin/python3 -c 'import hashlib;from pathlib import Path;assert hashlib.sha256(Path('"'"'research/operations/udb-wave8/B02/redis_observer_probe.py'"'"').read_bytes()).hexdigest()=='"'"'b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55'"'"''
+    exit: 0
+    ts: "2026-10-16T09:10:44.985449+00:00"
+    seat: codex-coordinator
+    result: Identity bound to existing execution evidence; final package ungraded.
+    evidence_ref: research/operations/udb-wave8/B02/integration-20261016/CURRENT-PACKAGE-STATUS.json
+dissent:
+  - seat: independent-support-review
+    objection: Static or limited native evidence does not establish full operation coverage and recovery.
+    status: CONFIRMED
+pii_scan: clean
+block_closed: false
+native_probe_executed: true
+production_adoption: false
+final_gate: PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD
+lanes:
+  - lane: B02-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B02-support
+    role: review
+    seat: astra-requested-support
+seat_override:
+  Authenticated owner Claude-availability and completion exceptions; no effective identity
+  inferred.
+limitations:
+  - "Both one-shot native observer exercises completed on Pro and Mini. Each verified metadata, policy-off/policy-on
+    behavior, 6 positive and 17 negative permissions, and temporary-role removal. The preparation document
+    and run template remain immutable historical pre-execution evidence. Current focused source suite: 153
+    passed. Active actor coverage remains UNKNOWN; no repeat execution is authorized. block_closed:false;
+    production adoption is not claimed. Original deadline elapsed. This package is prepared for review;
+    no final committed-head PASS is asserted."

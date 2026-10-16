@@ -1,0 +1,17 @@
+{
+  "owner_receipt_sha256": "db5b2f76592d14b2cad018553c0bd177264d7c0f34aa314181bf87b7388f9e12",
+  "report_status": "SAFETY: PASS",
+  "reviewed_at": "2026-10-16T08:12:32.958552+00:00",
+  "reviewer": "/root/b02_available_final_gate",
+  "run_packet_sha256": "5dc0b9877bff1d24698df4f80f5ab90ee3d011f763919e88caa4fdfbe4b34f95",
+  "source_pins": {
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c",
+    "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4"
+  },
+  "sourceapproval": "EXACT_BOUNDED_NATIVE_PACKAGE_ONLY; one temporary observer per declared host; no retry; unchanged stage; retained lease/recovery journal; not whole-HEAD/release or block closure",
+  "template_sha256": "3d3bb883fb447392dccf678b0e3205ca7db74a708d5a37b1cb04c3ea12cdc34e"
+}

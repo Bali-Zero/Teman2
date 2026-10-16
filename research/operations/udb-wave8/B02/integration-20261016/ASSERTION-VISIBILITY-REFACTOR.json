@@ -1,0 +1,27 @@
+{
+  "observed_at": "2026-10-16T09:21:57.864788+00:00",
+  "scope": "New boundary tests: meaningful leak and rejection assertions visible in test bodies. Positive local-context acceptance now also checks rejection of port zero.",
+  "original_prefix_bytes": 36954,
+  "original_prefix_preserved": true,
+  "old_test_sha256": "af16808bddbbd0552d1007ffe7c4d2d84c9c4bc47188c5711d2bae630e80a541",
+  "new_test_sha256": "469389ff2a6f545deb18378de03d424735fecdfe45df43815b54f903abd4a91b",
+  "runtime_source_unchanged": true,
+  "native_exercises_not_repeated": true,
+  "assertion_calls_made_explicit": 28,
+  "checks": [
+    {
+      "exit": 0,
+      "summary": [
+        "153 passed in 6.86s"
+      ],
+      "output_sha256": "5331263eec95e5af2a87f98b06d42fd6e765e404e6dbfe32c1e664fb1c61204d"
+    },
+    {
+      "exit": 0,
+      "summary": [
+        "anti-reward-hacking: clean (4 test file(s) checked)."
+      ],
+      "output_sha256": "652e053e115ad69a208fd00312e21c3434799727b084346e906b932e0e5f98ef"
+    }
+  ]
+}

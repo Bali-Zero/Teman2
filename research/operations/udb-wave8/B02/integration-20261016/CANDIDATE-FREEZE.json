@@ -1,0 +1,239 @@
+{
+  "scope": "FROZEN_SOURCE_ONLY_PREPARER_CANDIDATE_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:48:42.804470+00:00",
+  "campaign_id": "universal-db-wave8-20261015",
+  "block_id": "B02",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis",
+  "base_head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "candidate_commit": "PENDING_PARENT_BINDING",
+  "candidate_root": "research/operations/udb-wave8/B02",
+  "manifest_excludes": [
+    "CANDIDATE-FREEZE.json",
+    "__pycache__"
+  ],
+  "files": {
+    "ANALYSIS.md": {
+      "sha256": "90295b2dd6523a71d4f81aba57b1516d41044de54a63d766599173c6b863281e",
+      "bytes": 16039
+    },
+    "BATTLE.md": {
+      "sha256": "b421bfb8991e56b846052e1ce4b24f53203832ecb83276573a2fb34940a027ca",
+      "bytes": 4810
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "sha256": "b49d5a085a1006110985ff1ab1dc415daf46a2db092d77b6a3e5ce721cbed4fd",
+      "bytes": 19925
+    },
+    "DUX-NOTE-ANALYSIS.md": {
+      "sha256": "a91636605b981d9278b96fd8e254a0c5049c9478113218affc5629252d7ff522",
+      "bytes": 2096
+    },
+    "DUX-NOTE-CORRECTION.md": {
+      "sha256": "bb8349d0ef85d571a62752f8ec63e2e9425a1c80bf715a6d372a53990a358bc6",
+      "bytes": 6757
+    },
+    "DUX-NOTE-SYNTHESIS.md": {
+      "sha256": "ccc1b4305a6d3deabb086958614c78aa853235946b8ad9a3f90c1a26e7101d87",
+      "bytes": 4890
+    },
+    "PROPOSAL.md": {
+      "sha256": "3eb27f3db25bdf54b1004195804dace0fab52c8037d9d2b58edccb176b7837f0",
+      "bytes": 14043
+    },
+    "PR_BODY.md": {
+      "sha256": "7243e9057bb68249ca3e83dc085eb4a606b38b9b03dc846c5742f0464e081ac5",
+      "bytes": 3027
+    },
+    "REDIS-NATIVE-RUN-TEMPLATE.json": {
+      "sha256": "fa5a0fd92367c0c5df968cc71f9a2cfed06857150b6f87fdc57235b383edabca",
+      "bytes": 10099
+    },
+    "REDIS-OBSERVER-ADMISSION-PROPOSAL.md": {
+      "sha256": "a69ff791357e5a02c96fc7c177bce9050dbe48fa22594509b8b7c344fe1e7891",
+      "bytes": 11038
+    },
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": {
+      "sha256": "5e448662ad6a73701138ff1edce1d687345c76173e52c9477c0ae2d2f0ea0010",
+      "bytes": 6674
+    },
+    "RESULT.json": {
+      "sha256": "d1cf25e493746dc9a9081d8442e8dc9568a48289a05eef8c674085e736d34ffe",
+      "bytes": 11412
+    },
+    "RUN-ANALYSIS.started": {
+      "sha256": "e5e8aaaf66dcd48f1c906ad1b5b0e906fe497497f988a9103d933fed88de8920",
+      "bytes": 17
+    },
+    "RUN-CORRECTION.started": {
+      "sha256": "744b99706e57f3b06a2cbf8095cbb47b442476d959b1455826f2a273b24ca232",
+      "bytes": 17
+    },
+    "RUN-SYNTHESIS.started": {
+      "sha256": "f6c8dd20a69bb64f22dd6492679c502540edbca3ecf7a2e3239a39b9a616bd83",
+      "bytes": 18
+    },
+    "SESSION.json": {
+      "sha256": "5db3156a09b810585c00dc00c1a60576c62814b938ed6830ed19960cb6c35058",
+      "bytes": 598
+    },
+    "dux-requests/DUX-REQ-B02-02.cmd.sh": {
+      "sha256": "98b532f2274174f3df04cdf23e3b30473b4bc568a4110daf10eb885719798ce4",
+      "bytes": 980
+    },
+    "dux-requests/DUX-REQ-B02-02.out": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "dux-requests/DUX-REQ-B02-03.cmd.sh": {
+      "sha256": "e776579f0b329b1c96dbfa8eb1dfe828f42624d6841d3960d5475c744ee4bf16",
+      "bytes": 389
+    },
+    "dux-requests/DUX-REQ-B02-03.out": {
+      "sha256": "b0f510eb06809573b50f75c1155a0a569a0f0237ea4df022d0fe7c66801d416e",
+      "bytes": 141
+    },
+    "dux-requests/DUX-REQ-B02-03.pro.out": {
+      "sha256": "4924a388e48af18458127f3d2d9b33a326f6ce416f5e932d27929f34de010301",
+      "bytes": 139
+    },
+    "dux-requests/DUX-REQ-B02-04.cmd.sh": {
+      "sha256": "05bcfbce930c89d2eab482a1dbe79e2a20351e07d0e48e36362885dde32b72b8",
+      "bytes": 143
+    },
+    "dux-requests/DUX-REQ-B02-04.out": {
+      "sha256": "521658bea8409fc5531a4ff817701c89a98390cf5837cf0f9f5b9ae3894b690a",
+      "bytes": 4338
+    },
+    "dux-requests/RECEIPTS.json": {
+      "sha256": "9cf7d9208e033f461df3fbc862da50f92e8e362382f63d9f819c86d89c982fbf",
+      "bytes": 3031
+    },
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json": {
+      "sha256": "8a11e4e3db7aac8b4a71ff363fae778040cc901e6a4ec9777b8de36301f01159",
+      "bytes": 2453
+    },
+    "integration-20261016/CURRENT-FOCUSED-DIAGNOSIS.json": {
+      "sha256": "b53339135362919d1c4d40f46ed4a889ce05424db14e8297c135672ef71f27bc",
+      "bytes": 1827
+    },
+    "integration-20261016/CURRENT-SOURCE-TESTS-ALIGNED.json": {
+      "sha256": "246a41d28e540ea1e9f3f166c6a4e3713fd1203d2f71ee1edc09c62bd14b4b5f",
+      "bytes": 2528
+    },
+    "integration-20261016/CURRENT-SOURCE-TESTS.json": {
+      "sha256": "16663f0239f8793dc47d2d20d5abc314c88355c66d08bfc6a32eee1a7e54892c",
+      "bytes": 2241
+    },
+    "integration-20261016/CURRENT-TEST-DIAGNOSIS.json": {
+      "sha256": "f12b1c74eea251b6a9e4ccfab71c713e2e89776b27a517e451a3a635f4aca03a",
+      "bytes": 1319
+    },
+    "integration-20261016/PATCH-INTAKE.json": {
+      "sha256": "9740a773b3fe84919cfa4a3051b70fa83e1c9c610cacc9ccf769d166fa174a86",
+      "bytes": 10543
+    },
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json": {
+      "sha256": "7883347e2f5d576e5d369307f0cc1fab3fd01c64f5822701fccbc8e913b440f2",
+      "bytes": 6260
+    },
+    "redis-consumer-ledger.json": {
+      "sha256": "f4feadb39bdd447b3287d1ca3f62c2e9b4443b7f232b367e8e8fd7edfc83acfb",
+      "bytes": 438928
+    },
+    "redis_consumer_census.py": {
+      "sha256": "d63c6fd4a81c9eeae05addb7731e9dc3316d80b785ac24accf0b09237f7fc5ec",
+      "bytes": 10584
+    },
+    "redis_observer_admission.py": {
+      "sha256": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+      "bytes": 16376
+    },
+    "redis_observer_native_once.py": {
+      "sha256": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+      "bytes": 8226
+    },
+    "redis_observer_probe.py": {
+      "sha256": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+      "bytes": 42615
+    },
+    "test_redis_observer_admission.py": {
+      "sha256": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+      "bytes": 18499
+    },
+    "test_redis_observer_native_once.py": {
+      "sha256": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+      "bytes": 15575
+    },
+    "test_redis_observer_probe.py": {
+      "sha256": "2f600b395dee502b8f738b72b1662b0aa881f4f54bc02f68f096a63c2273d86e",
+      "bytes": 36792
+    }
+  },
+  "changed_preexisting_files": [
+    "test_redis_observer_admission.py",
+    "RESULT.json",
+    "PR_BODY.md",
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md",
+    "DEFINITIVE-SYNTHESIS.md",
+    "redis_observer_admission.py"
+  ],
+  "new_files_before_this_manifest": [
+    "REDIS-NATIVE-RUN-TEMPLATE.json",
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+    "integration-20261016/CURRENT-FOCUSED-DIAGNOSIS.json",
+    "integration-20261016/CURRENT-SOURCE-TESTS-ALIGNED.json",
+    "integration-20261016/CURRENT-SOURCE-TESTS.json",
+    "integration-20261016/CURRENT-TEST-DIAGNOSIS.json",
+    "integration-20261016/PATCH-INTAKE.json",
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json",
+    "redis_observer_native_once.py",
+    "test_redis_observer_native_once.py"
+  ],
+  "removed_preexisting_files": [],
+  "patch_chain_stats": [
+    {
+      "sha256": "d462fca01afc22aa6a1674c804b10b5c690c65c9f398b99113fe114ecbfb2de0",
+      "bytes": 15125,
+      "paths": 3,
+      "added": 235,
+      "removed": 14
+    },
+    {
+      "sha256": "2cbfbb43660d7c933605ecfa9b66b280382ac74334532c7154ccb40015992411",
+      "bytes": 26512,
+      "paths": 3,
+      "added": 634,
+      "removed": 0
+    },
+    {
+      "sha256": "525f73a2112d7548f268a8510ca760a528f75b7c7f48b134c94bd604cdce5534",
+      "bytes": 22079,
+      "paths": 4,
+      "added": 233,
+      "removed": 23
+    }
+  ],
+  "final_seven_file_sha256": {
+    "redis_observer_admission.py": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "redis_observer_probe.py": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+    "REDIS-NATIVE-RUN-TEMPLATE.json": "fa5a0fd92367c0c5df968cc71f9a2cfed06857150b6f87fdc57235b383edabca",
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "5e448662ad6a73701138ff1edce1d687345c76173e52c9477c0ae2d2f0ea0010"
+  },
+  "reviewed_three_pins_unchanged": true,
+  "source_or_test_changes_beyond_prepared_patches": false,
+  "source_header_markers": "Absent in reviewed three sources; unchanged pins preserved; applicability/waiver for parent.",
+  "current_verification": {
+    "current_worktree": "83 passed in 0.54s; 0 skipped",
+    "clean_seven_file_candidate": "83 passed in 0.55s; 0 skipped",
+    "historical_harness_failure": "Initial and diagnostic full suites 82 passed/1 failed; focused test 1 failed; TEST_PATH_REJECTED resolved solely by aligning child TMPDIR with owned pytest basetemp.",
+    "original_assertions": "42 helper and 15 runner assertion ASTs preserved"
+  },
+  "native_permission": "UNGRANTED",
+  "native_executed": false,
+  "real_credentials_read": false,
+  "independent_acceptance": "PENDING_PARENT",
+  "block_closed": false
+}

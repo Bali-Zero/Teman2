@@ -1,0 +1,183 @@
+{
+  "scope": "PREPARED_WORKER_EVIDENCE_NOT_A_NEW_EXECUTION_OR_NATIVE_GRANT",
+  "corrected_verification_sha256": "2aff93394b4983f4dcebb08bb311378629df94c2ac493b88981e8d5a5b48f4da",
+  "corrected_source_manifest_sha256": "65aa614b533b71398cab533440069ab33ee7d1f4d0b942ce697b57a4521aa456",
+  "prepared_status": "PREPARED_CORRECTED_NOT_REVIEWED_UNGRANTED",
+  "source_review_basis_sha256": "541db6827e34646b819571f4b607ab35d05fb7a22454b8a3ab5aadc539d89a19",
+  "required_findings": [
+    "B1_UID_HOME_AND_FIXED_ROUTES",
+    "B2_EXACT_SEVEN_FILE_PREIMPORT_STAGE_CONTRACT",
+    "B3_NATIVE_ROUTE_DOCUMENTATION"
+  ],
+  "seven_file_source_sha256": {
+    "redis_observer_admission.py": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "redis_observer_probe.py": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+    "REDIS-NATIVE-RUN-TEMPLATE.json": "fa5a0fd92367c0c5df968cc71f9a2cfed06857150b6f87fdc57235b383edabca",
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "5e448662ad6a73701138ff1edce1d687345c76173e52c9477c0ae2d2f0ea0010"
+  },
+  "reviewed_three_file_pins": {
+    "redis_observer_admission.py": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "redis_observer_probe.py": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2"
+  },
+  "prepared_test_counts": {
+    "previous_runner": 40,
+    "new_regressions": 14,
+    "runner_total": 54,
+    "unchanged_helper": 29,
+    "total_passed": 83,
+    "failed": 0,
+    "skipped": 0
+  },
+  "prepared_commands": [
+    {
+      "command": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "test_redis_observer_native_once.py",
+        "test_redis_observer_admission.py",
+        "--junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/corrected-isolated-tests.xml",
+        "--tb=short"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "redis_observer_native_once.py",
+        "test_redis_observer_native_once.py"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "redis_observer_native_once.py",
+        "test_redis_observer_native_once.py"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "/Users/nuzantara/nuzantara/node_modules/.bin/prettier",
+        "--check",
+        "REDIS-NATIVE-RUN-TEMPLATE.json",
+        "REDIS-TEMPORARY-OBSERVER-PREPARED.md"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/B02-one-hardening-prepared.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-new-files.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "init",
+        "-q"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/B02-one-hardening-prepared.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/B02-one-hardening-prepared.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-new-files.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-new-files.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "--check",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-correction.patch"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "git",
+        "apply",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-correction.patch"
+      ],
+      "exit": 0
+    }
+  ],
+  "original_runner_assertions_retained": 15,
+  "hardening_original_helper_assertions_retained": 42,
+  "patch_chain": [
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/B02-one-hardening-prepared.patch",
+      "sha256": "d462fca01afc22aa6a1674c804b10b5c690c65c9f398b99113fe114ecbfb2de0"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-new-files.patch",
+      "sha256": "2cbfbb43660d7c933605ecfa9b66b280382ac74334532c7154ccb40015992411"
+    },
+    {
+      "path": "/Users/nuzantara/nuzantara/.worktrees/db-udb-parent-b02-admission/native-once-prepared/B02-native-once-correction.patch",
+      "sha256": "525f73a2112d7548f268a8510ca760a528f75b7c7f48b134c94bd604cdce5534"
+    }
+  ],
+  "source_check_boundary": "Runtime imports precede self-check; Dux must first run exact seven-file preimport verifier with isolated Python. Same-UID concurrent changes and interpreter/site dependency integrity are outside this stage check.",
+  "native_permission": "UNGRANTED",
+  "native_executed": false,
+  "real_credentials_read": false,
+  "block_closed": false
+}

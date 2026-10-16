@@ -1,0 +1,119 @@
+{
+  "block_closed": false,
+  "block_id": "B02",
+  "campaign_id": "universal-db-wave8-20261015",
+  "corrected_findings": [
+    "B02-OB-1"
+  ],
+  "isolated_ephemeral_redis_tests_only": true,
+  "mission_colour": "BLUE_WITH_EXPLICIT_OWNER_NAMED_SEAT_EXCEPTION",
+  "native_executed": false,
+  "native_permission": "UNGRANTED",
+  "original_pins": {
+    "redis_observer_admission.py": {
+      "asserts": 0,
+      "bytes": 16376,
+      "sha256": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc"
+    },
+    "redis_observer_native_once.py": {
+      "asserts": 0,
+      "bytes": 8226,
+      "sha256": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b"
+    },
+    "redis_observer_probe.py": {
+      "asserts": 0,
+      "bytes": 42615,
+      "sha256": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2"
+    },
+    "test_redis_observer_admission.py": {
+      "asserts": 66,
+      "bytes": 18499,
+      "sha256": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e"
+    },
+    "test_redis_observer_native_once.py": {
+      "asserts": 24,
+      "bytes": 15575,
+      "sha256": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4"
+    },
+    "test_redis_observer_probe.py": {
+      "asserts": 74,
+      "bytes": 36792,
+      "sha256": "2f600b395dee502b8f738b72b1662b0aa881f4f54bc02f68f096a63c2273d86e"
+    }
+  },
+  "owned_changed_files": [
+    "redis_observer_probe.py",
+    "redis_observer_admission.py",
+    "test_redis_observer_probe.py",
+    "integration-20261016/BOUNDARY-CORRECTION-RECEIPT.json"
+  ],
+  "parent_owned_census": {
+    "ledger_bytes": 439528,
+    "ledger_sha256": "5b93933aa296d67458846521d1d7c1f2a192898fa5567f8ceeb1a4a5d72f62cc",
+    "modified_by_this_builder": false,
+    "receipt": "CURRENT-CENSUS-CLEAN-CLI.json",
+    "receipt_sha256": "598cecf31db98ed545c85d7483c6db4d41dfc7139f3736fc72773c10e68ea7fc"
+  },
+  "phase": "bounded_output_boundary_correction",
+  "pins": {
+    "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+    "test_redis_observer_probe.py": "af16808bddbbd0552d1007ffe7c4d2d84c9c4bc47188c5711d2bae630e80a541"
+  },
+  "prepared_at": "2026-10-16T07:56:11.444677+00:00",
+  "raw_rejected_values_in_receipt": false,
+  "real_credentials_read": false,
+  "release_approved": false,
+  "remaining": [
+    "Fresh independent source acceptance",
+    "Parent candidate packaging and release disposition"
+  ],
+  "retained_prior_failure_proof": {
+    "prior_source_sha256": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+    "raw_samples_saved": false,
+    "reproduction": "final-astra/OUTPUT-BOUNDARY-REPRO.json",
+    "review": "final-astra/BLOCKER-SPEC.md",
+    "synthetic_failures_confirmed": 10
+  },
+  "status": "FIXED_TESTED_FROZEN_PENDING_INDEPENDENT_REVIEW",
+  "verification": {
+    "actual_subprocess_cli_checked": true,
+    "admission_native_tests_byte_identical": true,
+    "agent_receipts_absent": true,
+    "all_ten_prior_surfaces_covered": true,
+    "approved_assertion_change_reason": "Preserve equality against the actually measured default principal while requiring its outward SHA256 identity instead of cleartext; all default rejection assertions retained",
+    "approved_new_assertion": "assert post_report[\"effective_principal\"] == mod.identity_sha256(\"default\")",
+    "approved_old_assertion": "assert post_report[\"effective_principal\"] == \"default\"",
+    "clean_physical_copy_combined_suite": {
+      "exit_code": 0,
+      "passed": 153,
+      "seconds": 7.03,
+      "skips": false
+    },
+    "cleanup_policy_identity_binding_tests_pass": true,
+    "dux_requests_absent": true,
+    "effective_raw_whoami_verified_before_admission": true,
+    "metadata_missing_measurements_fail_closed": true,
+    "native_helper_byte_identical": true,
+    "original_assertions_preserved": {
+      "admission": 66,
+      "native": 24,
+      "probe": 74
+    },
+    "original_combined_test_cases": 99,
+    "original_test_prefix_preserved_except_one_approved_assertion": true,
+    "output_boundary_added_cases": 51,
+    "outward_principal_and_client_user_are_sha256": true,
+    "parent_census_added_cases": 3,
+    "preauth_context_validation_checked": true,
+    "worktree_combined_suite": {
+      "exit_code": 0,
+      "passed": 153,
+      "seconds": 7.04,
+      "skips": false
+    }
+  }
+}

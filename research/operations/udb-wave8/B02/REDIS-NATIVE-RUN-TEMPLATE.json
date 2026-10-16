@@ -1,0 +1,146 @@
+{
+  "status": "OWNER_GRANTED_FRESH_SOURCE_GATE_PENDING",
+  "native_execution_performed": false,
+  "owner_receipt_sha256": null,
+  "source_run_gate_receipt_sha256": null,
+  "authority": "Authenticated current owner completion order; fresh independent available Astra source/run gate under explicit Claude availability exception.",
+  "negative_authority_reference": {
+    "path": "campaign/parent/OWNER-CONTINUE-20261016.json",
+    "sha256": "93d32157abcdf92338a1ea39a1aa2935e1a88cd19ddf9367c089161ccb1f07fb",
+    "B02_permission": "NOT_GRANTED; B01/B05 continuation is insufficient",
+    "disposition": "HISTORICAL_B01_ONLY_ORDER_SUPERSEDED_BY_CURRENT_FULL_COMPLETION_ORDER"
+  },
+  "run_packet_templates": {
+    "Pro": {
+      "permission": "GRANTED",
+      "campaign": "universal-db-wave8-20261015",
+      "scope": "ONE_B02_TEMPORARY_OBSERVER_PER_HOST",
+      "credential_route": "CANONICAL_DOTENV_DEFAULT_BOOTSTRAP_ONLY",
+      "host": "Pro",
+      "host_sha256": "f32816d8433d1b52853fb5abbe919098f8566e426ce147f8b197f3d63892e79e",
+      "endpoint": [
+        "127.0.0.1",
+        6379
+      ],
+      "deadline": "2026-10-16T08:23:00.050644+00:00",
+      "source_pins": {
+        "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+        "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+        "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+        "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+        "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+        "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c"
+      },
+      "evidence_kind": "NATIVE_ADMITTED"
+    },
+    "Mini": {
+      "permission": "GRANTED",
+      "campaign": "universal-db-wave8-20261015",
+      "scope": "ONE_B02_TEMPORARY_OBSERVER_PER_HOST",
+      "credential_route": "CANONICAL_DOTENV_DEFAULT_BOOTSTRAP_ONLY",
+      "host": "Mini",
+      "host_sha256": "11624124c032b79f9df5ba409eba1423af1804d434708fb1da6ad3c3d8f12bbe",
+      "endpoint": [
+        "127.0.0.1",
+        6379
+      ],
+      "deadline": "2026-10-16T08:23:00.050644+00:00",
+      "source_pins": {
+        "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+        "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+        "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+        "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+        "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+        "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c"
+      },
+      "evidence_kind": "NATIVE_ADMITTED"
+    }
+  },
+  "owner_receipt_required": {
+    "authorized": true,
+    "scope": "ONE_B02_TEMPORARY_OBSERVER_PER_HOST",
+    "campaign": "universal-db-wave8-20261015",
+    "credential_route": "CANONICAL_DOTENV_DEFAULT_BOOTSTRAP_ONLY",
+    "run_packet_sha256": "SHA256_OF_EXACT_HOST_PACKET_AFTER_EXPLICIT_OWNER_GRANT"
+  },
+  "source_run_gate_required": {
+    "report_status": "SAFETY: PASS",
+    "source_pins": {
+      "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+      "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+      "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+      "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+      "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+      "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c"
+    },
+    "run_packet_sha256": "SHA256_OF_EXACT_GRANTED_HOST_PACKET",
+    "owner_receipt_sha256": "DUX_ADMITTED_OWNER_RECEIPT_PIN",
+    "template_sha256": "SHA256_OF_THIS_TEMPLATE"
+  },
+  "credential_delivery": {
+    "path": "/Users/nuzantara/.nuzantara-secrets.env",
+    "decoder": "python-dotenv dotenv_values(stream=memory, interpolate=False); current-owner regular0600 single-link O_NOFOLLOW bounded read; no environment fallback",
+    "principal": "default; bootstrap provisioner only",
+    "approval": "GRANTED_ONE_TEMPORARY_OBSERVER_PER_HOST",
+    "observer": "Fresh generated credentials remain in the existing helper RAM; never substituted from the private store",
+    "home_resolution": "pwd.getpwuid(os.getuid()).pw_dir; conflicting HOME rejected before any packet read, reservation, credential read or socket; canonical routes must match this template"
+  },
+  "single_use": {
+    "private_root": "/Users/nuzantara/.udb-b02-native-once",
+    "root_mode": "0700 current owner, no symlink",
+    "endpoint_lease": "endpoint.lease",
+    "recovery_journal": "recovery.json",
+    "file_mode": "0600 O_EXCL O_NOFOLLOW",
+    "retention": "Never automatically unlink lease or journal. Any reservation consumes the attempt, including an error before Redis. Existing marker blocks a new exercise; recovery requires separate admission.",
+    "home_override": "Rejected; changing HOME cannot choose another native lease/journal/secret directory"
+  },
+  "detached_invocation": {
+    "stage_directory": "/Users/nuzantara/.udb-b02-native-once-package",
+    "admission_directory": "/Users/nuzantara/.udb-b02-admission",
+    "python_by_host": {
+      "Pro": "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python",
+      "Mini": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python"
+    },
+    "argv_after_python": [
+      "-B",
+      "-E",
+      "-s",
+      "/Users/nuzantara/.udb-b02-native-once-package/redis_observer_native_once.py",
+      "/Users/nuzantara/.udb-b02-admission/run-packet.json",
+      "/Users/nuzantara/.udb-b02-admission/owner.json",
+      "/Users/nuzantara/.udb-b02-admission/source-run-gate.json",
+      "DUX_ADMITTED_OWNER_RECEIPT_SHA256",
+      "DUX_ADMITTED_FRESH_SOURCE_RUN_GATE_SHA256"
+    ],
+    "launch_contract": "Before any staged imports, Dux runs the pinned preimport verifier with isolated Python (-I -B) from outside the stage, using the independently admitted seven-file manifest and manifest SHA256. Require exit0/STAGE_VERIFIED. Stage must contain exactly the seven pinned regular source/document/template files, no __pycache__, extras, directories or symlinks; current-owner0700 stage. Keep staged bytes unchanged through launch. Then subprocess.Popen once per host using argv -B -E -s, start_new_session=True, stdin=DEVNULL, stdout=current-owner0600 exclusive result.json, stderr=DEVNULL, cwd=stage_directory, env={PATH:/usr/bin:/bin}. No shell/eval or secret argv.",
+    "timeout_policy": "Observe detached PID; if not terminal within60 seconds, send SIGTERM once for existing helper cleanup. No automatic retry or forced success. A remaining role is a separately admitted recovery action.",
+    "dependency": "Existing python-dotenv; API verified on Mini, Pro compatibility must be checked by Dux without reading credentials. No install.",
+    "preimport_verifier_python": "import hashlib,json,os,stat,sys\nfrom pathlib import Path\nexpected=set(\"redis_observer_native_once.py test_redis_observer_native_once.py redis_observer_admission.py test_redis_observer_admission.py redis_observer_probe.py REDIS-TEMPORARY-OBSERVER-PREPARED.md REDIS-NATIVE-RUN-TEMPLATE.json\".split())\ntry:\n    if len(sys.argv)!=4: raise ValueError()\n    stage,manifest=Path(sys.argv[1]),Path(sys.argv[2])\n    raw=manifest.read_bytes()\n    if hashlib.sha256(raw).hexdigest()!=sys.argv[3]: raise ValueError()\n    pins=json.loads(raw)\n    meta=stage.lstat()\n    if not stat.S_ISDIR(meta.st_mode) or stat.S_IMODE(meta.st_mode)!=0o700 or meta.st_uid!=os.getuid(): raise ValueError()\n    if set(pins)!=expected or {p.name for p in stage.iterdir()}!=expected: raise ValueError()\n    for name in sorted(expected):\n        path=stage/name\n        meta=path.lstat()\n        if not stat.S_ISREG(meta.st_mode) or meta.st_nlink!=1 or meta.st_uid!=os.getuid(): raise ValueError()\n        if hashlib.sha256(path.read_bytes()).hexdigest()!=pins[name]: raise ValueError()\nexcept Exception:\n    print(\"STAGE_REJECTED\")\n    raise SystemExit(1) from None\nprint(\"STAGE_VERIFIED\")\n",
+    "preimport_verifier_argv": [
+      "-I",
+      "-B",
+      "-c",
+      "EXACT_PREIMPORT_VERIFIER_PYTHON_FROM_THIS_REVIEWED_TEMPLATE",
+      "/Users/nuzantara/.udb-b02-native-once-package",
+      "/Users/nuzantara/.udb-b02-admission/reviewed-stage-manifest.json",
+      "DUX_ADMITTED_EXACT_SEVEN_FILE_MANIFEST_SHA256"
+    ],
+    "self_check_boundary": "Runtime source checks occur after imports and do not establish pre-import integrity. The external pre-import verifier checks the stage; installed interpreter/dependency integrity and concurrent same-UID tampering are outside its guarantee."
+  },
+  "required_order": [
+    "Explicit authenticated owner scope and credential-route approval",
+    "Materialize exact per-host packet, owner receipt and fixed private paths",
+    "Fresh independent exact-source/run-package gate, including template and detached launch contract",
+    "Dux admits receipt/manifest pins out of band; isolated preimport verifier checks exactly seven staged files with no extras/pycache before imports",
+    "Launch exactly once per host before original deadline",
+    "Collect sanitized result and retain private recovery journal; native evidence is not block closure"
+  ],
+  "verification_boundary": "Isolated tests run only throwaway Redis on non6379 with synthetic private credentials. They cannot confer native admission.",
+  "remaining": [
+    "Owner grant",
+    "Fresh independent combined gate for hardened helper and this package",
+    "Pro decoder API compatibility and staged source verification",
+    "Dux native execution only after all grants; no native execution in preparation"
+  ],
+  "owner_authority_source_sha256": "bbe0a27dba6115758350c695d7313ec9f821278d628fbd3ea2458b87c46b3c3a"
+}

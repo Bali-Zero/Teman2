@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-16T07:47:22.600164+00:00",
+  "scope": "Remove unshipped raw-output dependency while preserving exact historical ledger evidence identities",
+  "preimages": {
+    "redis_consumer_census.py": "a34d6747e90f531c78b7b11d81c8e5ced289300c49728b2f45a2ad0fea58bdbe",
+    "test_redis_consumer_census_hermetic.py": "a8e39941ea519fb3dfc88ba21b14ae79c0a7a3a346a6347af7a5bd36feebb7ff"
+  },
+  "postimages": {
+    "redis_consumer_census.py": "bcb134d4d5211bd71eed7375026360f74b738e6a5df4c27cf13851d56e593c40",
+    "test_redis_consumer_census_hermetic.py": "edd304d1e59d370fa8b8d644cf7b92b9573f20916b9c98a8c4631c86413ce990",
+    "PROVENANCE.json": "6c8295224f9b25e0145ecdce66e56ed0001c5090ed7bfe128c9c6fe209b1475f"
+  },
+  "receipt_identities": {
+    "DUX-REQ-B02-03.out": "b0f510eb06809573b50f75c1155a0a569a0f0237ea4df022d0fe7c66801d416e",
+    "DUX-REQ-B02-03.pro.out": "4924a388e48af18458127f3d2d9b33a326f6ce416f5e932d27929f34de010301",
+    "DUX-REQ-B02-04.out": "521658bea8409fc5531a4ff817701c89a98390cf5837cf0f9f5b9ae3894b690a"
+  },
+  "raw_receipts_saved": false,
+  "native_job_run": false,
+  "block_closed": false
+}

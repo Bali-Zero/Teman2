@@ -1,0 +1,45 @@
+{
+  "block_closed": false,
+  "gates": {
+    "Mini": {
+      "path": "/Users/nuzantara/Desktop/nuzantara/.worktrees/ops-udb-wave8-control/campaign/parent/reviews/B02-available/final-astra/SAFETY-PASS-Mini.json",
+      "sha256": "bde25b384b7958bdbc2d23ac3538bc8b37f713662b20bd4a858bb6502d45b7aa"
+    },
+    "Pro": {
+      "path": "/Users/nuzantara/Desktop/nuzantara/.worktrees/ops-udb-wave8-control/campaign/parent/reviews/B02-available/final-astra/SAFETY-PASS-Pro.json",
+      "sha256": "989bdd2a3b6987795b0bd0c858a38e0e13cbb0eb31027e6bc3ed0592749fccdb"
+    }
+  },
+  "native_executed_by_reviewer": false,
+  "original_assertions": {
+    "admission": 66,
+    "approved_raw_default_to_hash_change": 1,
+    "native": 24,
+    "probe": 74
+  },
+  "owner_authority": "Coordinator-authenticated explicit current completion order; reviewer signs safety only",
+  "packaging": "Census no longer requires unshipped raw request outputs; clean fixture tests pass",
+  "prepared_doc_receipt": {
+    "file": "REDIS-TEMPORARY-OBSERVER-PREPARED.md",
+    "read_ranges": [
+      [
+        1,
+        16
+      ]
+    ],
+    "sha256": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c"
+  },
+  "previous_blocker": "B02-OB-1 ten reproduced surfaces resolved",
+  "real_credentials_read_by_reviewer": false,
+  "scope": "EXACT_BOUNDED_NATIVE_PACKETS_ONLY",
+  "synthetic_boundary_checks": 10,
+  "synthetic_boundary_leaks": 0,
+  "tests": {
+    "failed": 0,
+    "passed": 153,
+    "seconds": 8.88,
+    "skipped": 0
+  },
+  "verdict": "SAFETY: PASS",
+  "whole_head_gate": false
+}

@@ -1,0 +1,35 @@
+{
+  "observed_at": "2026-10-16T08:15:07.077737+00:00",
+  "host": "pro",
+  "exit_code": 0,
+  "result": {
+    "diagnostic": "NONE",
+    "dryrun_verified": true,
+    "endpoint_sha256": "6cdc2779ab132682c9579aeb0fdd3d9120c93025f86eff58fe26735e3140e3a8",
+    "evidence_finished_at": "2026-10-16T08:15:07.062796+00:00",
+    "evidence_kind": "NATIVE_ADMITTED",
+    "evidence_started_at": "2026-10-16T08:15:07.047646+00:00",
+    "exercise_diagnostic": "VERIFIED_PENDING_CLEANUP",
+    "metadata_counts": {
+      "command_count": 274,
+      "dbsize": 1361
+    },
+    "negative_permission_count": 17,
+    "observer_identity_sha256": "086cc1fe3c822826ed9b916aa9b322bfb00d549b53377038b123671dd5bbbb42",
+    "observer_metadata_verified": true,
+    "policy_off_verified": true,
+    "policy_on_verified": true,
+    "policy_sha256": "ae4740dfbb5efd32b81928182d718ae7022ef37184b057d9642069b23142bb47",
+    "positive_permission_count": 6,
+    "role_created": true,
+    "role_removed": true,
+    "schema_version": 1,
+    "source_sha256": {
+      "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+      "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55"
+    },
+    "status": "VERIFIED_TEMPORARY_EXERCISE"
+  },
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "raw_stderr_saved": false
+}
