@@ -35,11 +35,15 @@ def test_a_strict_row_is_not_merged_first_even_with_a_merged_pull():
     {"merged": True},                                          # no head
     {"merged": True, "head": {"sha": "xyz"}},                  # head not a sha
     {"state": "open", "head": {"sha": A}},                     # still open
-    "garbage", None, [],
 ], ids=str)
 def test_every_other_pull_fails_closed(pull_):
     got = measure([row(false=("open",))], merged_prs={1: pull_})
     assert (got["mergeable_rows"], got["merged_first"]) == (0, 0)
+
+
+@pytest.mark.parametrize("pull_", ["garbage", None, [], 7])
+def test_a_pull_that_is_no_dict_fails_closed(pull_):
+    assert mg.mergeable_row(row(false=("open",)), pull_) is False
 
 
 def test_a_missing_pull_does_not_count_and_is_said():
