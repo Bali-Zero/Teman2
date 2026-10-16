@@ -61,11 +61,8 @@
   "missing": [
     "OWNER_CONSENT_REQUIRED_REDIS_OBSERVER_ACL: Owner approval to provision nuzantara_observer on Pro (127.0.0.1:6379, Redis 8.6.1) and Mini (127.0.0.1:6379, Redis 8.10.2) and select ACL persistence (B02-F1).",
     "SECRET_DELIVERY_PATH_UNAPPROVED: Owner approval of the in-process mode-0600 ~/.nuzantara-redis-observer.env credential delivery path (DUX-NOTE-CORRECTION.md).",
-    "LIVE_DRYRUN_MATRIX_NOT_EXECUTED_NO_PROVISIONER_ADMISSION: Live provisioner ACL DRYRUN matrix and dated authenticated observer metadata receipts on Pro (redis:pro:6379/db0) and Mini (redis:mini:6379/db0) have not been executed (B02-F6, DUX-NOTE-CORRECTION.md).",
     "OPERATION_ID_PENDING_B05: Canonical operation_id bindings from B05's committed operation-instance ledger (CONTRACT-CONVENTIONS.md).",
-    "SOURCE_ACCEPTANCE_AND_WHOLE_HEAD_GATE_PENDING: The coordinator must independently accept the frozen candidate, issue its official receipt, bind the committed head externally and obtain the applicable fresh independent gate. Source test PASS is not a whole-head gate.",
-    "NATIVE_PERMISSION_UNGRANTED: The authenticated owner availability exception removes unavailable Claude as a dependency only; it does not authorize a Redis native exercise, credentials, observer creation or native metadata reads.",
-    "SOURCE_HEADER_APPLICABILITY_PENDING_PARENT: The three reviewed source files have no adversarial_review/R1 docstring marker. Their exact reviewed digests were preserved; the parent assesses actual marker-check applicability or waiver without this preparer changing the pins."
+    "SOURCE_ACCEPTANCE_AND_WHOLE_HEAD_GATE_PENDING: The coordinator must independently accept the frozen candidate, issue its official receipt, bind the committed head externally and obtain the applicable fresh independent gate. Source test PASS is not a whole-head gate."
   ],
   "tests": [
     {
@@ -166,5 +163,35 @@
     },
     "limitation": "One helper-owned temporary observer on each existing loopback Redis. No application values or long-lived application actors measured. Historical census metadata and native-run template status describe their frozen preparation time.",
     "active_denominator": "UNKNOWN"
-  }
+  },
+  "historical_superseded_missing": [
+    {
+      "original": "LIVE_DRYRUN_MATRIX_NOT_EXECUTED_NO_PROVISIONER_ADMISSION: Live provisioner ACL DRYRUN matrix and dated authenticated observer metadata receipts on Pro (redis:pro:6379/db0) and Mini (redis:mini:6379/db0) have not been executed (B02-F6, DUX-NOTE-CORRECTION.md).",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    },
+    {
+      "original": "NATIVE_PERMISSION_UNGRANTED: The authenticated owner availability exception removes unavailable Claude as a dependency only; it does not authorize a Redis native exercise, credentials, observer creation or native metadata reads.",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    },
+    {
+      "original": "SOURCE_HEADER_APPLICABILITY_PENDING_PARENT: The three reviewed source files have no adversarial_review/R1 docstring marker. Their exact reviewed digests were preserved; the parent assesses actual marker-check applicability or waiver without this preparer changing the pins.",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    }
+  ],
+  "current_focused_suite": {
+    "passed": 153,
+    "failed": 0,
+    "skipped": 0,
+    "independent_reproduction": true,
+    "scope": "Source and tests; not operational closure"
+  },
+  "source_header_applicability": {
+    "python_source_docstring_markers": "NOT_APPLICABLE_TO_R1_MARKDOWN_GATE",
+    "markdown_frontmatter_and_review_sections": "RECONCILED_CURRENT_PACKAGE",
+    "frozen_native_inputs": "UNCHANGED"
+  },
+  "operational_status": "BLOCKED"
 }

@@ -3,34 +3,26 @@ adversarial_review: codex
 review_scope: recorded_evidence_reconciliation_only
 ---
 
-# B02: prepared Redis observer admission and one-shot execution package
+# B02: Redis census, observer admission and completed one-shot evidence
 
-## Current package status (2026-10-16)
+The package ships a hermetic Redis consumer census, a restricted observer probe, strict admission checks and a one-shot execution helper. Both authorized temporary observer exercises have completed. Operational coverage remains BLOCKED and block_closed:false.
 
-Both one-shot native observer exercises completed on Pro and Mini. Each verified metadata, policy-off/policy-on behavior, 6 positive and 17 negative permissions, and temporary-role removal. The preparation document and run template remain immutable historical pre-execution evidence. Current focused source suite: 153 passed. Active actor coverage remains UNKNOWN; no repeat execution is authorized. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+## Current evidence
 
-This candidate combines the existing keyless observer/census work with the exact prepared admission hardening and one-shot runner patch chain. The package enforces fixed native routes, UID-derived home paths, the seven-file preimport contract, temporary observer cleanup and fail-closed consent checks. It remains source-only and ungranted for native use.
+- The focused source suite passes 153 tests with zero skips. A fresh independent reviewer reproduced153P on the current source/test bytes.
+- Pro and Mini each verified metadata, policy-off/policy-on behavior,6 positive and17 negative permissions. Temporary roles were removed; no application values were exported. The once-only markers remain intact.
+- Probe/admission/runtime helper bytes and the prepared native Markdown/template remain frozen. Preparation records describe their historical pre-execution state; they are not current claims that execution remains ungranted.
+- The census consumes committed minimal fixtures. C09 retains6029 IDs; the admitted union has6030, including455 Redis candidates.138 event-delivery rows are explicitly excluded from Redis actor coverage. Registered entries do not establish active consumers.
+- New test assertions are explicit in their test bodies. The original assertion ASTs are preserved; two isolated Redis unit fixtures now generate ephemeral credentials instead of static dummy values.
 
-## Current source verification
+Bites: redis_consumer_census.py consumes the committed fixtures and regenerates redis-consumer-ledger.json without ignored receipt inputs. The shipping observer/admission/native-helper tests pass153 cases; integration-20261016 records actual source identities, clean-copy reproduction and both completed native exercises with role cleanup.
 
-- Current worktree: 83 passed, 0 failed, 0 skipped.
-- Clean copy containing only the seven prepared files: 83 passed, 0 failed, 0 skipped.
-- The original 42 helper assertions and 15 runner assertions are preserved.
-- All seven corrected manifest digests match; the three previously reviewed dependency pins remain exact.
-- Tests use only the already prepared synthetic/private fixture cases. The operational runner was not launched.
+## Review and limits
 
-Commands, source digests, timestamps and temporary-environment settings are in integration-20261016/CURRENT-SOURCE-TESTS-ALIGNED.json and CURRENT-CLEAN-CHECKOUT.json. PATCH-INTAKE.json records preimages and all three successful apply checks/applications. PREPARED-VERIFICATION-SUMMARY.json retains the frozen finding IDs B1_UID_HOME_AND_FIXED_ROUTES, B2_EXACT_SEVEN_FILE_PREIMPORT_STAGE_CONTRACT and B3_NATIVE_ROUTE_DOCUMENTATION.
+The earlier83-test seven-file preparation runs remain historical in their dated receipts. Current source verification is153P. Existing V2 source/run review and safety gates are retained; the fresh exact committed-package gate is recorded externally against the final commit and must not be inferred from this document.
 
-The first harness attempt returned 82 passed and 1 failed: its explicit pytest basetemp was outside tempfile.gettempdir(), so the existing isolated-root guard correctly returned TEST_PATH_REJECTED. Aligning the child's TMPDIR resolved the harness mismatch without source edits. Original and focused diagnostic receipts are preserved. Historical observer/census observations remain separately labelled in RESULT.json; they were not rerun by this bounded task.
-
-Bites: the shipping test_redis_observer_native_once.py and test_redis_observer_admission.py consume the prepared runtime files and packet template. Two current source-bound 83-pass suites prove the synthetic scenarios, as recorded under integration-20261016/.
-
-## Remaining boundaries
-
-status: BLOCKED; block_closed: false; native permission: UNGRANTED. Source PASS is neither a whole-head gate nor owner consent nor native closure. Dated authenticated Redis metadata, effective native permissions, native dry-run observations and canonical operation bindings remain missing.
-
-The authenticated owner availability exception removes unavailable Claude as a blocker while preserving independent review and native-consent requirements. The coordinator owns official verification, the externally bound committed head, final gates and the original single PR. Existing R1 metadata and frozen findings are preserved. The three reviewed source files lack adversarial_review/R1 docstring markers; the parent must assess actual applicability or waiver, since adding markers here would change reviewed pins. No commit, baseline change, native invocation, production credential read, native ACL change or deployment was performed by this integration.
+Active actor coverage, canonical operation bindings, effective application identities and full recovery coverage remain unresolved. Temporary exercise consent does not authorize permanent adoption, another native execution or production data writes. The final source/package gate and required CI remain binding.
 
 ## Adversarial review
 
-Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.
+Scoped coordinator document reconciliation distinguishes current completed native evidence from historical preparation claims. Independent source execution reproduced153P; operational status remains BLOCKED/block_closed:false. This section does not assert full runtime coverage, permanent consent, operational closure or a final on-disk signature.
