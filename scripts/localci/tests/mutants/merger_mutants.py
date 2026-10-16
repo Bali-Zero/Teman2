@@ -1240,11 +1240,12 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
-    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh"):   # B31: the helper, its probe and its shell table
+    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh",
+                "scripts/harness_fable_gate.py", "scripts/tests/test_harness_gate_read.py"):   # B31 + B25-prime P4
         shutil.copy2(ROOT / rel, dest / rel)
     (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
     shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
-    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
+    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml", ".github/workflows/harness-floor.yml"):   # the CodeQL and harness-floor tests read them
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it

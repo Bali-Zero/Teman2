@@ -75,6 +75,7 @@ TRUSTED_PYSA_FILES = ["scripts/localci/pysa_check.py", "scripts/localci/pysa/tai
                       "scripts/localci/pysa/site_packages.txt"]  # taken from BASE: a candidate cannot weaken the taint models that judge it
 PYSA_SCOPE = "apps/backend-rag/backend/"
 DEFAULT_PYSA_HOME = Path.home() / ".nuzantara-pilots" / "local-ci" / "pysa-home"
+DEFAULT_GATE_LEDGER = Path.home() / ".nuzantara-pilots" / "local-ci-gate" / "verdicts.jsonl"
 TRUSTED_CLASSIFIER_FILES = [
     "scripts/ci/change_map.py", "scripts/ci/test_change_map.py", "scripts/ci/security_gate_flags.py",
     "scripts/ci/hotzone_changed_files.sh", "scripts/ci/impact_map.py", "scripts/ci/test_impact_map.py", "scripts/ci/test_security_gate_flags.py",
@@ -1353,7 +1354,8 @@ def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, langu
 
 
 def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
-                         run_dir: Path, pr_number: int | None, trusted_sha: dict | None = None) -> dict:
+                         run_dir: Path, pr_number: int | None, trusted_sha: dict | None = None,
+                         gate_ledger: Path | str | None = DEFAULT_GATE_LEDGER, head_sha: str | None = None) -> dict:
     """A required context whose job `needs:` other jobs, runs beside `services:`, installs a lock, or decides steps with expressions:
     every job of the chain is planned from BASE, each matrix leg runs in its own fresh sandbox with its own services, and the context's
     own job sees its upstreams' artifacts and results. Anything the runner cannot reproduce is BLOCKED naming why."""
@@ -1493,19 +1495,34 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                         return _blocked(f"job {jid}: rewrite {a!r} must match the BASE body of {st['name']!r} exactly once")
                     st["script"] = st["script"].replace(a, b)
                 st["side"] = {"where": "egress", "inputs": [safe_tree_path(str(p)) for p in ms.get("inputs") or []], "rewrite": ms.get("rewrite") or []}
-            elif (ms or {}).get("side") == "host":   # a BASE reader of GitHub state, run NOW on the host: its answer is frozen in the plan
+            elif (ms or {}).get("side") == "host":   # a BASE reader of host/GitHub state, run NOW on the host: its answer is frozen in the plan
                 if (q := declared_env_read(st.get("argv") or [], st.get("env") or {})):
                     return _blocked(f"job {jid}: host step {st['name']!r} argv reads `{q}`, {ENV_EVALUATED_HERE}")
                 try:
                     argv = [X.substitute(str(x), static) for x in st.get("argv") or []]
                 except X.ExprError as e:
                     return _blocked(f"job {jid}: host step {st['name']!r}: {e}")
-                blob = _extract_base_file(wt, base, argv[1]) if len(argv) > 1 and argv[0] == "$PY" and argv[1] in (local.get("trusted_files") or []) else None
-                if blob is None:
+                ledger_arg = str(Path(gate_ledger).expanduser()) if gate_ledger else ""
+                head_arg = str(head_sha or cand)
+                if "$GATE_LEDGER" in argv and not ledger_arg:
+                    return _blocked(f"job {jid}: host step {st['name']!r} reads $GATE_LEDGER with no --gate-ledger")
+                if "$HEAD" in argv and not re.fullmatch(r"[0-9a-f]{40}", head_arg):
+                    return _blocked(f"job {jid}: host step {st['name']!r} reads $HEAD with invalid --head {head_arg!r}")
+                argv = [ledger_arg if x == "$GATE_LEDGER" else (head_arg if x == "$HEAD" else x) for x in argv]
+                try:
+                    tfiles = [safe_tree_path(str(f)) for f in local.get("trusted_files") or []]
+                except RuntimeError as e:
+                    return _blocked(f"job {jid}: trusted_files: {e}")
+                if not (len(argv) > 1 and argv[0] == "$PY" and argv[1] in tfiles):
+                    return _blocked(f"job {jid}: host step {st['name']!r} must run `$PY <a trusted file present at BASE>`")
+                blobs = {tf: _extract_base_file(wt, base, tf) for tf in tfiles}
+                if any(b is None for b in blobs.values()):
                     return _blocked(f"job {jid}: host step {st['name']!r} must run `$PY <a trusted file present at BASE>`")
                 tdir = trusted / "ctx" / str(ctx["check"])
-                (tdir / argv[1]).parent.mkdir(parents=True, exist_ok=True)
-                (tdir / argv[1]).write_bytes(blob)
+                for tf, tb in blobs.items():
+                    (tdir / tf).parent.mkdir(parents=True, exist_ok=True)
+                    (tdir / tf).write_bytes(tb)
+                blob = blobs[argv[1]]
                 st["side"] = {"where": "host", "argv": [sys.executable, "-I", str(tdir / argv[1]), *argv[2:]], "base_sha256": sha256_bytes(blob)}
                 st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"), ms.get("pending_when"))
         image_id, deps_note = iso["image_id"], ""
@@ -1581,6 +1598,12 @@ def cmd_plan(a):
     ident = identity(wt)
     if a.candidate and ident["candidate_sha"] != a.candidate:
         sys.exit(f"worktree HEAD {ident['candidate_sha']} != requested candidate {a.candidate}")
+    head_sha = getattr(a, "head", None) or ident["candidate_sha"]
+    if not re.fullmatch(r"[0-9a-f]{40}", str(head_sha)):
+        sys.exit(f"--head must be a 40-char lowercase hex sha, got {head_sha!r}")
+    gate_ledger = getattr(a, "gate_ledger", None)
+    if gate_ledger is None:
+        gate_ledger = str(DEFAULT_GATE_LEDGER)
     base = git(wt, "rev-parse", a.base + "^{commit}")
     trusted = run_dir / "state" / "trusted"
     trusted.mkdir(parents=True, exist_ok=True)
@@ -1642,7 +1665,8 @@ def cmd_plan(a):
         if not isinstance(chk, str) or not CTX_CHECK_NAME.match(chk) or chk in checks:
             sys.exit(f"context {cname!r}: an executed context with steps needs a unique local.check matching {CTX_CHECK_NAME.pattern}, got {chk!r}")
         if ctx["local"].get("expressions"):   # service contexts (v0.6.0): job chains, services, deps images, evaluated expressions
-            checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number, trusted_sha)
+            checks[chk] = plan_service_context(wt, base, ident["candidate_sha"], trusted, cname, ctx, changed, pyv, iso, cm, run_dir, a.pr_number, trusted_sha,
+                                               gate_ledger=gate_ledger, head_sha=head_sha)
         else:
             checks[chk] = plan_context_check(wt, base, ident["candidate_sha"], trusted, cname, ctx, trusted_sha, changed, pyv)
     for legacy, chk in SUPERSEDED_RECORDS.items():   # "no local runner exists" stops being true once the context is planned
@@ -2661,6 +2685,7 @@ def _run_leg(name: str, spec: dict, job: dict, leg: dict, run_dir: Path, plan: d
         if (st.get("side") or {}).get("where") == "egress":
             st["precomputed"] = _run_egress(name, spec, job, st, slug, cfg_base, base_extra, env, inner, run_dir, plan, out["sandbox"])
             out["logs"].append(str(run_dir / "logs" / f"{name}.{slug}.egress.log"))   # written by this leg: read for a full disk too
+        st.pop("side", None)   # B25-prime P4: host-side metadata (incl. $GATE_LEDGER path) stays in plan.json, never shipped into /cfg/steps.json
         steps.append(st)
     extra = dict(base_extra)
     for st in steps:
@@ -3473,6 +3498,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="where candidate code (pytest, trusted_pytest) runs: a mount-less, network-less container (default) or, explicitly, as the operator")
     p.add_argument("--isolation-image", default=DEFAULT_ISOLATION_IMAGE, help="docker image for --isolation container; pinned by ID at plan time")
     p.add_argument("--pr-number", type=int, help="the pull request the candidate merges (merge_group.head_ref names it, as the queue does)")
+    p.add_argument("--gate-ledger", default=str(DEFAULT_GATE_LEDGER), help="Pro gate-verdict ledger path for host readers ($GATE_LEDGER)")
+    p.add_argument("--head", help="the decided PR head sha for host readers ($HEAD; defaults to the candidate sha)")
     p.set_defaults(fn=cmd_plan)
     r = sub.add_parser("run")
     r.add_argument("--run-dir", required=True)

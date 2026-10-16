@@ -79,6 +79,8 @@ CLI:
       [--pr-head-sha <sha>]        # pull_request: github.event.pull_request.head.sha
       [--merge-group-head-ref <ref>]  # merge_group: github.event.merge_group.head_ref
       [--dispatch-sha <sha>]       # workflow_dispatch: github.sha
+      [--ledger <path>]            # localci host reader: Pro gate-verdict ledger path
+      [--head <sha>]               # localci host reader: decided PR head sha (must equal resolved live head)
       [--gh-bin gh]                # override for tests
 
 Exit codes:
@@ -90,10 +92,13 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
 CONTEXT = "harness/fable-gate"
 
@@ -195,6 +200,31 @@ def read_fable_gate_state(*, sha: str, repo: str, gh_bin: str) -> tuple[str | No
     return None, None
 
 
+def read_ledger_state(*, sha: str, repo: str, ledger: str) -> tuple[bool, str | None, str | None]:
+    """Read the Pro gate ledger (`scripts/localci/gate_ledger.py`, sibling of `scripts/ci/`) for `sha` on `repo`.
+    Returns `(True, state, None)` where `state` is `'success'`, `'failure'` or `None` (pending: missing ledger or no entry for this head),
+    or `(False, None, reason)` when the ledger itself is unreadable/corrupt or the reader module cannot be loaded."""
+    if not isinstance(ledger, str) or not ledger.strip():
+        return False, None, "empty --ledger path"
+    mod_path = Path(__file__).resolve().parents[1] / "localci" / "gate_ledger.py"
+    try:
+        spec = importlib.util.spec_from_file_location("_localci_gate_ledger", mod_path)
+        if spec is None or spec.loader is None:
+            return False, None, "gate_ledger module unreadable"
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ok, why = mod.gate_verdict(os.path.expanduser(ledger), repo, sha)
+    except Exception as exc:  # noqa: BLE001 — fail closed on any module or ledger error
+        return False, None, f"gate_ledger load failed: {type(exc).__name__}"
+    if ok:
+        return True, "success", None
+    if why in ("ledger missing", "no entry for this head"):
+        return True, None, None
+    if why == "the newest entry for this head is not a success" or why.startswith("entry "):
+        return True, "failure", None
+    return False, None, why
+
+
 def decide(state: str | None) -> tuple[int, str]:
     """(exit_code, message). The ONLY state that yields 0 is the literal string 'success' —
     anything else, including None (never posted) or an unrecognized value, fails closed."""
@@ -221,8 +251,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pr-head-sha", default=None)
     parser.add_argument("--merge-group-head-ref", default=None)
     parser.add_argument("--dispatch-sha", default=None)
+    parser.add_argument("--ledger", default=None)
+    parser.add_argument("--head", default=None)
     parser.add_argument("--gh-bin", default="gh")
     args = parser.parse_args(argv)
+
+    if args.head is not None and args.ledger is None:
+        print("::error::harness_gate_read: --head requires --ledger", file=sys.stderr)
+        return 1
+    if args.ledger is not None:
+        if not args.ledger.strip():
+            print("::error::harness_gate_read: --ledger requires a non-empty path", file=sys.stderr)
+            return 1
+        if not args.head or not re.fullmatch(r"[0-9a-f]{40}", args.head):
+            print(f"::error::harness_gate_read: --ledger requires a 40-hex --head (the decided head sha), got {args.head!r}", file=sys.stderr)
+            return 1
 
     sha, reason = resolve_real_head_sha(
         event_name=args.event_name,
@@ -237,11 +280,21 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     print(f"harness_gate_read: real head sha = {sha} ({reason})")
 
-    try:
-        state, description = read_fable_gate_state(sha=sha, repo=args.repo, gh_bin=args.gh_bin)
-    except GhCallError as exc:
-        print(f"::error::harness_gate_read: CANNOT-VERIFY (read itself failed, not the same as 'no verdict') — {exc}", file=sys.stderr)
-        return 1
+    if args.ledger is not None:
+        if sha != args.head:
+            print(f"::error::harness_gate_read: live head {sha} != decided head {args.head}", file=sys.stderr)
+            return 1
+        ok, state, err = read_ledger_state(sha=sha, repo=args.repo, ledger=args.ledger)
+        if not ok:
+            print(f"::error::harness_gate_read: {err}", file=sys.stderr)
+            return 1
+        description = None
+    else:
+        try:
+            state, description = read_fable_gate_state(sha=sha, repo=args.repo, gh_bin=args.gh_bin)
+        except GhCallError as exc:
+            print(f"::error::harness_gate_read: CANNOT-VERIFY (read itself failed, not the same as 'no verdict') — {exc}", file=sys.stderr)
+            return 1
 
     if description:
         print(f"harness_gate_read: posted description = {description!r}")

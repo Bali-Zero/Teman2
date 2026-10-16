@@ -616,7 +616,8 @@ contexts:
       where: container # the job checks out BASE and reads the candidate through git: its scripts are BASE's by construction
       expressions: true
       vars: {} # repository variables read 2026-10-07 (GET actions/variables): HARNESS_ENFORCEMENT is unset, so `vars.*` is '' as hosted
-      trusted_files: [scripts/ci/harness_gate_read.py]
+      trusted_files:
+        [scripts/ci/harness_gate_read.py, scripts/localci/gate_ledger.py]
       steps:
         - workflow_step: Kill switch
         - workflow_step: Install linter dependency (PyYAML)
@@ -635,7 +636,7 @@ contexts:
         - workflow_step: Not a gated task (gear 1 — fable-gate not applicable)
         - workflow_step: Gear-3 — validate evidence/pack.yml against the Evidence Pack contract
         - workflow_step: Gear >= 2 — read the real gate verdict
-          side: host # the verdict lives in a GitHub commit status: BASE's reader runs on the host and reads it with the operator's gh
+          side: host # the verdict lives in the Pro gate-verdict ledger: BASE's reader runs on the host and reads it before any container starts
           argv:
             - $PY
             - scripts/ci/harness_gate_read.py
@@ -649,6 +650,10 @@ contexts:
             - "${{ github.event.merge_group.head_ref }}"
             - --dispatch-sha
             - ""
+            - --ledger
+            - $GATE_LEDGER
+            - --head
+            - $HEAD
           env: { GH_TOKEN: "" } # stripped from every trusted environment; gh answers with its stored login, a read
           no_verdict_when: "::error::harness_gate_read: CANNOT-VERIFY" # its own stderr line for "the read itself failed" (a GitHub 5xx): asked again, then no verdict
           pending_when: "::error::harness_gate_read: PENDING" # B12: no verdict posted on the head yet (the session has not posted its harness/fable-gate): no verdict, NOT retried, asked again once it is posted
