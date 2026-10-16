@@ -5,8 +5,8 @@
     "~/.claude": "AZ",
     "~/.claude-kaiser": "A2",
     "~/.claude-acct2": "A1",
-    "~/.claude-acct3": "A3",
-    "~/.claude-acct4": "orphan (no seat exists — verify and retire at arming; RESOLVED 2026-08-10: Anthropic estate is 3 MAX + 1 Team Premium, no A4 — spec §3.1)",
+    "~/.claude-acct3": "A3 (retired 2026-10-17: account closed)",
+    "~/.claude-acct4": "A4 (retired 2026-10-17: account closed)",
     "~/.claude-zero-team": "AZ-legacy-verify"
   },
   "codex_homes": {
@@ -15,22 +15,16 @@
   },
   "by_machine": {
     "Air-M5": {
-      "_measured": "2026-10-05 on Air-M5: each profile dir answered a real prompt. Mirrors FLEET_TOPOLOGY.json config_dir_by_machine / codex_home_by_machine, pinned by scripts/usage/test_seat_map_by_machine.py. ~/.claude-acct3 exists here but was not measured, so it is not mapped.",
+      "_measured": "2026-10-05 on Air-M5: each profile dir answered a real prompt; 2026-10-17: A3 and A4 closed, so ~/.claude-acct2 (A3) and ~/.claude-acct4 (A4) are no longer mapped, and ~/.claude is not mapped either (its login moved to A2 per `claude auth status` that day). Mirrors FLEET_TOPOLOGY.json config_dir_by_machine / codex_home_by_machine, pinned by scripts/usage/test_seat_map_by_machine.py. ~/.claude-acct3 exists here but was not measured, so it is not mapped.",
       "claude_profiles": {
-        "~/.claude": "A3",
-        "~/.claude-acct2": "A3",
         "~/.claude-a1": "A1",
         "~/.claude-kaiser": "A2",
-        "~/.claude-acct4": "A4",
         "~/.claude-zero-team": "AZ"
       },
       "codex_homes": {
         "~/.codex": "O1",
         "~/.codex-o2": "O2",
         "~/.codex-acct2": "O3"
-      },
-      "auto_rotation_excluded": {
-        "A4": "no role chain yet — routing ruling pending (Naga gap 4), so `cswap auto` never picks it; `cswap run A4` stays an explicit choice"
       }
     }
   }

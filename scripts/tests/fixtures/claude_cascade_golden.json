@@ -2,8 +2,6 @@
   "all_fail": {
     "calls": [
       "token1",
-      "token3",
-      "token4",
       "token5",
       "token6",
       "legacy",
@@ -16,15 +14,11 @@
     ],
     "rc": 1,
     "stderr": [
-      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
-      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected",
       "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
       "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
       "  [error] claude-token-1-env exit=1",
-      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "  [error] claude-token-3-env exit=1",
-      "  [try] claude-token-4-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "  [error] claude-token-4-env exit=1",
       "  [try] claude-token-5-env (<tmp>/home/.local/share/mise/shims/claude)",
       "  [error] claude-token-5-env exit=1",
       "  [try] claude-token-6-team-env (<tmp>/home/.local/share/mise/shims/claude)",
@@ -48,25 +42,25 @@
     "stdout": ""
   },
   "dead_slot_then_answer": {
-    "calls": ["token1", "token3"],
+    "calls": ["token1", "token5"],
     "rc": 0,
     "stderr": [
-      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
-      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected",
       "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
       "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
       "  [error] claude-token-1-env exit=1",
-      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "[claude-cascade] used: claude-token-3-env"
+      "  [try] claude-token-5-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-5-env"
     ],
-    "stdout": "answer-three\n"
+    "stdout": "answer-five\n"
   },
   "first_slot_answers": {
     "calls": ["token1"],
     "rc": 0,
     "stderr": [
-      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
-      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected",
       "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
       "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
       "[claude-cascade] used: claude-token-1-env"
@@ -74,33 +68,31 @@
     "stdout": "answer-one\n"
   },
   "rate_limited_then_second_answers": {
-    "calls": ["token1", "token3"],
+    "calls": ["token1", "token5"],
     "rc": 0,
     "stderr": [
-      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
-      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected",
       "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
       "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
       "  [retry] claude-token-1-env quota/auth failure",
-      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "[claude-cascade] used: claude-token-3-env"
+      "  [try] claude-token-5-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-5-env"
     ],
-    "stdout": "answer-three\n"
+    "stdout": "answer-five\n"
   },
   "retired_slot_in_the_middle": {
-    "calls": ["token1", "token3", "token4"],
+    "calls": ["token1", "token5"],
     "rc": 0,
     "stderr": [
-      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 falling back to the single default seat",
-      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) \u2014 seat-state precheck disabled, cascade unaffected",
+      "  [warn] codex_seat.sh not found (looked next to this wrapper and under ~/nuzantara) — falling back to the single default seat",
+      "  [warn] seat_state.sh not found (looked next to this wrapper and under ~/nuzantara) — seat-state precheck disabled, cascade unaffected",
       "[claude-cascade] starting (prompt 15 chars, agent='', model='')",
       "  [try] claude-token-1-env (<tmp>/home/.local/share/mise/shims/claude)",
       "  [retry] claude-token-1-env quota/auth failure",
-      "  [try] claude-token-3-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "  [error] claude-token-3-env returned empty output",
-      "  [try] claude-token-4-env (<tmp>/home/.local/share/mise/shims/claude)",
-      "[claude-cascade] used: claude-token-4-env"
+      "  [try] claude-token-5-env (<tmp>/home/.local/share/mise/shims/claude)",
+      "[claude-cascade] used: claude-token-5-env"
     ],
-    "stdout": "answer-four\n"
+    "stdout": "answer-five\n"
   }
 }
