@@ -8,7 +8,7 @@ review_disposition: HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED
 
 ## Current source-context verification (2026-10-16)
 
-Current suite:38 tests passed,0 skipped. This supersedes the earlier27-test package count while retaining its6029 IDs,1566 traced rows,4463 untraced rows and21001 syntax signals as historical source observations. The21 operation artifacts remain tied to8061c88e; the inventory remains tied to5f2e0ad9. Current source bytes are used only when their hash matches the recorded revision; otherwise exact local Git objects must match. No current runtime closure is inferred. The earlier INVENTORY-FREEZE.json adapter-byte claim is historical; this source-context delta awaits independent final review.
+Current suite:38 tests passed,0 skipped. This supersedes the earlier27-test package count while retaining its6029 IDs,1566 traced rows,4463 untraced rows and21001 syntax signals as historical source observations. The21 operation artifacts remain tied to8061c88e; the inventory remains tied to5f2e0ad9. Current source bytes are used only when their hash matches the recorded revision; otherwise exact local Git objects must match. No current runtime closure is inferred. The earlier full-file prefix and INVENTORY-FREEZE.json adapter-byte claims are historical; current preservation is checked on every original testcase AST. this source-context delta awaits independent final review.
 
 ## Current package and historical preparation boundary (2026-10-16)
 

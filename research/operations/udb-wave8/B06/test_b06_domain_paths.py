@@ -32,8 +32,31 @@ def b06_mod():
 
 
 @pytest.fixture(scope="module")
-def repo_root() -> Path:
-    return Path(__file__).resolve().parents[4]
+def repo_root(tmp_path_factory, b06_mod) -> Path:
+    """Materialize actual bytes for the source revision declared by the records."""
+    import subprocess
+
+    live = Path(__file__).resolve().parents[4]
+    root = tmp_path_factory.mktemp("b06-declared-source-context")
+    raw = b06_mod.SOURCE_EVIDENCE_PATH.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == b06_mod.PINNED_SOURCE_EVIDENCE_SHA256
+    data = json.loads(raw)
+    assert data["source_version"] == b06_mod.BASE_COMMIT_SHA
+    for rel, expected in data["source_files"].items():
+        current = live/rel
+        content = current.read_bytes() if current.is_file() else b""
+        if hashlib.sha256(content).hexdigest() != expected:
+            git = subprocess.run(
+                ["git", "-C", str(live), "show", b06_mod.BASE_COMMIT_SHA + ":" + rel],
+                capture_output=True,
+            )
+            assert git.returncode == 0, "B06_DECLARED_SOURCE_CONTEXT_UNAVAILABLE"
+            content = git.stdout
+        assert hashlib.sha256(content).hexdigest() == expected
+        target = root/rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+    return root
 
 
 @pytest.fixture(scope="module")

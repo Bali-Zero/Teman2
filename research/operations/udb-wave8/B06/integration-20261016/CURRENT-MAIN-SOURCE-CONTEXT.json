@@ -5,7 +5,6 @@
   "source_hash_projection_sha256": "7bcfa1a07ebd2537049a839bd06de41e1a9a17ef35e2d1af16134ad3b777aa7b",
   "historical_inventory_source_version": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
   "original_18_test_file_sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444",
-  "original_18_test_prefix_bytes": 24364,
   "original_21_operation_artifact_unchanged": true,
   "inventory_projection_unchanged": true,
   "failed_main_integration_output_sha256": "17d3cba9909b9c3758ded7954a571736cb73ea7ba4810ce4e4a9623c6ffd8003",
@@ -13,7 +12,8 @@
     "passed": 38,
     "skipped": 0,
     "exit": 0,
-    "output_sha256": "807ed6fc2a936090ec1b96c4a24a28adb5d781d8971cc85e2ac8667b1000fe3f"
+    "output_sha256": "cd8668fb501e8ed127db29b81ef5dbdcf63f10447d30e966c60f4035942ee091",
+    "scope": "Declared historical source input fixture; main integration is a separate bounded check"
   },
   "independent_gate": "PENDING_NEW_SOURCE_DELTA_REVIEW",
   "native_queries": 0,
@@ -22,5 +22,10 @@
   "producer_and_comparison_by_coordinator": true,
   "lint_additional_findings": 0,
   "legacy_inventory_lint_findings": 1,
-  "verified_at": "2026-10-16T10:45:23.064992+00:00"
+  "verified_at": "2026-10-16T10:51:58.298093+00:00",
+  "historical_original_18_test_prefix_bytes": 24364,
+  "original_18_testcase_function_asts_unchanged": true,
+  "source_input_fixture_changed": "Materialize actual source bytes at declared8061c88e; hash every file and preserve all eighteen testcase bodies",
+  "second_failed_integration_output_sha256": "8bdb5585de83596f78a03d86f478641df6d9ccaf48f8366f293ad61cd43b1c30",
+  "scope_spec": "integration-20261016/CURRENT-MAIN-SOURCE-CONTEXT-SPEC.md"
 }
