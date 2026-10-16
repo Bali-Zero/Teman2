@@ -1,9 +1,10 @@
 gear: 3
-brief_ref: evidence/brief.yml
+brief_ref: evidence/2026-10/agent-air-m5-mouth-vo-e28a-id-mdx-render-1016-561d3ffb/brief.yml
 plan_ref: >-
-  Branch agent/air-m5/mouth/vo-e28a-id-mdx-render-1014 on origin/main. Round 1 and the locale twins (ea2dc2429e) were
-  judged FIX-FIRST by two council seats; round 2 (this state) replaces the E28A and Investor KITAS bodies by short true
-  bodies, completes every twin, rewrites the truth test and records the verdicts below.
+  Branch agent/air-m5/mouth/vo-e28a-id-mdx-render-1016 on origin/main (superseding frozen PR #8599 on -1014 after CI
+  surfaced a cross-surface test pin in test_e33_forbidden_claims.py). Round 1 and the locale twins (ea2dc2429e) were
+  judged FIX-FIRST by two council seats; round 2 replaces the E28A and Investor KITAS bodies by short true bodies,
+  completes every twin, rewrites the truth test, updates test_e33_forbidden_claims.py and records the verdicts below.
 mission: >-
   The E28A, Golden Visa and Investor KITAS guides (EN, ID, IT, FR, RU) and /visa/kitas state only what is traceable to
   the official E28A-E28F pages (read 2026-10-15), the owner rulings of 2026-10-15 or Bali Zero's 2026 price list;
@@ -11,13 +12,16 @@ mission: >-
 lanes:
   - lane: e28-close-pr-d
     role: build
-    seat: "claude-sonnet-5 implementer (worktree mouth-vo-e28a-id-mdx-render-1014); commits local only, nothing pushed"
+    seat: "claude-sonnet-5 implementer (worktree mouth-vo-e28a-id-mdx-render-1014 -> -1016)"
   - lane: e28-close-pr-d-council-codex
     role: review
     seat: "codex-gpt-5.6-sol, read-only review: round 1 on ea2dc2429e FIX-FIRST (18 findings); round 2 on 76404e4c85 FIX-FIRST (15 of 18 cured, 3 partial)"
   - lane: e28-close-pr-d-council-agy
     role: review
     seat: "agy-gemini-4-argon, read-only review: round 1 on ea2dc2429e FIX-FIRST; round 2 on 76404e4c85 PASS (LOW findings only)"
+  - lane: e28-close-pr-d-gate-astra
+    role: review
+    seat: "codex-gpt-6-astra, read-only final gate (owner override 2026-10-16: all Claude seats at quota limit): PASS on 0e9ecf604e, delta gate on successor branch"
 pii_scan: clean
 bites: >-
   Consumer: the balizero.com article pages /immigration/e28a-investor-kitas-guide (EN and /id),
@@ -152,6 +156,12 @@ receipts:
     exit: 0
     ts: "2026-10-16T05:40:30Z"
     seat: claude-sonnet-5
+  - claim: "CI Backend Shard 2 cross-surface pin cured: test_e33_forbidden_claims.py updated so test_innocence_real_conjunction_sentences_stay_clean pins the new ITAS 5-or-10-year sentences in all 5 locales of golden-visa-indonesia-complete-guide.*.mdx, while the slash and repeated-unit regex branches exercise the Golden Visa fixtures and scan the 5 real files for 0 offenders."
+    cmd: "PYTHONPATH=apps/backend-rag apps/backend-rag/.venv/bin/pytest apps/backend-rag/backend/tests/services/visa_check/test_e33_forbidden_claims.py && python3 scripts/docs_sync.py --check"
+    result: "75 passed in 5.54s; DOCSYNC OK (generator valid; no protected hand-edits)"
+    exit: 0
+    ts: "2026-10-16T07:24:03Z"
+    seat: agy-gemini-4-argon
 mutation_receipts:
   - mutant: "KITAP pathway: 'After 3 consecutive years on E28A you can apply for Investor KITAP.' appended to e28a-investor-kitas-guide.mdx"
     killed_by: "no KITAP pathway or KITAP timeline :: e28a-investor-kitas-guide.mdx"
@@ -895,5 +905,9 @@ final_gate_cure:
     }
   - {
       notice: "N4 bookkeeping",
-      cure: "adversarial_rounds 2 (round 1 both seats, round 2 both seats); lanes describe both rounds; bites says 816 tests; the round-1 dispositions say 15 cured and 3 partial, the three cured in the touch-up round per council_round2. Not touched: seat_fallback_reason, journal.jsonl (Dux)",
+      cure: "adversarial_rounds 2 (round 1 both seats, round 2 both seats); lanes describe both rounds plus Astra gate; bites and brief.yml say 816 tests and 35 mutations; brief.yml gear_reason numstat updated; journal.jsonl line 2 records seat_fallback_reason and line 5 records the Astra gate",
+    }
+  - {
+      block: "CI Backend Shard 2 on PR #8599: test_e33_forbidden_claims.py TestMouthContentSecondHomeDuration pinned 11 pre-rewrite sentences in golden-visa-indonesia-complete-guide.{mdx,it.mdx,id.mdx,fr.mdx,ru.mdx}",
+      cure: "test_innocence_real_conjunction_sentences_stay_clean updated to pin the 5 new true ITAS 5-or-10-year sentences in golden-visa-indonesia-complete-guide.{mdx,it.mdx,id.mdx,fr.mdx,ru.mdx}; test_innocence_real_golden_slash_stays_clean and test_innocence_real_golden_repeated_unit_stays_clean exercise the slash and repeated-unit regex branches on the Golden Visa fixtures and scan all 5 real files for 0 offenders (75 passed, DOCSYNC OK)",
     }

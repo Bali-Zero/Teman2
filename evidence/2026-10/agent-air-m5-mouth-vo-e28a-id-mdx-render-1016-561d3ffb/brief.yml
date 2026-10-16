@@ -1,7 +1,7 @@
-task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
+task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1016-561d3ffb
 gear: 3
 gear_reason: >-
-  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +3722/-11532 against origin/main, evidence staged); declared as printed, no gear_override.
+  scripts/evidence_pack_lint.py --print-floor printed 3 for size (46 files against origin/main, evidence staged); declared as printed, no gear_override.
 l_level: L2
 mission_colour: BLUE
 gate_class: opus
@@ -23,15 +23,15 @@ acceptance:
       "passive investors", an 18/24-month passport, "5-7 working days", an IDR 350M threshold, "Golden Visa (ITAP)",
       KPPA/representative office for E28D, paid-in capital as the E28A test, a fee split, or "renewable annually" for
       E28A, the truth test SHALL go red naming file and line; WHEN the correct sentences are present it SHALL be green.
-    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (784 tests, five locales)"
+    probe: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
   - text: >-
       WHEN the E28G sub-variant line is put back into the E28A guide the truth test SHALL go red, and green again once
       the file is restored.
-    probe: "fourteen mutations in pack.yml mutation_receipts (cp backup, restore by cp)"
+    probe: "python3 mut5.py (scratchpad)"
   - text: >-
       WHEN the six touched articles are compiled with the production MDX options they SHALL compile, and the en/id
       corpus guards SHALL stay green.
-    probe: "src/components/blog/MDXContentRSC.all-articles-en/id/selftest.test.tsx"
+    probe: "src/components/blog/MDXContentRSC.all-articles-en.test.tsx"
 assumptions:
   - text: The official imigrasi.go.id E28A-E28F pages saved on 2026-10-15 are the source of truth; E28E is published without content.
     status: verified
@@ -45,6 +45,7 @@ consumer_map:
   - balizero.com/immigration/investor-kitas-guide renders the corrected Investor KITAS guide (EN and /id).
   - balizero.com/visa/kitas renders the corrected E28A and E28D rows and the E28D section.
   - apps/mouth vitest (CI) runs src/content/e28-family-articles.truth.test.ts on every PR.
+  - apps/backend-rag pytest (CI) runs backend/tests/services/visa_check/test_e33_forbidden_claims.py on every PR.
 risks:
   - text: >-
       The E28A guide drops from about 720 lines to 167 and the Investor KITAS guide from about 470 to 137 per language:
@@ -62,4 +63,4 @@ risks:
   - text: >-
       The diff budget of about 350 changed lines is exceeded: the floor printed gear 3 on size; the deletions are mostly
       the removed false bodies (five locales, three guides).
-grader: "Fresh Opus 5.5 final gate commissioned by the team lead"
+grader: "Astra (codex-gpt-6-astra) final gate per owner override 2026-10-16 (all Claude seats at quota limit)"
