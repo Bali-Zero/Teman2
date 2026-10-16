@@ -4,6 +4,10 @@ adversarial_review: codex
 
 # B08 current synthesis and historical dispositions
 
+## Historical ledger replay after B01 integration (2026-10-16)
+
+The ledger describes base8061c88e and remains byte-identical historical evidence. Main now carries the separately verified B01 restore correction. Replay accepts only the original verifier or that one exact later revision, and the later revision additionally requires the committed, hash-verified original source snapshot. An unknown revision or missing/tampered snapshot fails closed. This compatibility does not update historical B01/B02 observations, establish current operational acceptance or repeat a native run. The original102 tests and their assertions are preserved; 6 additional compatibility checks now pass with all102 existing tests (108 total). Runtime lint passes; two unchanged legacy E731 test findings remain, with no new lint findings. The prior independent signature does not cover this source delta; a new final review is pending.
+
 ## Current boundary correction (2026-10-16)
 
 Current source SHA256: `7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae`. Current verified suite: 102 passed in both original and clean copies, independently reproduced. Output-boundary defects were corrected and reviewed; valid artifacts remain byte-identical. All older pass counts below describe historical stages. Status remains PARTIAL with block_closed:false and all native unknowns retained.

@@ -1,0 +1,39 @@
+{
+  "reason": "Four existing tests failed after integrating B01 current-main restore correction",
+  "failed_integration_output_sha256": "c7316a83d885eb5dc9a22e3fb7c6e1c1c0252ae279e329148af7996ed750e0ce",
+  "main_commit": "cbe43a53d86c6d24b017b1313cb67d40472c283a",
+  "historical_source_sha256": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+  "compatible_current_source_sha256": "19686bb0b0a5d1ced48b1cbdb60c817869529450e2042a4aa5a0207bbf07114a",
+  "historical_ledger_sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+  "original_test_file_sha256": "7fdea9866985f0bf273b5f4de10247445433301e53e88c2dc04991ea95b51034",
+  "original_test_bytes_preserved": 49445,
+  "tests": {
+    "passed": 108,
+    "skipped": 0,
+    "exit": 0,
+    "output_sha256": "22e456f6cf863759c50d81aabc78ff709081887c24c5e3c888b7fb4dd7b6ead1"
+  },
+  "independent_final_gate": "PENDING_SOURCE_DELTA_REVIEW",
+  "runtime_verifier_changed": false,
+  "native_runs": 0,
+  "operational_block_closed": false,
+  "first_compatibility_check_output_sha256": "682d6d3e035b0335e0dd118e68c007e2dbc4d90c413d93ffe63aa7fc26f05ee5",
+  "integration_correction": "Keep source snapshots outside immutable input-fixture catalog; hash the verified historical source selected for BASE_COMMIT evidence rather than the later runtime file",
+  "runtime_lint_exit": 0,
+  "test_lint_existing_findings": [
+    {
+      "code": "E731",
+      "row": 1078,
+      "column": 13,
+      "message": "Do not assign a `lambda` expression, use a `def`"
+    },
+    {
+      "code": "E731",
+      "row": 1081,
+      "column": 13,
+      "message": "Do not assign a `lambda` expression, use a `def`"
+    }
+  ],
+  "additional_test_lint_findings": [],
+  "verified_at": "2026-10-16T10:29:39.457778+00:00"
+}

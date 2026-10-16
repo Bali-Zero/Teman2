@@ -116,5 +116,12 @@
       "original_prefix_preserved": true,
       "independent_final_head_pending": true
     }
+  },
+  "current_main_compatibility": {
+    "tests_passed": 108,
+    "source_gate": "PENDING_NEW_SOURCE_DELTA_REVIEW",
+    "historical_ledger_unchanged": true,
+    "current_runtime_recovery_proved": false,
+    "receipt": "integration-20261016/CURRENT-MAIN-COMPATIBILITY.json"
   }
 }

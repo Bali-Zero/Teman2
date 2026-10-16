@@ -52,6 +52,10 @@ PINNED_RESTORE_DRILL_VERIFY_SHA256 = (
     "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856"
 )
 
+# The report remains pinned to BASE_COMMIT_SHA. This exact later source only
+# permits replay of that historical report; it does not prove current recovery.
+PINNED_COMPATIBLE_MAIN_RESTORE_SHA256 = "19686bb0b0a5d1ced48b1cbdb60c817869529450e2042a4aa5a0207bbf07114a"
+
 # Clean-checkout fallback: committed frozen metadata fixtures. The live inputs
 # (.agent-receipts/..., B08/dux-requests/...) are used unchanged whenever present.
 B08_REL_DIR = "research/operations/udb-wave8/B08"
@@ -994,10 +998,15 @@ def build_b08_operation_instances(
     repo_root: Path,
     state_sha: str = PINNED_STATE_JSON_SHA256,
     receipt_sha: str = PINNED_REAL_RUN_RECEIPT_SHA256,
+    restore_source: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Construct the B08 19-key + x_-prefixed operation instances for current facts & desired guarantees."""
     file_hashes = {
-        rel: sha256_file(repo_root / rel)
+        rel: sha256_file(
+            restore_source
+            if rel == "scripts/ci/restore_drill_verify.py" and restore_source is not None
+            else repo_root / rel
+        )
         for rel in (
             "scripts/pg-to-organism-bridge.py",
             "apps/backend-rag/backend/services/events/outbox.py",
@@ -1797,18 +1806,33 @@ def build_dimensions_ledger(
     return ledger
 
 
+def verify_historical_restore_source(repo_root: Path) -> Path:
+    """Check the exact live revision and retain the declared historical evidence."""
+    live = repo_root / "scripts/ci/restore_drill_verify.py"
+    actual = sha256_file(live)
+    if actual == PINNED_RESTORE_DRILL_VERIFY_SHA256:
+        return live
+    if actual != PINNED_COMPATIBLE_MAIN_RESTORE_SHA256:
+        raise ContractViolationError(
+            "B08_E_RESTORE_SOURCE_PIN: SHA256 mismatch on restore verifier source"
+        )
+    # The recognized B01 correction changed source locations and invariant SQL.
+    # Its hash is not substituted into the historical ledger or its assertions.
+    historical = (repo_root / B08_REL_DIR / "source-compatibility"
+                  / "restore-drill-base-source.txt")
+    _require_fixture_sha(
+        historical, PINNED_RESTORE_DRILL_VERIFY_SHA256, "historical restore source"
+    )
+    return historical
+
+
 def generate_b08_report(repo_root: Path) -> dict[str, Any]:
     """Generate the complete, validated B08 cross-store ledger from pinned inputs."""
     inputs = resolve_wave8_inputs(repo_root)
     state_path = inputs.state_path
     receipt_path = inputs.receipt_path
     pinned_census_path = inputs.census_path
-    restore_verify_py = repo_root / "scripts/ci/restore_drill_verify.py"
-
-    if sha256_file(restore_verify_py) != PINNED_RESTORE_DRILL_VERIFY_SHA256:
-        raise ContractViolationError(
-            'B08_E_RESTORE_SOURCE_PIN: SHA256 mismatch on restore verifier source'
-        )
+    restore_source = verify_historical_restore_source(repo_root)
 
     pinned_census = load_pinned_census_receipt(
         pinned_census_path,
@@ -1842,6 +1866,7 @@ def generate_b08_report(repo_root: Path) -> dict[str, Any]:
         repo_root=repo_root,
         state_sha=state_sha,
         receipt_sha=receipt_sha,
+        restore_source=restore_source,
     )
 
     for inst in instances:

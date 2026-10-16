@@ -1195,3 +1195,72 @@ def test_fg02_actual_cli_keeps_pinned_ledger_bytes_for_valid_destination(tmp_pat
     produced = destination.read_bytes()
     assert len(produced) == ISOLATED_LEDGER_BYTES, "FG02_LEDGER_SIZE_CHANGED"
     assert hashlib.sha256(produced).hexdigest() == ISOLATED_LEDGER_SHA256, "FG02_LEDGER_HASH_CHANGED"
+
+
+# Keep historical source snapshots separate from the five frozen input fixtures.
+REPO_SOURCE_RELS += (
+    f"{B08_REL}/source-compatibility/restore-drill-base-source.txt",
+    f"{B08_REL}/source-compatibility/restore-drill-main-source.txt",
+)
+
+def _known_restore_revision(root: Path, fixture_name: str) -> None:
+    shutil.copy2(root / B08_REL / "source-compatibility" / fixture_name,
+                 root / "scripts/ci/restore_drill_verify.py")
+
+
+def test_main_compatibility_keeps_historical_ledger_identity(tmp_path: Path) -> None:
+    root = _clean_checkout_root(tmp_path)
+    _known_restore_revision(root, "restore-drill-main-source.txt")
+    live = root / "scripts/ci/restore_drill_verify.py"
+    assert adapter.sha256_file(live) == adapter.PINNED_COMPATIBLE_MAIN_RESTORE_SHA256
+    report = adapter.generate_b08_report(root)
+    encoded = (json.dumps(report, indent=2, sort_keys=True) + "\n").encode()
+    assert hashlib.sha256(encoded).hexdigest() == ISOLATED_LEDGER_SHA256
+    assert report["base_commit"] == adapter.BASE_COMMIT_SHA
+    assert report["operation_instances"][8]["evidence_sha256"] == (
+        adapter.PINNED_RESTORE_DRILL_VERIFY_SHA256
+    )
+    assert report["block_closed"] is False
+
+
+def test_legacy_restore_revision_keeps_original_acceptance(tmp_path: Path) -> None:
+    root = _clean_checkout_root(tmp_path)
+    _known_restore_revision(root, "restore-drill-base-source.txt")
+    assert adapter.sha256_file(root / "scripts/ci/restore_drill_verify.py") == (
+        adapter.PINNED_RESTORE_DRILL_VERIFY_SHA256
+    )
+    assert adapter.generate_b08_report(root)["block_closed"] is False
+
+
+def test_unknown_restore_revision_is_rejected_despite_valid_snapshot(tmp_path: Path) -> None:
+    root = _clean_checkout_root(tmp_path)
+    _known_restore_revision(root, "restore-drill-main-source.txt")
+    live = root / "scripts/ci/restore_drill_verify.py"
+    live.write_bytes(live.read_bytes() + b"\n# unreviewed source change\n")
+    with pytest.raises(adapter.ContractViolationError, match="B08_E_RESTORE_SOURCE_PIN"):
+        adapter.generate_b08_report(root)
+
+
+@pytest.mark.parametrize("failure", ["missing", "tampered"])
+def test_main_compatibility_requires_exact_historical_snapshot(
+    tmp_path: Path, failure: str
+) -> None:
+    root = _clean_checkout_root(tmp_path)
+    _known_restore_revision(root, "restore-drill-main-source.txt")
+    historical = (root / B08_REL / "source-compatibility"
+                  / "restore-drill-base-source.txt")
+    if failure == "missing":
+        historical.unlink()
+    else:
+        historical.write_bytes(historical.read_bytes() + b"\n# altered snapshot\n")
+    with pytest.raises(adapter.ContractViolationError, match="B08_E_FIXTURE_"):
+        adapter.generate_b08_report(root)
+
+
+def test_main_compatibility_actual_cli_replays_frozen_ledger(tmp_path: Path) -> None:
+    root = _clean_checkout_root(tmp_path)
+    _known_restore_revision(root, "restore-drill-main-source.txt")
+    destination = root / B08_REL / "historical-report.json"
+    result = _run_boundary_cli(root, destination)
+    assert result.returncode == 0, "B08_COMPATIBLE_MAIN_CLI_FAILED"
+    assert hashlib.sha256(destination.read_bytes()).hexdigest() == ISOLATED_LEDGER_SHA256
