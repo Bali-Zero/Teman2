@@ -24,7 +24,7 @@ THREE NON-NEGOTIABLE GUARDRAILS (CLAUDE.md §5, §14 / SYMBIOSIS Law 2)
 
 RUN (on Pro or Mini, where the NLM auth lives — NOT M5):
     cd ~/nuzantara
-    source apps/nlm-bridge/.venv/bin/activate   # has notebooklm_tools + auth
+    source ~/venvs/nlm-bridge/bin/activate     # same environment as Pro's bridge service
     python scripts/nb_export_corpus.py --discover                  # fill the regulation id
     python scripts/nb_export_corpus.py --nb nb-intel-regulation    # Phase A: one NB
     python scripts/nb_export_corpus.py --all                       # Phase B: whole whitelist
@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -121,7 +122,8 @@ def _load_client():
             "FATAL: notebooklm_tools not importable. Run inside "
             "apps/nlm-bridge/.venv on the Pro/Mini (the M5 has no NLM auth)."
         )
-    tokens = load_cached_tokens()
+    profile = os.environ.get("NLM_PROFILE", "default")
+    tokens = load_cached_tokens(profile_name=profile)
     if not tokens or not tokens.cookies:
         sys.exit(
             "FATAL: no cached NLM tokens (run 'nlm login' on the Pro first). "
@@ -132,6 +134,9 @@ def _load_client():
         csrf_token=tokens.csrf_token or "",
         session_id=getattr(tokens, "session_id", "") or "",
         build_label=getattr(tokens, "build_label", "") or "",
+        base_host=getattr(tokens, "base_host", "") or "",
+        profile_name=profile,
+        auth_revision=getattr(tokens, "revision", None),
     )
 
 

@@ -249,15 +249,41 @@ def probe_agy() -> Probe:
 def probe_nlm() -> Probe:
     if _run(["which", "nlm"])[0] != 0:
         return Probe("nlm", "B", SKIP, "nlm non installato")
-    rc, out = _run(["nlm", "login", "--check"], timeout=40)
-    if rc == 0 and "valid" in out.lower():
+    profile = os.environ.get("NLM_PROFILE", "default")
+    check = ["nlm", "login", "--check", "--profile", profile]
+
+    def classify(rc: int, out: str) -> str:
+        if re.search(
+            r"\binvalid\b|\bexpired\b|not logged in|no saved credentials|"
+            r"not authenticated|unauthorized|unauthorised|invalid_grant|"
+            r"please login|auth error|HTTP(?: status)?[ :]+401\b", out, re.I,
+        ):
+            return ACTION
+        if rc == 0 and re.search(r"\bauthentication\s+valid\b", out, re.I):
+            return OK
+        return UNKNOWN
+
+    rc, out = _run(check, timeout=120)
+    status = classify(rc, out)
+    if status == OK:
         return Probe("nlm", "B", OK, "auth valid")
-    if _AUTH_DEAD_RE.search(out) or "expired" in out.lower():
-        return Probe("nlm", "B", ACTION,
-                     "CDP session scaduta (cookie volatili — runbook 4/5)",
-                     fix_cmd="nlm login --clear   # su terminale interattivo, "
-                             "login antonellosiano@gmail.com in finestra Chrome dedicata")
-    return Probe("nlm", "B", UNKNOWN, out[:120])
+    if status == ACTION:
+        # One browserless attempt per probe. Explicit refresh bypasses the
+        # library's recovery cooldown, so never retry it in a loop.
+        refresh_rc, _ = _run(
+            ["nlm", "auth", "refresh", "--http-only", "--profile", profile], timeout=60,
+        )
+        if refresh_rc == 0:
+            rc, out = _run(check, timeout=120)
+            status = classify(rc, out)
+            if status == OK:
+                return Probe("nlm", "B", REFRESHED, "auth recovered via HTTP-only refresh")
+            if status == UNKNOWN:
+                return Probe("nlm", "B", UNKNOWN, "auth recheck inconclusive")
+        return Probe("nlm", "B", ACTION, "saved session requires managed-browser or interactive login",
+                     fix_cmd="nlm auth refresh --profile <profile>; if sign-in is expired: "
+                             "nlm login --profile <profile>")
+    return Probe("nlm", "B", UNKNOWN, "auth check inconclusive (network, timeout or unknown response)")
 
 
 # --- ramo B-hard: TCC / Full-Disk-Access (W84) -----------------------------
