@@ -26,7 +26,8 @@ from pathlib import Path
 
 LABEL = "localci:merge-shadow-ok"
 DEFAULT_TRIES, DEFAULT_DEADLINE, DEFAULT_BACKOFF = 4, 45, 2
-BENIGN_ARM = ("already queued", "auto-merge enabled", "already enabled", "clean")
+CMD_TIMEOUT = 60   # one network command; the label deadline is asked between commands, this bounds a command that never returns
+BENIGN_ARM = ("already queued", "auto-merge enabled", "already enabled", "clean status")
 
 
 @dataclass(frozen=True)
@@ -180,11 +181,13 @@ def plan(cfg: Cfg):
 
 # --------------------------------------------------------------------------------------------------- the world (I/O only)
 def _run(cmd: list[str], stdout_only: bool = False, env: dict | None = None) -> tuple[int, str]:
-    """A command that cannot start is rc 127 (what the shell said), never a traceback."""
+    """A command that cannot start is rc 127 (what the shell said), one that outlives CMD_TIMEOUT is rc 124 (as timeout(1)): never a traceback, never a hang."""
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", env=env)
+        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", env=env, timeout=CMD_TIMEOUT)
     except OSError as exc:
         return 127, f"{cmd[0]}: {exc}"
+    except subprocess.TimeoutExpired:
+        return 124, f"{cmd[0]}: timed out after {CMD_TIMEOUT}s"
     return res.returncode, res.stdout if stdout_only else res.stdout + res.stderr
 
 

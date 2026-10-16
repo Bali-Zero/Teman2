@@ -138,7 +138,7 @@ def reference(cfg, world):
     if cfg.queue == "absent":
         return li.Outcome(label, why, "skipped", 0 if label == "applied" else 2)
     rc, out = world.call("arm")
-    benign = any(m in out.lower() for m in ("already queued", "auto-merge enabled", "already enabled", "clean"))
+    benign = any(m in out.lower() for m in ("already queued", "auto-merge enabled", "already enabled", "clean status"))
     if rc != 0 and not benign:
         return li.Outcome(label, why, "failed", 2 if label == "failed" else 3, rc, out)
     return li.Outcome(label, why, "armed", 0 if label == "applied" else 2, rc, out)
@@ -233,8 +233,8 @@ def test_the_parse_of_the_environment():
 def test_labels_and_arm_texts():
     assert li.has_label(li.LABEL) and li.has_label("a\n" + li.LABEL + "\nb") and not li.has_label(li.LABEL + "-2") and not li.has_label("x" + li.LABEL)
     assert not li.has_label("")
-    assert all(li.arm_is_benign(m) for m in ("Already Queued", "Auto-Merge Enabled", "already enabled", "pull request is clean"))
-    assert not li.arm_is_benign("GraphQL: something else") and not li.arm_is_benign("")
+    assert all(li.arm_is_benign(m) for m in ("Already Queued", "Auto-Merge Enabled", "already enabled", "pull request is in clean status"))
+    assert not li.arm_is_benign("merge cannot be cleanly created") and not li.arm_is_benign("GraphQL: something else") and not li.arm_is_benign("")
 
 
 def test_a_sleep_is_capped_at_the_time_left_and_nothing_starts_after_the_deadline():
@@ -246,3 +246,9 @@ def test_a_sleep_is_capped_at_the_time_left_and_nothing_starts_after_the_deadlin
 def test_the_domain_is_not_small():
     """A guard on the oracle's reach: the unconstrained configuration alone is thousands of (script of results) pairs."""
     assert sum(1 for _ in explore(li.Cfg(4, 100, 1, "present"), 0)) >= 10_000
+
+
+def test_a_command_that_outlives_its_timeout_is_rc_124_not_a_hang(monkeypatch):
+    monkeypatch.setattr(li, "CMD_TIMEOUT", 1)
+    rc, out = li._run(["sleep", "5"])
+    assert rc == 124 and "timed out" in out

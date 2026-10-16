@@ -89,17 +89,21 @@ def extract_python(src: str) -> list[tuple[str, int, int, str, str]]:
         s, e = _span(lines, offs, node)
         found.setdefault((s, e), (norm(src[s:e]), s, e, kind, owner.get(id(origin), "")))
 
-    dicts = {(owner.get(id(a), ""), t.id) for a in ast.walk(tree) if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict)
+    dicts = {t.id for a in ast.walk(tree) if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict)
              for t in a.targets if isinstance(t, ast.Name)}
+    annotated = {id(m) for f in ast.walk(tree) for a in ([f.returns, *[x.annotation for x in f.args.args + f.args.kwonlyargs]] if isinstance(f, ast.FunctionDef) else
+                                                      [f.annotation] if isinstance(f, ast.AnnAssign) else []) if a is not None for m in ast.walk(a)}   # `X | None` is a type
     for n in ast.walk(tree):
         if isinstance(n, (ast.For, ast.While)) and n.orelse:
             raise ValueError(f"line {n.lineno}: a loop `else` is a decision the census does not model")
-        if isinstance(n, ast.Try) and n.finalbody:
-            raise ValueError(f"line {n.lineno}: `finally` is a path the census does not model")
+        if isinstance(n, ast.Try) and (n.finalbody or n.orelse):
+            raise ValueError(f"line {n.lineno}: `finally` / `else` is a path the census does not model")
         if isinstance(n, ast.Subscript) and isinstance(n.value, (ast.List, ast.Tuple, ast.Dict, ast.Set)):
             raise ValueError(f"line {n.lineno}: indexing a literal (a boolean or dict dispatch) hides a condition: write an if")
-        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and (owner.get(id(n), ""), n.value.id) in dicts:
+        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id in dicts:
             add(n, "dispatch", n)
+        if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.BitAnd, ast.BitOr, ast.BitXor)) and id(n) not in annotated:
+            raise ValueError(f"line {n.lineno}: a bitwise operator is a hidden boolean: write and/or")
         if isinstance(n, DENIED):
             raise ValueError(f"line {n.lineno}: {type(n).__name__} is a construct the census does not model: write it as an if/boolean or extend the extractor")
         if isinstance(n, (ast.If, ast.While)):

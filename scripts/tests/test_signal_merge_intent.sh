@@ -205,7 +205,7 @@ run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_LABEL_NAME=xlocalci:merge-shadow-
 check "another label that merely contains ours is not ours: no remove" "$([ "$(has '--remove-label' "$CALLS")" = 0 ] && [ "$(has '--add-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_ADD_FAILS=1
 check "stale label, first add fails: removed once, then only the add is retried" "$([ $RC = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--remove-label')" = 1 ] && [ "$(printf '%s\n' "$CALLS" | grep -c -e '--add-label')" = 2 ] && echo 1 || echo 0)"
-for msg in "already queued" "Auto-Merge enabled" "already enabled" "pull request is clean"; do
+for msg in "already queued" "Auto-Merge enabled" "already enabled" "pull request is in clean status"; do
   run 7 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1 "FAKE_MERGE_MSG=$msg"
   check "arm refused with '$msg' is not an arm failure: exit 0, armed" "$([ $RC = 0 ] && [ "$(has 'arm=armed' "$OUT")" = 1 ] && echo 1 || echo 0)"
 done
