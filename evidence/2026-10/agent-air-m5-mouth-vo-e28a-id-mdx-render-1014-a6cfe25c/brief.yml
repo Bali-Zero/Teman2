@@ -1,5 +1,7 @@
 task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
-gear: 2
+gear: 3
+gear_reason: >-
+  scripts/evidence_pack_lint.py --print-floor printed 3 for size (42 files, +1926/-6404 against origin/main); declared as printed, no gear_override.
 l_level: L2
 mission_colour: BLUE
 gate_class: opus
@@ -22,7 +24,7 @@ acceptance:
       "passive investors", an 18/24-month passport, "5-7 working days", an IDR 350M threshold, "Golden Visa (ITAP)",
       KPPA/representative office for E28D, paid-in capital as the E28A test, a fee split, or "renewable annually" for
       E28A, the truth test SHALL go red naming file and line; WHEN the correct sentences are present it SHALL be green.
-    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (167 tests)"
+    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (424 tests, five locales)"
   - text: >-
       WHEN the E28G sub-variant line is put back into the E28A guide the truth test SHALL go red, and green again once
       the file is restored.
@@ -51,9 +53,9 @@ risks:
       body (1154 lines out, 47 in per language). Reviewer should judge that this is the smaller lie than 1100 lines of
       surgical edits to a fiction.
   - text: >-
-      The FR/IT/RU twins of the E28A, Golden and Investor guides still carry the old claims (out of scope for this PR,
-      follow-up needed); the truth test covers EN and ID only.
+      The IT, FR and RU twins are live surfaces (?lang=) and are corrected here from the corrected English; translation
+      fidelity is judged by the reviewer, the truth test pins figures, codes and forbidden claims in all five locales.
   - text: >-
-      The diff budget of about 350 changed lines is exceeded on the E28A pair (about 340 across the pair) and by the
-      Golden body replacement; the deletions are mostly the removed sub-variants section and the false Golden body.
+      The diff budget of about 350 changed lines is exceeded: the floor printed 3 (42 files, +1926/-6404); the
+      deletions are mostly the removed sub-variants section and the false Golden bodies (five locales).
 grader: "Fresh Opus 5.5 final gate commissioned by the team lead"
