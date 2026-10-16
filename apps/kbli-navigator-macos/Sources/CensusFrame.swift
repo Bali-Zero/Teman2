@@ -88,6 +88,8 @@ enum CensusWindow {
         let win = NSWindow(contentRect: NSRect(x: -20000, y: -20000, width: size.width, height: size.height),
                            styleMask: [.borderless], backing: .buffered, defer: false)
         win.contentView = view
+        // A window draws its sidebar and toolbar in ITS appearance, the system one (light on Pro) unless told: a night render was day chrome (N1).
+        if Theme.mode == .dark { win.appearance = NSAppearance(named: .darkAqua) }
         win.orderFrontRegardless()
         NSApp.activate(ignoringOtherApps: true)
         win.makeKey()
