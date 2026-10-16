@@ -266,7 +266,7 @@ than reading it as empty.
 | class     | `bg-accent-sand/5`                                                                      | wash #EAE3D8                | accent tint becomes wash: no tinted copper slabs                                                                     |
 | class     | `bg-accent-warm/10`                                                                     | wash #EAE3D8                | accent tint becomes wash: no tinted copper slabs                                                                     |
 | class     | `bg-black/20`                                                                           | wash #EAE3D8                | sunken / hover fill                                                                                                  |
-| class     | `bg-black/60`                                                                           | wash #EAE3D8                | sunken / hover fill                                                                                                  |
+| class     | `bg-black/60`                                                                           | wash #EAE3D8                | sunken / hover fill on the /kbli card (`app/kbli/page.tsx:187`); the explorer sidebar backdrop is a scrim (§8.1)     |
 | class     | `bg-gradient-to-br`                                                                     | not painted on this surface | gradient: Direction A paints solid grounds and solid ink                                                             |
 | class     | `bg-gradient-to-r`                                                                      | not painted on this surface | gradient: Direction A paints solid grounds and solid ink                                                             |
 | class     | `bg-gradient-to-tr`                                                                     | not painted on this surface | gradient: Direction A paints solid grounds and solid ink                                                             |
@@ -489,7 +489,8 @@ python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/f
 
 The verdict is the printed `read-but-undefined:` line, never the exit code.
 `state-colors-off-contract:` follows `colors-outside-direction-a:` and `state-rows-unseen:`; §7.5 defines both.
-§8.8 lists the exit block W2''' is judged on.
+`surfaces-unclaimed:` (§8.7) follows `page-grounds-off-contract:`. §8.8 lists the exit block
+W2''' is judged on.
 The opened-surface lines of §8.4 come last, and the last printed line is `opened-text-below-4.5:`.
 
 ## 7. Amendment 2026-10-09: the state contract (W0b)
@@ -739,6 +740,7 @@ binds there too. The census counts every opened surface outside the wrapper root
 | `bg-[#0A0C10]/95`                  | explorer compare bar                                                                                          | opaque | elevated #FFFCF7            | ink, copper                                             | 5.64     | dark slab: a sticky bar over the paper page is a card, so elevated                |
 | `bg-[#151921]`                     | explorer related-code buttons and risk pills                                                                  | opaque | wash #EAE3D8                | ink, muted, copper                                      | 4.53     | dark slab: a pill on a card is a sunken band, so wash                             |
 | `bg-black/50`                      | explorer mobile inspector backdrop                                                                            | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open sheet; no text sits on it                  |
+| `bg-black/60`                      | explorer mobile sidebar backdrop (`app/kbli-explorer/page.tsx:1124`)                                          | scrim  | ink #1D2C3B                 | -                                                       | -        | Per-surface row (W0d-3): the sidebar backdrop; on the /kbli card it is §5's wash  |
 | `bg-black/70`                      | sector drawer and comparison modal backdrop                                                                   | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open dialog; no text sits on it                 |
 | `bg-black/90`                      | Black Book modal backdrop                                                                                     | scrim  | ink #1D2C3B                 | -                                                       | -        | backdrop: dims the page behind an open dialog; no text sits on it                 |
 | `bg-[#dc2626]/10`                  | search dropdown code chip                                                                                     | opaque | wash #EAE3D8                | copper                                                  | 4.53     | red tint becomes wash; the code is copper                                         |
@@ -879,6 +881,21 @@ for a stated reason. The colour type comes from the PNG header (`IHDR`).
 | `/kbli` nav, `NavShell logo={<BZLogo variant="full" />}`                              | `/assets/logo/balizero-logo-clean.png`, 512x512 RGBA: the black disc lockup, transparent outside the disc                                                                 | **Keep.** The disc is the lockup itself, not a ground behind other content.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | footer, `BZLogo variant="round"`                                                      | `app/v2/_components/Footer.tsx`                                                                                                                                           | **Out of scope.** It is the shared v2 footer, outside the `/kbli*` fence: changing it changes every route.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
+**The proofs are armed (W0d-3, `SPEC-W0d-census.md` §4).** `logo_proof()` checks the five,
+and a test runs it once `logo-zantara-transparent.png` exists, skipped until then:
+
+1. IHDR colour type 6 (RGBA), the original's 1024x1024.
+2. The four corner pixels and every flood-filled black-field pixel at alpha 0.
+3. A pixel diff of 0 against the original, alpha 255, inside the roundel mask. The mask is the
+   complement of the black field, the near-black pixels (each channel 16 or less) that a flood
+   fill reaches from the four corners. The black disc inside the ring is not reached, so it is kept.
+4. The explorer's `<img>` pointing at the new file.
+5. The census's `/kbli-explorer` desktop/light capture reads the pixels at the four corners of
+   the `<img>` box, 1px in, into the dump's `logo` record, and all four are paper (§8.4's
+   tolerance). Today it reads the black field.
+
+Each proof has a guilt row on a 64x64 logo, and a browser test reads the corners from a render.
+
 ### 8.4 The census opens the surfaces
 
 After the state walk, the census runs an opened-surface walk. Each scenario loads its page in
@@ -1017,7 +1034,16 @@ by the painters (`SPEC-W0d-census.md` §2).
   confined under the run's surface that `within()` still takes to reach it is counted too, an
   accepted over-count of that older reach rule (`D-reach-bar-confined-under-surface`). A run is
   also not counted when its occluder lies inside another surface the walk opened that does not
-  hold the run, which is the surface order working (W0d-3b-2b-i''').
+  hold the run, which is the surface order working (W0d-3b-2b-i'''). At a single sample point p,
+  `pointB()` collects every reaching overlay (`within()` returns all qualifying reachers) and every
+  main-stack occluder above the run (`k < i`), and returns the first non-exempt occluder before any
+  exempt one (`hits.find((h) => !h.exempt) || hits[0]`), so an exempt reacher or layer at p never
+  masks a simultaneous non-exempt reacher or main-stack occluder (`NEAR-FIRST`, W0d-3b-2b-ii).
+  Across the sample points of a run whose points are all occluded or missed, `decode()` and
+  `bring()`'s fallback likewise select the first non-exempt occluded point
+  (`bs.find((b) => b.occluded && !b.exempt) || bs.find((b) => b.occluded)`), so an exempt sample
+  point never suppresses a non-exempt occlusion at another sample point of the same run
+  (`MIX-reach`, `MIX-main`, W0d-3b-2b-ii).
   The walk line names each exempt cause apart: `N of them behind the walk's own scrim` and
   `N of them under another opened surface`; the walk line is the whole count, no second line
   repeats it. A run brought to the middle and still occluded keeps its occluder and why it is
@@ -1141,8 +1167,8 @@ taken on `origin/main`, and requires a pin for every pair of every shared file a
 | file                                                                                                                                                                                                                          | mounts outside `/kbli*`                                                                                                                                | pair: pinned routes                                                                                                         | `/kbli*` takes                                                 |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `app/v2/_components/MobileNav.tsx`                                                                                                                                                                                            | `/v2`, `/v2/news`, `/visa/*`, BlogNav, `/property/eligibility`, `/tax-calendar`                                                                        | MobileNav non-R19: `/v2`, `/visa/second-home`, `/v2/news`; MobileNav R19: `/tax-calendar`, `/property/eligibility`, `/news` | the non-R19 branch on `origin/main`; the `paper` prop at #8161 |
-| `packages/core/components/NavShell.tsx`, `NavShell.module.css`                                                                                                                                                                | `/v2`, `/v2/news`, `/visa/*` (default); `/tax-calendar`, `/property/eligibility`, BlogNav (paper)                                                      | NavShell default: `/v2`; NavShell paper: `/tax-calendar`                                                                    | default                                                        |
-| `app/v2/_components/Footer.tsx`                                                                                                                                                                                               | `/v2`, `/v2/news`, the blog layout, the marketing home, `not-found`                                                                                    | Footer editorial: `/v2`; Footer R19 blog: `/news`                                                                           | the wrapper's tokens                                           |
+| `packages/core/components/NavShell.tsx`, `NavShell.module.css`                                                                                                                                                                | `/v2`, `/v2/news`, `/visa/*` but `/visa/voa` (default); `/tax-calendar`, `/property/eligibility`, BlogNav, `/visa/voa` (paper once hydrated)           | NavShell default: `/v2`; NavShell paper: `/tax-calendar`                                                                    | default                                                        |
+| `app/v2/_components/Footer.tsx`                                                                                                                                                                                               | `/v2`, `/v2/news`, the blog layout, `not-found` (the marketing home mounts `components/r19/home/Footer`, another component)                            | Footer editorial: `/v2`; Footer R19 blog: `/news`                                                                           | the wrapper's tokens                                           |
 | `packages/core/components/BZLogo.tsx`, `components/lead/WhatsAppLeadButton.tsx`, `packages/core/components/FunnelFrame.tsx`, `components/ui/button.tsx`, `components/ui/skeleton.tsx`, `components/providers/LazyToaster.tsx` | many routes each                                                                                                                                       | none                                                                                                                        | unpinned by construction                                       |
 | `components/r19/R19Presentation.module.css`, `components/r19/presentation.ts` (`R19_VARS`)                                                                                                                                    | every R19 surface: the blog layout, `/tax-calendar`, `/property/eligibility`, the marketing home, `not-found`, MobileNav's R19 branch, the Zantara FAB | none                                                                                                                        | unpinned by construction (W0d-2)                               |
 
@@ -1240,10 +1266,106 @@ The three `hover:` variants of `components/ui/button.tsx` render only inside the
 They have no §7 row, and the scan lists them as the only state-variant background classes
 without one. The lot that walks the boundaries adds their §7 rows.
 
-### 8.7 The overlay inventory (W0d-3b-2b)
+### 8.7 The overlay inventory (W0d-3)
 
-Lands with W0d-3b-2b: every overlay the fence can mount, claimed by a scenario or declared, and
-its `surfaces-unclaimed: U` line in the exit block below.
+Every surface the fence can mount is claimed here, so a new one cannot ship unseen
+(`SPEC-W0d-census.md` §1.a).
+
+- **What the census scans:** `components/kbli`, `app/kbli` and `app/kbli-explorer` under
+  `apps/mouth/src`, plus every local file they import, transitively. Tests and comments are
+  excluded.
+- **What a hit is:** `<Dialog.Portal`, `createPortal(`, `<details`, a `role` of `dialog`,
+  `alertdialog`, `listbox`, `menu` or `tooltip`, `aria-modal`, a `toast(` or `toast.…(` call,
+  and a class string that holds `fixed` or `absolute` together with a `z-` and a `bg-` utility
+  (`overlay`).
+- **Key:** `file::pattern::ordinal`, counted in source order within the file, never by line.
+- **Claim:** a census scenario that opens the surface, or `unreachable`, `not-reached` or
+  `decorative` with its reason.
+- `surfaces-unclaimed: U` prints every hit without a row, and U counts them. A row whose claim is
+  neither a scenario nor one of the three words refuses the table.
+
+<!-- overlays:begin -->
+
+| key                                                                                 | claim                     | reason                                                                                                                       |
+| ----------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `apps/mouth/src/app/kbli-explorer/components/BlackBookModal.tsx::aria-modal::0`     | explorer-black-book       | the Black Book modal                                                                                                         |
+| `apps/mouth/src/app/kbli-explorer/components/BlackBookModal.tsx::role::0`           | explorer-black-book       | the Black Book modal                                                                                                         |
+| `apps/mouth/src/app/kbli-explorer/components/ComparisonModal.tsx::Dialog.Portal::0` | explorer-compare          | the comparison modal                                                                                                         |
+| `apps/mouth/src/app/kbli-explorer/components/ComparisonModal.tsx::overlay::0`       | explorer-compare          | its backdrop                                                                                                                 |
+| `apps/mouth/src/app/kbli-explorer/components/ComparisonModal.tsx::overlay::1`       | explorer-compare          | its panel                                                                                                                    |
+| `apps/mouth/src/app/kbli-explorer/components/KBLIInspector.tsx::overlay::0`         | explorer-answer-inspector | the inspector's close button, mobile                                                                                         |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::0`                             | explorer-glossary-tooltip | the glossary bubble                                                                                                          |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::1`                             | explorer-answer-inspector | the inspector's close button, mobile                                                                                         |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::2`                             | explorer-mobile-sidebar   | the sidebar backdrop (`bg-black/60`, §8.1's per-surface row)                                                                 |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::3`                             | explorer-mobile-sidebar   | the sidebar                                                                                                                  |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::4`                             | unreachable               | the floating search results: every `setSearchResults` call passes `[]`, and a static test (G31) fails the day one fills them |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::5`                             | explorer-answer-inspector | the mobile inspector backdrop                                                                                                |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::overlay::6`                             | explorer-answer-inspector | the mobile inspector sheet                                                                                                   |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::toast::0`                               | explorer-toast-success    | "Copied to clipboard"                                                                                                        |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::toast::1`                               | explorer-toast-success    | "Link copied": the same success toast, another text                                                                          |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::toast::2`                               | explorer-toast-error      | "Failed to load KBLI …"                                                                                                      |
+| `apps/mouth/src/app/kbli-explorer/page.tsx::toast::3`                               | explorer-toast-error      | "Failed to process request": the same error toast, another text                                                              |
+| `apps/mouth/src/app/kbli/[code]/page.tsx::<details::0`                              | not-reached               | the TKA disclosure renders only for a code with TKA data, and none of 55203, 51101 or 56101 has any                          |
+| `apps/mouth/src/app/v2/_components/MobileNav.tsx::Dialog.Portal::0`                 | kbli-mobile-nav           | the mobile nav drawer (also `kbli-code-mobile-nav`)                                                                          |
+| `apps/mouth/src/components/kbli/KBLICommonQuestions.tsx::<details::0`               | details-55203             | the four common questions, on every code page                                                                                |
+| `apps/mouth/src/components/kbli/KBLIDivergence.tsx::<details::0`                    | not-reached               | the detached PP28 rows render only for a code with disputed rows, and none of the census codes has any                       |
+| `apps/mouth/src/components/kbli/KBLISearch.tsx::overlay::0`                         | search-dropdown           | the results dropdown                                                                                                         |
+| `apps/mouth/src/components/kbli/KBLISearch.tsx::role::0`                            | search-dropdown           | its listbox                                                                                                                  |
+| `apps/mouth/src/components/kbli/KBLISectorOffcanvas.tsx::Dialog.Portal::0`          | sector-drawer             | the sector drawer (also `sector-code-detail`)                                                                                |
+| `apps/mouth/src/components/kbli/KBLISectorOffcanvas.tsx::aria-modal::0`             | sector-drawer             | the sector drawer                                                                                                            |
+| `apps/mouth/src/components/kbli/KBLISectorOffcanvas.tsx::overlay::0`                | sector-drawer             | its backdrop                                                                                                                 |
+| `apps/mouth/src/components/kbli/KBLISectorOffcanvas.tsx::overlay::1`                | sector-drawer             | its panel                                                                                                                    |
+| `apps/mouth/src/components/kbli/KBLISectorOffcanvas.tsx::overlay::2`                | sector-drawer             | its close button                                                                                                             |
+| `apps/mouth/src/components/kbli/LicensingSection.tsx::<details::0`                  | details-51101             | a scale's PP28 requirements                                                                                                  |
+| `apps/mouth/src/components/kbli/LicensingSection.tsx::<details::1`                  | details-51101             | a scale's post-licence obligations                                                                                           |
+| `apps/mouth/src/components/kbli/LicensingSection.tsx::<details::2`                  | details-51101             | the PP28/2025 licensing data                                                                                                 |
+| `apps/mouth/src/components/kbli/LicensingSection.tsx::<details::3`                  | not-reached               | the source regulation renders only for a code whose licensing text names a source, and none of the census codes does         |
+| `apps/mouth/src/components/kbli/ZantaraChat.tsx::overlay::0`                        | decorative                | a blurred glow behind the chat, `pointer-events-none`, no text                                                               |
+| `apps/mouth/src/components/kbli/ZantaraChat.tsx::overlay::1`                        | decorative                | a blurred glow behind the chat, `pointer-events-none`, no text                                                               |
+
+<!-- overlays:end -->
+
+**Declared outside the scan.** The route `error.tsx` boundaries and the five `loading.tsx`
+skeletons are not reached (§8.4, §8.6); they hold no overlay pattern. The explorer texture
+layers in `app/kbli-explorer/layout.tsx` are decorative and carry no `z-`/`bg-` class pair.
+
+**Scrim shapes across the 50 opened walks (`ii-1`).** Across the 50 opened walks of `origin/main`,
+18 walks mount one scrim (18 scrim instances in all across 6 DOM shapes), and every scrim today
+holds 0 descendant elements:
+
+1. `html...>body...>div` (`MobileNav` inline fixed `rgba(0, 0, 0, 0.45)`, `z-index: 398`): 6 walks
+   (`kbli-mobile-nav` and `kbli-code-mobile-nav`, mobile across all three themes), 0 descendants;
+2. `div.kbli-panel-overlay.fixed` (`fixed inset-0 z-[500] bg-black/70 backdrop-blur-sm`): 4 walks
+   (`sector-drawer` and `sector-code-detail`, desktop/light and mobile/system-dark), 0 descendants;
+3. `div.xl:hidden.fixed` (`xl:hidden fixed inset-0 bg-black/50 z-40`): 3 walks
+   (`explorer-answer-inspector`, `explorer-toast-success` and `explorer-toast-error`,
+   mobile/system-dark), 0 descendants;
+4. `body...>div.fixed.inset-0` (`fixed inset-0 bg-black/70 z-50`): 2 walks (`explorer-compare`,
+   desktop/light and mobile/system-dark), 0 descendants;
+5. `div.fixed.inset-0>div.absolute.inset-0` (`absolute inset-0 bg-black/90 backdrop-blur-md` inside
+   the fixed modal wrapper): 2 walks (`explorer-black-book`, desktop/light and mobile/system-dark),
+   0 descendants;
+6. `div.flex.h-full>div.fixed.inset-0` (`fixed inset-0 bg-black/60 z-30 md:hidden`, §8.1's
+   per-surface row): 1 walk (`explorer-mobile-sidebar`, mobile/system-dark), 0 descendants.
+
+**Reacher elements across the 50 opened walks (`ii-10`).** Across the 50 opened walks of
+`origin/main`, `reachers` collects 8 distinct DOM shapes (223 instances in all), and 0 of them sit
+inside a scrim (`inScrim: false` on every instance):
+
+1. `div.tsqd-parent-container>div.go2420793703.tsqd-transitions-container>div.go1434192219.go1942079657`
+   and its child `>div` (TanStack Query devtools transition container and button, hidden by the
+   census style `display:none!important`): 50 + 50 = 100 instances across all 50 walks, 0 inside a
+   scrim;
+2. `nav.flex.items-center` (`NavShell` bar): 33 instances across the 14 `/kbli*` scenarios, 0
+   inside a scrim;
+3. `div>main>div.space-y-16>div.sticky.top-14` and its child
+   `>div.relative.flex-1>input.w-full.pl-12` (`/kbli` sticky search bar and input): 24 + 24 = 48
+   instances across the 10 `/kbli` scenarios, 0 inside a scrim;
+4. `div.fixed.top-0>div.absolute.top-[-10%]` and `div.fixed.top-0>div.absolute.bottom-[-10%]`
+   (`ZantaraChat` decorative blurred glows): 17 + 17 = 34 instances across the 9 `/kbli-explorer`
+   scenarios, 0 inside a scrim;
+5. `aside.fixed.md:relative` (`/kbli-explorer` mobile sidebar when closed): 8 instances across the
+   8 `/kbli-explorer` mobile scenarios outside `explorer-mobile-sidebar`, 0 inside a scrim.
 
 ### 8.8 The exit block (W0d-3)
 
@@ -1259,6 +1381,7 @@ colors-outside-direction-a: 0
 state-rows-unseen: 0
 state-colors-off-contract: 0
 page-grounds-off-contract: 0
+surfaces-unclaimed: 0
 opened-surfaces: 50 ok, 0 failed
 declared-not-judgeable: zantara-pending mobile/system-dark
 opened-outside-wrapper: 0
@@ -1270,7 +1393,7 @@ opened-text-below-4.5: 0
 ```
 
 - **W0d asserts the instrument lines only:** `scenarios-off-manifest: 0`, `captures: 54 ok, 0 failed`,
-  `opened-surfaces: 50 ok, 0 failed`, `shared-touched-unpinned: 0` and
+  `surfaces-unclaimed: 0`, `opened-surfaces: 50 ok, 0 failed`, `shared-touched-unpinned: 0` and
   `shared-component-drift: 0`. The others are reported on `origin/main` (§8.4) and gated by
   W2'''.
 - **A declared walk is listed.** `declared-not-judgeable:` follows `opened-surfaces:` while
