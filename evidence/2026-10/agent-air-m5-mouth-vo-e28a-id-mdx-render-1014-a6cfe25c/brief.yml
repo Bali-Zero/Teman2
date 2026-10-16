@@ -1,17 +1,16 @@
 task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
 gear: 3
 gear_reason: >-
-  scripts/evidence_pack_lint.py --print-floor printed 3 for size (42 files, +1926/-6404 against origin/main); declared as printed, no gear_override.
+  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +2775/-11442 against origin/main, evidence staged); declared as printed, no gear_override.
 l_level: L2
 mission_colour: BLUE
 gate_class: opus
 objective: >-
-  E28 close-out, PR D. Six investor articles (the E28A guide, the Golden Visa guide and the Investor KITAS guide, each
-  EN and ID) and the /visa/kitas page state things the official Imigrasi E28A-E28F pages, read 2026-10-15, contradict:
-  an E28G that does not exist, E28A as a strictly passive visa, an 18-month passport, a 5-7 day visa stage, a Golden
-  Visa that is a permanent ITAP at IDR 350M, E28D as a representative-office permit. Each false sentence, cell or FAQ
-  entry is replaced by the shortest true one; the official pages are saved under research/visa/2026-10-15-e28-pages/;
-  a truth test holds the corrected facts in place with guilt and innocence cases for every rule.
+  E28 close-out, PR D. The E28A guide, the Golden Visa guide and the Investor KITAS guide, each in EN, ID, IT, FR and
+  RU, and the /visa/kitas page stated things the official Imigrasi E28A-E28F pages (read 2026-10-15) contradict or do
+  not support. Every sentence now traces to the official pages, the owner rulings of 2026-10-15 or Bali Zero's 2026
+  price list; the E28A and Investor KITAS bodies are short true bodies, every twin is complete and translated, and a
+  truth test (whole-body matching, forbidden families, required sentences, structure) holds that in place.
 constraints:
   - Change only sentences, table cells or FAQ entries that state something false or unsupported about E28 codes,
     thresholds, durations, sponsor, work rights, passport, processing time, extension, permanence, price or E28E/E28G.
@@ -24,11 +23,11 @@ acceptance:
       "passive investors", an 18/24-month passport, "5-7 working days", an IDR 350M threshold, "Golden Visa (ITAP)",
       KPPA/representative office for E28D, paid-in capital as the E28A test, a fee split, or "renewable annually" for
       E28A, the truth test SHALL go red naming file and line; WHEN the correct sentences are present it SHALL be green.
-    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (424 tests, five locales)"
+    probe: "apps/mouth: npx vitest run src/content/e28-family-articles.truth.test.ts (642 tests, five locales)"
   - text: >-
       WHEN the E28G sub-variant line is put back into the E28A guide the truth test SHALL go red, and green again once
       the file is restored.
-    probe: "mutation in pack.yml mutation_receipts (cp backup, restore by cp)"
+    probe: "fourteen mutations in pack.yml mutation_receipts (cp backup, restore by cp)"
   - text: >-
       WHEN the six touched articles are compiled with the production MDX options they SHALL compile, and the en/id
       corpus guards SHALL stay green.
@@ -48,14 +47,19 @@ consumer_map:
   - apps/mouth vitest (CI) runs src/content/e28-family-articles.truth.test.ts on every PR.
 risks:
   - text: >-
-      The Golden Visa guide was built on a false premise end to end (ITAP, IDR 350M tiers, property and bank-deposit
-      vehicles, calculators, case studies); a sentence-level fix was impossible, so its body is replaced by a short true
-      body (1154 lines out, 47 in per language). Reviewer should judge that this is the smaller lie than 1100 lines of
-      surgical edits to a fiction.
+      The E28A guide drops from about 720 lines to 167 and the Investor KITAS guide from about 470 to 137 per language:
+      what is gone (KITAP pathway, tax, case studies, E25B/RPTKA comparison, family rules, sticker steps) is in no
+      source. pack.yml deleted_sections_round2 lists every deleted section with its reason. Reviewer should judge this
+      the smaller lie than surgery on a fiction.
   - text: >-
-      The IT, FR and RU twins are live surfaces (?lang=) and are corrected here from the corrected English; translation
-      fidelity is judged by the reviewer, the truth test pins figures, codes and forbidden claims in all five locales.
+      The IT, FR, RU and ID twins are live surfaces (?lang=) and are generated from the corrected English; translation
+      fidelity is judged by the reviewer. The test pins figures, codes, forbidden claims, required sentences, section
+      count and word ratio in all five locales. Each twin carries source_sha256 of the new English body so the hourly
+      translation producer does not treat it as stale and overwrite it.
   - text: >-
-      The diff budget of about 350 changed lines is exceeded: the floor printed 3 (42 files, +1926/-6404); the
-      deletions are mostly the removed sub-variants section and the false Golden bodies (five locales).
+      Two council findings were rejected with a reason (the Golden Visa route is correct; "Investor KITAS 2 Years
+      (Extend)" is the exact price-row name); the rest are CURED per finding in pack.yml council_verdicts.
+  - text: >-
+      The diff budget of about 350 changed lines is exceeded: the floor printed gear 3 on size; the deletions are mostly
+      the removed false bodies (five locales, three guides).
 grader: "Fresh Opus 5.5 final gate commissioned by the team lead"
