@@ -901,7 +901,11 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   `Total: 12.53GB` while the VM data disk went from 39G used to 37G used. BuildKit also leaves more than the cap reclaimable
   (cache 22.83 GB before, 10.29 GB after, against 4 GB), so no size-based "over budget" rule is sound and none is applied.
   An old daemon (BuildKit before 0.17) ignores `max-used-space`, and `-a` then empties the cache: a rebuild cost, never a wrong verdict.
-- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
+- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. After 24 hours (B26: `BULK_KEEP_H` = `TREE_PACK_STALE_H`, a
+  status.json is not required: a run older than a day is finished or gone) a run loses `call-graph.json` and
+  `higher-order-call-graph.json` (listed as `trimmed_bulk`) and has `receipts/pysa/*/results/taint-output.json` and
+  `dependency-graph.json` gzipped in place (`compressed`, atomic `.gz.part` then rename, symlinks never followed; the 30-day
+  rule treats the `.gz` as it treated the original). Otherwise, under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
   symlink is never trimmed.

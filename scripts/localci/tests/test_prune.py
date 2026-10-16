@@ -283,7 +283,14 @@ RUN_FILES = ("status.json", "hosted_compare.json", "merger.log", "state/plan.jso
              "receipts/ctx.a.junit.xml", "receipts/ctx.a.json", "logs/ctx.a.log", "logs/deps-backend-tests.log",
              "receipts/pysa/base/results/call-graph.json", "receipts/pysa/base/results/higher-order-call-graph.json",
              "receipts/pysa/base/results/taint-output.json", "receipts/pysa/candidate/results/call-graph.json")
-SEVEN_DAY_KEEPS = {f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json")}
+def gz(files_):   # B26 U5: a run past 24 h keeps its taint-output gzipped
+    return {f + ".gz" if f.endswith("taint-output.json") else f for f in files_}
+
+
+SEVEN_DAY_KEEPS = gz(f for f in RUN_FILES if not f.startswith("logs/") and not f.endswith("call-graph.json"))
+
+
+FINISHED_25H = gz(f for f in RUN_FILES if not f.endswith("call-graph.json"))   # B26: a run past 24 h has lost BULK and gzipped its taint-output
 
 
 def run_dir(runs: Path, age_days: float) -> Path:
@@ -303,7 +310,7 @@ def test_a_run_keeps_everything_for_seven_days_then_its_verdict_and_loses_logs_a
     runs = tmp_path / "runs"
     young, week, month_less, month = (run_dir(runs, d) for d in (6.5, 7.5, 29.5, 30.5))
     out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(young) == set(RUN_FILES)
+    assert files(young) == FINISHED_25H
     assert files(week) == files(month_less) == SEVEN_DAY_KEEPS and not (week / "logs").exists()
     assert files(month) == {"status.json", "hosted_compare.json", "state/plan.json"} and not (month / "receipts").exists()
     assert (set(out["trimmed_7d"]), out["trimmed_30d"]) == ({week.name, month_less.name}, [month.name]) and out["freed_gb"] >= 0
@@ -343,8 +350,8 @@ def test_b14_a_pack_a_dead_run_left_goes_after_24_hours_and_nothing_else_of_a_yo
     runs = tmp_path / "runs"
     stale, young = packed_run(runs, 25), packed_run(runs, 23)
     out = pm.trim_runs(runs, NOW, dry=False)
-    assert files(stale) == set(RUN_FILES) and files(young) == set(RUN_FILES) | set(PACK_FILES)
-    assert out["trimmed_pack"] == [stale.name] and out["trimmed_7d"] == [] and out["trimmed_30d"] == [] and out["freed_gb"] >= 0
+    assert files(stale) == FINISHED_25H and files(young) == set(RUN_FILES) | set(PACK_FILES)
+    assert out["trimmed_pack"] == [stale.name] and out["trimmed_bulk"] == [stale.name] and out["trimmed_7d"] == [] and out["trimmed_30d"] == [] and out["freed_gb"] >= 0
 
 
 def test_b14_an_eight_day_run_loses_its_pack_with_its_logs_and_call_graphs(tmp_path):
@@ -360,7 +367,7 @@ def test_b14_a_dry_run_removes_no_pack_and_a_run_without_one_is_not_listed(tmp_p
     out = pm.trim_runs(runs, NOW, dry=True)
     assert out["trimmed_pack"] == [stale.name] and files(stale) == set(RUN_FILES) | set(PACK_FILES)
     clean = run_dir(tmp_path / "other", 25 / 24)
-    assert pm.trim_runs(tmp_path / "other", NOW, dry=False)["trimmed_pack"] == [] and files(clean) == set(RUN_FILES)
+    assert pm.trim_runs(tmp_path / "other", NOW, dry=False)["trimmed_pack"] == [] and files(clean) == FINISHED_25H
 
 
 def test_prune_journals_the_trim_and_never_touches_the_decisions_journal(tmp_path):
@@ -1340,3 +1347,299 @@ def test_b22_the_python_prefix_of_the_job_is_part_of_the_recomputed_tag(tmp_path
     state, docker, imgs, m = _keeper_world(tmp_path, monkeypatch)
     assert m.tag(MOUTH, prefix="/opt/py312/bin") != m.tag(MOUTH, prefix="")   # the digest depends on it
     assert prune_line(state, docker)["main_tags"][MOUTH] == imgs[MOUTH][0]["tag"]
+
+
+# ------------------------------------------------------------------ B26: the bulk receipts of a finished run go after 24 hours
+def aged(runs: Path, age_h: float, files_=RUN_FILES) -> Path:
+    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(NOW - age_h * H))
+    run = runs / f"pr1-{'a' * 12}-{'b' * 12}-{stamp}"
+    for rel in files_:
+        (run / rel).parent.mkdir(parents=True, exist_ok=True)
+        (run / rel).write_text(rel)
+    return run
+
+
+def test_b26_a_finished_run_at_25h_loses_bulk_and_keeps_the_verdict_the_status_and_the_plan(tmp_path):
+    runs = tmp_path / "runs"
+    old, fresh = aged(runs, 25), aged(runs, 23)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(old) == FINISHED_25H and {"receipts/pysa/base/results/taint-output.json.gz", "status.json", "state/plan.json", "logs/ctx.a.log"} <= files(old)
+    assert files(fresh) == set(RUN_FILES)
+    assert out["trimmed_bulk"] == [old.name] and out["trimmed_pack"] == [] and out["trimmed_7d"] == [] and out["trimmed_30d"] == []
+
+
+def test_b26_a_link_named_like_bulk_goes_as_a_link_and_its_target_stays(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25, [f for f in RUN_FILES if not f.endswith("call-graph.json")])
+    target = tmp_path / "outside.json"
+    target.write_text("keep")
+    (run / "receipts/pysa/base/results/call-graph.json").symlink_to(target)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / "receipts/pysa/base/results/call-graph.json").is_symlink() and target.read_text() == "keep"
+
+
+def test_b26_freed_gb_counts_the_bulk_and_a_dry_run_removes_nothing(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    big = run / "receipts/pysa/base/results/call-graph.json"
+    big.write_bytes(b"x" * 30_000_000)
+    dry = pm.trim_runs(runs, NOW, dry=True)
+    assert dry["trimmed_bulk"] == [run.name] and dry["freed_gb"] >= 0.03 and big.exists()
+    real = pm.trim_runs(runs, NOW, dry=False)
+    assert real["freed_gb"] == dry["freed_gb"] and not big.exists()
+    assert pm.trim_runs(runs, NOW, dry=False)["trimmed_bulk"] == []   # not trimmed twice
+
+
+def test_b26_a_run_past_seven_days_is_listed_under_its_old_class_and_not_as_bulk(tmp_path):
+    runs = tmp_path / "runs"
+    week = aged(runs, 8 * 24)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert out["trimmed_7d"] == [week.name] and out["trimmed_bulk"] == []
+
+
+def test_b26_a_linked_directory_is_never_walked_so_a_bulk_file_behind_it_stays(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "call-graph.json").write_text("someone else's")
+    (run / "receipts" / "linked").symlink_to(outside)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (outside / "call-graph.json").read_text() == "someone else's"
+
+
+def test_b26_u1_prime_a_gone_run_without_status_json_loses_bulk_at_25h_and_keeps_it_at_23h(tmp_path):
+    runs = tmp_path / "runs"
+    no_status = [f for f in RUN_FILES if f != "status.json"]
+    gone, fresh = aged(runs, 25, no_status), aged(runs, 23, no_status)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert files(gone) == gz(set(no_status) - {f for f in no_status if f.endswith("call-graph.json")}) and files(fresh) == set(no_status)
+    assert out["trimmed_bulk"] == [gone.name]
+
+
+# ------------------------------------------------------------------ B26 U5: the kept pysa receipts are gzipped in place, atomically
+import gzip  # noqa: E402
+
+RES = "receipts/pysa/base/results"
+
+
+def gunzip(p: Path) -> bytes:
+    return gzip.decompress(p.read_bytes())
+
+
+def test_b26_u5_a_run_past_24h_has_its_taint_output_and_dependency_graph_gzipped_in_place_and_a_younger_one_does_not(tmp_path):
+    runs = tmp_path / "runs"
+    old, fresh = aged(runs, 25), aged(runs, 23)
+    for run in (old, fresh):
+        (run / RES / "dependency-graph.json").write_text("dep graph " * 1000)
+        (run / RES / "taint-output.json").write_text("taint " * 100000)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert gunzip(old / RES / "taint-output.json.gz") == ("taint " * 100000).encode() and gunzip(old / RES / "dependency-graph.json.gz") == ("dep graph " * 1000).encode()
+    assert not (old / RES / "taint-output.json").exists() and not (old / RES / "dependency-graph.json").exists()
+    assert (fresh / RES / "taint-output.json").exists() and not (fresh / RES / "taint-output.json.gz").exists()
+    assert out["compressed"] == [old.name]
+    assert pm.trim_runs(runs, NOW, dry=False)["compressed"] == []   # not compressed twice
+
+
+def test_b26_u5_freed_gb_counts_the_difference_and_a_dry_run_writes_and_removes_nothing(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("a" * 60_000_000)
+    dry = pm.trim_runs(runs, NOW, dry=True)
+    assert dry["compressed"] == [run.name] and dry["freed_gb"] >= 0.05 and src.exists() and not (run / RES / "taint-output.json.gz").exists()
+    assert not list((run / RES).glob("*.part"))
+    real = pm.trim_runs(runs, NOW, dry=False)
+    assert real["freed_gb"] == dry["freed_gb"] and not src.exists()
+
+
+def test_b26_u5_an_already_gz_file_is_skipped_and_an_original_beside_its_gz_only_loses_the_original(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "taint-output.json").unlink()
+    (run / RES / "taint-output.json.gz").write_bytes(b"already")
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert (run / RES / "taint-output.json.gz").read_bytes() == b"already" and out["compressed"] == []
+    (run / RES / "dependency-graph.json").write_text("original")
+    (run / RES / "dependency-graph.json.gz").write_bytes(b"landed")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / RES / "dependency-graph.json").exists() and (run / RES / "dependency-graph.json.gz").read_bytes() == b"landed"
+
+
+def test_b26_u5_a_crash_before_the_rename_leaves_the_original_whole_and_the_next_prune_cleans_the_part_and_finishes(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("verdict " * 1000)
+    with monkeypatch.context() as m:
+        m.setattr(pm.os, "replace", lambda *a, **k: (_ for _ in ()).throw(OSError(pm.errno.EIO, "crash")))
+        out = pm.trim_runs(runs, NOW, dry=False)
+    assert out["errors"] == [f"{RES}/taint-output.json: EIO"]   # path relative to the run dir + the errno name
+    assert src.read_text() == "verdict " * 1000 and not (run / RES / "taint-output.json.gz").exists() and out["compressed"] == []
+    (run / RES / "taint-output.json.gz.part").write_bytes(b"torn")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not list((run / RES).glob("*.part")) and gunzip(run / RES / "taint-output.json.gz") == ("verdict " * 1000).encode() and not src.exists()
+
+
+def test_b26_u5_a_stray_part_is_never_valid_it_is_removed_and_never_stands_for_a_gz(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "dependency-graph.json.gz.part").write_bytes(b"torn")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert not (run / RES / "dependency-graph.json.gz.part").exists() and not (run / RES / "dependency-graph.json.gz").exists()
+
+
+def test_b26_u5_symlinks_are_not_followed_neither_a_linked_file_nor_a_linked_directory(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    outside = tmp_path / "outside"
+    (outside / "results").mkdir(parents=True)
+    (outside / "results" / "taint-output.json").write_text("not ours")
+    (run / "receipts/pysa/linked").symlink_to(outside)
+    elsewhere = tmp_path / "elsewhere.json"
+    elsewhere.write_text("target")
+    (run / RES / "dependency-graph.json").symlink_to(elsewhere)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (outside / "results" / "taint-output.json").read_text() == "not ours" and not list(outside.rglob("*.gz"))
+    assert elsewhere.read_text() == "target" and (run / RES / "dependency-graph.json").is_symlink() and not (run / RES / "dependency-graph.json.gz").exists()
+
+
+def test_b26_u5_the_thirty_day_rule_is_unchanged_a_gz_goes_like_the_original_did(tmp_path):
+    runs = tmp_path / "runs"
+    month = aged(runs, 30.5 * 24)
+    (month / RES / "taint-output.json.gz").write_bytes(b"x")
+    pm.trim_runs(runs, NOW, dry=False)
+    assert files(month) == {"status.json", "hosted_compare.json", "state/plan.json"}
+    week = aged(runs, 9 * 24 + 1)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert (week / RES / "taint-output.json.gz").exists() and gunzip(week / RES / "taint-output.json.gz") == b"receipts/pysa/base/results/taint-output.json"
+
+
+def test_b26_u5_a_stale_part_that_cannot_be_removed_is_reported_and_the_prune_goes_on(tmp_path):
+    runs = tmp_path / "runs"
+    bad, other = aged(runs, 25), aged(runs, 26)
+    (bad / RES / "x.gz.part").mkdir()
+    (bad / RES / "x.gz.part" / "inner").write_text("a directory is not a part file")
+    (bad / RES / "y.gz.part").write_bytes(b"torn")
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert not (bad / RES / "y.gz.part").exists() and (bad / RES / "x.gz.part").is_dir()
+    assert out["errors"] and out["errors"][0].startswith(f"{RES}/x.gz.part: ") and len(out["errors"]) == 1
+    assert sorted(out["trimmed_bulk"]) == sorted(out["compressed"]) == sorted([bad.name, other.name])
+    assert not (other / RES / "call-graph.json").exists() and (other / RES / "taint-output.json.gz").exists()
+
+
+def test_b26_u5_a_dry_run_never_removes_a_stale_part_and_reports_no_error_for_it(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    (run / RES / "y.gz.part").write_bytes(b"torn")
+    out = pm.trim_runs(runs, NOW, dry=True)
+    assert (run / RES / "y.gz.part").exists() and out["errors"] == [] and out["freed_gb"] >= 0
+
+
+def test_b26_u5_the_part_is_fsynced_before_the_rename_the_directory_after_it_and_the_original_goes_last(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    src.write_text("v" * 1000)
+    events, real_fsync, real_replace, real_unlink = [], pm.os.fsync, pm.os.replace, Path.unlink
+
+    def fsync(fd):
+        import stat
+        events.append("fsync-dir" if stat.S_ISDIR(pm.os.fstat(fd).st_mode) else "fsync-part" if "replace" not in events else "fsync-file-after-rename")
+        return real_fsync(fd)
+
+    def replace(a, b):
+        events.append("replace")
+        return real_replace(a, b)
+
+    def unlink(self, *a, **k):
+        if self == src:
+            events.append("unlink-original")
+        return real_unlink(self, *a, **k)
+    monkeypatch.setattr(pm.os, "fsync", fsync)
+    monkeypatch.setattr(pm.os, "replace", replace)
+    monkeypatch.setattr(Path, "unlink", unlink)
+    pm.trim_runs(runs, NOW, dry=False)
+    assert events == ["fsync-part", "replace", "fsync-dir", "unlink-original"]
+
+
+def test_b26_u5_a_symlinked_gz_is_not_trusted_as_an_already_compressed_output(tmp_path):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    elsewhere = tmp_path / "elsewhere.gz"
+    elsewhere.write_bytes(b"not our output")
+    (run / RES / "taint-output.json.gz").symlink_to(elsewhere)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert src.exists() and elsewhere.read_bytes() == b"not our output" and out["compressed"] == []
+
+
+@pytest.mark.parametrize("linked", ["receipts", "receipts/pysa"])
+def test_b26_u5_a_linked_receipts_or_pysa_directory_is_neither_trimmed_nor_compressed(tmp_path, linked):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25, [f for f in RUN_FILES if not f.startswith("receipts/")])
+    outside = tmp_path / "outside"
+    target = outside / "pysa" / "base" / "results" if linked == "receipts" else outside / "base" / "results"
+    target.mkdir(parents=True)
+    (target / "taint-output.json").write_text("not ours")
+    (target / "call-graph.json").write_text("not ours")
+    (run / linked).parent.mkdir(parents=True, exist_ok=True)
+    (run / linked).symlink_to(outside)
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert (target / "taint-output.json").read_text() == "not ours" and (target / "call-graph.json").read_text() == "not ours"
+    assert not list(outside.rglob("*.gz")) and out["compressed"] == []
+
+
+def test_b26_a_prune_whose_trim_reports_errors_is_not_green_the_organ_reads_failed_runs(tmp_path):
+    state, docker = world(tmp_path, [image("a" * 16, 10, "backend-tests")])
+    run = run_dir(state / "runs", 2)
+    (run / RES / "x.gz.part").mkdir()
+    assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
+    line = journal(state)[-1]
+    assert line["failed"] == ["runs"] and line["runs"]["errors"] and line["runs"]["errors"][0].startswith(f"{RES}/x.gz.part: ")
+    state2, docker2 = world(tmp_path / "s2", [image("a" * 16, 10, "backend-tests")])
+    clean = run_dir(state2 / "runs", 2)
+    assert clean.exists() and mg.main(["prune", "--state-dir", str(state2), "--docker", docker2]) == 0 and journal(state2)[-1]["failed"] == []
+
+
+def test_b26_u5_an_unremovable_part_symlink_is_never_followed_on_open(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    target = tmp_path / "outside-target.txt"
+    target.write_text("do not overwrite")
+    part = run / RES / "taint-output.json.gz.part"
+    part.symlink_to(target)
+    real_unlink = Path.unlink
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: (_ for _ in ()).throw(OSError(pm.errno.EACCES, "denied")) if self == part else real_unlink(self, *a, **k))
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert target.read_text() == "do not overwrite"
+    assert (run / RES / "taint-output.json").exists() and not (run / RES / "taint-output.json.gz").exists()
+    assert any(e.startswith(f"{RES}/taint-output.json.gz.part: ") for e in out["errors"])
+    assert any(e.startswith(f"{RES}/taint-output.json: ") for e in out["errors"])
+
+
+def test_b26_u5_recovery_when_gz_already_exists_fsyncs_the_directory_before_unlinking_the_original(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    gz = run / RES / "taint-output.json.gz"
+    gz.write_bytes(b"already-renamed")
+    real_fsync = pm.os.fsync
+    dir_ino = (run / RES).stat().st_ino
+    seen = []
+
+    def fsync_fail(fd):
+        if pm.os.fstat(fd).st_ino == dir_ino:
+            seen.append("dir-fsync")
+            raise OSError(pm.errno.EIO, "dir fsync failed")
+        return real_fsync(fd)
+
+    with monkeypatch.context() as m:
+        m.setattr(pm.os, "fsync", fsync_fail)
+        out1 = pm.trim_runs(runs, NOW, dry=False)
+    assert seen == ["dir-fsync"] and src.exists() and out1["errors"] == [f"{RES}/taint-output.json: EIO"]
+    seen.clear()
+    monkeypatch.setattr(pm.os, "fsync", lambda fd: (seen.append("dir-fsync") if pm.os.fstat(fd).st_ino == dir_ino else None) or real_fsync(fd))
+    out2 = pm.trim_runs(runs, NOW, dry=False)
+    assert seen and not src.exists() and gz.read_bytes() == b"already-renamed" and out2["errors"] == []
+
