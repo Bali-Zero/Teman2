@@ -65,7 +65,7 @@ const en = {
   "q.stay_permit_code.opt.E28D":
     "E28D — Investor Golden Visa — Branch or Subsidiary",
   "q.stay_permit_code.opt.E28F":
-    "E28F — Investor Golden Visa — New Capital (IKN) Subsidiary",
+    "E28F — Investor Golden Visa — Branch or Subsidiary in the New Capital (IKN)",
   "q.stay_permit_code.opt.E30": "E30 — Education Visa",
   "q.stay_permit_code.opt.E30A": "E30A — Primary/Secondary Education Visa",
   "q.stay_permit_code.opt.E30B": "E30B — Higher Education Visa",
@@ -1123,12 +1123,11 @@ const id: Record<Keys, string> = {
   "q.stay_permit_code.opt.E23V": "E23V — Visa Kerja Kantor Dagang dan Ekonomi",
   "q.stay_permit_code.opt.E28A": "E28A — Visa Investor",
   "q.stay_permit_code.opt.E28B": "E28B — Visa Investor Pendirian Perusahaan",
-  "q.stay_permit_code.opt.E28C":
-    "E28C — Visa Investor Tanpa Mendirikan Perusahaan",
+  "q.stay_permit_code.opt.E28C": "E28C — Visa Investor Pasar Modal",
   "q.stay_permit_code.opt.E28D":
-    "E28D — Visa Investor Pendirian Kantor Cabang atau Anak Perusahaan",
+    "E28D — Visa Investor Pendirian Cabang atau Anak Perusahaan",
   "q.stay_permit_code.opt.E28F":
-    "E28F — Visa Investor Anak Perusahaan Ibukota Nusantara",
+    "E28F — Visa Investor Pendirian Cabang atau Anak Perusahaan di Ibu Kota Nusantara",
   "q.stay_permit_code.opt.E30": "E30 — Visa Pendidikan",
   "q.stay_permit_code.opt.E30A": "E30A — Visa Pendidikan Dasar dan Menengah",
   "q.stay_permit_code.opt.E30B": "E30B — Visa Pendidikan Tinggi",

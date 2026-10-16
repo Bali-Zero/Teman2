@@ -1,0 +1,41 @@
+task_id: visa-seq30-land
+mission: visa-oracle-38-visas
+gear: 3
+gear_reason: >-
+  The signed rule pack for the Visa Oracle production engine under apps/backend-rag/** (hot zone). It folds the six
+  source-backed items queued by the E28 family close-out and the E30/visit-family queue on top of signed seq-29
+  (SEQ29-A2 passive E28A shareholder admission, SEQ29-D1 E28D/E28F director/commissioner requirement, S02 A1 BVK
+  onshore conversion exclusion, SEQ29-E30-02 E30A/E30B duration options, SEQ29-S1 E28B/E28D/E28F sponsor_types NONE,
+  and SEQ29-N1 E28C/E28D/E28F official titles). Once merged and activated it is what /evaluate answers.
+l_level: L2
+gate_class: astra
+ruling: >-
+  Zero, 2026-10-16 - explicit execution and signing order ("procedi") and reviewer override ("poiche claude e' fuori
+  gioco, la review la fai fare ad Astra"): sign seq-30 on M5, verify via Codex + Astra gate, merge and activate after
+  deploy.
+mission_text: >-
+  seq-30 landing = deterministic content fold (fold_pack_seq30.py) chained on verified signed seq-29 (payload
+  3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295, 28 source_records byte-identical at
+  2026-10-13T00:07:47Z), plus the bundle signed on M5 (kid prod-2026-07-1, signed_at 2026-10-16T12:24:48.389183Z,
+  payload 972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413), the signed-state observer replacing the
+  seq-29 signed observer, the five walk-census pins moved by SEQ29-D1, the E30 pricing strict-xfail lift, the mouth
+  E28A_INVESTMENT_ELIGIBLE copy update and no-path-doors replay fixture refresh, and the runbook signing note.
+objective: >-
+  rulepack-prod-030.signed.json ties byte for byte to rulepack-prod-030.source.json, verifies under the pinned prod
+  key, and once on main the highest signed pack on disk reads seq-30 for review_hold_inventory, PricingService and the
+  evaluate path; activation (two-login ceremony from Pro) runs right after merge and deploy.
+constraints:
+  - The signed bundle is never re-signed, edited or reformatted after the single post-sign Prettier pass (the seq-25..29 precedent; JCS payload digest is unchanged).
+  - No private key is read or printed; signing used the offline operator CLI sign_pack.py on M5.
+  - All 28 source_records stay byte-identical to signed seq-29 (freshness boundary 2026-11-14T00:07:47Z).
+appetite:
+  wall_clock_hours: 1
+acceptance:
+  - text: WHEN the signed seq-30 bundle is verified THEN its payload SHALL equal the source, verify under the pinned prod-2026-07-1 key, anchor to the signed seq-29 digest, and a flipped byte SHALL break the signature.
+    probe: backend/tests/services/visa_engine/test_seq30_pack.py::TestSignedBundleTiesToSource
+  - text: WHEN the committed seq-30 source is compared against fold_pack_seq30.py THEN it SHALL match byte-for-byte and keep all 28 source_records byte-identical to signed seq-29.
+    probe: backend/tests/services/visa_engine/test_seq30_pack.py::TestCommittedSourceMatchesFold
+  - text: WHEN PricingService resolves E30A and E30B against the highest signed pack THEN it SHALL return their duration-keyed IDR prices without xfail.
+    probe: backend/tests/services/visa_engine/test_e30_family_pricing.py::test_e30a_duration_options_match_official_2026_prices
+  - text: WHEN the review hold inventory reads the highest signed pack THEN it SHALL read seq-30 with the two HUMAN_REVIEW-stage rules.
+    probe: backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_inventory_counts_match_the_signed_pack

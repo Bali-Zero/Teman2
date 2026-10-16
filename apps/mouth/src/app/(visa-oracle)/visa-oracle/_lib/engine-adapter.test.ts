@@ -455,6 +455,7 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   it("writes the three seq-29 exclusion sentences in both languages, each naming its product and its figure", () => {
     const copy = SUPPORT_REASON_COPY;
     for (const [code, product] of [
+      ["A1_NOT_CONVERTIBLE", "(A1)"],
       ["E31D_REQ_SPONSOR_INDONESIAN", "(E31D)"],
       ["E31J_REQ_UNDER_18", "(E31J)"],
       ["E31J_REQ_UNMARRIED", "(E31J)"],
@@ -1621,10 +1622,13 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(support.id).not.toContain("IDR");
     expect(support.en).toContain("IDR 2.5 billion");
     expect(support.en).toContain("IDR 10 billion");
-    for (const key of [
-      "E28A_INVESTMENT_ELIGIBLE",
-      "E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR",
-    ]) {
+    // SEQ29-A2 (seq-30): el.e28a.investment drops investment.proposed_role, so
+    // E28A_INVESTMENT_ELIGIBLE no longer claims the applicant is a director or commissioner.
+    expect(support.en).not.toContain("shareholder-director");
+    expect(support.en).not.toContain("shareholder-commissioner");
+    expect(support.id).not.toContain("pemegang saham dan direktur");
+    expect(support.id).not.toContain("pemegang saham dan komisaris");
+    for (const key of ["E23_REQUIRED_FOR_OPERATIONAL_WORK_EVEN_IF_DIRECTOR"]) {
       // Guilt: the hyphenated calque; innocence: the question's own labels
       // ("Pemegang saham dan direktur" / "Pemegang saham dan komisaris").
       expect(SUPPORT_REASON_COPY[key].id).not.toMatch(/pemegang saham-/i);
