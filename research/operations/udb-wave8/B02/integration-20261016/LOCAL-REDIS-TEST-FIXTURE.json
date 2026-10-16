@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-16T09:27:48.045333+00:00",
+  "scope": "Two isolated Redis test fixtures use ephemeral generated passwords instead of hardcoded dummy values. Runtime modules and completed native exercises unchanged.",
+  "files": {
+    "test_redis_observer_admission.py": {
+      "before_sha256": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+      "after_sha256": "ea82abdc50a04bc7e81182c6775661d38de96a8a31ee5230088fc3df4b6ed690",
+      "assertion_ast_preserved": true
+    },
+    "test_redis_observer_native_once.py": {
+      "before_sha256": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+      "after_sha256": "8fd7a785150179d22d940a82f2c317fc9783bfe00f5164249a4f6047ec77dbff",
+      "assertion_ast_preserved": true
+    }
+  },
+  "checks": [
+    {
+      "exit": 0,
+      "summary": [
+        "153 passed in 6.80s"
+      ],
+      "output_sha256": "c4858727033dc0b12227d038a4743d33e04395576c473006f44cc55749b1034c"
+    },
+    {
+      "exit": 0,
+      "summary": [
+        "anti-reward-hacking: clean (4 test file(s) checked)."
+      ],
+      "output_sha256": "652e053e115ad69a208fd00312e21c3434799727b084346e906b932e0e5f98ef"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+mandate: universal-db-wave8-20261015-B02
+gear: 3
+colour: BLUE
+intent: Prepare the original B02 evidence PR with verified source results and explicit unresolved acceptance.
+scope:
+  - research/operations/udb-wave8/B02
+constraints:
+  - One original PR for this block.
+  - No operational closure or active denominator inferred from static evidence.
+  - Owner unavailable-seat exception; independence and required checks remain binding.

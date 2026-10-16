@@ -1,0 +1,52 @@
+{
+  "at": "2026-10-16T09:43:20.251019+00:00",
+  "scope": "Metadata and status reconciliation only",
+  "documents": {
+    "BATTLE.md": {
+      "prior_sha256": "b421bfb8991e56b846052e1ce4b24f53203832ecb83276573a2fb34940a027ca",
+      "current_sha256": "f27f2034ee9dad0a8b08b47c86724a3b12c3c4d1d62d7d4d4bd7e1cbeebc98f2",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    },
+    "REDIS-OBSERVER-ADMISSION-PROPOSAL.md": {
+      "prior_sha256": "a69ff791357e5a02c96fc7c177bce9050dbe48fa22594509b8b7c344fe1e7891",
+      "current_sha256": "ad555467a8a111ea80fe9c24eb1efda6bdb51103aee5b8c88655778bee6b512a",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    },
+    "PR_BODY.md": {
+      "prior_sha256": "cdcb06ca8936d67b618adc35c44364719bd0f3c3ef5cd6d40f9c301c84ddcc3b",
+      "current_sha256": "87db033c2784353bea8328f96c0fe67123ac245a7a449af4d086e43e651de180",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    },
+    "ANALYSIS.md": {
+      "prior_sha256": "90295b2dd6523a71d4f81aba57b1516d41044de54a63d766599173c6b863281e",
+      "current_sha256": "4f24338ab9a191c00be5712d369bc208e0f74b233fa2aaaae58e75898bcc820c",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "prior_sha256": "64a40821c8c6a51accd012b04dc4e695c70b8f94e2f07e36abf04f0205f9ef0b",
+      "current_sha256": "2f2cd455e9c82203d6d30583f3c4606b87af7da4e97f9b12ac6fc3bc2d729a4b",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    },
+    "PROPOSAL.md": {
+      "prior_sha256": "3eb27f3db25bdf54b1004195804dace0fab52c8037d9d2b58edccb176b7837f0",
+      "current_sha256": "0621aff980494be77c030f8086864a55db0c28a1bfb4ce713ee4678cecf009ef",
+      "scope": "Recorded evidence reconciliation; no full or final approval claimed"
+    }
+  },
+  "frozen_native_inputs_preserved": {
+    "redis_observer_probe.py": "b12ccc938388f7f7572af8d24e1d1a1ca382d79c546c3fe8d07cffa3d0d7ab55",
+    "redis_observer_admission.py": "b8addabd5819d627fe0aa45531d6fd51adc9386ff1542fc6a38173c696b70fb7",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "fb9fd7742ba4fb40d2b23297548e6daef23273086220c0cf1929069f2c4f009c",
+    "REDIS-NATIVE-RUN-TEMPLATE.json": "3d3bb883fb447392dccf678b0e3205ca7db74a708d5a37b1cb04c3ea12cdc34e"
+  },
+  "block_closed": false,
+  "final_committed_head_review": "PENDING_INDEPENDENT",
+  "current_reconciliation_at": "2026-10-16T10:08:20.959541+00:00",
+  "historical_execution_claims_superseded": true,
+  "source_header_applicability": {
+    "python_source_docstring_markers": "NOT_APPLICABLE_TO_R1_MARKDOWN_GATE",
+    "markdown_frontmatter_and_review_sections": "RECONCILED_CURRENT_PACKAGE",
+    "frozen_native_inputs": "UNCHANGED"
+  }
+}

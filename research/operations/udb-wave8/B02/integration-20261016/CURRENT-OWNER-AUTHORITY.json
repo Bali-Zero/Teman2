@@ -1,0 +1,23 @@
+{
+  "mandate": "universal-db-wave8-20261015",
+  "source_sha256": "bbe0a27dba6115758350c695d7313ec9f821278d628fbd3ea2458b87c46b3c3a",
+  "authority": "COMPLETE_ALL_EIGHT_WITHOUT_CLAUDE_OR_PROCEDURAL_PARKING",
+  "extra_correction_phases": [
+    "B02",
+    "B04",
+    "B06",
+    "B07",
+    "B08"
+  ],
+  "release_owner": "current coordinator under explicit owner exception",
+  "constraints": [
+    "strict operational acceptance unchanged",
+    "independent review and meaningful tests retained",
+    "no paid Anthropic endpoints",
+    "no PII or secret output",
+    "same original PR allocation",
+    "no deadline reset",
+    "no production row repair or repeat B01 restore"
+  ],
+  "recorded_at": "2026-10-16T07:32:36.868816+00:00"
+}

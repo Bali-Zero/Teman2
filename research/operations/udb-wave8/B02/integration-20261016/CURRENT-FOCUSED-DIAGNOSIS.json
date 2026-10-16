@@ -1,0 +1,44 @@
+{
+  "scope": "FOCUSED_FAILURE_DIAGNOSIS_NO_SOURCE_CHANGE",
+  "recorded_at": "2026-10-16T06:41:59.177269+00:00",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "test_redis_observer_native_once.py::test_isolated_password_auth_exercise_and_cleanup",
+    "--junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.focused-diagnosis-ol22f335/tests.xml",
+    "--basetemp=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.focused-diagnosis-ol22f335/pytest",
+    "--tb=short"
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02",
+  "exit_code": 1,
+  "summary": [
+    "1 failed in 0.21s"
+  ],
+  "nodeid": "test_redis_observer_native_once.py::test_isolated_password_auth_exercise_and_cleanup",
+  "exception_codes": [
+    "NON_ENUM_MESSAGE_REDACTED"
+  ],
+  "source_locations": [
+    "redis_observer_native_once.py:177",
+    "redis_observer_native_once.py:43"
+  ],
+  "raw_output_saved": false,
+  "native_permission": "UNGRANTED",
+  "native_executed": false,
+  "block_closed": false,
+  "diagnosis": {
+    "category": "HARNESS_CONFIGURATION",
+    "failure_code": "TEST_PATH_REJECTED",
+    "source_throw_site": "redis_observer_native_once.py:177",
+    "reason": "The caller supplied --basetemp inside the owned worktree while tempfile.gettempdir() resolved elsewhere; the isolated-root guard rejected the path before synthetic secret reading and admission lifecycle.",
+    "adjustment": "Set child TMPDIR to the owned temporary root before Python starts; keep source and test files unchanged."
+  }
+}

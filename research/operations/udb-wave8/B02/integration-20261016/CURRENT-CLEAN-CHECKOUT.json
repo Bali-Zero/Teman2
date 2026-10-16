@@ -1,0 +1,52 @@
+{
+  "scope": "SOURCE_ONLY_CLEAN_CANDIDATE_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "test_redis_observer_native_once.py",
+    "test_redis_observer_admission.py",
+    "--junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9/junit.xml",
+    "--basetemp=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9/pytest",
+    "--tb=short"
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9/candidate",
+  "environment_overrides": {
+    "TMPDIR": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9"
+  },
+  "scenario": "Exact seven-file prepared candidate copied to a clean temporary directory inside owned B02 scope; no ignored inputs, credentials or native endpoints.",
+  "started_at": "2026-10-16T06:45:10.535602+00:00",
+  "ended_at": "2026-10-16T06:45:11.417141+00:00",
+  "exit_code": 0,
+  "summary": [
+    "83 passed in 0.55s"
+  ],
+  "junit_counts": {
+    "tests": 83,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "stdout_sha256": "9dd8e41dbe912425336cc529edba07b171837b55a040d556616b9419da2588b1",
+  "stderr_bytes": 0,
+  "source_sha256": {
+    "redis_observer_admission.py": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+    "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+    "redis_observer_probe.py": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+    "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+    "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+    "REDIS-NATIVE-RUN-TEMPLATE.json": "fa5a0fd92367c0c5df968cc71f9a2cfed06857150b6f87fdc57235b383edabca",
+    "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "5e448662ad6a73701138ff1edce1d687345c76173e52c9477c0ae2d2f0ea0010"
+  },
+  "native_permission": "UNGRANTED",
+  "native_executed": false,
+  "real_credentials_read": false,
+  "block_closed": false
+}

@@ -1,0 +1,92 @@
+{
+  "digest_only_historical_receipts": {
+    "identities": {
+      "DUX-REQ-B02-03.out": "b0f510eb06809573b50f75c1155a0a569a0f0237ea4df022d0fe7c66801d416e",
+      "DUX-REQ-B02-03.pro.out": "4924a388e48af18458127f3d2d9b33a326f6ce416f5e932d27929f34de010301",
+      "DUX-REQ-B02-04.out": "521658bea8409fc5531a4ff817701c89a98390cf5837cf0f9f5b9ae3894b690a"
+    },
+    "kind": "DIGEST_ONLY_NOT_NEW_NATIVE_OBSERVATION",
+    "purpose": "Historical receipt identities already present in the ledger; no raw output is consumed when absent, present output must match exact admitted digest.",
+    "raw_outputs_shipping": false
+  },
+  "files": [
+    {
+      "blanked_cells": {
+        "blanked_rows": 5574,
+        "columns": [
+          "entry_point",
+          "runtime_registration",
+          "disposition",
+          "test_coverage",
+          "phase_source_scope_status",
+          "phase_ci_actor_identity"
+        ],
+        "on_rows": "rows whose store tokens do not include redis",
+        "reason": "the census reads only consumer_id, store and store_signal_hint on those rows"
+      },
+      "fixture": "consumer-matrix.projection.csv",
+      "generator": "redis_consumer_census.project_consumer_matrix",
+      "output_bytes": 423529,
+      "output_sha256": "d3d541a59df30b65bc3d488eee7475be5c12590d622cb959d0a36faacda70b7c",
+      "projected_columns": [
+        "consumer_id",
+        "entry_point",
+        "runtime_registration",
+        "store",
+        "store_signal_hint",
+        "disposition",
+        "test_coverage",
+        "phase_source_scope_status",
+        "phase_ci_actor_identity"
+      ],
+      "redis_tagged_rows": 455,
+      "relation": "PROJECTION_NOT_BYTE_IDENTICAL_TO_SOURCE",
+      "reversible_cell_encoding": {
+        "constants_defined_in": "redis_consumer_census.py",
+        "from_constant": "USERS_ROOT_LITERAL",
+        "to": "<USERS_ROOT>/",
+        "to_constant": "USERS_ROOT_SENTINEL"
+      },
+      "rows": 6029,
+      "source": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+      "source_pinned_by": "udb-wave8-inputs/INPUT-MANIFEST.json files[consumer-matrix.csv]",
+      "source_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118"
+    },
+    {
+      "fixture": "LEAD-DELTA.json",
+      "output_bytes": 2614,
+      "output_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "projected_columns": null,
+      "relation": "BYTE_IDENTICAL_COPY",
+      "rows": 1,
+      "source": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+      "source_pinned_by": "udb-wave8-inputs-dux/prior/PINNED-MANIFEST.json files[completion-20261015-0831/LEAD-DELTA.json]",
+      "source_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7"
+    },
+    {
+      "fixture": "REDIS-PRO-METADATA.json",
+      "output_bytes": 413,
+      "output_sha256": "e77cefd1e69ccff94db34292cfecc73e87e1888ad433e3bd0dffb2ff58b3cda0",
+      "projected_columns": null,
+      "relation": "BYTE_IDENTICAL_COPY",
+      "rows": null,
+      "source": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-PRO-METADATA.json",
+      "source_pinned_by": "udb-wave8-inputs-dux/prior/PINNED-MANIFEST.json files[completion-20261015-0831/REDIS-PRO-METADATA.json]",
+      "source_sha256": "e77cefd1e69ccff94db34292cfecc73e87e1888ad433e3bd0dffb2ff58b3cda0"
+    },
+    {
+      "fixture": "REDIS-MINI-METADATA.json",
+      "output_bytes": 414,
+      "output_sha256": "6ad6b9b9d4839906061610fa54392880d08699efd66162a7f30e58ff79087e30",
+      "projected_columns": null,
+      "relation": "BYTE_IDENTICAL_COPY",
+      "rows": null,
+      "source": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-MINI-METADATA.json",
+      "source_pinned_by": "udb-wave8-inputs-dux/prior/PINNED-MANIFEST.json files[completion-20261015-0831/REDIS-MINI-METADATA.json]",
+      "source_sha256": "6ad6b9b9d4839906061610fa54392880d08699efd66162a7f30e58ff79087e30"
+    }
+  ],
+  "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+  "purpose": "Make test_redis_consumer_census_against_pinned_inputs reproducible from committed files when the gitignored .agent-receipts tree is absent.",
+  "scope": "Frozen dated metadata of the Wave-8 baseline; not a live observation and not new native evidence."
+}

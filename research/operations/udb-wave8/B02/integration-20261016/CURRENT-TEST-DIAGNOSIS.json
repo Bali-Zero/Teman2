@@ -1,0 +1,40 @@
+{
+  "scope": "AUTHORIZED_DIAGNOSTIC_RERUN_NO_SOURCE_CHANGE",
+  "recorded_at": "2026-10-16T06:41:03.493469+00:00",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "test_redis_observer_native_once.py",
+    "test_redis_observer_admission.py",
+    "--junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.diagnosis-7yh65w8k/tests.xml",
+    "--basetemp=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.diagnosis-7yh65w8k/pytest",
+    "--tb=no"
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02",
+  "exit_code": 1,
+  "summary": [
+    "1 failed, 82 passed in 0.54s"
+  ],
+  "failures": [
+    {
+      "test_function": "test_isolated_password_auth_exercise_and_cleanup",
+      "parameter_suffix_sha256_12": null,
+      "category": [
+        "AdmissionError"
+      ]
+    }
+  ],
+  "stdout_sha256": "4f451af062ba13951cc19e49539f342f4cb8e2453a250b37ce57bfca3a4951af",
+  "raw_output_saved": false,
+  "native_permission": "UNGRANTED",
+  "native_executed": false,
+  "block_closed": false
+}

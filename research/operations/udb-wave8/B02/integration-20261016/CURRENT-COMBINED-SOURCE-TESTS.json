@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-I",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-p",
+    "no:cacheprovider",
+    "-q",
+    "research/operations/udb-wave8/B02/test_redis_observer_probe.py",
+    "research/operations/udb-wave8/B02/test_redis_observer_admission.py",
+    "research/operations/udb-wave8/B02/test_redis_observer_native_once.py",
+    "research/operations/udb-wave8/B02/test_redis_consumer_census_hermetic.py"
+  ],
+  "exit_code": 0,
+  "output_sha256": "11026b78301f316a2ec7a2d75a501d71c7b1258bd7386552b8a12da752d3510c",
+  "result": "99 passed in 6.19s",
+  "failed_nodeids": [],
+  "raw_output_saved": false,
+  "native_permission": "UNGRANTED",
+  "block_closed": false
+}

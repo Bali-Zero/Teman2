@@ -1,0 +1,197 @@
+{
+  "block_id": "B02",
+  "status": "BLOCKED",
+  "block_closed": false,
+  "proofs": [
+    {
+      "id": "PROOF-B02-01",
+      "description": "Observed live Redis server versions and unprovisioned observer credential state on Mini (Redis 8.10.2, KEYCHAIN_OBSERVER=UNSET, ENV_OBSERVER=ABSENT) and Pro (Redis 8.6.1, KEYCHAIN_OBSERVER=UNSET, ENV_OBSERVER=ABSENT) at 2026-10-15T08:54:05Z.",
+      "path": "research/operations/udb-wave8/B02/dux-requests/DUX-REQ-B02-03.out",
+      "sha256": "b0f510eb06809573b50f75c1155a0a569a0f0237ea4df022d0fe7c66801d416e"
+    },
+    {
+      "id": "PROOF-B02-02",
+      "description": "Pinned prior unauthenticated INFO probe and AUTHORIZATION_REQUIRED receipts for Pro and Mini Redis (2026-10-15T03:28:29Z).",
+      "path": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/redis_info_probe.py",
+      "sha256": "2be3a8bd99c29c69c79a02d27699ff310f58f9dc9e06b3963cd72e93b6b29f20",
+      "companion_receipts": {
+        "REDIS-PRO-METADATA.json": "e77cefd1e69ccff94db34292cfecc73e87e1888ad433e3bd0dffb2ff58b3cda0",
+        "REDIS-MINI-METADATA.json": "6ad6b9b9d4839906061610fa54392880d08699efd66162a7f30e58ff79087e30"
+      }
+    },
+    {
+      "id": "PROOF-B02-03",
+      "description": "Observed Pro HOME-fork ~/scripts/redis_liveness_check.py (runtime_6e9b0846bcc0bc34) source and live SHA-256 (6adec8ac4f1e7fbc3a46f026e92c178d15643796b270eea969e556f25cf3885d), proving it authenticates via REDIS_PASSWORD as the default ACL user.",
+      "path": "research/operations/udb-wave8/B02/dux-requests/DUX-REQ-B02-04.out",
+      "sha256": "521658bea8409fc5531a4ff817701c89a98390cf5837cf0f9f5b9ae3894b690a"
+    },
+    {
+      "id": "PROOF-B02-04",
+      "description": "Secret-safe owner-consent proposal for provisioning keyless nuzantara_observer ACL principal on Pro (Redis 8.6.1) and Mini (Redis 8.10.2), citing Redis CLI and ACL DRYRUN docs, with zero secret CLI arguments and separate provisioner ACL DRYRUN vs observer keyless metadata planes.",
+      "path": "research/operations/udb-wave8/B02/REDIS-OBSERVER-ADMISSION-PROPOSAL.md"
+    },
+    {
+      "id": "PROOF-B02-05",
+      "description": "Scoped stdlib Redis 8.x keyless observer probe with pre-write transport allowlist enforcement, separate provisioner ACL DRYRUN verifier and dual-plane binding, CONTRACT-CONVENTIONS.md consumer census generator, and unit + isolated ephemeral Redis 8.x test suite.",
+      "paths": [
+        "research/operations/udb-wave8/B02/redis_observer_probe.py",
+        "research/operations/udb-wave8/B02/redis_consumer_census.py",
+        "research/operations/udb-wave8/B02/test_redis_observer_probe.py"
+      ]
+    },
+    {
+      "id": "PROOF-B02-CURRENT-SOURCE-EXECUTION",
+      "description": "Exact prepared three-patch chain integrated once. Seven-file corrected manifest matches, including all three reviewed native dependencies. Both current and clean synthetic suites pass 83 cases; original 42 helper assertions and 15 runner assertions remain present. This proves only source behavior, not a whole-head gate, native consent or closure.",
+      "path": "research/operations/udb-wave8/B02/integration-20261016/PATCH-INTAKE.json",
+      "sha256": "9740a773b3fe84919cfa4a3051b70fa83e1c9c610cacc9ccf769d166fa174a86",
+      "seven_file_sha256": {
+        "redis_observer_admission.py": "425c63e830c76e21e3cb9070b0b6df579f0e68eced85166ecb5e53afcfef2cdc",
+        "test_redis_observer_admission.py": "34af4dd022e7b4c2ec85d2656d49557664784802576910836a4e71e3bb6b896e",
+        "redis_observer_probe.py": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2",
+        "redis_observer_native_once.py": "b4223378cc4a8de0773a59df997fdd2ab175be26809b4163f80fc3fc3b95228b",
+        "test_redis_observer_native_once.py": "6bbffe3b05866739c4a015df12838a697f6d2361396decb54df906e9446c71a4",
+        "REDIS-NATIVE-RUN-TEMPLATE.json": "fa5a0fd92367c0c5df968cc71f9a2cfed06857150b6f87fdc57235b383edabca",
+        "REDIS-TEMPORARY-OBSERVER-PREPARED.md": "5e448662ad6a73701138ff1edce1d687345c76173e52c9477c0ae2d2f0ea0010"
+      },
+      "native_permission": "UNGRANTED",
+      "native_executed": false,
+      "independent_acceptance": "PENDING_PARENT"
+    }
+  ],
+  "missing": [
+    "OWNER_CONSENT_REQUIRED_REDIS_OBSERVER_ACL: Owner approval to provision nuzantara_observer on Pro (127.0.0.1:6379, Redis 8.6.1) and Mini (127.0.0.1:6379, Redis 8.10.2) and select ACL persistence (B02-F1).",
+    "SECRET_DELIVERY_PATH_UNAPPROVED: Owner approval of the in-process mode-0600 ~/.nuzantara-redis-observer.env credential delivery path (DUX-NOTE-CORRECTION.md).",
+    "OPERATION_ID_PENDING_B05: Canonical operation_id bindings from B05's committed operation-instance ledger (CONTRACT-CONVENTIONS.md).",
+    "SOURCE_ACCEPTANCE_AND_WHOLE_HEAD_GATE_PENDING: The coordinator must independently accept the frozen candidate, issue its official receipt, bind the committed head externally and obtain the applicable fresh independent gate. Source test PASS is not a whole-head gate."
+  ],
+  "tests": [
+    {
+      "id": "DUX-REQ-B02-10",
+      "command": "pytest research/operations/udb-wave8/B02/test_redis_observer_probe.py -v",
+      "result": "PASS: 10 passed in 5.42s, exit 0 (Mini, after the Dux correction; before it 7 passed / 3 failed)",
+      "scope": "HISTORICAL_BASELINE_EXECUTION_NOT_REEXECUTED_BY_THIS_SOURCE_ONLY_INTEGRATION"
+    },
+    {
+      "id": "DUX-REQ-B02-11",
+      "command": "python3 research/operations/udb-wave8/B02/redis_consumer_census.py --repo-root . --output research/operations/udb-wave8/B02/redis-consumer-ledger.json",
+      "result": "PASS: exit 0; union_universe_count 6030 (6029 CSV + 1 lead delta), total_redis_tagged_rows 455, registered_runtime_rows_count 32, event_delivery_only_rows_excluded_from_direct_redis 138; committed copy has the machine home prefix replaced by ~/",
+      "scope": "HISTORICAL_BASELINE_EXECUTION_NOT_REEXECUTED_BY_THIS_SOURCE_ONLY_INTEGRATION"
+    },
+    {
+      "id": "DUX-REQ-B02-12",
+      "command": "shasum -a 256 research/operations/udb-wave8/B02/ANALYSIS.md research/operations/udb-wave8/B02/PROPOSAL.md research/operations/udb-wave8/B02/DEFINITIVE-SYNTHESIS.md research/operations/udb-wave8/B02/REDIS-OBSERVER-ADMISSION-PROPOSAL.md research/operations/udb-wave8/B02/redis_observer_probe.py research/operations/udb-wave8/B02/redis_consumer_census.py research/operations/udb-wave8/B02/test_redis_observer_probe.py research/operations/udb-wave8/B02/redis-consumer-ledger.json research/operations/udb-wave8/B02/RESULT.json research/operations/udb-wave8/B02/PR_BODY.md",
+      "result": "RECORDED_OUTSIDE_FILE: per-file sha256 at the commit head are in the Dux candidate receipt; a committed file cannot carry its own hash",
+      "scope": "HISTORICAL_BASELINE_EXECUTION_NOT_REEXECUTED_BY_THIS_SOURCE_ONLY_INTEGRATION"
+    },
+    {
+      "id": "B02-CURRENT-PREPARED-SOURCE",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -B -m pytest -c /dev/null --noconftest -q -p no:cacheprovider test_redis_observer_native_once.py test_redis_observer_admission.py --junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.source-tests-aligned-qzeffqk4/junit.xml --basetemp=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.source-tests-aligned-qzeffqk4/pytest --tb=short",
+      "result": "PASS_SOURCE_ONLY_PENDING_PARENT_ACCEPTANCE",
+      "passed": 83,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-SOURCE-TESTS-ALIGNED.json",
+      "receipt_sha256": "246a41d28e540ea1e9f3f166c6a4e3713fd1203d2f71ee1edc09c62bd14b4b5f",
+      "notes": "Child TMPDIR aligned with owned pytest basetemp; no source correction. Native permission remains UNGRANTED."
+    },
+    {
+      "id": "B02-CURRENT-CLEAN-CANDIDATE",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -B -m pytest -c /dev/null --noconftest -q -p no:cacheprovider test_redis_observer_native_once.py test_redis_observer_admission.py --junitxml=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9/junit.xml --basetemp=/Users/nuzantara/nuzantara/.worktrees/db-udb-b02-redis/research/operations/udb-wave8/B02/integration-20261016/.clean-o4h2znj9/pytest --tb=short",
+      "result": "PASS_SOURCE_ONLY_PENDING_PARENT_ACCEPTANCE",
+      "passed": 83,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+      "receipt_sha256": "8a11e4e3db7aac8b4a71ff363fae778040cc901e6a4ec9777b8de36301f01159",
+      "notes": "Exact seven-file candidate only, no ignored inputs; same aligned TMPDIR harness and existing synthetic fixture tests."
+    },
+    {
+      "id": "B02-HARNESS-DIAGNOSIS",
+      "result": "HISTORICAL_HARNESS_FAILURE_RESOLVED_WITHOUT_SOURCE_CHANGE",
+      "passed": 82,
+      "failed": 1,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-SOURCE-TESTS.json",
+      "diagnostic_receipts": [
+        "integration-20261016/CURRENT-TEST-DIAGNOSIS.json",
+        "integration-20261016/CURRENT-FOCUSED-DIAGNOSIS.json"
+      ],
+      "notes": "First suite and diagnostic suite each returned 82 passed/1 failed. Focused node failed with TEST_PATH_REJECTED because the harness placed --basetemp outside tempfile.gettempdir(). Aligning child TMPDIR resolved this; all seven file hashes remained identical."
+    }
+  ],
+  "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
+  "dux_correction": {
+    "executed": "2026-10-15T15:33Z",
+    "files": {
+      "redis_observer_probe.py": {
+        "pre_sha256": "315e95d326d1b80a695c8d393f64a18faf89f3b1d98b40669d1e520414d642b6",
+        "post_sha256": "c4e9a9fa947b8d64e40851ef2c582832eee2306121601fc5638f3de6eb959ee2"
+      },
+      "REDIS-OBSERVER-ADMISSION-PROPOSAL.md": {
+        "pre_sha256": "a3a9fe8e3fd5ae341635914fed0f33e80ae2ede224e4899e792538387ce316ab",
+        "post_sha256": "a69ff791357e5a02c96fc7c177bce9050dbe48fa22594509b8b7c344fe1e7891"
+      }
+    },
+    "causes": [
+      "denial classifier matched only the 'This user has no permissions' prefix; real Redis 8.x denial reads 'User <name> has no permissions to run'",
+      "dual-plane combiner read observer state from the top level instead of the nested observer_evidence plane",
+      "admission proposal spelled the Keychain add command literally"
+    ],
+    "live_redis_probed": false,
+    "acl_changed": false,
+    "scope": "HISTORICAL_PRIOR_DUX_CORRECTION_NOT_THIS_PREPARED_PATCH_INTAKE"
+  },
+  "current_native_exercises": {
+    "status": "VERIFIED_TEMPORARY_EXERCISE_BOTH_HOSTS",
+    "source_code_unchanged_since_review": true,
+    "tests_passed": 153,
+    "hosts": {
+      "Pro": {
+        "evidence_file": "integration-20261016/NATIVE-Pro-RESULT.json",
+        "evidence_sha256": "ec0d0ef2ac9eaa161bac0c94a3b73d46b107457a8396159b4dc9fc0703bf274d",
+        "temporary_role_removed": true,
+        "positive_permissions": 6,
+        "negative_permissions": 17
+      },
+      "Mini": {
+        "evidence_file": "integration-20261016/NATIVE-Mini-RESULT.json",
+        "evidence_sha256": "df5be06bb59977617c6f0ef8a00c94bd78708ee1afdfb0fbcb567a2ddb17b54f",
+        "temporary_role_removed": true,
+        "positive_permissions": 6,
+        "negative_permissions": 17
+      }
+    },
+    "limitation": "One helper-owned temporary observer on each existing loopback Redis. No application values or long-lived application actors measured. Historical census metadata and native-run template status describe their frozen preparation time.",
+    "active_denominator": "UNKNOWN"
+  },
+  "historical_superseded_missing": [
+    {
+      "original": "LIVE_DRYRUN_MATRIX_NOT_EXECUTED_NO_PROVISIONER_ADMISSION: Live provisioner ACL DRYRUN matrix and dated authenticated observer metadata receipts on Pro (redis:pro:6379/db0) and Mini (redis:mini:6379/db0) have not been executed (B02-F6, DUX-NOTE-CORRECTION.md).",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    },
+    {
+      "original": "NATIVE_PERMISSION_UNGRANTED: The authenticated owner availability exception removes unavailable Claude as a dependency only; it does not authorize a Redis native exercise, credentials, observer creation or native metadata reads.",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    },
+    {
+      "original": "SOURCE_HEADER_APPLICABILITY_PENDING_PARENT: The three reviewed source files have no adversarial_review/R1 docstring marker. Their exact reviewed digests were preserved; the parent assesses actual marker-check applicability or waiver without this preparer changing the pins.",
+      "disposition": "HISTORICAL_SUPERSEDED_OR_NOT_APPLICABLE",
+      "current_evidence": "Both one-shot native exercises completed with cleanup. R1 metadata applies to Markdown; no Python source docstring markers required."
+    }
+  ],
+  "current_focused_suite": {
+    "passed": 153,
+    "failed": 0,
+    "skipped": 0,
+    "independent_reproduction": true,
+    "scope": "Source and tests; not operational closure"
+  },
+  "source_header_applicability": {
+    "python_source_docstring_markers": "NOT_APPLICABLE_TO_R1_MARKDOWN_GATE",
+    "markdown_frontmatter_and_review_sections": "RECONCILED_CURRENT_PACKAGE",
+    "frozen_native_inputs": "UNCHANGED"
+  },
+  "operational_status": "BLOCKED"
+}
