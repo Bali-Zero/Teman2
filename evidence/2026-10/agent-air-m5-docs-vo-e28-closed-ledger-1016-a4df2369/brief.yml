@@ -1,0 +1,24 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, two test files and the observer floor
+  constant. No production runtime code path or live data mutation in this PR.
+mission: >-
+  Close the E28 Investor KITAS family in the /visaoracle corner-skill ledger after PR D (#8607, merge
+  457de4b60bd2c5ced8dfb53e24451d9133e0307c) merged, promoted on Vercel (dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D) and was
+  proven live across all 15 URLs (5 locales) and 6 Pro headless Chromium walks; close the E28 row D and the E33
+  wave-5 E28A Indonesian render row in PENDING-ARMS.md; and append items (22)-(25) to the E28 BACKLOG row.
+objective: >-
+  live-state-log.md carries a dated 2026-10-16 E28 family CLOSED entry as newest, SKILL.md leads its LIVE STATE with
+  it (only one bullet says newest), PENDING-ARMS.md closes E28 row D and the wave-5 E28A Indonesian render row
+  (reducing open count by 2 and increasing closed count by 2), and the seq-29 ledger observer floor equals 60 (the
+  file's test count).
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

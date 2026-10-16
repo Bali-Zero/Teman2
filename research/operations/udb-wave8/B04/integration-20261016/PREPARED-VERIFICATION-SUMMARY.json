@@ -1,0 +1,112 @@
+{
+  "scope": "PREPARED_WORKER_RECEIPT_SUMMARY_NOT_A_NEW_EXECUTION",
+  "original_receipt_sha256": "25864e76c8ca5041313ae84424cf22e6e8e59ee1a85e664d1575a606bfa158ab",
+  "patch": {
+    "added_lines": 7641,
+    "bytes": 814273,
+    "changed_paths": [
+      "research/operations/udb-wave8/B04/fixtures/PROVENANCE.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/ASTRA-ADVICE.md",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/FINAL-BLUE-GATE.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/INPUT-MANIFEST.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/REPORT.md",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/STATE.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/consumer-matrix.projection.csv",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs/research-lines.csv",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.projection.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/QDRANT-METADATA.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-MINI-METADATA.json",
+      "research/operations/udb-wave8/B04/fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-PRO-METADATA.json",
+      "research/operations/udb-wave8/B04/store_catalog.py",
+      "research/operations/udb-wave8/B04/tests/test_store_catalog.py"
+    ],
+    "modified_files": 2,
+    "new_files": 14,
+    "path": "/tmp/udb-dux/B04-hermetic/B04-hermetic.patch",
+    "removed_lines": 36,
+    "sha256": "fc15febdd457b3dc70e49de324bdc560f94b811af417698e486c37f0addc5db9"
+  },
+  "source_sha256": {
+    "store_catalog.py": "53f2776b124c7e23a03a58a57d2fc2a68f591901be480e68625e10ab5324721a",
+    "tests/test_store_catalog.py": "d59a95b3a3f4a9b7dacb8445a095b9c9cd71b1175813e947f52619ae071429ee"
+  },
+  "tests": {
+    "a2_original_tests_on_new_adapter_with_receipts": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q -rsfE",
+      "exit": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "a_work_with_receipts": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q -rsfE",
+      "exit": 0,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "b_clean_no_receipts": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q -rsfE",
+      "exit": 0,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    },
+    "baseline_original_clean": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q -rsfE",
+      "exit": 1,
+      "passed": 2,
+      "failed": 6,
+      "skipped": 0
+    },
+    "baseline_original_with_receipts": {
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B04/tests/test_store_catalog.py -q -rsfE",
+      "exit": 0,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "mutation_checks": {
+    "fixture_digest_check_removed": {
+      "exit": 1,
+      "passed": 13,
+      "failed": 1
+    },
+    "mode_always_receipts": {
+      "exit": 1,
+      "passed": 3,
+      "failed": 11
+    },
+    "projection_shape_check_removed": {
+      "exit": 1,
+      "passed": 13,
+      "failed": 1
+    },
+    "provenance_pin_zeroed": {
+      "exit": 1,
+      "passed": 3,
+      "failed": 11
+    }
+  },
+  "roundtrip": {
+    "git_apply_exit": 0,
+    "all_files_equal": true,
+    "file_count": 16
+  },
+  "fixtures": {
+    "count_files": 14,
+    "total_bytes": 760306,
+    "boundary_scan_totals": {
+      "dsn": 0,
+      "email": 0,
+      "phone": 0,
+      "secret": 0,
+      "users_path": 0
+    },
+    "provenance_sha256": "5f9a6b1109c257673eb749e9ebc99a9cd3b78ec092fb02831a4d40b83dda7795"
+  },
+  "block_closed": false
+}

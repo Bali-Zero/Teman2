@@ -1,0 +1,15 @@
+{
+  "host": "mini",
+  "authentication_attempted": false,
+  "credential_environment_passed": false,
+  "keys_or_values_requested": false,
+  "writes_requested": false,
+  "effective_principal": "UNOBSERVED",
+  "sections": {
+    "server": {
+      "status": "AUTHORIZATION_REQUIRED"
+    }
+  },
+  "client_sha256": "92c7026ed95cbafd01f2ce59ebcf54721116b6328280b482170b2be281e33b52",
+  "status": "AUTHORIZATION_REQUIRED"
+}
