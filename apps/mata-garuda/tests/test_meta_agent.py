@@ -373,15 +373,17 @@ class TestMultiAccountFallback:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_2", "tok2")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "tok3")
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_5", "tok5")
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_6", "tok6")
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
         chain = _get_token_chain()
         labels = [label for label, _ in chain]
-        assert labels[:4] == [
+        # slots 2, 3, 4 are retired (accounts closed 2026-10-17): never in the chain
+        assert labels[:3] == [
             "CLAUDE_CODE_OAUTH_TOKEN_1",
-            "CLAUDE_CODE_OAUTH_TOKEN_2",
-            "CLAUDE_CODE_OAUTH_TOKEN_3",
-            "CLAUDE_CODE_OAUTH_TOKEN_4",
+            "CLAUDE_CODE_OAUTH_TOKEN_5",
+            "CLAUDE_CODE_OAUTH_TOKEN_6",
         ]
         assert chain[-1] == ("keychain", "")  # always last, empty = keychain
 
@@ -389,18 +391,18 @@ class TestMultiAccountFallback:
         from mata_garuda.runtime.cli_runtime import _get_token_chain
 
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_1", raising=False)
-        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_2", raising=False)
-        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_3", raising=False)
-        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "tok4_only")
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_5", raising=False)
+        monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_6", raising=False)
+        monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_4", "retired_tok4")
         monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
 
         chain = _get_token_chain()
         labels = [label for label, _ in chain]
         assert "CLAUDE_CODE_OAUTH_TOKEN_1" not in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_2" not in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_3" not in labels
-        assert "CLAUDE_CODE_OAUTH_TOKEN_4" in labels
-        assert chain[-1] == ("keychain", "")
+        assert "CLAUDE_CODE_OAUTH_TOKEN_5" not in labels
+        assert "CLAUDE_CODE_OAUTH_TOKEN_6" not in labels
+        assert "CLAUDE_CODE_OAUTH_TOKEN_4" not in labels
+        assert chain == [("keychain", "")]
 
     def test_token_chain_includes_legacy(self, monkeypatch):
         from mata_garuda.runtime.cli_runtime import _get_token_chain
