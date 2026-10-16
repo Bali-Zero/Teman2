@@ -1,0 +1,15 @@
+{
+  "host": "pro",
+  "authentication_attempted": false,
+  "credential_environment_passed": false,
+  "keys_or_values_requested": false,
+  "writes_requested": false,
+  "effective_principal": "UNOBSERVED",
+  "sections": {
+    "server": {
+      "status": "AUTHORIZATION_REQUIRED"
+    }
+  },
+  "client_sha256": "d0dcb5a2263172279800d520d78dae92e14130816fae0b1d5563b00473c42de2",
+  "status": "AUTHORIZATION_REQUIRED"
+}
