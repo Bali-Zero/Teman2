@@ -14,10 +14,10 @@ lanes:
     seat: "claude-sonnet-5 implementer (worktree mouth-vo-e28a-id-mdx-render-1014); commits local only, nothing pushed"
   - lane: e28-close-pr-d-council-codex
     role: review
-    seat: "codex-gpt-5.6-sol, read-only review of ea2dc2429e, verdict FIX-FIRST (18 findings)"
+    seat: "codex-gpt-5.6-sol, read-only review: round 1 on ea2dc2429e FIX-FIRST (18 findings); round 2 on 76404e4c85 FIX-FIRST (15 of 18 cured, 3 partial)"
   - lane: e28-close-pr-d-council-agy
     role: review
-    seat: "agy-gemini-4-argon, read-only review of ea2dc2429e, verdict FIX-FIRST (findings by section 1 to 5)"
+    seat: "agy-gemini-4-argon, read-only review: round 1 on ea2dc2429e FIX-FIRST; round 2 on 76404e4c85 PASS (LOW findings only)"
 pii_scan: clean
 bites: >-
   Consumer: the balizero.com article pages /immigration/e28a-investor-kitas-guide (EN and /id),
@@ -25,10 +25,10 @@ bites: >-
   vitest run on every PR. Observation: after vercel promote, a live curl of each page shows the corrected sentence
   (own shareholding of Rp 10 billion, all-inclusive price, USD tiers for E28B/C/D/F, ITAS and re-entry permit issued
   automatically) and none of the guilt strings (E28G, KITAP pathway, embassy sticker, 183-day tax advice, IDR 350M,
-  Golden Visa (ITAP), a denial of directorship). The truth test (642 tests) guards the same in five locales.
+  Golden Visa (ITAP), a denial of directorship). The truth test (816 tests) guards the same in five locales.
 spend:
   wall_clock_hours: 3
-  adversarial_rounds: 0
+  adversarial_rounds: 2
   paid_api: none
   note: "One implementer session on subscription seats; no paid per-token API, no external seat in this lane."
 receipts:
@@ -88,7 +88,7 @@ receipts:
     exit: 0
     ts: "2026-10-16T00:17:12Z"
     seat: claude-sonnet-5
-  - claim: "Floor recomputed the CI way: 43 files, +3517/-11442 against origin/main."
+  - claim: "Floor recomputed the CI way: 43 files, +3722/-11532 against origin/main."
     cmd: "python3 scripts/ci/evidence_paths.py --ref <branch>; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt --numstat-file numstat.txt"
     result: "slug agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c; floor printed 3 (source: size)"
     exit: 0
@@ -131,6 +131,26 @@ receipts:
     result: "Test Files 9 passed (9); Tests 819 passed (819); load average 2.99 (1 min), no other vitest/pytest running"
     exit: 0
     ts: "2026-10-16T04:58:11Z"
+    seat: claude-sonnet-5
+  - claim: "Final-gate block cured: the FULL apps/mouth suite had 2 files / 3 tests red because of this branch (the Second Home claim-ratchet baseline listed 42 entries for text removed here; the E33 income-basis test pinned a line in the E28A guide). Full suite after the cure."
+    cmd: "cd apps/mouth && npx vitest run"
+    result: "Test Files 652 passed (652); Tests 10062 passed | 8 skipped (10070); 0 failed; duration 345 s"
+    exit: 0
+    ts: "2026-10-16T05:50:24Z"
+    ts_note: "started 05:44:38Z; load average 4.73 at start (1 min), no vitest/pytest running (the quiet-window probe counted its own shell once; the second probe, after one 120 s wait, read load 4.73)"
+    seat: claude-sonnet-5
+  - claim: "Final-gate block cured: my nine test files after the touch-up commit (truth test with Golden tier and swapped-price bindings, compile guard, en/id corpus guards, selftest, four content-integrity tests)."
+    cmd: "cd apps/mouth && npx vitest run <the nine files>"
+    result: "Test Files 9 passed (9); Tests 851 passed (851)"
+    exit: 0
+    ts: "2026-10-16T05:50:44Z"
+    ts_note: "load average 7.89 at start, no vitest/pytest running"
+    seat: claude-sonnet-5
+  - claim: "Six mutations for the new rules, each cp backup, red, cp restore, cmp equal, final run green (816 passed): ID Golden E28C 5-year tier 350.000 to 300.000 in the table row; EN Golden E28D 10-year tier 50M to 25M; EN E28A FAQ answer with offshore and onshore prices swapped; FR Investor FAQ answer swapped; 'BKPM Regulation 5/2025' appended to the EN E28A guide; 'Peraturan BKPM 5/2025' appended to the ID Investor guide."
+    cmd: "python3 mut5.py (scratchpad)"
+    result: "all six red on the named rule (Golden USD tiers match their code and duration; E28A prices match their service; the company threshold carries no regulation citation), all restored equal. The first run of the ID tier mutation replaced the frontmatter occurrence, not the table row, and stayed green; it was repeated on the table row and went red."
+    exit: 0
+    ts: "2026-10-16T05:40:30Z"
     seat: claude-sonnet-5
 mutation_receipts:
   - mutant: "KITAP pathway: 'After 3 consecutive years on E28A you can apply for Investor KITAP.' appended to e28a-investor-kitas-guide.mdx"
@@ -334,7 +354,7 @@ twin_defect_map:
     I9_meta: "updatedAt"
 decisions:
   - id: D-gear-3
-    decision: "scripts/evidence_pack_lint.py --print-floor printed 3 (size: 43 files, +3517/-11442 against origin/main, evidence staged, computed the CI way from evidence_paths.py and a changed-files and numstat pair); the brief declares gear 3 with no gear_override. The council_run journal now records the two review seats that ran (codex-gpt-5.6-sol, agy-gemini-4-argon); seat_fallback_reason says why agy replaced kimi."
+    decision: "scripts/evidence_pack_lint.py --print-floor printed 3 (size: 43 files, +3722/-11532 against origin/main, evidence staged, computed the CI way from evidence_paths.py and a changed-files and numstat pair); the brief declares gear 3 with no gear_override. The council_run journal now records the two review seats that ran (codex-gpt-5.6-sol, agy-gemini-4-argon); seat_fallback_reason says why agy replaced kimi."
   - id: D-golden-replace-not-patch
     decision: "The Golden Visa guide rested on IDR 350M tiers, an ITAP permanent card and property/deposit vehicles end to end, so the body is replaced by a short true body (EN 48 lines in, 1155 out; ID the same; round 2 rewrote it again, now 125 lines per EN); the list above is the audit trail. Related Articles and Disclaimer kept, dated."
   - id: D-other-locales
@@ -349,7 +369,7 @@ dissent:
   - seat: "codex-gpt-5.6-sol (council, review of ea2dc2429e)"
     objection: "FIX-FIRST: substantial unsupported material remains (KITAP promises, company-capital eligibility, work-right contradictions, sticker journey, tax advice, incomplete documents), the FR/RU E28A twins are truncated and the truth guard accepts violations of its own mandate."
     status: CONFIRMED
-    disposition: "CURED: 18 of 18 findings, per finding in council_verdicts; the E28A and Investor KITAS bodies are rewritten, every twin is complete, the truth test is rewritten and mutation-tested."
+    disposition: "Round 1 verdict, superseded by council_round2: 15 of 18 findings were cured by 76404e4c85 and 3 (10, 15, 16) only partly, cured in the touch-up round; per finding in council_verdicts and council_round2; the E28A and Investor KITAS bodies are rewritten, every twin is complete, the truth test is rewritten and mutation-tested."
   - seat: "agy-gemini-4-argon (council, review of ea2dc2429e)"
     objection: "FIX-FIRST: the same defect classes plus two points that are wrong: the Golden route link and the 'Investor KITAS 2 Years (Extend)' row name."
     status: CONFIRMED
@@ -579,8 +599,8 @@ claim_map:
         source: "research/visa/2026-10-15-e28-pages/text/df3ba889:98",
       }
     - {
-        claim: "The PT PMA's own paid-up capital of IDR 2.5 billion (BKPM Regulation 5/2025) is the company's threshold",
-        source: "owner ruling 1 (company figure only)",
+        claim: "The PT PMA's own paid-up capital of IDR 2.5 billion is the company's threshold",
+        source: "owner ruling 1 (company figure only, no regulation citation)",
       }
     - {
         claim: "Rights: invest, business/investment/company-establishment, board of directors or commissioners, supervise production, family, exit and re-enter, education via Rangkap Kegiatan Izin Tinggal, investment, tourism, visiting",
@@ -854,3 +874,26 @@ backlog:
   - "visa/kitas/page.mdx E33E blanket work prohibition vs price source (not E28; page not routed live)"
   - "visa/kitas/page.mdx marriage-processing and student-transfer instructions (not E28; page not routed live)"
   - "visa/kitas/page.mdx {#...} heading ids fail the article MDX parser (page not routed live; fix only if the route is ever enabled)"
+backlog_added_after_final_gate:
+  - "second-home-visa-indonesia (EN, ID) lines 121-122 still call the E33E/E33F income basis 'proven passive income' (E33 content, not E28, pre-existing); the retargeted e33-income-basis test is scoped to the E28 family and does not claim this file"
+final_gate_cure:
+  - {
+      block: "B1 secondhome-article-claims.test.ts: baseline listed 42 entries for text this branch removed (E28A 5, Golden 37; no new hits)",
+      cure: "42 stale entries removed from secondhome-article-claims.baseline.json (273 to 231 entries), exactly the ones the test run listed as missing; the test's own message says 'remove stale baseline entries', so shrinking is the convention; the ratchet test passes with no other change",
+    }
+  - {
+      block: "B1 e33-income-basis-copy.test.ts pinned an E33E/E33F 'income or allowance' line in the E28A guide (EN and ID)",
+      cure: "No article still carries that comparison line, so there was nothing to retarget to. The E28A guide now says only what the E28A page says and no E33 text was put back. The test keeps its purpose, re-scoped: no line of the 15 E28 family files states an E33E/E33F passive-income basis, with EN and ID guilt and innocence fixtures",
+    }
+  - {
+      notice: "N1 price binding gaps",
+      cure: "Golden USD tiers are bound per code and per duration in the route-table rows (E28B 2.5M/5M, E28C 350k and 700k or the 1M apartment, E28D 25M/50M, E28F 5M/10M) in all five locales; E28A offshore/onshore/extension prices are bound on every line of the E28A and Investor files (not only lines naming the visa) and paired in order inside a sentence, so a swap is red",
+    }
+  - {
+      notice: "N3 stale BKPM 5/2025",
+      cure: "removed from the claim map; the test fixture no longer carries it as an innocence sample; new rule 'the company threshold carries no regulation citation' holds it only as a GUILT sample in four locales. The defect_map lines that mention it are history of what was removed",
+    }
+  - {
+      notice: "N4 bookkeeping",
+      cure: "adversarial_rounds 2 (round 1 both seats, round 2 both seats); lanes describe both rounds; bites says 816 tests; the round-1 dispositions say 15 cured and 3 partial, the three cured in the touch-up round per council_round2. Not touched: seat_fallback_reason, journal.jsonl (Dux)",
+    }

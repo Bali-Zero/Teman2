@@ -311,9 +311,24 @@ const RULES: Rule[] = [
       "Capital libéré d'au moins 10 milliards IDR",
     ],
     innocence: [
-      "The PT PMA's own paid-up capital of IDR 2.5 billion (BKPM Regulation 5/2025) is the company's threshold.",
+      "The PT PMA's own paid-up capital of IDR 2.5 billion is the company's threshold.",
       "Modal disetor PT PMA sendiri sebesar Rp 2,5 miliar",
       "Собственный оплаченный капитал самой PT PMA в размере IDR 2,5 миллиарда",
+    ],
+  },
+  {
+    id: "the company threshold carries no regulation citation",
+    files: [...E28A, ...INVESTOR, ...GOLDEN, ...KITAS_PAGE],
+    re: /(BKPM|Perka BKPM|Peraturan BKPM)[ -](Regulation|Regulasi|Peraturan|Regolamento|Règlement|Положение|No\.?|Nomor)?\s?5 ?\/ ?2025|5 ?\/ ?2025/i,
+    guilt: [
+      "The PT PMA's own paid-up capital of IDR 2.5 billion (BKPM Regulation 5/2025) is the company's threshold.",
+      "Modal disetor PT PMA sebesar Rp 2,5 miliar (Peraturan BKPM 5/2025)",
+      "Il capitale versato della PT PMA di IDR 2,5 miliardi (Regolamento BKPM 5/2025)",
+      "Le capital libéré de la PT PMA (Règlement BKPM 5/2025)",
+    ],
+    innocence: [
+      "The PT PMA's own paid-up capital of IDR 2.5 billion is the company's threshold.",
+      "Modal disetor PT PMA sendiri sebesar Rp 2,5 miliar",
     ],
   },
   {
@@ -580,39 +595,83 @@ const PRICE_OF: [RegExp, number][] = [
 ];
 const FIGURE =
   /(\d+(?:[.,]\d+)?)\s?(M\b|juta|millions?|milioni|млн|миллион[а-яё]*)?/gi;
-/** Offshore/onshore/extension figures of 1,000,000 or more that are not the sourced price. */
+/**
+ * Offshore/onshore/extension figures of 1,000,000 or more that are not the sourced price.
+ * Every line of the file counts (an FAQ answer need not name the visa); Dependent rows do not.
+ * Within a sentence the i-th service is paired with the i-th figure when the counts agree, so a
+ * swap ("19M offshore, 17M onshore") is caught; otherwise a service is wrong only when NO figure
+ * in reach is its price.
+ */
 function wrongE28aPrices(text: string): string[] {
   const out: string[] = [];
   for (const raw of text.split("\n")) {
-    const line = norm(raw);
-    if (!/E28A|Investor KITAS|KITAS Investor|Investor/.test(line)) continue;
-    if (/Dependent/i.test(line)) continue;
-    const figs = [...line.matchAll(FIGURE)]
-      .map((m) => ({
-        at: m.index ?? 0,
-        end: (m.index ?? 0) + m[0].length,
-        v: Number(m[1].replace(",", ".")) * (m[2] ? 1_000_000 : 1),
-      }))
-      .filter((f) => f.v >= 1_000_000 && f.v < 1_000_000_000);
-    for (const [kw, price] of PRICE_OF) {
-      for (const k of line.matchAll(kw)) {
-        const here = k.index ?? 0;
+    if (/Dependent/i.test(raw)) continue;
+    for (const sentence of norm(raw).split(/\.\s/)) {
+      const figs = [...sentence.matchAll(FIGURE)]
+        .map((m) => ({
+          at: m.index ?? 0,
+          end: (m.index ?? 0) + m[0].length,
+          v: Number(m[1].replace(",", ".")) * (m[2] ? 1_000_000 : 1),
+        }))
+        .filter((f) => f.v >= 1_000_000 && f.v < 1_000_000_000);
+      const kws = PRICE_OF.flatMap(([kw, price]) =>
+        [...sentence.matchAll(kw)].map((k) => ({
+          at: k.index ?? 0,
+          len: k[0].length,
+          word: k[0],
+          price,
+        })),
+      ).sort((x, y) => x.at - y.at);
+      if (!kws.length || !figs.length) continue;
+      if (kws.length === figs.length) {
+        kws.forEach((k, i) => {
+          if (figs[i].v !== k.price) out.push(`${k.word} ${figs[i].v}`);
+        });
+        continue;
+      }
+      for (const k of kws) {
         const near = figs
           .map((f) => ({
             ...f,
-            d:
-              f.at >= here + k[0].length
-                ? f.at - (here + k[0].length)
-                : here - f.end,
+            d: f.at >= k.at + k.len ? f.at - (k.at + k.len) : k.at - f.end,
           }))
           .filter((f) => f.d <= 45);
-        // A line may list the three prices side by side ("17M offshore, 19M onshore"):
-        // the service is wrong only when NO figure in reach is its price.
-        if (near.length && !near.some((f) => f.v === price))
-          out.push(`${k[0]} ${near[0].v}`);
+        if (near.length && !near.some((f) => f.v === k.price))
+          out.push(`${k.word} ${near[0].v}`);
       }
     }
   }
+  return out;
+}
+
+// -----------------------------------------------------------------------------
+// Golden USD tiers bound per code and per duration (rows of the route table)
+// -----------------------------------------------------------------------------
+const TIERS: Record<string, [string[], string[]]> = {
+  E28B: [["2500000"], ["5000000"]],
+  E28C: [["350000"], ["1000000", "700000"]],
+  E28D: [["25000000"], ["50000000"]],
+  E28F: [["5000000"], ["10000000"]],
+};
+/** Wrong or missing USD tiers in the E28B/C/D/F rows of a Golden guide's route table. */
+function wrongGoldenTiers(text: string): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of text.split("\n")) {
+    const m = /^\|\s*(E28[BCDF])\s*\|/.exec(raw);
+    if (!m) continue;
+    seen.add(m[1]);
+    const cells = raw.split("|").slice(1, -1);
+    const [five, ten] = TIERS[m[1]];
+    [cells[2] ?? "", cells[3] ?? ""].forEach((cell, i) => {
+      const got = [...new Set(norm(cell).match(/\d{6,}/g) ?? [])].sort();
+      const want = [...(i ? ten : five)].sort();
+      if (got.join() !== want.join())
+        out.push(`${m[1]} ${i ? "10y" : "5y"}: ${got.join("/") || "none"}`);
+    });
+  }
+  for (const code of Object.keys(TIERS))
+    if (!seen.has(code)) out.push(`${code}: row missing`);
   return out;
 }
 
@@ -649,6 +708,59 @@ describe("E28 family truth guard: E28A prices stay bound to their service", () =
     const name = path.relative(process.cwd(), file);
     it(`E28A prices match their service :: ${name}`, () => {
       expect(wrongE28aPrices(read(file))).toEqual([]);
+    });
+  }
+});
+
+describe("E28 family truth guard: swapped prices and Golden tiers", () => {
+  it("catches offshore/onshore swapped inside one sentence, in EN and FR", () => {
+    expect(
+      wrongE28aPrices(
+        "The price is IDR 19,000,000 offshore and IDR 17,000,000 onshore.",
+      ),
+    ).toHaveLength(2);
+    expect(
+      wrongE28aPrices("19 000 000 IDR offshore, 17 000 000 IDR onshore"),
+    ).toHaveLength(2);
+  });
+  it("applies to a line that does not name the visa (an FAQ answer)", () => {
+    expect(
+      wrongE28aPrices('    answer: "IDR 19,000,000 offshore."'),
+    ).toHaveLength(1);
+  });
+  it("spares the correct order in both styles", () => {
+    expect(
+      wrongE28aPrices("IDR 17,000,000 offshore, IDR 19,000,000 onshore"),
+    ).toEqual([]);
+    expect(
+      wrongE28aPrices("offshore IDR 17,000,000, onshore IDR 19,000,000"),
+    ).toEqual([]);
+  });
+  const ROWS = [
+    "| E28B | x | USD 2,500,000 | USD 5,000,000 |",
+    "| E28C | x | USD 350,000 | USD 700,000 or an apartment of USD 1,000,000 |",
+    "| E28D | x | USD 25,000,000 | USD 50,000,000 |",
+    "| E28F | x | USD 5,000,000 | USD 10,000,000 |",
+  ].join("\n");
+  it("catches a wrong 6-digit tier and a missing row, in EN and ID", () => {
+    expect(wrongGoldenTiers(ROWS)).toEqual([]);
+    expect(
+      wrongGoldenTiers(ROWS.replace("USD 350,000", "USD 300,000")),
+    ).toEqual(["E28C 5y: 300000"]);
+    expect(
+      wrongGoldenTiers(ROWS.replace("USD 350,000", "USD 300.000")),
+    ).toEqual(["E28C 5y: 300000"]);
+    expect(
+      wrongGoldenTiers(ROWS.replace("USD 50,000,000", "USD 25,000,000")),
+    ).toEqual(["E28D 10y: 25000000"]);
+    expect(wrongGoldenTiers(ROWS.split("\n").slice(1).join("\n"))).toEqual([
+      "E28B: row missing",
+    ]);
+  });
+  for (const { file } of GOLDEN) {
+    const name = path.relative(process.cwd(), file);
+    it(`Golden USD tiers match their code and duration :: ${name}`, () => {
+      expect(wrongGoldenTiers(read(file))).toEqual([]);
     });
   }
 });
