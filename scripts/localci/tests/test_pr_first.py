@@ -77,6 +77,7 @@ def test_one_deferral_short_of_the_skip_bound_still_defers(rw):
     add_deferrals(rw, mg.REPLAY_MAX_SKIP - 1)   # five
     labelled(rw, 4)
     assert rw.tick() == 0 and shape(rw)[-1] == (False, 4) and kinds(rw, "replay_deferred")[-1]["skipped_n"] == mg.REPLAY_MAX_SKIP
+    assert len(kinds(rw, "replay_deferred")) == mg.REPLAY_MAX_SKIP   # the five plus this turn's: the bound is the count, not a replay having happened
 
 
 def test_after_the_skip_age_one_replay_runs_though_few_were_deferred(rw):
