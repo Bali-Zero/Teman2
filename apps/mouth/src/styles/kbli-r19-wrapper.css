@@ -275,6 +275,12 @@
 .hover\:bg-\[\#D01033\]\/90:is(.kbli-r19, .kbli-r19 *):hover {
   background-color: var(--kbli-accent);
 }
+/*
+ * The copper primary-action hover carries elevated text (contract section 7.1).
+ */
+.hover\:bg-\[\#D01033\]\/90:is(.kbli-r19, .kbli-r19 *):hover {
+  color: var(--kbli-bg-elevated);
+}
 .hover\:bg-\[rgba\(255\,255\,255\,0\.06\)\]:is(.kbli-r19, .kbli-r19 *):hover {
   background-color: var(--kbli-bg-secondary);
 }
@@ -538,5 +544,15 @@ nav.backdrop-blur-xl:is(.kbli-r19, .kbli-r19 *) {
   font-family: var(--font-sans);
 }
 [data-sonner-toast]:is(.kbli-r19, .kbli-r19 *) * {
+  color: var(--kbli-text-primary) !important;
+}
+/*
+ * Sonner richColors must not restore type-specific dark control fills inside R19.
+ * Icons and descriptions have no fill and keep inheriting the ink rule above.
+ */
+[data-sonner-toast]:is(.kbli-r19, .kbli-r19 *)
+  :is([data-close-button], [data-button]) {
+  background: var(--kbli-bg-surface) !important;
+  border-color: var(--kbli-border) !important;
   color: var(--kbli-text-primary) !important;
 }
