@@ -968,8 +968,13 @@ reaches Pro when the wrapper's live copy is replaced with the commands of the bl
 at the tick's start, against 60 GB; a tick that started at 111 GB ended at 99.6 (one shard container wrote 9.66 GB). kubelet's
 node-pressure model, with one constant (`HOST_FLOOR_GB` 50):
 
-- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 60 GB free: `--min-host-free-gb` (default 60;
-  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (50) and `start_floor_gb` (60).
+- **Start floor.** A run starts only above Zero's floor plus a margin that follows its plan (B39, below). `--min-host-free-gb`
+  (the wrapper's `MERGER_MIN_HOST_FREE_GB`) is the operator's override and wins for every plan; the prune's own line stays 60
+  (`START_MARGIN_GB` 10). Both skip and admitted `decision` lines carry `start_floor_gb`, `floor_kind` (`light`, `heavy` or `explicit`) and `floor_why` (the skip line also carries `floor_gb`: 50).
+- **Start floor by plan (B39).** The merger classifies the plan BEFORE `runner plan` runs (and `runner plan` skips building a `local.classifier` context's deps image when its classifier flags are all `"false"`, after validating `deps_recipe`): 68 GB
+  (`START_MARGIN_HEAVY_GB` 18) when any of the BASE matrix's `local.deps` contexts (e2e, backend, both CodeQL legs, frontend, visa-oracle) is selected by the BASE
+  `change_map.py` / `security_gate_flags.py` (including `ring_gating_override`) on the squash merge tree's changed paths against BASE, or when the plan cannot be classified; 56 (`START_MARGIN_LIGHT_GB` 6) otherwise.
+  A heavy PR the host cannot afford does not block a light one behind it (up to 5 are probed per tick). The eviction rule is unchanged. `--no-floor-by-plan` is the kill switch: every plan gets the one floor `--min-host-free-gb` (default 60).
 - **Hard eviction.** While the runner's `plan` and `run` steps execute, the runner leads its own process group and the host
   (`shutil.disk_usage` of `/System/Volumes/Data`, decimal GB, the janitor's sample) is read every 5 s. Under
   `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 51.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
