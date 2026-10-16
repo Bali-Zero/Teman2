@@ -67,19 +67,23 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     # Create persistent NLM client with cached tokens (same pattern as MCP server)
     if _HAS_NLM_LIB:
         try:
-            tokens = load_cached_tokens()
+            profile = os.environ.get("NLM_PROFILE", "default")
+            tokens = load_cached_tokens(profile_name=profile)
             if tokens and tokens.cookies:
                 _nlm_client = NotebookLMClient(
                     cookies=tokens.cookies,
                     csrf_token=tokens.csrf_token or "",
                     session_id=getattr(tokens, "session_id", "") or "",
                     build_label=getattr(tokens, "build_label", "") or "",
+                    base_host=getattr(tokens, "base_host", "") or "",
+                    profile_name=profile,
+                    auth_revision=getattr(tokens, "revision", None),
                 )
                 logger.info("✅ NLM client initialized with cached tokens (warm session)")
             else:
                 logger.warning("⚠️ No cached NLM tokens — run 'nlm login' first")
         except Exception as e:
-            logger.error("❌ Failed to initialize NLM client: %s", e)
+            logger.error("Failed to initialize NLM client (%s)", type(e).__name__)
 
     logger.info("NLM Bridge started on port 18790")
     yield
@@ -293,7 +297,7 @@ async def nlm_query(
 async def health() -> HealthResponse:
     """Health check — no auth required."""
     uptime = round(time.monotonic() - _start_time, 1) if _start_time else 0.0
-    status = "healthy" if _HAS_NLM_LIB else "degraded"
+    status = "healthy" if _nlm_client is not None else "degraded"
     return HealthResponse(
         status=status,
         uptime=uptime,
