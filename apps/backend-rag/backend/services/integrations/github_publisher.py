@@ -25,7 +25,9 @@ Usage:
     )
 """
 
+import asyncio
 import base64
+import calendar
 import hashlib
 import json
 import logging
@@ -38,6 +40,12 @@ import httpx
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Copied from scripts/localci/merger.py (_TS_RE, _LOGIN_RE): the merger reads the
+# label event with exactly these shapes, so the producer must not accept looser
+# ones. test_github_publisher.py pins the copies against merger.py when present.
+_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+_LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 
 
 class GitHubPublisherError(Exception):
@@ -54,6 +62,20 @@ class GitHubPublisher:
     """
 
     BASE_URL = "https://api.github.com"
+
+    # The LocalCI merger only counts this label if a user with one of these
+    # roles applied it last, no earlier than the head's first check suite
+    # (scripts/localci/merger.py: ARM_LABEL, ARM_ROLES, label_arm).
+    MERGE_LABEL = "localci:merge-shadow-ok"
+    MERGE_LABEL_ROLES = ("admin", "maintain")
+    # Bounded: the wait runs inside the publish request.
+    MERGE_LABEL_SUITE_WAIT_S = 15.0
+    # One wall-clock bound over the whole labelling (wait + POST + read-back);
+    # every HTTP call inside it is capped at MERGE_LABEL_CALL_TIMEOUT_S.
+    MERGE_LABEL_DEADLINE_S = 20.0
+    MERGE_LABEL_CALL_TIMEOUT_S = 5.0
+    MERGE_LABEL_POLL_S = 2.0
+    MERGE_LABEL_READBACK_TRIES = 3
 
     def __init__(
         self,
@@ -568,6 +590,7 @@ class GitHubPublisher:
             body=pr_body,
         )
         auto_merge_enabled = await self._enable_auto_merge(pr["node_id"])
+        merge_label_applied = await self._apply_merge_label(pr["number"], branch_sha)
         return {
             "success": True,
             "commit_sha": branch_sha,
@@ -576,8 +599,163 @@ class GitHubPublisher:
             "pull_request_url": pr["html_url"],
             "pull_request_number": pr["number"],
             "auto_merge_enabled": auto_merge_enabled,
+            "merge_label_applied": merge_label_applied,
             "idempotent": True,
         }
+
+    @staticmethod
+    def _timestamp(value: Any) -> float | None:
+        """Parse a GitHub ISO-8601 timestamp to epoch seconds, ``None`` if unreadable."""
+        if not isinstance(value, str) or _TS_RE.fullmatch(value) is None:
+            return None
+        return float(calendar.timegm(time.strptime(value, "%Y-%m-%dT%H:%M:%SZ")))
+
+    async def _first_check_suite_at(self, head_sha: str) -> float | None:
+        """Earliest ``created_at`` of the head's check suites, ``None`` when there is none yet."""
+        response = await self._get_client().get(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/commits/{head_sha}/check-suites",
+            headers=self._get_headers(),
+            params={"per_page": 100},
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
+        )
+        if response.status_code in (403, 429):
+            raise GitHubPublisherError(
+                f"check-suites HTTP {response.status_code} (rate limit or permission)"
+            )
+        if response.status_code != 200:
+            return None
+        doc = response.json()
+        suites = doc.get("check_suites") if isinstance(doc, dict) else None
+        if not isinstance(suites, list) or not suites or doc.get("total_count") != len(suites):
+            return None
+        stamps = [self._timestamp(x.get("created_at")) for x in suites if isinstance(x, dict)]
+        if len(stamps) != len(suites) or any(x is None for x in stamps):
+            return None
+        return min(x for x in stamps if x is not None)
+
+    async def _label_readback_problem(self, pr_number: int, first_suite_at: float) -> str | None:
+        """``None`` when the merger's own label rule holds for the PR, else why not."""
+        query = (
+            "query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){"
+            "pullRequest(number:$n){labels(first:50){nodes{name}}"
+            "timelineItems(last:50,itemTypes:[LABELED_EVENT]){nodes{"
+            "... on LabeledEvent{createdAt label{name} actor{__typename login}}}}}}}"
+        )
+        client = self._get_client()
+        response = await client.post(
+            f"{self.BASE_URL}/graphql",
+            headers=self._get_headers(),
+            json={
+                "query": query,
+                "variables": {"o": self.owner, "r": self.repo, "n": pr_number},
+            },
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
+        )
+        if response.status_code != 200:
+            return f"read-back HTTP {response.status_code}"
+        payload = response.json()
+        pr = ((payload.get("data") or {}).get("repository") or {}).get("pullRequest")
+        if payload.get("errors") or not isinstance(pr, dict):
+            return "read-back returned no pull request"
+        names = {x.get("name") for x in (pr.get("labels") or {}).get("nodes") or [] if x}
+        if self.MERGE_LABEL not in names:
+            return "label absent after POST"
+        actor, labelled_at = None, None
+        for event in (pr.get("timelineItems") or {}).get("nodes") or []:
+            if (
+                isinstance(event, dict)
+                and (event.get("label") or {}).get("name") == self.MERGE_LABEL
+            ):
+                actor, labelled_at = event.get("actor"), event.get("createdAt")
+        login = actor.get("login") if isinstance(actor, dict) else None
+        if not (
+            isinstance(actor, dict)
+            and actor.get("__typename") == "User"
+            and isinstance(login, str)
+            and _LOGIN_RE.fullmatch(login)
+        ):
+            return f"label not applied by a User account (actor {actor})"
+        stamped = self._timestamp(labelled_at)
+        if stamped is None or stamped < first_suite_at:
+            return f"label event {labelled_at!r} predates the head's first check suite"
+        perm = await client.get(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/collaborators/{login}/permission",
+            headers=self._get_headers(),
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
+        )
+        role = perm.json().get("role_name") if perm.status_code == 200 else None
+        if role not in self.MERGE_LABEL_ROLES:
+            return f"label applied by {login} whose role is {role!r}, not admin or maintain"
+        return None
+
+    async def _apply_merge_label(self, pr_number: int, head_sha: str) -> bool:
+        """
+        Label the PR ``localci:merge-shadow-ok`` so the LocalCI merger will pick it up.
+
+        The merger ignores a label stamped before the head's first check
+        suite, so this waits (bounded) for that suite, applies the label and
+        reads the ``LabeledEvent`` back against the merger's own rule.
+        Best-effort like auto-merge: any failure is logged at ERROR and
+        returned as ``False``, never raised. The whole thing is bounded by
+        ``MERGE_LABEL_DEADLINE_S`` wall-clock.
+        """
+        try:
+            return await asyncio.wait_for(
+                self._label_flow(pr_number, head_sha), self.MERGE_LABEL_DEADLINE_S
+            )
+        except TimeoutError:
+            logger.error(
+                "Merge label NOT applied on PR #%s: deadline of %.0fs exceeded",
+                pr_number,
+                self.MERGE_LABEL_DEADLINE_S,
+            )
+            return False
+        except Exception as exc:
+            logger.error(
+                "Merge label NOT applied on PR #%s: %s: %s", pr_number, type(exc).__name__, exc
+            )
+            return False
+
+    async def _label_flow(self, pr_number: int, head_sha: str) -> bool:
+        """Suite wait, label POST and read-back; may raise, the caller owns the bound."""
+        first_suite_at = None
+        deadline = time.monotonic() + self.MERGE_LABEL_SUITE_WAIT_S
+        while True:
+            first_suite_at = await self._first_check_suite_at(head_sha)
+            if first_suite_at is not None or time.monotonic() >= deadline:
+                break
+            await asyncio.sleep(self.MERGE_LABEL_POLL_S)
+        if first_suite_at is None:
+            logger.error(
+                "Merge label NOT applied on PR #%s: no check suite on %s within %.0fs",
+                pr_number,
+                head_sha[:7],
+                self.MERGE_LABEL_SUITE_WAIT_S,
+            )
+            return False
+        response = await self._get_client().post(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/issues/{pr_number}/labels",
+            headers=self._get_headers(),
+            json={"labels": [self.MERGE_LABEL]},
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
+        )
+        if response.status_code != 200:
+            logger.error(
+                "Merge label NOT applied on PR #%s: POST HTTP %s: %s",
+                pr_number,
+                response.status_code,
+                response.text,
+            )
+            return False
+        problem = "not read"
+        for attempt in range(self.MERGE_LABEL_READBACK_TRIES):
+            problem = await self._label_readback_problem(pr_number, first_suite_at)
+            if problem is None:
+                return True
+            if attempt + 1 < self.MERGE_LABEL_READBACK_TRIES:
+                await asyncio.sleep(1.0)
+        logger.error("Merge label NOT valid on PR #%s: %s", pr_number, problem)
+        return False
 
     async def _enable_auto_merge(self, pr_node_id: str) -> bool:
         """
@@ -937,16 +1115,19 @@ class GitHubPublisher:
                         return resumed
                 raise
             auto_merge_enabled = await self._enable_auto_merge(pr["node_id"])
+            merge_label_applied = await self._apply_merge_label(pr["number"], new_commit_sha)
 
             elapsed_ms = (time.time() - start_time) * 1000
             logger.info(
                 f"Article PR opened: #{pr['number']} {new_commit_sha[:7]} "
-                f"({len(files)} files, auto_merge={auto_merge_enabled}, {elapsed_ms:.0f}ms)",
+                f"({len(files)} files, auto_merge={auto_merge_enabled}, "
+                f"merge_label={merge_label_applied}, {elapsed_ms:.0f}ms)",
                 extra={
                     "commit_sha": new_commit_sha,
                     "pull_request_number": pr["number"],
                     "pr_branch": pr_branch,
                     "auto_merge_enabled": auto_merge_enabled,
+                    "merge_label_applied": merge_label_applied,
                     "files_count": len(files),
                     "elapsed_ms": elapsed_ms,
                 },
@@ -959,6 +1140,7 @@ class GitHubPublisher:
                 "pull_request_url": pr["html_url"],
                 "pull_request_number": pr["number"],
                 "auto_merge_enabled": auto_merge_enabled,
+                "merge_label_applied": merge_label_applied,
             }
 
         # Step 6 (direct path): update branch reference (unprotected branches).
