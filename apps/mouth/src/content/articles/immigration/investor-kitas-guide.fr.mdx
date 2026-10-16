@@ -17,7 +17,7 @@ tags:
   - KITAP pathway
   - visa tinggal investor
 publishedAt: "2026-01-15"
-updatedAt: "2026-02-16"
+updatedAt: "2026-10-15"
 author:
   name: "Zantara AI"
   avatar: "/static/zantara-avatar.png"
@@ -75,7 +75,7 @@ faq:
   - question: "What is the difference between Investor KITAS (E28A) and Working KITAS (E23)?"
     answer: "Investor KITAS (E28A) is for shareholders/investors with min IDR 10B shareholding and does not require RPTKA or DKP-TKA fees if you're a pure investor. Working KITAS (E23/E25B) is for employees/directors and requires RPTKA approval plus DKP-TKA fee. Bali Zero pricing: Investor KITAS from IDR 17 million (Offshore) to IDR 19 million (Onshore), Working KITAS from IDR 31.5 million (Extend) to IDR 36 million (Onshore)."
   - question: "Can I work in my company with an Investor KITAS?"
-    answer: "As a pure investor with E28A, you can attend board meetings, review performance, receive dividends, and make investment decisions. To manage daily operations or sign contracts as director, you need a Working KITAS (E25B for directors) with RPTKA work authorization and DKP-TKA fee. Per immigration regulations (Keputusan Menteri M.IP-08.GR.01.01/2025), investor and worker visa categories are distinct."
+    answer: "With E28A and at least IDR 10 billion of your own shareholding, you may act as director or commissioner of the PT PMA you invested in, supervise its production, receive dividends and make investment decisions. Hands-on operational work needs a Working KITAS (E23). If your own shareholding is below IDR 10 billion and you hold a director or commissioner post, you need a work visa for that post (E25B/E25A) with RPTKA and DKP-TKA fee. Per immigration regulations (Keputusan Menteri M.IP-08.GR.01.01/2025), investor and worker visa categories are distinct."
   - question: "How long does the Investor KITAS process take?"
     answer: "The full process from PT PMA establishment to KITAS issuance takes approximately 6-10 weeks. This includes company formation (2-4 weeks), capital deposit (1-2 weeks), VITAS application (5 working days per official processing time), and KITAS conversion with biometrics (5-7 days). ITAS and re-entry permit are issued automatically upon entry at immigration checkpoint."
   - question: "Can Investor KITAS lead to permanent residency (KITAP)?"
@@ -143,7 +143,7 @@ Un Permis de Séjour Limité (ITAS) pour les investisseurs étrangers qui :
         "Visa Code": "E28A",
         "RPTKA Requis": "Non (si investisseur pur)",
         "Frais DKP-TKA": "Non (si investisseur pur)",
-        "Travail autorisé": "Seulement si RPTKA également",
+        "Travail autorisé": "Poste de directeur/commissaire et supervision de la production ; le travail direct nécessite l'E23",
         Duration: "2 ans",
         "Prix Bali Zero": "À partir de 17 millions IDR (Offshore)",
       },
@@ -222,7 +222,7 @@ Un Permis de Séjour Limité (ITAS) pour les investisseurs étrangers qui :
 | Exigence                                       | Montant/Détails                                      |
 | ---------------------------------------------- | ---------------------------------------------------- |
 | Participation minimale par investisseur (E28A) | 10 000 000 000 IDR (~625 000 USD)                    |
-| Capital social libéré total de l'entreprise    | 10 000 000 000 IDR minimum                           |
+| Capital social libéré total de l'entreprise    | 2 500 000 000 IDR minimum (Règlement BKPM 5/2025)    |
 | Participation au capital                       | Doit être égale à 10 milliards IDR+ par investisseur |
 | Type d'entreprise                              | PT PMA enregistrée auprès du BKPM                    |
 | Base légale                                    | Keputusan Menteri M.IP-08.GR.01.01/2025              |
@@ -330,7 +330,7 @@ Un Permis de Séjour Limité (ITAS) pour les investisseurs étrangers qui :
   items={[
     {
       id: "passport",
-      label: "Passeport (validité 24+ mois)",
+      label: "Passeport (validité d'au moins 6 mois)",
       description: "Original plus copies",
       required: true,
       category: "personal",
@@ -413,11 +413,11 @@ Un Permis de Séjour Limité (ITAS) pour les investisseurs étrangers qui :
 ## Pouvez-vous Travailler avec un KITAS Investisseur ?
 
 <InfoCard variant="note" title="Travailler en tant qu'Investisseur">
-**Investisseur Pur (E28A seulement)** : Pas de RPTKA nécessaire, pas de frais DKP-TKA.
+**Investisseur (E28A, participation personnelle de 10 milliards IDR+)** : Pas de RPTKA nécessaire, pas de frais DKP-TKA. Vous pouvez être directeur ou commissaire de votre PT PMA ; le travail opérationnel direct nécessite un KITAS de Travail (E23).
 
 **Investisseur + Directeur** : Si votre participation est inférieure à 10 milliards IDR et que vous occupez un poste de directeur, vous avez besoin d'un KITAS de Travail (E25B - Visa Kerja Direktur Perusahaan) avec RPTKA et frais DKP-TKA.
 
-De nombreux investisseurs étrangers choisissent d'être à la fois actionnaire ET directeur, ce qui nécessite un KITAS de Travail (E25B) au lieu du KITAS Investisseur (E28A).
+Un actionnaire avec 10 milliards IDR+ de participation personnelle peut aussi être directeur ou commissaire avec l'E28A. Ce n'est qu'en dessous de ce seuil que le poste au conseil exige son propre visa de travail.
 
 </InfoCard>
 
@@ -450,6 +450,8 @@ Vous ne pouvez pas :
 ---
 
 ## Coûts (Tarifs Officiels Bali Zero)
+
+Les tarifs du KITAS Investisseur sont tout compris (frais gouvernementaux et service Bali Zero inclus).
 
 | Service                                  | Prix (IDR)                        |
 | ---------------------------------------- | --------------------------------- |
@@ -488,12 +490,13 @@ Le KITAS Investisseur permet d'économiser environ 14 à 17 millions IDR par rap
 ## Autres Options de Visa Investisseur Associées
 
 <InfoCard variant="note" title="Autres Catégories de Visa Investisseur (de Keputusan Menteri M.IP-08.GR.01.01/2025)">
-La famille E28 comprend plusieurs types de visas investisseur au-delà du standard E28A :
+La famille E28 répertorie aussi des routes investisseur Golden Visa : un ITAS de 5 ou 10 ans, prolongeable, sans sponsor, sur devis après consultation :
 
-- **E28B** - Investisseur (Constitution de Société) : Visa de 5 ans nécessitant un engagement d'investissement de 2,5 millions USD, 10 ans nécessitant 5 millions USD. Doit établir une société dans les 90 jours suivant l'entrée.
-- **E28C** - Investisseur (Sans Société) : Visa de 5 ans nécessitant 350 000 USD en obligations d'État ou en actions de sociétés publiques, 10 ans nécessitant 700 000 USD.
-- **E28D** - Investisseur (Filiale/Succursale) : 5 ans nécessitant 25 millions USD, 10 ans nécessitant 50 millions USD. Pour les grandes expansions multinationales.
-- **E28E** - Investisseur (Zone Économique Spéciale) : Pour les investissements dans les ZES désignées.
+- **E28B** - Création de société : 2,5 M USD (5 ans) / 5 M USD (10 ans) engagés dans les 90 jours suivant l'entrée, plus preuve auditée des parts dans une société étrangère et de son chiffre d'affaires.
+- **E28C** - Marché des capitaux : obligations d'État, actions cotées ou fonds communs de placement, 350 000 USD (5 ans) / 700 000 USD (10 ans), ou un appartement d'au moins 1 000 000 USD (10 ans).
+- **E28D** - Directeur ou commissaire d'une succursale ou filiale d'une société étrangère : la société étrangère s'engage à hauteur de 25 M USD (5 ans) / 50 M USD (10 ans) dans les 90 jours suivant l'entrée.
+- **E28F** - Comme l'E28D dans la nouvelle capitale IKN : 5 M USD / 10 M USD.
+- **E28E** - Investisseur en Zone Économique Spéciale : répertoriée par l'Immigration sans détails publiés.
 - **E33G** - Travailleur à Distance (Pekerja Jarak Jauh) : Pour les nomades numériques travaillant à distance pour des employeurs étrangers. Ne nécessite PAS la création d'une PT PMA. Service Bali Zero : 10 millions IDR (Prolongation), 13 millions IDR (Offshore), 14 millions IDR (Onshore).
 
 Pour les dernières exigences, consultez toujours imigrasi.go.id ou contactez Bali Zero.
