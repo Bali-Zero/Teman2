@@ -79,6 +79,33 @@ cd "$REPO_ROOT" || {
 # never races a pending promotion.
 python3 scripts/agent_start.py --cleanup >>"$LOG" 2>&1
 
+# Reap any leftover mouth-hourly-* worktree whose PR already MERGED or CLOSED
+# (a previous run's `gh pr close --delete-branch` removed the remote branch
+# while leaving the mounted local worktree, causing agent_start.py --cleanup's
+# _closed_pr_reap_facts remote-branch check to skip it indefinitely).
+hourly_wt_clean() {
+  [ -d "$1" ] && [ -n "$2" ] || return 1
+  local st wt_head
+  st=$(git -C "$1" --no-optional-locks status --porcelain --untracked-files=all 2>/dev/null) || return 1
+  [ -z "$(print -r -- "$st" | grep -vE '^$|^\?\? (\.agent-task\.json|\.env\.worktree|node_modules|apps/mouth/node_modules|\.husky/_)$')" ] || return 1
+  wt_head=$(git -C "$1" rev-parse HEAD 2>/dev/null) || return 1
+  [ -n "$wt_head" ] && [ "$wt_head" = "$2" ]
+}
+for stale_wt in "$REPO_ROOT"/.worktrees/mouth-hourly-*(N); do
+  [ -d "$stale_wt" ] || continue
+  stale_task="${stale_wt:t:s/mouth-//}"
+  stale_branch=$(git -C "$stale_wt" branch --show-current 2>/dev/null)
+  [[ "$stale_branch" == agent/*/mouth/hourly-* ]] || continue
+  stale_pr=$(gh pr list --state all --head "$stale_branch" --json state,headRefOid --jq 'if any(.[]; .state == "OPEN") then "OPEN " else ((.[0].state // "") + " " + (.[0].headRefOid // "")) end' 2>>"$LOG")
+  stale_state="${stale_pr%% *}"
+  stale_oid="${stale_pr#* }"
+  if { [ "$stale_state" = "CLOSED" ] || [ "$stale_state" = "MERGED" ]; } && hourly_wt_clean "$stale_wt" "$stale_oid"; then
+    if python3 scripts/agent_start.py --release "$stale_task" --force >>"$LOG" 2>&1; then
+      log "reaped $stale_state hourly worktree $stale_wt ($stale_branch)"
+    fi
+  fi
+done
+
 TASK_ID="hourly-$(date +%Y%m%d%H%M%S)"
 CREATE_OUT=$(python3 scripts/agent_start.py --lane mouth --task-id "$TASK_ID" --ttl-min 30 2>>"$LOG")
 WT_PATH=$(print -r -- "$CREATE_OUT" | awk '/^WORKTREE_READY/ {print $2}')
@@ -302,16 +329,37 @@ EOF
   # substring). A PR already occupying a merge-queue slot is left alone: it is
   # about to land and closing it would evict it (queue_unstick.py's rule 1).
   OLDER=$(gh pr list --state open --search "promote hourly-translated in:title" \
-      --json number,headRefName \
-      --jq ".[] | select(.number != $PR_NUM) | select(.headRefName | startswith(\"agent/nuzantara/mouth/hourly-\")) | .number" 2>>"$LOG")
-  for old in ${(f)OLDER}; do
+      --json number,headRefName,headRefOid \
+      --jq ".[] | select(.number != $PR_NUM) | select(.headRefName | startswith(\"agent/nuzantara/mouth/hourly-\")) | \"\(.number) \(.headRefOid) \(.headRefName)\"" 2>>"$LOG")
+  for old_row in ${(f)OLDER}; do
+    old="${old_row%% *}"
+    old_rest="${old_row#* }"
+    old_oid="${old_rest%% *}"
+    old_branch="${old_rest#* }"
     QUEUED=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){mergeQueueEntry{state}}}}' \
         -f o=Bali-Zero -f r=Teman2 -F n="$old" --jq '.data.repository.pullRequest.mergeQueueEntry // "null"' 2>>"$LOG")
     if [ "$QUEUED" != "null" ] && [ -n "$QUEUED" ]; then
       log "keeping older promote PR #$old — in merge queue ($QUEUED)"
       continue
     fi
-    if gh pr close "$old" --delete-branch --comment "Superseded by $PR_URL — the hourly translation batch is cumulative, this older copy only burned CI (translate-articles-cron-wrapper.sh)." >>"$LOG" 2>&1; then
+    # Close without --delete-branch: `gh pr close --delete-branch` runs
+    # `git branch -d <old_branch>` locally while `.worktrees/mouth-<old_task>` is
+    # still mounted, failing with "cannot delete branch ... used by worktree" after
+    # deleting the remote branch (which prevents agent_start.py --cleanup from
+    # reaping the closed worktree). Release the local worktree first, then delete
+    # the remote branch.
+    if gh pr close "$old" --comment "Superseded by $PR_URL — the hourly translation batch is cumulative, this older copy only burned CI (translate-articles-cron-wrapper.sh)." >>"$LOG" 2>&1; then
+      old_task="${old_branch##*/}"
+      if [[ "$old_task" == hourly-* ]] && [ -d "$REPO_ROOT/.worktrees/mouth-$old_task" ]; then
+        if hourly_wt_clean "$REPO_ROOT/.worktrees/mouth-$old_task" "$old_oid"; then
+          python3 scripts/agent_start.py --release "$old_task" --force >>"$LOG" 2>&1 || log "WARN: could not release superseded worktree mouth-$old_task"
+        else
+          log "WARN: superseded worktree mouth-$old_task has uncommitted WIP or unpushed commits — keeping local worktree and remote branch"
+        fi
+      fi
+      if [ ! -d "$REPO_ROOT/.worktrees/mouth-$old_task" ]; then
+        git -C "$REPO_ROOT" push origin --delete "$old_branch" >>"$LOG" 2>&1 || true
+      fi
       log "closed superseded promote PR #$old"
     else
       log "WARN: could not close superseded promote PR #$old"
