@@ -2,8 +2,9 @@
 
 Renamed 2026-08-23 (Zero ruling) from ``test_claude_oauth_slot5_coverage.py``.
 Slot 6 is the Claude Team seat (``zero@balizero.com``) — it enters the
-cascade ONLY as a last resort: the five MAX seats (1-5) are tried first,
-and slot 6 is reached only if all five fail. That property is obtained
+cascade AFTER the MAX seats: slots 1 and 5 are tried first (2, 3, 4 were retired
+2026-10-05 / 2026-10-17 when their accounts closed) and slot 6 is reached only if
+they fail. Zero 2026-10-17 made it launchable like the others; the position stays. That property is obtained
 from LIST POSITION, not from any special-cased logic, so slot 6 must
 always be appended after slot 5 in every consumer — never inserted
 in the middle, never reordered ahead of a MAX seat.
@@ -122,7 +123,7 @@ def test_mata_runtime_documents_all_six_slot_identities() -> None:
 ORDER_MARKER_CONSUMERS = (
     (
         "infra/launchagents/wrappers/cron-agent.sh",
-        "CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5}",
+        "CLAUDE_CODE_OAUTH_TOKEN_{1,5}",
         "CLAUDE_CODE_OAUTH_TOKEN_6",
     ),
     (

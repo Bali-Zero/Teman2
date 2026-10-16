@@ -502,11 +502,24 @@ run_claude() {
     done < <(compgen -e)
     local active_labels=()
     local active_tokens=()
+    # Retired slots (FLEET_TOPOLOGY.json status "retired": 2 = A5, 3 = A3,
+    # 4 = A4; pinned by scripts/tests/test_claude_cascade_shell.py): never
+    # attempted, and their value counts as seen so the legacy name cannot
+    # spend the same closed account.
+    local retired_tokens=()
+    local retired_var
+    for retired_var in CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 CLAUDE_CODE_OAUTH_TOKEN_4; do
+        [ -n "${!retired_var:-}" ] && retired_tokens+=("${!retired_var}")
+    done
     local candidate
     for candidate in "${token_vars[@]}"; do
         local candidate_token="${!candidate:-}"
         [ -z "$candidate_token" ] && continue
         local duplicate=0
+        local retired_token
+        for retired_token in "${retired_tokens[@]:-}"; do
+            [ "$retired_token" = "$candidate_token" ] && duplicate=1
+        done
         local existing_token
         for existing_token in "${active_tokens[@]:-}"; do
             [ "$existing_token" = "$candidate_token" ] && duplicate=1

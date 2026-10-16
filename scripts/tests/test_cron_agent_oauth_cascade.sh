@@ -120,7 +120,7 @@ FAKE
 chmod +x "$TMP/fake-claude" "$TMP/fake-timeout" "$TMP/bin/cron-agent.sh"
 echo "do the thing" > "$TMP/prompt.txt"
 
-run_cascade() { # <token-1> <token-2> <token-3> -> prints "<rc>|<used-label>|<attempts>"
+run_cascade() { # <token-1> <token-5> <token-6> [<retired-2/3/4-value>] -> prints "<rc>|<used-label>|<attempts>"
     local home="$TMP/home-$RANDOM"
     mkdir -p "$home"
     : > "$TMP/attempts"
@@ -132,8 +132,11 @@ run_cascade() { # <token-1> <token-2> <token-3> -> prints "<rc>|<used-label>|<at
         CRON_AGENT_CLAUDE_BIN="$TMP/fake-claude" \
         CRON_AGENT_TIMEOUT_BIN="$TMP/fake-timeout" \
         CLAUDE_CODE_OAUTH_TOKEN_1="$1" \
-        CLAUDE_CODE_OAUTH_TOKEN_2="$2" \
-        CLAUDE_CODE_OAUTH_TOKEN_3="$3" \
+        CLAUDE_CODE_OAUTH_TOKEN_5="$2" \
+        CLAUDE_CODE_OAUTH_TOKEN_6="$3" \
+        CLAUDE_CODE_OAUTH_TOKEN_2="${4:-}" \
+        CLAUDE_CODE_OAUTH_TOKEN_3="${4:-}" \
+        CLAUDE_CODE_OAUTH_TOKEN_4="${4:-}" \
         /usr/bin/env bash "$TMP/bin/cron-agent.sh" agent probe-job "$TMP/prompt.txt" \
         >/dev/null 2>&1
     rc=$?
@@ -144,8 +147,15 @@ run_cascade() { # <token-1> <token-2> <token-3> -> prints "<rc>|<used-label>|<at
 
 echo "end-to-end:"
 
-check "0|used: tier2-claude-token_3|3" "$(run_cascade dead-a dead-b live-c)" \
+check "0|used: tier2-claude-token_6|3" "$(run_cascade dead-a dead-b live-c)" \
     "two revoked seats are skipped and the third answers"
+
+# A closed account (slots 2, 3, 4 in FLEET_TOPOLOGY.json) is never spent, even
+# when its token still sits in the environment and would answer: with the live
+# seats dead the run must end on the keychain rung after exactly 4 attempts
+# (slots 1, 5, 6 and the keychain); a retired token would make it 5, or win.
+check "0|used: tier2-claude-keychain|4" "$(run_cascade dead-a dead-b dead-c live-closed)" \
+    "fail closed: a closed seat's live token is never attempted"
 
 check "0|used: tier2-claude-token_1|1" "$(run_cascade live-a live-b live-c)" \
     "innocence: a live first seat is used immediately, no needless rotation"
@@ -197,7 +207,7 @@ run_slow() { # <budget> <floor> <sleep-seconds> -> "<rc>|<used>|<attempts>|<wall
         CRON_AGENT_TIMEOUT="$1" \
         CRON_AGENT_MIN_ATTEMPT_SECONDS="$2" \
         CLAUDE_CODE_OAUTH_TOKEN_1=live-a \
-        CLAUDE_CODE_OAUTH_TOKEN_2=live-b \
+        CLAUDE_CODE_OAUTH_TOKEN_5=live-b \
         /usr/bin/env bash "$TMP/bin/cron-agent.sh" agent slow-job "$TMP/prompt.txt" \
         >/dev/null 2>&1
     rc=$?
@@ -220,7 +230,7 @@ echo 'PONG after honest work'
 FAKE
     chmod +x "$TMP/fake-slow-claude"
 
-    # 3 entries (token_1, token_2, keychain), budget 21s.
+    # 3 entries (token_1, token_5, keychain), budget 21s.
     #   equal division  -> 21/3 = 7s per attempt: an 8s job dies on all three
     #   with the floor  -> max(10, 7) = 10s: the first seat finishes its work
     # Asserted on the OUTCOME (succeeded, on the first seat, one attempt), not

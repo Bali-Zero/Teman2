@@ -45,7 +45,28 @@
 # valid seat sat in the environment. Raise this when a seat is added; the three
 # call sites and the error message follow automatically.
 : "${CLAUDE_SEAT_SLOTS:=6}"
-_claude_seat_slots() { seq 1 "${CLAUDE_SEAT_SLOTS:-6}"; }
+# Retired slots: FLEET_TOPOLOGY.json accounts.anthropic.slots with status
+# "retired" (2 = A5 cancelled 2026-10-05; 3 = A3, 4 = A4 closed 2026-10-17),
+# pinned to the registry by scripts/tests/test_claude_cascade_shell.py. A retired
+# slot is never selected, even when its variable is set, and its value counts as
+# seen so the legacy name cannot spend the same closed account.
+_CLAUDE_SEAT_RETIRED_SLOTS="2 3 4"
+_claude_seat_slots() {
+    local i
+    for i in $(seq 1 "${CLAUDE_SEAT_SLOTS:-6}"); do
+        case " $_CLAUDE_SEAT_RETIRED_SLOTS " in *" $i "*) continue ;; esac
+        echo "$i"
+    done
+}
+_claude_seat_is_retired_value() {
+    local i var
+    [ -n "${1:-}" ] || return 1
+    for i in $_CLAUDE_SEAT_RETIRED_SLOTS; do
+        var="CLAUDE_CODE_OAUTH_TOKEN_${i}"
+        [ "${!var:-}" = "$1" ] && return 0
+    done
+    return 1
+}
 
 _claude_seat_wrapper_path() {
     # Where is the cron-agent wrapper whose refusal classifier we reuse?
@@ -167,6 +188,7 @@ claude_seat_run() {
     done
     if [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
         is_dup=0
+        _claude_seat_is_retired_value "$CLAUDE_CODE_OAUTH_TOKEN" && is_dup=1
         for existing in ${tokens[@]+"${tokens[@]}"}; do
             [ "$existing" = "$CLAUDE_CODE_OAUTH_TOKEN" ] && is_dup=1
         done

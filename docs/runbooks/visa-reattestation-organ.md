@@ -151,8 +151,8 @@ runs the adversarial review and updates that field.
 
 ## Known limits
 
-- The judge inherits the cascade order: seats 1-5 first, seat 6 (Team) only when they are
-  exhausted. That is the canon, so the wrapper is unchanged.
+- The judge inherits the cascade order: the live Max seats (slots 1 and 5; 2, 3, 4 are retired)
+  first, seat 6 (Team) only when they are exhausted. That is the canon, so the wrapper is unchanged.
 - Two organ PRs for the same anchor never coexist. A weekly run adds a commit and refreshes
   the stamp. A merged ledger whose candidate is not yet in `packs/` is picked up as the existing candidate.
 - If the portals changed, the judge exits 0 only when every page is `same` or `changed`;

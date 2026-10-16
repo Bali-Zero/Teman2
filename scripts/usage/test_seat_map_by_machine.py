@@ -75,7 +75,8 @@ def parity_errors(seat_map: dict, registry: dict) -> list[str]:
 
 def test_machine_block_is_selected_case_insensitively():
     block = suc.machine_seat_map(SEAT_MAP, "air-m5")
-    assert block["claude_profiles"]["~/.claude-acct2"] == "A3"
+    assert block["claude_profiles"]["~/.claude-kaiser"] == "A2"
+    assert "~/.claude-acct2" not in block["claude_profiles"]  # A3, closed 2026-10-17
     assert block["claude_profiles"]["~/.claude-a1"] == "A1"
 
 

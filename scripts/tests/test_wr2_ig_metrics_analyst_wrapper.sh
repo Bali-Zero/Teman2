@@ -376,19 +376,21 @@ run_with_tokens() {
         /bin/bash "$WRAPPER_SRC" >/dev/null 2>&1
 }
 
-echo "[R1] slot 2 ritirato — mai tentato anche con il token presente"
-W="$TMPROOT/retired"; mkdir -p "$W/tmp"
-make_token_world "$W"
-run_with_tokens "$W" CLAUDE_CODE_OAUTH_TOKEN_2=dummy-retired-slot-2 CLAUDE_CODE_OAUTH_TOKEN_3=dummy-slot-3
-has "lo slot successivo e tentato" "dummy-slot-3" "$W/claude-tokens.txt"
-hasnt "lo slot 2 ritirato non e mai tentato" "dummy-retired-slot-2" "$W/claude-tokens.txt"
+for retired in 2 3 4; do
+    echo "[R1] slot $retired ritirato — mai tentato anche con il token presente"
+    W="$TMPROOT/retired-$retired"; mkdir -p "$W/tmp"
+    make_token_world "$W"
+    run_with_tokens "$W" "CLAUDE_CODE_OAUTH_TOKEN_$retired=dummy-retired-slot-$retired" CLAUDE_CODE_OAUTH_TOKEN_5=dummy-slot-5
+    has "lo slot successivo e tentato" "dummy-slot-5" "$W/claude-tokens.txt"
+    hasnt "lo slot $retired ritirato non e mai tentato" "dummy-retired-slot-$retired" "$W/claude-tokens.txt"
 
-echo "[R2] slot 2 ritirato — nemmeno sotto il nome legacy"
-W="$TMPROOT/retired-legacy"; mkdir -p "$W/tmp"
-make_token_world "$W"
-run_with_tokens "$W" CLAUDE_CODE_OAUTH_TOKEN_2=dummy-retired-slot-2 CLAUDE_CODE_OAUTH_TOKEN=dummy-retired-slot-2
-has "si arriva al keychain" "<keychain>" "$W/claude-tokens.txt"
-hasnt "il valore ritirato non rientra dal nome legacy" "dummy-retired-slot-2" "$W/claude-tokens.txt"
+    echo "[R2] slot $retired ritirato — nemmeno sotto il nome legacy"
+    W="$TMPROOT/retired-legacy-$retired"; mkdir -p "$W/tmp"
+    make_token_world "$W"
+    run_with_tokens "$W" "CLAUDE_CODE_OAUTH_TOKEN_$retired=dummy-retired-slot-$retired" "CLAUDE_CODE_OAUTH_TOKEN=dummy-retired-slot-$retired"
+    has "si arriva al keychain" "<keychain>" "$W/claude-tokens.txt"
+    hasnt "il valore ritirato non rientra dal nome legacy" "dummy-retired-slot-$retired" "$W/claude-tokens.txt"
+done
 
 echo
 echo "risultato: $PASS pass, $FAIL fail"
