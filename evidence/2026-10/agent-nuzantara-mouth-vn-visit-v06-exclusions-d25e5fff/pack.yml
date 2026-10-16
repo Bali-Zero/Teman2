@@ -1,0 +1,53 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" item V06, built on origin/main 95cf35fc50 (contains V05 3706ba3a39) with the seq-29
+  pack active.
+mission: >-
+  One overstay reason past 60 days (the one naming 60 days); the BVK reason is plural and links the official list.
+lanes:
+  - lane: v06-exclusions
+    role: build
+    seat: claude-sonnet-5-5 implementer, worktree mouth-vn-visit-v06-exclusions.
+  - lane: v06-ground-truth
+    role: ground_truth
+    seat: >-
+      claude-sonnet-5-5. rulepack-prod-029.source.json (apps/backend-rag/backend/services/visa_engine/contracts/packs):
+      hf.overstay-exceeds-60-days is "gt 60" on immigration.overstay_days and hf.active-overstay is "gt 0", so both
+      fire past 60 days; the BVK URL is canonical_url of source record 808d691c (Permen Imipas 10/2026), cited by
+      hf.a1.not-bvk-nationality.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "90fa17b1798689503c1e0d6dcd3fe6fbc4c3cfac66486e2811a071b44de3af23" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base 95cf35fc50 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet rendering noPathReasons built by buildEngineOutcome in
+  engine-adapter.ts) and the engine-adapter.test.ts pins in the mouth suite on every PR. Observation, after the mouth
+  deploy is promoted on balizero.com/visa-oracle: an onshore walk with overstay 61 shows one overstay sentence naming
+  60 days (EN and ID).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout /Users/nuzantara/.codex/sessions/2026/10/14/rollout-2026-10-14T17-36-35-01a139c5-5189-7d32-b0d9-328fba8a31f9.jsonl); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the change."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 58 passed (58); Tests 1529 passed (1529)"
+    ts: "2026-10-14T09:27:30Z"
+  - claim: "Mutation: remove the de-stacking filter."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts'
+    result: "1 failed | 181 passed (182); reverted"
+    ts: "2026-10-14T09:28:30Z"
+  - claim: "The whole visa-oracle mouth suite after merging origin/main (E33 stay-permit length) into the branch."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 59 passed (59); Tests 1568 passed (1568)"
+    ts: "2026-10-14T10:20:08Z"
+decisions:
+  - id: D-keep-60-day
+    decision: "Of the overstay pair the 60-day reason is kept; ACTIVE_OVERSTAY_SETTLE_FIRST is dropped only when both are present."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout /Users/nuzantara/.codex/sessions/2026/10/14/rollout-2026-10-14T17-36-35-01a139c5-5189-7d32-b0d9-328fba8a31f9.jsonl (red team, MEDIUM x1, no HIGH)"
+    objection: "The official URL is plain text: OutcomeSheet renders reason messages in a span without linkification."
+    status: CONFIRMED
+    disposition: "DEFERRED, not cured: OutcomeSheet.tsx is out of this item's scope; the URL is visible and copyable in the sentence. Linkifying needs a renderer change in a separate item."

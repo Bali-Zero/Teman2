@@ -1,0 +1,13 @@
+gear: 2
+gear_reason: >-
+  Public client link target on the Visa Oracle outcome; touches no rule, no pack, no pricing and no backend.
+mission: >-
+  The "Legal references" link of a B1, C1, C2 or C6 outcome opens that code's own imigrasi.go.id page instead of the catalogue index.
+objective: >-
+  Visit plan V08. The catalogue source record 6f5135f2 cites the index URL but carries one PAGE locator per code; the adapter now derives the per-code page from the locator.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

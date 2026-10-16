@@ -1,0 +1,80 @@
+mandate: universal-db-wave8-20261015-B05
+brief_ref: evidence/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim: Unchanged B05 core verified in isolated repair context.
+    cmd: ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest
+      -c /dev/null --noconftest -p no:cacheprovider --rootdir=~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05
+      --basetemp=~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/pytest-ci-owned
+      --color=no -q ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/test_b05_operation_contracts.py
+    exit: 0
+    ts: "2026-10-15T16:17:58.977985+00:00"
+    seat: codex-coordinator
+    source_pins:
+      b05_contracts_validator.py: 791e64bd1060a188981b36fa7e1ce1f57e45544e11e7c414b25ed7c0d9d5e43d
+      test_b05_operation_contracts.py: 0c18fd961a0460102bdac9bf9eb8da604f2b0a28fa08827ab0fe67368d9825cd
+      operation-contracts.json: a5006b3994aa172a759b6ca3452355fef5d49bb7ce6953ad4d0d4321fbb20b20
+      operation-contracts.csv: 8ba166ab2a489f366207727482fb9d57c6010534385f2f29632c6a61b1f00800
+  - claim: Unchanged B05 core verified in isolated repair context.
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/b05_contracts_validator.py
+      --validate
+    exit: 0
+    ts: "2026-10-15T16:17:58.977985+00:00"
+    seat: codex-coordinator
+    source_pins:
+      b05_contracts_validator.py: 791e64bd1060a188981b36fa7e1ce1f57e45544e11e7c414b25ed7c0d9d5e43d
+      test_b05_operation_contracts.py: 0c18fd961a0460102bdac9bf9eb8da604f2b0a28fa08827ab0fe67368d9825cd
+      operation-contracts.json: a5006b3994aa172a759b6ca3452355fef5d49bb7ce6953ad4d0d4321fbb20b20
+      operation-contracts.csv: 8ba166ab2a489f366207727482fb9d57c6010534385f2f29632c6a61b1f00800
+  - claim:
+      All six Markdown files now carry truthful Codex review metadata and review
+      sections,retaining actual partial/blocking dispositions.
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I scripts/check_adversarial_review.py
+      --files ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/ANALYSIS.md
+      ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/BATTLE.md
+      ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/DEFINITIVE-SYNTHESIS.md
+      ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/PRINCIPAL-ROLE-BINDING-PROPOSAL.md
+      ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/PROPOSAL.md
+      ~/nuzantara/.worktrees/db-udb-deadline-parent-b05-ci/research/operations/udb-wave8/B05/PR_BODY.md
+    exit: 0
+    ts: "2026-10-15T16:20:09.772595+00:00"
+    seat: codex-coordinator
+    stdout_sha256: d2a7d464b6f864de47e75b0e52d185d8bb4c7c10cecc6d7bfdd200a8cf409b45
+    evidence_ref: research/operations/udb-wave8/B05/R1-DOCUMENT-REVIEW.json:1
+dissent:
+  - seat: codex
+    objection:
+      "Actual independent six-document review blocks the principal-role design
+      for implementation: wrong name-only hashes/schema,optional effective-role attestation
+      and unrestricted application_name output. Archived analysis/proposal/synthesis
+      remain historical with explicit corrections. No implementation approval or runtime
+      closure."
+    status: CONFIRMED
+    evidence_ref: research/operations/udb-wave8/B05/R1-DOCUMENT-REVIEW.json:1
+pii_scan: clean
+lanes:
+  - lane: B05-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B05-document-R1
+    role: review
+    seat: codex
+  - lane: B05-metadata-prepare
+    role: build
+    seat: codex-coordinator
+seat_override:
+  The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh
+  support and Opus5.5/xhigh support, with one adversarial pass then synthesis. This
+  model assignment supersedes the legacy two-seat council whitelist; no legacy Sol/Kimi/TP1
+  reviewer is invoked or claimed. Actual source-pinned modern-seat evidence is retained.
+  The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
+  and PENDING; this override does not sign a gate or grant block closure.
+block_closed: false
+runtime_role_binding: UNOBSERVED
+final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
+production_adoption: false
+limitations:
+  - Schema preflight only; fullcandidate diff floor and final gate still required.
+  - No permission to mutate original armed branch.

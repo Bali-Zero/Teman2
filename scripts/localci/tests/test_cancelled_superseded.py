@@ -94,6 +94,13 @@ def test_a_recorded_count_that_is_not_the_number_flipped_keeps_the_row():
     assert mg.reclassify_by_reread(_A, _row(2), lives, 2) == [] and mg.reclassify_by_reread(_A, _row(0), lives, 0) == []
 
 
+def test_a_context_the_row_judged_ok_that_flips_nothing_leaves_the_count_short_and_keeps_the_row(monkeypatch):
+    monkeypatch.setattr(mg.hc, "gh_get", _H(LIVE["check_runs"]))
+    lives = {(SHA, None): _live(*LIVE["check_runs"], OTHER_OK)}
+    assert len(mg.reclassify_by_reread(_A, _row(), lives, 1)) == 1
+    assert mg.reclassify_by_reread(_A, _row(2), lives, 2) == []   # one context flips, the row recorded two: the count must match exactly
+
+
 def test_a_fetch_error_or_an_unreadable_sha_keeps_the_row(monkeypatch):
     def boom(*_a):
         raise OSError("gh down")

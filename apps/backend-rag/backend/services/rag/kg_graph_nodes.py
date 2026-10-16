@@ -892,8 +892,7 @@ def format_chains_for_llm(chains: list[list[dict]]) -> str:
     Example output:
         Chain 1:
         - KBLI 56101 (Restauran) REQUIRES PT PMA
-        - PT PMA ENABLES KITAS E28G
-        - KITAS E28G REQUIRES RPTKA
+        - PT PMA ENABLES KITAS E28A
 
     Args:
         chains: List of relationship chain lists

@@ -79,6 +79,16 @@ def home(tmp_path: Path) -> Path:
     for d in (repo / "scripts" / "lib", bin_dir, tmp_path / "logs"):
         d.mkdir(parents=True)
     shutil.copy(WRAPPER, repo / "scripts" / WRAPPER.name)
+    shutil.copy(WRAPPER.with_name("mouth_content_guard.sh"), repo / "scripts" / "mouth_content_guard.sh")
+    # the content guards are not this file's subject: an always-green vitest and the two guard files
+    for g in ("src/lib/e33-income-basis-copy.test.ts", "src/i18n/secondhome-article-claims.test.ts"):
+        (repo / "apps" / "mouth" / g).parent.mkdir(parents=True, exist_ok=True)
+        (repo / "apps" / "mouth" / g).write_text("// guard\n")
+    (tmp_path / "nm" / ".bin").mkdir(parents=True)
+    (tmp_path / "nm" / ".bin" / "vitest").write_text("#!/bin/sh\nexit 0\n")
+    (tmp_path / "nm" / ".bin" / "vitest").chmod(0o755)
+    (tmp_path / "nm" / "typescript").mkdir()
+    (tmp_path / "nm" / "typescript" / "package.json").write_text("{}")
     (repo / "scripts" / "agent_start.py").write_text(AGENT_START)
     (repo / "scripts" / "translate-articles.py").write_text(TRANSLATE)
     (repo / "scripts" / "lib" / "heartbeat.sh").write_text('echo "$2 $3" >> "$HOME/heartbeat.log"\n')
@@ -104,7 +114,8 @@ def home(tmp_path: Path) -> Path:
 def _run(home: Path, translated: list[str], **env: str) -> subprocess.CompletedProcess[str]:
     full_env = {"HOME": str(home), "PATH": f"{home / 'bin'}:{os.environ['PATH']}",
                 "FAKE_TRANSLATED": ",".join(translated), "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t", **env}
+                "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+                "MOUTH_GUARD_VITEST": str(home / "nm" / ".bin" / "vitest"), **env}
     return subprocess.run(["zsh", str(home / "nuzantara" / "scripts" / WRAPPER.name)], env=full_env,
                           capture_output=True, text=True, timeout=60)
 

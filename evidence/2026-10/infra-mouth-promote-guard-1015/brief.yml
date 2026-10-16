@@ -1,0 +1,41 @@
+task_id: infra-mouth-promote-guard-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LOCALCI-SOVEREIGN audit class 5. The hourly mouth translation PRs (#8451..#8538)
+  are red on both sides: the LLM translation rewrites lines that
+  e33-income-basis-copy.test.ts and secondhome-article-claims.test.ts pin, so after
+  the phase F flip they would never merge. The guards are right and the content is
+  wrong, so the producer (translate-articles-cron-wrapper.sh, Pro,
+  com.balizero.translate.hourly) now asks them before git add: green promotes all;
+  red tries each slug group alone, holds back the failing groups (restored to HEAD
+  inside its own worktree), re-runs the guards on the final set, and promotes
+  nothing if that is still red, if main itself is red (exit 2), if the guards
+  cannot run (exit 3) or if the work cannot be bisected. Held slugs go to the PR
+  body, the heartbeat and one shared/escalations_pro.jsonl row, slugs only. No
+  guard, baseline or article is edited or weakened.
+acceptance:
+  - text: >-
+      Guilt and innocence: a failing slug group is held and the rest promoted; all
+      green promotes all with no hold text; all failing opens no PR; red main,
+      missing vitest, missing typescript and a red final set each promote nothing
+      with their own exit code.
+    probe: python3 -m pytest -q scripts/tests/test_translate_cron_wrapper_content_guards.py scripts/tests/test_translate_cron_wrapper_yields_to_open_prs.py
+  - text: >-
+      The guard script is green on the unmodified main tree with the root vitest.
+    probe: MOUTH_GUARD_VITEST=$PWD/../../node_modules/.bin/vitest bash scripts/mouth_content_guard.sh --base .
+assumptions:
+  - text: >-
+      Pro runs the wrapper in place from /Users/nuzantara/nuzantara (plist argv), and
+      com.nuzantara.git-pull-main.15min pulls main there, so the merge reaches Pro
+      within 15 min with no manual deploy step.
+    status: verified
+    probe: ssh pro 'plutil -p ~/Library/LaunchAgents/com.balizero.translate.hourly.plist'
+residual:
+  - text: >-
+      The ratchet hashes whole lines, so a baselined line the LLM retranslates
+      differently is held back every hour while translate-articles.py keeps
+      re-translating it (cost plus permanent hold). Follow-ups, separate: glossary
+      pins in translate-articles.py and a hold-list so held slugs are not
+      re-translated each run.

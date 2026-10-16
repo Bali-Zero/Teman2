@@ -1,0 +1,68 @@
+task_id: infra-localci-redecide-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B30, must land before the phase F flip. triage() keys decided on
+  (pr, head, base) and re-decides only gate_pending, so today a new base
+  heals the key, but after the flip main moves only when LocalCI merges and a
+  queue of heads stuck on transient no-verdicts is a permanent stall. Rule (D1
+  is an ALLOW-LIST after three reds of one cause, a deny-list let an unlisted
+  status re-roll a candidate's own no-verdict): a key whose newest non-replay
+  decision is transient, i.e. every term in an enumerated set (overall BLOCKED
+  or ERROR, an ERROR only with the merger driver's own plan, no-seal, status or
+  unreadable-status text; contexts the host did not name OK, UNCOVERED or
+  QUEUED; host-named contexts ERROR or BLOCKED with a MEASURED host reason
+  (below_floor, unmeasured, floor_invalid; never host_disk_full); checks PASS,
+  NOT_APPLICABLE, BLOCKED, QUEUED, plus ERROR only for a check the row's
+  host_checks names; no gate_pending, no
+  non_executed) and the class is host_no_verdict or the driver text, is decided
+  again at the same base, at most REDECIDE_CAP (3) transient decisions within
+  REDECIDE_WINDOW_S (6 h), REDECIDE_BACKOFF_S (600) times the count apart
+  (counted from the newest decision or eviction), EVICT_CAP applying, host_disk
+  only while the tick's measured host free GB is at least the start floor. The
+  new row carries redecide {reason, attempt}; a key past the cap is journalled
+  once as
+  skipped redecide_cap. HONESTY: the audit's 32 of 107 decisions since
+  2026-10-09 is an upper bound, not what B30 re-decides. Applying the real
+  classifier, 10 rows qualify (all overall ERROR "runner plan failed: timed
+  out", a cause since cured), 0 of 21 host_disk (20 had non_executed=blocked
+  before 2026-10-12, one a context BLOCKED) and 0 of 7 context ERROR. Context
+  ERROR was removed from the class by the gate (the runner maps a candidate's
+  crash and hang to ERROR: retry-until-green). Coverage is forward-looking.
+acceptance:
+  - text: >-
+      Each transient class is decided again; a FAIL, a policy BLOCKED, a
+      non-executed mapping, a gate_pending and a verdict never are; the cap,
+      the backoff and the host precondition hold; host_disk then a recovered
+      floor gives exactly one more decision and the second stands.
+    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py scripts/localci/tests/test_redecide_allowlist.py
+  - text: >-
+      The tick passes its measured host free GB to the triage, journals the
+      redecide row and the cap skip once.
+    probe: python3 -m pytest -q scripts/localci/tests/test_redecide.py -k tick
+assumptions:
+  - text: >-
+      Every b30-* mutant is killed (the gate's B1, B2 and L1 mutants included).
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(python3 scripts/localci/tests/mutants/merger_mutants.py --list | awk '$1 ~ /^b30-/ {print $1}')
+residual:
+  - text: >-
+      Context ERRORs from the runner or driver (BrokenPipe on copy-in, driver
+      rc=2) are no longer re-decided: the row carries no per-check
+      attribution that separates them from a candidate's crash, hang or
+      collection error. A run-budget INTERRUPTED is not re-decided either:
+      a hang in a late check exhausts the 5400 s budget and becomes
+      INTERRUPTED (#8523), so re-rolling it is retry-until-green. A
+      journalled per-check attribution is the follow-up that re-admits both.
+  - text: >-
+      The deps-image build failure (1 of the 32) is journalled as a context
+      BLOCKED with free text, which the row cannot tell from a policy BLOCKED;
+      it stays out of the class. Audit class 11 (decide again once when
+      code_sha changes, for keys whose no-verdict a since-merged cure
+      explains) needs a per-cure attribution the journal does not carry:
+      documented follow-up, not part of B30.
+  - text: >-
+      B28 (PR-first in the gate) is not in this tree. A key due again sorts as
+      an attempted head, behind every head never decided, and leaves the
+      replay alternation alone, so it competes like any attempted PR.

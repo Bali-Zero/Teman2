@@ -62,19 +62,25 @@ EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims, FROZEN per CLAUDE.md
 class StayRule:
     code: str
     visa_family: str  # "visit_single" | "visit_multi" | "kitas" | "visa_free" | "voa"
-    initial_days: int
-    extension_days: int
+    initial_days: int | None
+    extension_days: int | None  # None = the source does not state it (UNKNOWN, never 0)
     max_extensions: int | str  # int or "0 (non-extendable)"
-    max_total_days: int
+    max_total_days: int | None
     legal_basis: str
     # Multi-entry visas: visa validity window (e.g. "1, 2, or 5 years")
     visa_validity: str | None = None
-    # KITAS/KITAP path
-    kitap_eligible: bool = False
+    # KITAS/KITAP path. None = the source does not state it (no claim is made).
+    kitap_eligible: bool | None = False
     kitap_years_required: int | None = None
     # Optional extras
     bali_warning: str | None = None
     notes: str | None = None
+    # Free-text initial-stay wording for products with several tiers (E28B-F: 5 or 10 years)
+    initial_stay_text: str | None = None
+    # Stay length tiers in days (E28B-F: 5 years = 1825, 10 years = 3650)
+    tier_days: list[int] | None = None
+    # Overrides the NB-2 provenance stamp (E28 rows are validated against the official page)
+    validated_by: str | None = None
 
 
 # --- General rule shortcut (Permen 11/2024 Pasal 95(3) — 60+60×2=180) ---
@@ -105,6 +111,18 @@ def _d_standard(code: str, notes: str | None = None) -> StayRule:
         notes=notes or "Multi-entry visa: unlimited entries within validity window, but each stay is non-extendable.",
     )
 
+
+# E28 wording shared by the entries below (official Imigrasi pages, fetched 2026-10-15).
+_E28_LEGAL_BASIS = (
+    "Permenkumham 22/2023 and 11/2024; Kepmen Imipas M.IP-08.GR.01.01/2025 "
+    "(official Imigrasi page, fetched 2026-10-15)"
+)
+_E28_VALIDATED_BY = "Imigrasi official page 2026-10-15"
+# Every E28 page: "Masa berlaku visa adalah 90 hari sejak diterbitkan" (the ENTRY window, not the stay).
+_E28_ENTRY_WINDOW = "90 days from issuance"
+_E28_A_EXTENSIONS = "extendable (filed online by the sponsor); length not stated"
+_E28_GOLDEN_EXTENSIONS = "extendable ('Dapat diperpanjang'); length not stated"
+_E28_TIERED_STAY = "5 years or 10 years from Tanda Masuk (date of entry), depending on the tier"
 
 # NB-2 validated 2026-04-16. All 86 visa codes.
 RULES: dict[str, StayRule] = {
@@ -286,60 +304,95 @@ RULES: dict[str, StayRule] = {
     # ========================================================================
     # E-series: KITAS / ITAS (long-stay)
     # ========================================================================
-    # E28 — Investor
+    # E28 — Investor. Wording below is limited to what the official Imigrasi pages
+    # (imigrasi.go.id/wna/daftar-visa-indonesia/E28x, fetched 2026-10-15, saved under
+    # research/visa/2026-10-15-e28-pages/) say. Anything the page does not state is
+    # left neutral (extension length, KITAP path). There is no E28G entry: it is not a current visa.
     "E28A": StayRule(
         code="E28A", visa_family="kitas",
-        visa_validity="2 years",
-        initial_days=730, extension_days=730, max_extensions="renewable up to 6 years cumulative",
-        max_total_days=2190,
-        legal_basis="Permenkumham 11/2024 Pasal 38-40",
-        kitap_eligible=True, kitap_years_required=3,
-        notes="Investor in existing PT PMA. KITAS threshold: Rp 10 billion shares. KITAP threshold INCREASED to Rp 15 billion (Pasal 176(2)(c)).",
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=730, extension_days=None,
+        max_extensions=_E28_A_EXTENSIONS,
+        max_total_days=None,
+        legal_basis=_E28_LEGAL_BASIS,
+        kitap_eligible=None,
+        validated_by=_E28_VALIDATED_BY,
+        notes=(
+            "Investor in an existing PT PMA; a sponsor is required. Special requirement (official page): "
+            "the applicant's own shareholding of at least Rp10.000.000.000 in the sponsoring company "
+            "registered with the Ministry of Investment/BKPM; with less, and holding a director or "
+            "commissioner position, a work visa for that position applies instead. The extension is "
+            "filed online by the sponsor; the page states no extension length."
+        ),
     ),
     "E28B": StayRule(
         code="E28B", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0, max_extensions="renewable at expiry",
-        max_total_days=1825,
-        legal_basis="Permenkumham 11/2024 Pasal 38-40",
-        kitap_eligible=True, kitap_years_required=5,
-        notes="Golden Visa Founder — PT PMA founder. USD 2.5M (5y) or USD 5M (10y) paid-up capital within 90 days. Direct KITAP-INV after 5y (no language test). 10y variant also requires proof of prior Indonesia entry.",
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
+        max_extensions=_E28_GOLDEN_EXTENSIONS,
+        max_total_days=None,
+        legal_basis=_E28_LEGAL_BASIS,
+        kitap_eligible=None,
+        validated_by=_E28_VALIDATED_BY,
+        initial_stay_text=_E28_TIERED_STAY,
+        notes=(
+            "Golden Visa, company establishment (official title: Visa Investor Pendirian Perusahaan). "
+            "No sponsor needed. Commitment to establish an Indonesian company with issued capital "
+            "(shares) or investment value of at least USD 2,500,000 (5-year stay) or USD 5,000,000 "
+            "(10-year stay), met within 90 days of the entry date; proof of shares in a foreign company "
+            "(international-standard audited statements) and audited turnover."
+        ),
     ),
     "E28C": StayRule(
         code="E28C", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0, max_extensions="renewable",
-        max_total_days=1825,
-        legal_basis="Permenkumham 11/2024 Pasal 40",
-        kitap_eligible=True, kitap_years_required=5,
-        notes="Golden Visa Portfolio Investor — no company setup. USD 350k (5y) or USD 700k (10y) in government bonds, listed shares, or mutual funds within 90 days.",
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
+        max_extensions=_E28_GOLDEN_EXTENSIONS,
+        max_total_days=None,
+        legal_basis=_E28_LEGAL_BASIS,
+        kitap_eligible=None,
+        validated_by=_E28_VALIDATED_BY,
+        initial_stay_text=_E28_TIERED_STAY,
+        notes=(
+            "Golden Visa, capital market (official title: Visa Investor Pasar Modal); no company setup. "
+            "No sponsor needed. Proof of Indonesian government bonds, listed-company shares or mutual "
+            "funds of at least USD 350,000 (5-year stay); at least USD 700,000, or an apartment worth at "
+            "least USD 1,000,000 (10-year stay)."
+        ),
     ),
     "E28D": StayRule(
         code="E28D", visa_family="kitas",
-        visa_validity="5 or 10 years",
-        initial_days=1825, extension_days=0, max_extensions="renewable",
-        max_total_days=1825,
-        legal_basis="Permenkumham 11/2024 Pasal 39(4)",
-        kitap_eligible=True, kitap_years_required=3,
-        notes="Investor Branch/Representative Office. Parent company commits USD 25M (5y) or USD 50M (10y).",
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
+        max_extensions=_E28_GOLDEN_EXTENSIONS,
+        max_total_days=None,
+        legal_basis=_E28_LEGAL_BASIS,
+        kitap_eligible=None,
+        validated_by=_E28_VALIDATED_BY,
+        initial_stay_text=_E28_TIERED_STAY,
+        notes=(
+            "Golden Visa for a director or commissioner of a company to be established in Indonesia that "
+            "is a branch or subsidiary of a foreign company. No sponsor needed. Commitment that the "
+            "foreign company invests at least USD 25,000,000 (5-year stay) or USD 50,000,000 (10-year "
+            "stay), met within 90 days of the entry date."
+        ),
     ),
     "E28F": StayRule(
         code="E28F", visa_family="kitas",
-        visa_validity="Varies",
-        initial_days=1825, extension_days=0, max_extensions="renewable",
-        max_total_days=1825,
-        legal_basis="DB operational records",
-        kitap_eligible=True, kitap_years_required=3,
-        notes="Investor Real Estate (IKN Nusantara or property-based). Threshold Rp 5 billion+ property.",
-    ),
-    "E28G": StayRule(
-        code="E28G", visa_family="kitas",
-        visa_validity="10 years",
-        initial_days=3650, extension_days=0, max_extensions="renewable",
-        max_total_days=3650,
-        legal_basis="DB operational records",
-        kitap_eligible=True, kitap_years_required=5,
-        notes="Golden 10Y Real Estate — Rp 5 billion+ property maintained for 10 years.",
+        visa_validity=_E28_ENTRY_WINDOW,
+        initial_days=None, extension_days=None, tier_days=[1825, 3650],
+        max_extensions=_E28_GOLDEN_EXTENSIONS,
+        max_total_days=None,
+        legal_basis=_E28_LEGAL_BASIS,
+        kitap_eligible=None,
+        validated_by=_E28_VALIDATED_BY,
+        initial_stay_text=_E28_TIERED_STAY,
+        notes=(
+            "Golden Visa for a director or commissioner of a company to be established in Ibu Kota "
+            "Nusantara (IKN) that is a branch or subsidiary of a foreign company. No sponsor needed. "
+            "Commitment that the foreign company invests at least USD 5,000,000 (5-year stay) or "
+            "USD 10,000,000 (10-year stay), met within 90 days of the entry date."
+        ),
     ),
     # E29 — Research
     "E29": StayRule(
@@ -595,9 +648,12 @@ def build_stay_section(rule: StayRule) -> str:
     if rule.visa_validity:
         lines.append(f"- **Visa validity (entry window)**: {rule.visa_validity}")
 
-    lines.append(
-        f"- **Initial stay**: {_format_days(rule.initial_days)} from Tanda Masuk (date of entry)"
-    )
+    if rule.initial_stay_text:
+        lines.append(f"- **Initial stay**: {rule.initial_stay_text}")
+    else:
+        lines.append(
+            f"- **Initial stay**: {_format_days(rule.initial_days)} from Tanda Masuk (date of entry)"
+        )
 
     is_extendable = isinstance(rule.max_extensions, int) and rule.max_extensions > 0
     non_ext_str = isinstance(rule.max_extensions, str)
@@ -612,12 +668,16 @@ def build_stay_section(rule: StayRule) -> str:
     else:
         lines.append("- **Extensions**: none (non-extendable)")
 
-    if rule.max_total_days > 0:
+    if rule.max_total_days:
         lines.append(f"- **Max total stay (cumulative)**: {_format_days(rule.max_total_days)}")
 
     # KITAP path
     if fam == "kitas":
-        if rule.kitap_eligible and rule.kitap_years_required:
+        if rule.kitap_eligible is None:
+            lines.append(
+                "- **KITAP conversion**: not stated on the official Imigrasi page (confirm before advising)"
+            )
+        elif rule.kitap_eligible and rule.kitap_years_required:
             lines.append(
                 f"- **KITAP conversion**: eligible after {rule.kitap_years_required} consecutive years on this KITAS"
             )
@@ -683,11 +743,10 @@ Hotel/villa/accommodation operators are LEGALLY OBLIGED (PP 31/2013 Pasal 187) t
 """
 
 
-def build_full_enriched_text(original_text: str, rule: StayRule) -> str:
-    """Replace or insert stay block AND append procedural notes (idempotent)."""
+def replace_stay_block(original_text: str, rule: StayRule) -> str:
+    """Replace (or insert) ONLY the stay block of a visa document; every byte outside it is kept."""
     text = original_text
-
-    # 1) Stay block — replace if exists, else insert before Base Legale / ---
+    # replace if exists, else insert before Base Legale / ---
     stay_block = build_stay_section(rule).lstrip("\n")
     stay_headings = [
         "## Stay Permit & Extensions",
@@ -717,6 +776,15 @@ def build_full_enriched_text(original_text: str, rule: StayRule) -> str:
                 break
         if not inserted:
             text = text + "\n" + stay_block
+
+    return text
+
+
+def build_full_enriched_text(original_text: str, rule: StayRule) -> str:
+    """Replace or insert stay block AND append procedural notes (idempotent)."""
+    text = original_text
+
+    text = replace_stay_block(text, rule)
 
     # 2) Procedural notes — append once, replace if exists
     pnotes_header = "## Procedural Notes (Indonesia Immigration 2024-2026)"
@@ -802,6 +870,48 @@ async def upsert_point(
     r.raise_for_status()
 
 
+def _set_or_pop(md: dict[str, Any], key: str, value: Any) -> None:
+    """None means UNKNOWN: the key is removed, never written as 0."""
+    if value is None:
+        md.pop(key, None)
+    else:
+        md[key] = value
+
+
+def build_metadata(existing: dict[str, Any], rule: StayRule) -> dict[str, Any]:
+    """Return the point metadata with the stay fields of ``rule`` applied (pure)."""
+    metadata = dict(existing)
+    metadata["visa_family"] = rule.visa_family
+    _set_or_pop(metadata, "stay_initial_days", rule.initial_days)
+    _set_or_pop(metadata, "stay_extension_days", rule.extension_days)
+    _set_or_pop(metadata, "stay_max_total_days", rule.max_total_days)
+    _set_or_pop(metadata, "stay_tier_days", rule.tier_days)
+    if isinstance(rule.max_extensions, int):
+        metadata["stay_max_extensions"] = rule.max_extensions
+    elif rule.extension_days is None:
+        metadata.pop("stay_max_extensions", None)  # unknown, not 0
+    else:
+        metadata["stay_max_extensions"] = 0
+    metadata["stay_max_extensions_desc"] = str(rule.max_extensions)
+    metadata["stay_rules_validated"] = rule.validated_by or "NB-2 2026-04-17"
+    metadata["stay_legal_basis"] = rule.legal_basis
+    if rule.visa_validity:
+        metadata["visa_validity"] = rule.visa_validity
+    if rule.kitap_eligible is None:
+        # The source does not state it: make no claim, and drop any stale one.
+        metadata.pop("kitap_eligible", None)
+        metadata.pop("kitap_years_required", None)
+    else:
+        metadata["kitap_eligible"] = bool(rule.kitap_eligible)
+        if rule.kitap_years_required:
+            metadata["kitap_years_required"] = rule.kitap_years_required
+    if rule.bali_warning:
+        metadata["bali_extension_restriction"] = "PMA shareholders/directors: extension rejected in Bali"
+    if rule.notes:
+        metadata["operational_notes"] = rule.notes[:500]
+    return metadata
+
+
 async def enrich_one(client: httpx.AsyncClient, code: str, rule: StayRule) -> None:
     point_id = await find_point_id_by_code(client, code)
     if not point_id:
@@ -814,26 +924,7 @@ async def enrich_one(client: httpx.AsyncClient, code: str, rule: StayRule) -> No
 
     new_text = build_full_enriched_text(text, rule)
 
-    metadata = dict(metadata)
-    metadata["visa_family"] = rule.visa_family
-    metadata["stay_initial_days"] = rule.initial_days
-    metadata["stay_extension_days"] = rule.extension_days
-    metadata["stay_max_total_days"] = rule.max_total_days
-    metadata["stay_max_extensions"] = (
-        rule.max_extensions if isinstance(rule.max_extensions, int) else 0
-    )
-    metadata["stay_max_extensions_desc"] = str(rule.max_extensions)
-    metadata["stay_rules_validated"] = "NB-2 2026-04-17"
-    metadata["stay_legal_basis"] = rule.legal_basis
-    if rule.visa_validity:
-        metadata["visa_validity"] = rule.visa_validity
-    metadata["kitap_eligible"] = bool(rule.kitap_eligible)
-    if rule.kitap_years_required:
-        metadata["kitap_years_required"] = rule.kitap_years_required
-    if rule.bali_warning:
-        metadata["bali_extension_restriction"] = "PMA shareholders/directors: extension rejected in Bali"
-    if rule.notes:
-        metadata["operational_notes"] = rule.notes[:500]
+    metadata = build_metadata(metadata, rule)
 
     new_payload = {"text": new_text, "metadata": metadata}
 
@@ -961,7 +1052,7 @@ Multiple Exit Re-entry Permit is now automatically integrated in KITAS and KITAP
 ## Who is eligible (Permenkumham 11/2024 Pasal 173)
 - Workers (E23)
 - Religious figures (rohaniwan)
-- Investors (E28 series, all variants)
+- Investors (E28 series): KITAP eligibility is NOT stated on the official visa pages; confirm before advising
 - Family reunification (E31 series, all variants)
 - Repatriation / ex-WNI (E32 series)
 - Second Home / Special Skills / World Figure / Retirees age 60+ (E33, E33A, E33B, E33C, E33E)
@@ -977,13 +1068,8 @@ Multiple Exit Re-entry Permit is now automatically integrated in KITAS and KITAP
 3 consecutive years on the same KITAS. Application submitted max 30 days before KITAS expiry (Pasal 174(2)).
 
 ## Special exceptions
-- **E28B/E28G Golden Visa**: direct KITAP-INV after 5 years (skip language test, maintain investment)
 - **E31A spouse of WNI**: 3 years KITAS PLUS marriage must be ≥2 years officially registered (Pasal 179(3))
 - **Ex-WNI direct KITAP without KITAS**: only if citizenship was lost WHILE physically in Indonesia (Pasal 120(2)+(4))
-
-## E28A KITAS vs KITAP threshold (IMPORTANT)
-- KITAS E28A requires: Rp 10 billion in shares
-- KITAP E28A requires: **Rp 15 billion** in shares (Permenkumham 11/2024 Pasal 176(2)(c))
 
 ## Document checklist (Pasal 176)
 - Valid KITAS (current, not expired)
@@ -1009,7 +1095,6 @@ These police/anagraphic documents (Surat Keterangan Kepolisian, Surat Lapor Diri
 
 ## Language and integration test
 - Bahasa Indonesia at B1 level + Pancasila/UUD 1945 knowledge REQUIRED
-- Exemption: Golden Visa investors (E28B, E28G)
 - NB-2 has no documented age-based exemption (e.g., no special rule for age 60+/65+)
 
 ## KITAP duration and maintenance

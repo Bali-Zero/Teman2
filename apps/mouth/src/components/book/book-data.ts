@@ -541,6 +541,34 @@ export interface Service {
   features: string[];
   waMessage: string;
   badge?: string;
+  /** Sentence shown as features[0] and omitted from the displayed tagline. */
+  highlight?: string;
+}
+
+/**
+ * Indonesian rendering of highlight sentences, keyed by the exact English
+ * sentence. The catalogue has no description_id, so only the highlight is
+ * localized; the rest of the card stays as it is.
+ */
+export const HIGHLIGHT_ID: Record<string, string> = {
+  "A sponsor (penjamin) is required; Bali Zero can act as one.":
+    "Diperlukan penjamin; Bali Zero dapat menjadi penjamin Anda.",
+};
+
+export function localizeServiceHighlight<T extends Service>(
+  service: T,
+  locale: Locale,
+): T {
+  const localized =
+    locale === "id" && service.highlight
+      ? HIGHLIGHT_ID[service.highlight]
+      : undefined;
+  if (!localized || service.features[0] !== service.highlight) return service;
+  return {
+    ...service,
+    highlight: localized,
+    features: [localized, ...service.features.slice(1)],
+  };
 }
 
 export function pricingBackedVisaService(
@@ -576,11 +604,18 @@ export function pricingBackedVisaService(
     pricingCategory,
     pricingItemKey,
     title: entry.name,
-    tagline: entry.description_en ?? entry.name,
+    tagline:
+      (highlight
+        ? entry.description_en
+            ?.replace(highlight, "")
+            .replace(/\s+/g, " ")
+            .trim()
+        : entry.description_en) || entry.name,
     category: "visa",
     features,
     waMessage: `Hi, I am interested in ${entry.name}. Can you give me more info?`,
     badge,
+    ...(highlight ? { highlight } : {}),
   };
 }
 

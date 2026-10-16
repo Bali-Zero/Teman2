@@ -17,22 +17,14 @@ import os
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
-from openai import OpenAI
-
-# Load environment variables
-load_dotenv()
-
-# Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Importing this module has no side effects: `scripts/sync_pricing_collection_prices.py
+# --create-missing` reuses generate_semantic_text / generate_point_id from it, so the
+# dotenv load, the key check and the OpenAI client live in main().
 DATA_PATH = (
     Path(__file__).parent.parent / "backend" / "data" / "bali_zero_official_prices_2026.json"
 )
 OUTPUT_PATH = Path(__file__).parent / "ready_to_curl.json"
 COLLECTION_NAME = "bali_zero_pricing"
-
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not set in environment")
 
 
 def generate_semantic_text(
@@ -163,6 +155,14 @@ def flatten_services(data: dict[str, Any]) -> list[dict[str, Any]]:
 
 def main():
     """Main function to prepare payloads."""
+    from dotenv import load_dotenv
+    from openai import OpenAI
+
+    load_dotenv()
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OPENAI_API_KEY not set in environment")
+
     print("🚀 Starting Payload Preparation...")
     print(f"📂 Reading: {DATA_PATH}")
 
@@ -178,7 +178,7 @@ def main():
     print(f"📊 Found {len(items)} pricing items")
 
     # Initialize OpenAI client
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = OpenAI(api_key=openai_api_key)
 
     # Prepare points
     points = []
