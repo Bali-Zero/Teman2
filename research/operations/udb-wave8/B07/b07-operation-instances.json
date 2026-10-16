@@ -1,0 +1,1178 @@
+{
+  "block": "B07",
+  "block_closed": false,
+  "native_probe_executed": false,
+  "operation_instances": [
+    {
+      "authorization": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_e98bb23501189d64",
+      "effects": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "workflow invokes backend.db.migrate apply-all before deploy and SQL v2 migrations after deploy"
+      },
+      "evidence_sha256": "99dafef69dd8e99fe9f937e3e43ae9b92ce41188dfcb3676875ef581bf0486d1",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "run-migrations has no continue-on-error; deploy needs run-migrations; unrelated lint step is non-blocking"
+      },
+      "idempotency": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "migration idempotency delegated to invoked CLI; workflow result not observed"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "PARTIAL",
+        "value": "github_actions:deploy_workflow_ssh"
+      },
+      "recovery": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "PARTIAL",
+        "value": "rerun behavior and fresh-image selection require actual CI observation"
+      },
+      "retention": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "N/A"
+      },
+      "retries": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": ".github/workflows/fly-deploy.yml:142-165;283-306",
+        "status": "EVIDENCED",
+        "value": "pre-deploy and post-deploy jobs invoke migration CLI over flyctl SSH"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "CI_RUNTIME_RESULT_UNOBSERVED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": ".github/workflows/fly-deploy.yml",
+      "x_research_line": "D11"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_c8f206461cd9bf69",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "delegates pending SQL migration execution and ledger writes to MigrationManager"
+      },
+      "evidence_sha256": "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b",
+      "evidence_timestamp": "2026-10-15T08:55:00.474686+00:00",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "lock-busy result may contain empty failed list; CLI treats len(failed)==0 as success"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "delegates applied-migration-number skip check to MigrationManager"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "PARTIAL",
+        "value": "env:DATABASE_URL_ADMIN_FALLBACK_DATABASE_URL"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "PARTIAL",
+        "value": "manual migration or restore reconciliation remains unverified"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "migration ledger writes delegated; live retention not measured"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/migrate.py:60-78",
+        "status": "EVIDENCED",
+        "value": "delegates to MigrationManager.apply_all_pending; no inline full-file checksum computation"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_LEDGER_RECONCILIATION_BLOCKED_PENDING_BOOLEAN_PROBE_ADMISSION",
+        "RUNTIME_ROLE_UNOBSERVED",
+        "CHECKSUM_FORMAT_CONFLICT_NOT_ESTABLISHED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/db/migrate.py",
+      "x_research_line": "D11"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_058ad32e4ad2e6a8",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "discovers SQL files in migrations_v2 and applies pending migration numbers"
+      },
+      "evidence_sha256": "8e0afb54e3727d3b5935687e78f832589fa25e73e42c96f24b78e289c7a5ed03",
+      "evidence_timestamp": "2026-10-15T08:55:00.474686+00:00",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "lock-busy refusal returns empty applied/skipped/failed lists; caller can report success"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "skips migration_number values returned by get_applied_migrations"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "PARTIAL",
+        "value": "env:DATABASE_URL"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "PARTIAL",
+        "value": "rollback lineage and dual-ledger state require admitted reconciliation"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "ledger records written; no live retention observation"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_manager.py:501-600",
+        "status": "EVIDENCED",
+        "value": "session advisory lock 73491 around apply_all_pending; migration execution delegated"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_LEDGER_RECONCILIATION_BLOCKED_PENDING_BOOLEAN_PROBE_ADMISSION",
+        "RUNTIME_ROLE_UNOBSERVED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/db/migration_manager.py",
+      "x_research_line": "D11"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_7d02a5740175b765",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "logs checksum of complete sql argument to schema_migrations and _schema_versions"
+      },
+      "evidence_sha256": "3bb9b20b2503f207f77f82187048fb07e71cbaa3d634584f6f18ced2424f7626",
+      "evidence_timestamp": "2026-10-15T08:55:00.474686+00:00",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "migration errors are raised; no CLI-vs-base checksum format conflict established"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "reads complete UTF8 SQL file, passes sql to _log_migration, and hashes that argument; executes parsed forward SQL separately"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "PARTIAL",
+        "value": "caller_supplied_asyncpg_connection"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "PARTIAL",
+        "value": "rollback SQL stored separately; live recovery unverified"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "ledger writes have no TTL in reviewed logging method"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/migration_base.py:832-834;921-960;1045-1129",
+        "status": "EVIDENCED",
+        "value": "run_with_lock_retry wraps forward SQL execution and dual-ledger logging"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_LEDGER_RECONCILIATION_BLOCKED_PENDING_BOOLEAN_PROBE_ADMISSION",
+        "CHECKSUM_FORMAT_CONFLICT_NOT_ESTABLISHED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/db/migration_base.py",
+      "x_research_line": "D11"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_697f237385fbe9eb",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "SELECT against information_schema, pg_catalog, _schema_versions, schema_migrations"
+      },
+      "evidence_sha256": "92965e285167c551e54842425ddb6adb6041ffba368a47756930a2cfc5305b1e",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "returns non-zero exit code on schema drift"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "read-only deterministic audit"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "PARTIAL",
+        "value": "env:DATABASE_URL"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "PARTIAL",
+        "value": "N/A (read-only)"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "stateless stdout/JSON report"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/db/schema_audit.py:540-575",
+        "status": "EVIDENCED",
+        "value": "read_only_catalog_queries"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_EXECUTION_OUTPUT_NOT_PINNED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/db/schema_audit.py",
+      "x_research_line": "D11"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_fcca1b3652b56e72",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "DDL CREATE TABLE partition, DELETE retention rows, ANALYZE, pg_terminate_backend, SET/RESET SYSTEM, INSERT olympus_actions"
+      },
+      "evidence_sha256": "87750c12eea0d768f5d2b21567de1e2a3fb9980c5ac93e3956347cb7ce0c1728",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "stop sets _running=False, cancels tasks and clears task list without awaiting their completion; cleanup outcome unobserved"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "IF NOT EXISTS on partition creation; non-atomic audit logging"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "PARTIAL",
+        "value": "app.state.db_pool (runtime role)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "PARTIAL",
+        "value": "pool_recycle / reset_config fallback"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "deletes old rows per olympus_rules config; olympus_actions unbounded"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/guardian.py:32-145",
+        "status": "EVIDENCED",
+        "value": "autocommit pool.execute / pool.fetch per maintenance action"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "TASK_CANCELLATION_CLEANUP_UNOBSERVED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/guardian.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_5726ef98e1124f67",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "EVIDENCED",
+        "value": "bloat/index/vacuum/retention/partition maintenance + INSERT olympus_actions"
+      },
+      "evidence_sha256": "6c1d76d761fb30db233d3173a2a2e8e1c17e3463207b7c48c77eb2b6eac70cb8",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "CONFLICT",
+        "value": "CE-04: maintenance effect can succeed while audit INSERT fails (or vice versa)"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "CONFLICT",
+        "value": "cooldown-gated in memory; lost on process restart"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "PARTIAL",
+        "value": "app.state.db_pool (runtime role)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "PARTIAL",
+        "value": "next pulse tick retries after cooldown"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "EVIDENCED",
+        "value": "prunes api_audit_trail / persistent_sessions / olympus_heartbeats"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/pulse.py:55-625",
+        "status": "EVIDENCED",
+        "value": "separate autocommit statements for maintenance DDL/DML and olympus_actions INSERT"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "CE_04_NON_ATOMIC_MAINTENANCE_AND_AUDIT_WRITE",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/pulse.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_e20ebbdb6f795a47",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "INSERT olympus_heartbeats; DDL CREATE TABLE olympus_heartbeats_yYYYYmMM PARTITION OF olympus_heartbeats"
+      },
+      "evidence_sha256": "06a07988fa1ac1e85f1b62bd561a93586ad8893bc4508e0dcf90b45dafa9e906",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "falls back to olympus_heartbeats_default partition if monthly partition missing"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "CREATE TABLE IF NOT EXISTS for monthly partitions"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "PARTIAL",
+        "value": "app.state.db_pool (runtime role)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "PARTIAL",
+        "value": "ensure_next_month_partition self-heals on pulse"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "prune_old_heartbeats deletes rows older than retention threshold"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/heartbeat.py:155-245",
+        "status": "EVIDENCED",
+        "value": "autocommit INSERT into olympus_heartbeats and CREATE TABLE partition"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "LIVE_PARTITION_STATE_PENDING_BOOLEAN_PROBE",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/heartbeat.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_d272bb6bdef03fbe",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "INSERT/SELECT public.olympus_insights"
+      },
+      "evidence_sha256": "21e3a63cf758740e59eda5f1102c2f08a5f6996ef691bbfcd07aa7304cd8aabc",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "logs warning and continues"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "append-only insight log"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "PARTIAL",
+        "value": "app.state.db_pool (runtime role)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "PARTIAL",
+        "value": "stateless re-computation on next pulse"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "unbounded unless pruned by guardian"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/insights.py:28-160",
+        "status": "EVIDENCED",
+        "value": "autocommit INSERT/SELECT on olympus_insights"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/insights.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_37fd824491703880",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "SELECT/UPDATE public.olympus_rules"
+      },
+      "evidence_sha256": "8e91d94baaf9947e59c881fd57783a3ae10599bd2b475f1d476437a49bdd6385",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "falls back to hardcoded default thresholds on query error"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "rule lookup cached with fallback defaults"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "PARTIAL",
+        "value": "app.state.db_pool (runtime role)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "PARTIAL",
+        "value": "fallback defaults in code"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "configuration table (seeded by migrations 074 and 233)"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/rules_engine.py:23-60",
+        "status": "EVIDENCED",
+        "value": "autocommit SELECT/UPDATE on olympus_rules"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/rules_engine.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_4104f553c1186e0c",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "EVIDENCED",
+        "value": "gates Olympus maintenance actions via in-memory blast-radius counters"
+      },
+      "evidence_sha256": "df320f749dbad6782b00979e985bf133985cef7e42607fff4807c7eeacdf02b3",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "CONFLICT",
+        "value": "blocks maintenance action in-memory when threshold exceeded"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "CONFLICT",
+        "value": "CE-03: reset on process restart; not coordinated across multiple machines/workers"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "PARTIAL",
+        "value": "in_memory_process_local"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "PARTIAL",
+        "value": "process restart clears all safety history"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "EVIDENCED",
+        "value": "ephemeral process memory"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "CONFLICT",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/olympus/safety.py:10-45",
+        "status": "EVIDENCED",
+        "value": "in-memory dict/list state only (not persisted in PG)"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "CE_03_PROCESS_LOCAL_RATE_LIMIT_SHARED_ACROSS_CALLERS",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/olympus/safety.py",
+      "x_research_line": "D13"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_05d88b7c837c1309",
+      "effects": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "DELETE events_outbox WHERE consumed_at IS NOT NULL AND consumed_at is older than configured days; no dead_letter predicate"
+      },
+      "evidence_sha256": "58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3",
+      "evidence_timestamp": "2026-10-15T08:55:09Z",
+      "failure": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "prune_consumed error propagates through shell-invoked Python"
+      },
+      "idempotency": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "repeated predicate delete removes only remaining eligible consumed rows"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "PARTIAL",
+        "value": "DATABASE_URL connection in shell-invoked Python; live role unobserved"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "PARTIAL",
+        "value": "deleted data requires separate backup recovery proof"
+      },
+      "retention": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "OUTBOX_PRUNE_DAYS defaults to30; prune_consumed default older_than_days=30"
+      },
+      "retries": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/outbox-prune.sh:75-85; apps/backend-rag/backend/services/events/outbox.py:422-442",
+        "status": "EVIDENCED",
+        "value": "single prune_consumed DELETE via asyncpg connection"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "PRO_LAUNCHAGENT_PLIST_COUNT_2_OBSERVED_IN_DR05_PRO",
+        "LIVE_PRUNE_NOT_EXECUTED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "scripts/outbox-prune.sh",
+      "x_research_line": "D02"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_9ad4d21e806efece",
+      "effects": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "prunes delivered/expired rows in events_outbox"
+      },
+      "evidence_sha256": "db339ac2a53ec2c8d51ae14c711ff63c9f5328158718ddd46367657c64dab9ec",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "raises exception and exits nonzero"
+      },
+      "idempotency": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "idempotent timestamp-bounded DELETE"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "PARTIAL",
+        "value": "env:DATABASE_URL"
+      },
+      "recovery": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "PARTIAL",
+        "value": "PG backup restore only"
+      },
+      "retention": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "configurable retention window"
+      },
+      "retries": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "scripts/outbox_prune.py:24-96",
+        "status": "EVIDENCED",
+        "value": "asyncpg connection execute"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "scripts/outbox_prune.py",
+      "x_research_line": "D02"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_6e1c7398dbc460bf",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "executes visa_decision_retention_policies erasure/retention batches and records batch evidence"
+      },
+      "evidence_sha256": "58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3",
+      "evidence_timestamp": "2026-10-15T08:55:09Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "rolls back transaction and exits nonzero"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "batch ledger + legal hold guard prevents double erasure"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "PARTIAL",
+        "value": "mini_launchd:com.nuzantara.visa-oracle-retention.15min"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "PARTIAL",
+        "value": "immutable retention batch audit log in visa_decision_retention_batches"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "policy-driven per visa_decision_retention_policies (e.g. 30d/90d)"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "PARTIAL",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py:83-354",
+        "status": "EVIDENCED",
+        "value": "SECURITY DEFINER RPC calls inside explicit transaction"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "ZERO_SCHEDULER_REFS_ON_PRO_IN_DR05_PRO_MINI_WRAPPER_REGISTERED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/scripts/visa_engine/retention_worker.py",
+      "x_research_line": "D02"
+    },
+    {
+      "authorization": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_66593fdb65bc402e",
+      "effects": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "DELETE/UPDATE on visa_decisions, visa_decision_payloads, visa_evaluate_idempotency, garuda_voa_checks + INSERT batch ledgers"
+      },
+      "evidence_sha256": "4d42833e842fb4c17afad37bc17bff79cfe3248c13f487c7fb780086fefb66c3",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "raises error and aborts batch transaction"
+      },
+      "idempotency": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "idempotent bounded batch execution with audit receipt"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "PARTIAL",
+        "value": "visa_retention_worker_role (SECURITY DEFINER binder)"
+      },
+      "recovery": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "PARTIAL",
+        "value": "legal hold events in visa_decision_legal_hold_events block erasure"
+      },
+      "retention": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "enforces public.visa_decision_retention_policies"
+      },
+      "retries": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "none_in_sql_layer"
+      },
+      "role": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "EVIDENCED",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": "apps/backend-rag/backend/services/visa_engine/retention.py:53-253",
+        "status": "EVIDENCED",
+        "value": "transactional batch execution with legal-hold exclusion"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "STATIC_SOURCE_ONLY",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "apps/backend-rag/backend/services/visa_engine/retention.py",
+      "x_research_line": "D02"
+    },
+    {
+      "authorization": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "consumer_id": "src_def7a4c288a552af",
+      "effects": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "evidence_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "evidence_timestamp": "2026-10-15T07:06:22Z",
+      "failure": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "idempotency": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "operation_id": "UNASSIGNED_B05",
+      "principal": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "recovery": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "retention": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "retries": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "role": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+      "status": "BLOCKED",
+      "store_id": "pg:fly:nuzantara-postgres/public",
+      "tenant": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "transaction": {
+        "evidence_ref": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+        "status": "UNKNOWN",
+        "value": "UNKNOWN"
+      },
+      "unknowns": [
+        "OPERATION_ID_PENDING_B05",
+        "HISTORICAL_SOURCE_UNAVAILABLE_AT_FROZEN_BASE",
+        "SUCCESSOR_LINEAGE_UNPROVEN",
+        "HISTORICAL_STORE_BINDING_UNOBSERVED",
+        "RUNTIME_PRINCIPAL_ROLE_TENANT_BINDING_UNOBSERVED",
+        "CANONICAL_STORE_ID_IS_LOGICAL_TARGET_NOT_LIVE_BINDING"
+      ],
+      "x_entry_point": "scripts/pg-restore-drill.sh",
+      "x_historical_source_available": false,
+      "x_research_line": "D02",
+      "x_successor_lineage_status": "UNPROVEN"
+    }
+  ]
+}

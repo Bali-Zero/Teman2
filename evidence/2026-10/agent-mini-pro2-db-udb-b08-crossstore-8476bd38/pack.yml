@@ -1,0 +1,55 @@
+mandate: universal-db-wave8-20261015-B08
+brief_ref: evidence/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim:
+      Verified recorded fixture-only 102-pass outcome and exact frozen source pin. This command verifies
+      existing evidence; tests were not rerun at this timestamp.
+    cmd:
+      /opt/homebrew/bin/python3 -c 'from pathlib import Path;import json,hashlib;d=json.loads(Path('"'"'research/operations/udb-wave8/B08/integration-20261016/BOUNDARY-CORRECTION-RECEIPT.json'"'"').read_text());assert
+      d['"'"'verification'"'"']['"'"'clean_physical_copy_suite'"'"']['"'"'passed'"'"']==102 and d['"'"'verification'"'"']['"'"'clean_physical_copy_suite'"'"']['"'"'exit_code'"'"']==0;assert
+      hashlib.sha256(Path('"'"'research/operations/udb-wave8/B08/b08_crossstore_adapter.py'"'"').read_bytes()).hexdigest()=='"'"'7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae'"'"''
+    exit: 0
+    ts: "2026-10-16T08:37:03.191224+00:00"
+    seat: codex-coordinator
+    result:
+      Recorded original and clean 102P/0F/0skip; fresh independent reviewer separately reproduced
+      102P and 14 combined boundary probes.
+    evidence_ref: research/operations/udb-wave8/B08/integration-20261016/BOUNDARY-CORRECTION-RECEIPT.json
+  - claim:
+      102 meaningful boundary tests pass after assertion-visibility refactor; original 38301-byte prefix
+      preserved; anti-reward-hacking lint clean.
+    cmd: /Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py
+    exit: 0
+    ts: "2026-10-16T08:58:08.055542+00:00"
+    seat: codex-coordinator
+    result: 102P; exact source unchanged; independent final head pending
+    evidence_ref: research/operations/udb-wave8/B08/integration-20261016/ASSERTION-VISIBILITY-REFACTOR.json
+dissent:
+  - seat: independent-reviewer
+    objection:
+      Nine store instances and eight dimensions do not establish the active runtime denominator
+      or resolve source counterexamples.
+    status: CONFIRMED
+pii_scan: clean
+block_closed: false
+native_probe_executed: false
+production_adoption: false
+final_gate: PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD
+lanes:
+  - lane: B08-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B08-bounded-boundary-correction
+    role: build
+    seat: astra-requested-support
+  - lane: B08-outside-contribution-final
+    role: review
+    seat: astra-requested-independent-review
+seat_override:
+  Authenticated owner completion and Claude-availability exceptions retained; main builder
+  Gemini, independent available-family source review verified. No effective model identity is inferred.
+limitations:
+  - Active denominator UNKNOWN; block_closed false.
+  - Original deadline elapsed; no new native or source correction phase started.
+  - Exact secret false-positive admission and whole committed-head gate still pending.

@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-I",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-p",
+    "no:cacheprovider",
+    "-q",
+    "research/operations/udb-wave8/B07/test_b07_lineage_invariants.py"
+  ],
+  "observed_at": "2026-10-16T07:37:23.374010+00:00",
+  "returncode": 0,
+  "stdout_sha256": "a78ca61dfdb9f3a442450088feb624888428e7d9d06cc4c61290fe708f66033c",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "summary": [
+    "16 passed in 0.16s"
+  ],
+  "failed_nodes": []
+}

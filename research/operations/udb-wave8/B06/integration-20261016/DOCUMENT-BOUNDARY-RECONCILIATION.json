@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-16T10:22:25.222171+00:00",
+  "scope": "Current inventory versus historical preparer sections; not an independent final gate",
+  "before": [
+    {
+      "path": "ANALYSIS.md",
+      "sha256": "cc065e36a57e4c07decc5fc36e623953bdf01104eb61abdb21d6f6925047e525"
+    },
+    {
+      "path": "BATTLE.md",
+      "sha256": "0b2fc5d1979129f2323189c44aad2cb160672bd46db25d6fb5242edf50865f4e"
+    },
+    {
+      "path": "DEFINITIVE-SYNTHESIS.md",
+      "sha256": "b39d49468f19770c0732b1d72ab60c36f8d5ca20c3e81caeba10c01032bcd8c6"
+    },
+    {
+      "path": "PROPOSAL.md",
+      "sha256": "f0bdc3422e178315e6d8e820b0807bacc5131ff080d1a9eb3b128c48f572ecd4"
+    }
+  ],
+  "after": [
+    {
+      "path": "ANALYSIS.md",
+      "sha256": "ed40b44dd5f1e0b4645af77ed004afe7a9001bd560d0e296d0953d750af29182"
+    },
+    {
+      "path": "BATTLE.md",
+      "sha256": "fe8f60c402a93aef45bd9a2b344b6044ce97311cd14eb17bb13aad09a711febc"
+    },
+    {
+      "path": "DEFINITIVE-SYNTHESIS.md",
+      "sha256": "a97bf46eed3933938c254bf03885aa0d414a5173eb58645752d08ad18d7d3edd"
+    },
+    {
+      "path": "PROPOSAL.md",
+      "sha256": "cc4f3ef33b4348f8d9ee465be59a1f62354ef86de78072166cc8b21ed4a2c382"
+    },
+    {
+      "path": "PR_BODY.md",
+      "sha256": "6701e3afb40efed50e0083daec2d2313646ad94e4a3c1c24d02d39a931b7ce21"
+    }
+  ],
+  "source_tests_unchanged": true,
+  "actual_source_tests_passed": 27,
+  "independent_document_gate": "INCOMPLETE",
+  "operational_block_closed": false
+}

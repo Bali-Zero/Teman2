@@ -1,0 +1,28 @@
+task_id: infra-pro-cleanup-daemons-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B41: Pro cleanup daemons for the two classes of stale disk accumulation measured on Pro 2026-10-16:
+  (1) `scripts/disk_janitor.sh` adds the `tmp_stale` rule for `/private/tmp` top-level entries older than 3 days with no live
+  process (`lsof +D`), no `.git` indicator, not named by any `~/Library/LaunchAgents/*.plist`, not a reserved system directory,
+  bounded at 5 GiB and 50 entries per daily run, with kill switch `DISK_JANITOR_TMP_STALE_ENABLED=false` and sentinel
+  `~/logs/disk-janitor.tmp-stale.disabled`.
+  (2) `scripts/translate-articles-cron-wrapper.sh` closes superseded `mouth-hourly-*` PRs without `--delete-branch`, releases the
+  superseded local worktree (`agent_start.py --release <task> --force`), deletes the remote branch once the local worktree is gone,
+  and reaps any existing clean `mouth-hourly-*` worktree whose PR is already `CLOSED` or `MERGED` at run start.
+constraints:
+  - "No changes to existing disk_janitor rules (TEST 1..10 unchanged)."
+  - "tmp_stale never touches entries <=3d, open in lsof, containing .git, referenced by a LaunchAgent plist, or in the reserved list."
+  - "translate-articles-cron-wrapper.sh never reaps an OPEN or dirty hourly PR's worktree."
+acceptance:
+  - text: "disk_janitor.sh tmp_stale reaps old closed non-git non-plist entries up to the 5 GiB / 50 entry cap and spares every protected class."
+    probe: "bash scripts/test_disk_janitor.sh"
+  - text: "translate-articles-cron-wrapper.sh releases superseded hourly worktrees and reaps clean CLOSED/MERGED hourly worktrees at startup while sparing OPEN or dirty ones."
+    probe: "pytest scripts/tests/test_translate_cron_wrapper_content_guards.py"
+consumer_map:
+  - "com.balizero.disk.janitor.daily and com.balizero.translate.hourly on Pro: observation is `bash scripts/disk_janitor.sh --dry-run` reporting `tmp_stale:` on Pro and the next hourly translation run reaping `mouth-hourly-20261016053020`."
+risks:
+  - "`lsof +D` on a huge directory tree can be slow; bounded to top-level `/private/tmp` entries older than 3 days and capped at 50 entries / 5 GiB per run."
+grader: |
+  Independent Astra gate review on an immutable archive of the candidate commit, plus test_disk_janitor.sh and test_translate_cron_wrapper_content_guards.py on Mini.

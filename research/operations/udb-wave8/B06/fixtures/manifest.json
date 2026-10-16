@@ -1,0 +1,34 @@
+{
+  "schema": "b06-frozen-metadata-projection-v1",
+  "kind": "TEST_FIXTURE_NOT_NATIVE_OBSERVATION",
+  "source_csv_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+  "projection_file": "consumer-matrix-metadata.csv",
+  "projection_sha256": "dfe7c0b1967bfb70d732736bf9f808242d269551237318a0491add6a25ff32c7",
+  "source_rows": 6029,
+  "source_prefix_rows": 683,
+  "columns": [
+    "domain",
+    "domain_hint",
+    "disposition",
+    "blocker",
+    "activation_status",
+    "contract_coverage_status",
+    "phase_source_scope_status",
+    "phase_source_path_evidence",
+    "phase_factory_candidate_count",
+    "entry_point",
+    "consumer_id"
+  ],
+  "unused_fields_blanked": [
+    "blocker",
+    "activation_status"
+  ],
+  "entry_point_transform": "Retain only one of six generic code prefixes; replace the entire original path with the existing canonical consumer_id. No original basenames/home/client paths.",
+  "source_receipt_sha256": {
+    "DUX-REQ-B06-01.cmd.sh": "2ab0a482d1c8b4d31e82f6588083992e67b8031d447d11d501c36409a9f47fad",
+    "DUX-REQ-B06-01.out": "1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb",
+    "DUX-REQ-B06-03.cmd.sh": "03ac55218419d807d0f2f54f9e133e96600a9de8c2fcb60021ddd9b4795011ec",
+    "DUX-REQ-B06-03.out": "e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa"
+  },
+  "limitation": "Derived from admitted frozen metadata; processed projection byte hash differs from original source CSV hash; no fresh live observation."
+}

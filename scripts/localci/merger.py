@@ -613,7 +613,10 @@ def drop_worktree(repo: Path, path: Path) -> None:
 # a hard one to EVICT mid-run (floor + EVICT_MARGIN_GB), and image GC under pressure (prune.py). An eviction is the host's
 # no-verdict, never the candidate's: it is journalled apart from `decision`, so the same (pr, head, base) is decided again.
 HOST_FLOOR_GB = 50.0     # Zero, 2026-10-16, lowered from 90 (was 100 before 2026-10-11)
-START_MARGIN_GB = 10.0     # the start floor is 60
+START_MARGIN_GB = 10.0     # the prune's start floor (60); a run's own start floor is by plan, B39 below
+START_MARGIN_LIGHT_GB = 6.0    # B39: a plan with no heavy context starts at 56. Measured: 27 light runs, the largest net drop 6 GB, none evicted
+START_MARGIN_HEAVY_GB = 18.0   # B39: a plan with a heavy context, or one that cannot be classified, starts at 68 (eviction lower bound p75 15.7 GB + 1.5)
+PLAN_PROBE_MAX = 5             # B39: how many queued PRs one tick classifies looking for the first whose start floor the host meets
 EVICT_MARGIN_GB = 1.5
 RUN_HEADROOM_GB = 15.0      # prune sheds second slots under start floor + this. Measured on Pro 2026-10-13: a prune at 19:21Z saw 104.9 GB free and PR 8441 was evicted at 19:44Z at 91.48, so one run uses >= 13.4 GB
 EVICT_CAP = 3               # evictions of one (pr, head, base) before it is skipped: a head the host cannot afford does not starve the queue
@@ -634,6 +637,136 @@ def host_free_gb(path: str = HOST_PATH) -> float | None:
         return round(shutil.disk_usage(path).free / 1e9, 3)
     except OSError:
         return None
+
+
+def base_skips_codeql_deps(repo_dir: Path, base_sha: str) -> bool:
+    """B39: does the BASE runner avoid ``plan_deps_image`` when a classifier's outputs are all false? ``run_gate`` executes the
+    BASE runner, so a historical BASE (e.g. a replay before B39) still builds the CodeQL deps image on a cold cache."""
+    res = git(repo_dir, "show", f"{base_sha}:scripts/localci/runner.py", timeout=60, check=False)
+    return res.returncode == 0 and "skipped at plan (classifier flags all false)" in res.stdout and "if classifier_off:" in res.stdout
+
+
+def runner_base_env() -> dict:
+    """B39: the host environment ``run_gate`` gives the runner before ``trusted_env()`` strips secrets and python hooks."""
+    base = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ}
+    return {**base, **GIT_ISOLATED, "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
+
+
+def plan_weight(repo_dir: Path, base_sha: str, changed: list[str]) -> tuple[str, str]:
+    """B39: ("light" | "heavy", why) for a run that would execute ``changed`` on ``base_sha``, BEFORE ``runner plan`` runs (the plan builds
+    the deps images). The BASE matrix names what is heavy structurally: a context with ``local.deps`` builds an image or a cache. It is
+    selected unless the BASE ``change_map.py`` (``runs_when``) or ``security_gate_flags.py`` (``classifier``, with the ring-gating override
+    inactive as the runner reads it and a BASE runner that skips the deps build) says it is not, as the runner asks them. Anything unreadable or failing is heavy: a plan that cannot
+    be classified takes the heavy floor."""
+    try:
+        import yaml
+        judge = StaleJudge(repo_dir, base_sha)
+        rn = judge._runner()
+        _te = rn.trusted_env
+        rn.trusted_env = lambda base=None: _te(runner_base_env() if base is None else base)
+        cql_skip_ok = base_skips_codeql_deps(repo_dir, base_sha)
+        with tempfile.TemporaryDirectory(prefix="merger-b39-") as tmp:
+            trusted = Path(tmp)
+            for f in ("change_map.py", "security_gate_flags.py"):
+                (trusted / f).write_text(git(repo_dir, "show", f"{base_sha}:scripts/ci/{f}", timeout=60).stdout)
+            res = subprocess.run([sys.executable, "-I", str(trusted / "change_map.py")], input="\n".join(changed) + "\n", capture_output=True, text=True,
+                                 timeout=120, env=rn.trusted_env())
+            if res.returncode != 0:
+                return "heavy", f"change_map rc={res.returncode}"
+            cm = json.loads(res.stdout)
+            mapped = rn.change_map_status(cm) == "PASS" and not cm.get("run_all")
+            overrides: dict[tuple[str, str, str, str], bool] = {}
+
+            def override_active(ctx: dict, loc: dict) -> bool:
+                wf, cjob, jid = str(ctx.get("workflow_file") or ""), str((loc.get("classifier") or {}).get("job") or ""), str(ctx.get("job_id") or "")
+                repo = str(loc.get("repository") or hc.DEFAULT_REPO)
+                key = (wf, cjob, jid, repo)
+                if key not in overrides:
+                    try:
+                        jobs_doc = (yaml.safe_load(git(repo_dir, "show", f"{base_sha}:{wf}", timeout=60).stdout) or {}).get("jobs")
+                        holders = {j: jobs_doc.get(j) for j in (cjob, jid)} if isinstance(jobs_doc, dict) else None
+                        overrides[key] = True if holders is None else bool(rn.ring_gating_override(repo_dir, base_sha, trusted, repo, holders, get=hc.gh_get).get("active"))
+                    except (Stopped, TickTimeout):
+                        raise
+                    except Exception:  # noqa: BLE001 — an unreadable workflow or override fails closed to the heavy floor
+                        overrides[key] = True
+                return overrides[key]
+
+            heavy = []
+            for c in judge.contexts():
+                local = c.get("local") or {}
+                if not local.get("deps"):
+                    continue
+                flag = local.get("runs_when")
+                if flag and mapped and flag not in (cm.get("suggested_jobs") or []):
+                    continue
+                if local.get("classifier") and cql_skip_ok:
+                    got, _ = rn.classifier_needs(trusted, cm, changed, local["classifier"])
+                    if got is not None and got["result"] == "success" and all(v == "false" for v in got["outputs"].values()):
+                        if not override_active(c, local):
+                            continue
+                heavy.append(c["name"])
+        return ("heavy", "selects " + ", ".join(heavy)) if heavy else ("light", f"{len(changed)} changed path(s) select no context with a deps image")
+    except (Stopped, TickTimeout):
+        raise
+    except Exception as exc:  # noqa: BLE001 — the heavy floor is the fail-closed answer to a plan that cannot be read
+        return "heavy", f"unclassifiable: {type(exc).__name__}"
+
+
+def start_floor(a, repo_dir: Path, base_sha: str, changed) -> tuple[float, str, str]:
+    """B39: (floor, kind, why) a run of ``changed`` must find free before it starts. An explicit ``--min-host-free-gb`` is the operator's."""
+    if floor_explicit(a) is not None:
+        return floor_explicit(a), "explicit", "--min-host-free-gb"
+    try:
+        paths = changed()
+    except (Stopped, TickTimeout):
+        raise
+    except Exception as exc:  # noqa: BLE001 — an unreadable diff takes the heavy floor, never crashes the tick
+        kind, why = "heavy", f"unclassifiable: {type(exc).__name__}"
+    else:
+        kind, why = plan_weight(repo_dir, base_sha, paths)
+    check_watchdog()
+    return HOST_FLOOR_GB + (START_MARGIN_HEAVY_GB if kind == "heavy" else START_MARGIN_LIGHT_GB), kind, why
+
+
+def floor_met(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, base_sha: str, changed) -> bool:
+    """B39: may a run of this PR (or replay) start at the host's free GB? ``changed`` is a callable: the paths it would change, read
+    only when the floor follows the plan. Journals the skip, with the floor applied and why, when not."""
+    if a.host_free_gb is None:
+        a.last_floor = None
+        return True
+    floor, kind, why = start_floor(a, repo_dir, base_sha, changed)
+    a.last_floor = {"start_floor_gb": floor, "floor_kind": kind, "floor_why": why}
+    if a.host_free_gb >= floor:
+        return True
+    journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.host_floor_gb, "start_floor_gb": floor,
+                    "floor_kind": kind, "floor_why": why, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id})
+    print(f"merger: host_below_floor free_gb={a.host_free_gb:g} start_floor_gb={floor:g} ({kind}: {why}) pr={n} — no run started")
+    return False
+
+
+def pr_paths(repo_dir: Path, base_sha: str, pr: dict) -> list[str]:
+    """B39: the paths the squash candidate of this PR changes on ``base_sha``: the three-way merge tree of its head onto ``base_sha``,
+    diffed from ``base_sha`` (the tree ``decide`` commits as the candidate and ``runner plan`` diffs ``base..candidate`` on)."""
+    n = pr["number"]
+    git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+refs/pull/{n}/head:refs/merger/pr/{n}")
+    res = git(repo_dir, "merge-tree", "--write-tree", base_sha, f"refs/merger/pr/{n}", check=False)
+    tree = res.stdout.splitlines()[0].strip() if res.returncode == 0 and res.stdout.splitlines() else ""
+    if not is_sha(tree):
+        raise MergerError(f"merge-tree of #{n} on {base_sha[:12]} failed (rc={res.returncode})")
+    return git(repo_dir, "diff", "--no-renames", "--name-only", base_sha, tree).stdout.splitlines()
+
+
+def floor_probe(argv: list[str]) -> float | None:
+    """B39: the value of ``--min-host-free-gb`` when the operator gave one (argparse's own reading, abbreviations included), else None."""
+    probe = argparse.ArgumentParser(add_help=False)
+    probe.add_argument("--min-host-free-gb", type=float, default=None)
+    return probe.parse_known_args(argv)[0].min_host_free_gb
+
+
+def floor_explicit(a) -> float | None:
+    """B39: the operator's own ``--min-host-free-gb`` (``main`` reads it from argv), None when the floor follows the plan."""
+    return getattr(a, "floor_explicit", None)
 
 
 class HostEvicted(Exception):
@@ -1882,7 +2015,8 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
     ``schedule`` reason. The candidate IS the merge commit; the BASE stays the commit that was on main before it, so the candidate
     never supplies its own judge. A replay enqueues nothing, rehearses nothing and writes nothing to GitHub."""
     t0 = time.monotonic()
-    rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id}
+    rec = {"kind": "decision", "mode": "shadow", "repo": a.repo, "pr": n, "head_sha": head, "base_sha": base_sha, "lease_id": lease_id,
+           **(getattr(a, "last_floor", None) or {})}
     if replay:
         rec.update(replay=True, merge_commit=replay["merge_commit"], schedule=replay["schedule"])
     if redecide:
@@ -1939,6 +2073,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
                                "non_executed": loc["non_executed"], "partial": loc["partial"], "host_no_verdict": loc["host_no_verdict"],
                                "host_checks": [] if gate.get("error") else host_checks(status),
+                               **({"no_verdict": nvs} if (nvs := {k: v["no_verdict"] for k, v in results.items() if isinstance(v, dict) and v.get("no_verdict")}) else {}),
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
@@ -2164,10 +2299,22 @@ def tick(a, state: Path, lease_id: str) -> int:
     if forced and pick is None:   # the bound's turn found nothing to replay: the count starts again
         journal(state, {"kind": "skipped", "why": "replay_none", "lease_id": lease_id})
     if pick:
+        replayed = lambda: git(repo_dir, "diff", "--no-renames", "--name-only", pick["base_sha"], pick["merge_commit"]).stdout.splitlines()   # B39: the commit GitHub merged, from its first parent
+        if not floor_met(a, state, repo_dir, lease_id, pick["pr"], pick["head"], pick["base_sha"], replayed):
+            return 0
+        check_watchdog()
         return decide(a, state, repo_dir, lease_id, pick["pr"], pick["head"], pick["base_sha"], {"merge_commit": pick["merge_commit"], "schedule": reason})
     if not todo:
         print(f"merger: nothing to decide on {a.base} {base_sha[:12]} ({len(forks)} fork PR(s) refused)")
         return 0
+    if a.host_free_gb is not None:   # B39: the first queued PR whose plan fits the host's free space comes first (a light one passes a heavy one the host cannot afford)
+        for i, item in enumerate(todo[:PLAN_PROBE_MAX]):
+            if floor_met(a, state, repo_dir, lease_id, item["number"], head_of(item), base_sha, lambda: pr_paths(repo_dir, base_sha, item)):
+                todo.insert(0, todo.pop(i))
+                break
+        else:
+            return 0
+        check_watchdog()
     n, head = todo[0]["number"], head_of(todo[0])
     git(repo_dir, "fetch", "--no-tags", "--quiet", "origin", f"+refs/pull/{n}/head:refs/merger/pr/{n}")
     fetched = git(repo_dir, "rev-parse", f"refs/merger/pr/{n}^{{commit}}").stdout.strip()
@@ -2212,9 +2359,12 @@ def cmd_tick(a) -> int:
     if bound.read_text().strip() != a.repo.lower():
         print(f"merger: refusing — {state} belongs to {bound.read_text().strip()!r}, not {a.repo!r}", file=sys.stderr)
         return 2
+    a.min_host_free_gb = floor_explicit(a) if floor_explicit(a) is not None else HOST_FLOOR_GB + START_MARGIN_LIGHT_GB   # B39: from here the lowest floor any plan has
     if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:   # B6: the gate never finishes the job of filling the disk
+        explicit = floor_explicit(a) is not None
         journal(state, {"kind": "skipped", "why": "host_below_floor", "free_gb": a.host_free_gb, "floor_gb": a.host_floor_gb,
-                        "start_floor_gb": a.min_host_free_gb})   # B15: floor_gb is Zero's floor; a run starts only above it by START_MARGIN_GB
+                        "start_floor_gb": a.min_host_free_gb, "floor_kind": "explicit" if explicit else "light",
+                        "floor_why": "--min-host-free-gb" if explicit else "below lowest plan floor (light)"})   # B15: floor_gb is Zero's floor
         print(f"merger: host_below_floor free_gb={a.host_free_gb:g} floor_gb={a.host_floor_gb:g} start_floor_gb={a.min_host_free_gb:g} — no run started")
         return 0
     fh, lease = take_lease(state, a.repo)
@@ -3019,7 +3169,11 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--code-sha", help="the origin/main commit this merger.py was extracted from (the launchd wrapper passes it)")
     t.add_argument("--host-free-gb", type=float, help="the host's free GB as the launchd wrapper read it before the tick (B6)")
     t.add_argument("--min-host-free-gb", type=float, default=HOST_FLOOR_GB + START_MARGIN_GB,
-                   help="the start floor: under it no run starts, the skip is journalled (B6; B15: Zero's floor + START_MARGIN_GB)")
+                   help="the start floor for every plan, the operator's override: under it no run starts, the skip is journalled (B6). Absent, the floor "
+                        "follows the plan (B39): Zero's floor + START_MARGIN_HEAVY_GB when it selects a heavy context or cannot be classified, "
+                        "+ START_MARGIN_LIGHT_GB otherwise")
+    t.add_argument("--floor-by-plan", action=argparse.BooleanOptionalAction, default=True,
+                   help="B39 kill switch: --no-floor-by-plan gives every plan the one start floor --min-host-free-gb (default 60), as before B39")
     t.add_argument("--host-floor-gb", type=float, default=HOST_FLOOR_GB,
                    help="B15: Pro keeps more than this free; a run is evicted under it + EVICT_MARGIN_GB (0 disables the watchdog)")
     t.add_argument("--docker", default="docker", help="B15: the docker CLI that removes an evicted run's labelled containers")
@@ -3045,6 +3199,7 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["merge"]:   # whatever follows: there is no merge path to reach
         return cmd_merge(None)
     a = ap.parse_args(argv)
+    a.floor_explicit = floor_probe(argv) if getattr(a, "floor_by_plan", True) else a.min_host_free_gb   # B39: the kill switch is the legacy single floor
     if a.selftest:
         return selftest()
     if a.cmd == "report":

@@ -1,0 +1,40 @@
+{
+  "block": "B08",
+  "observed_at": "2026-10-15T15:25:49.867730+00:00",
+  "source_pins": {
+    "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py": "88222f92140aebe2fdd7364bfee867d58d9b1e1c5403b353489d36525778d4a3",
+    "research/operations/udb-wave8/B08/b08_crossstore_adapter.py": "23f112693559ceb4aad853cca61f39ccba6767d11dd575abec8c308f4772bc70"
+  },
+  "sources_stable": true,
+  "checks": [
+    {
+      "kind": "ACTUAL_CLI_REGENERATION",
+      "exit": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "kind": "PYTEST_NEW_ISOLATED_CONTEXT",
+      "exit": 0,
+      "counts": {
+        "passed": 16,
+        "failed": 0,
+        "errors": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "stdout_sha256": "8b30a9a37a9ca88e96c03888f2df6716eff19acaa042f4df894695ec6ac5d357",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "artifacts": {
+    "b08_crossstore_ledger.json": {
+      "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "bytes": 77786
+    }
+  },
+  "raw_output_saved": false,
+  "original_worktree_mutated": false,
+  "block_closed": false,
+  "scope": "ISOLATED_DERIVED_ARTIFACTS_ONLY"
+}

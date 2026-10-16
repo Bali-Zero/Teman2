@@ -1,0 +1,33 @@
+{
+  "scope": "new boundary tests only; meaningful assertions moved into test bodies",
+  "source_adapter_unchanged": true,
+  "original_38301_byte_prefix_preserved": true,
+  "old_test_sha256": "e988c28495dcc34ba3639a8447a7230cb4459c56090498254f1486557c3404e7",
+  "new_test_sha256": "7fdea9866985f0bf273b5f4de10247445433301e53e88c2dc04991ea95b51034",
+  "assertion_calls_made_explicit": 13,
+  "time": "2026-10-16T08:58:08.055542+00:00",
+  "checks": [
+    {
+      "check": [
+        "-m",
+        "pytest"
+      ],
+      "exit": 0,
+      "summary": [
+        "102 passed in 1.43s"
+      ],
+      "output_sha256": "28264e6f48077bda87ac736c83dc50c6ee16f55515e7884a749a20d94a6dfb8f"
+    },
+    {
+      "check": [
+        "scripts/lint_test_reward_hacking.py",
+        "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py"
+      ],
+      "exit": 0,
+      "summary": [
+        "anti-reward-hacking: clean (1 test file(s) checked)."
+      ],
+      "output_sha256": "63221037ffccbb33c041e1fcab4a1385db9297300afaf8e982744fed0e3242bb"
+    }
+  ]
+}

@@ -42,14 +42,16 @@ def fast(monkeypatch):
     monkeypatch.setattr(mg, "EVICT_SAMPLE_S", 0.2)
 
 
-def test_the_floor_is_50_and_a_run_starts_at_60_by_default(world):   # noqa: F811
-    assert (mg.HOST_FLOOR_GB, mg.START_MARGIN_GB, mg.EVICT_MARGIN_GB) == (50.0, 10.0, 1.5)
-    world.gh.prs = [pr(1, world.head1)]
+def test_the_floor_is_50_and_a_plan_the_tick_cannot_classify_starts_at_68_by_default(world):   # noqa: F811
+    assert (mg.HOST_FLOOR_GB, mg.START_MARGIN_GB, mg.EVICT_MARGIN_GB) == (50.0, 10.0, 1.5)   # B39: the prune keeps 10; a run's own margin follows its plan
+    world.gh.prs = [pr(1, world.head1)]   # this world's matrix is not one: the plan cannot be classified, so the heavy floor (B39)
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
-    assert mg.main([*args, "--host-free-gb", "59.9"]) == 0
-    assert world.journal()[-1]["why"] == "host_below_floor" and world.journal()[-1]["start_floor_gb"] == 60.0
+    assert mg.main([*args, "--host-free-gb", "67.9"]) == 0
+    assert world.journal()[-1]["why"] == "host_below_floor" and world.journal()[-1]["start_floor_gb"] == 68.0
     assert not [r for r in world.journal() if r["kind"] == "decision"]
-    assert mg.main([*args, "--host-free-gb", "60"]) == 0 and [r for r in world.journal() if r["kind"] == "decision"]
+    assert mg.main([*args, "--host-free-gb", "59.9", "--no-floor-by-plan"]) == 0 and world.journal()[-1]["start_floor_gb"] == 60.0   # B39 kill switch: the one floor
+    assert not [r for r in world.journal() if r["kind"] == "decision"]
+    assert mg.main([*args, "--host-free-gb", "68"]) == 0 and [r for r in world.journal() if r["kind"] == "decision"]
 
 
 def test_the_runner_is_guarded_in_plan_and_run_and_the_status_read_is_not(world):   # noqa: F811
@@ -246,8 +248,8 @@ def test_a_tick_reads_the_clock_when_it_counts_evictions(world):   # noqa: F811
 def test_the_floor_print_names_both_floors(world, capsys):   # noqa: F811
     world.gh.prs = [pr(1, world.head1)]
     args = ["tick", "--node", mg.HOST, "--repo", REPO, "--state-dir", str(world.state), "--remote-url", str(world.origin), "--python", "py"]
-    assert mg.main([*args, "--host-free-gb", "50"]) == 0
-    assert "floor_gb=50 start_floor_gb=60" in capsys.readouterr().out
+    assert mg.main([*args, "--host-free-gb", "40"]) == 0
+    assert "floor_gb=50 start_floor_gb=56" in capsys.readouterr().out   # B39: the lowest floor any plan has
 
 
 @pytest.mark.parametrize("raw,watched", [("", False), ("abc", False), ("1", False), ("0", False), ("4242", True)])

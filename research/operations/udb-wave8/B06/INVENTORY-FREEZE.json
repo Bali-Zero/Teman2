@@ -1,0 +1,81 @@
+{
+  "mandate": "universal-db-wave8-20261015",
+  "frozen_at": "2026-10-16T08:11:47.760393+00:00",
+  "status": "PREPARED_PENDING_PARENT",
+  "block_closed": false,
+  "original_head": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
+  "changed_files": {
+    "b06_inventory.py": {
+      "sha256": "31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed",
+      "bytes": 12646
+    },
+    "test_b06_inventory.py": {
+      "sha256": "193ba3a711f5e9654aa53fd28519553f769602f0fd9d432bfab44511a60755eb",
+      "bytes": 5076
+    },
+    "validate_b05_submission.py": {
+      "sha256": "46ecde24f2c8a0aea35ce87098c38c904c2fedbde8366baf18ed9abc8ef741aa",
+      "bytes": 2437
+    },
+    "fixtures/source-inventory.json.gz": {
+      "sha256": "c8dfd7ae1d2ae4182fa36aa4cf21e9b6aad40838309d7b77c736af4ec03fb68e",
+      "bytes": 810715
+    },
+    "fixtures/source-inventory-provenance.json": {
+      "sha256": "c57f8a654295a43f2b7500ce57619ca85db8aab0929cc677eff7943fc4e50643",
+      "bytes": 863
+    },
+    "B05-VALIDATION.json": {
+      "sha256": "d4c8e14249ab08c76445b50123fe3fa30ead992df2fcca23cdfe771793dc7c2b",
+      "bytes": 1026
+    },
+    "INVENTORY-VERIFICATION.json": {
+      "sha256": "291b3f2df9784f8863a73962d115108e1b5638bdb4deff4d536a4d1b4f21e729",
+      "bytes": 2985
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "sha256": "b552f681a5a56390a552068f9a896bb59cee9169fe50c511a1f12b583ce8ad8d",
+      "bytes": 31160
+    },
+    "PROPOSAL.md": {
+      "sha256": "f0bdc3422e178315e6d8e820b0807bacc5131ff080d1a9eb3b128c48f572ecd4",
+      "bytes": 14377
+    },
+    "PR_BODY.md": {
+      "sha256": "ad74725f7e73c261a592d940341967bcf7a649fef54579377b0b88a1d4389d29",
+      "bytes": 5244
+    },
+    "RESULT.json": {
+      "sha256": "ad745d0e03bf3808466453b2af728fa18343aeaabe231f4ecd0753e84f8e0df3",
+      "bytes": 11816
+    }
+  },
+  "original_adapter_unchanged": true,
+  "original_18_tests_unchanged": true,
+  "projection_boundary_scan_pass": true,
+  "boundary_scanner_sha256": "e12c366a1e82731b54c4b679dd3abdf320213d9544b94eebcad5c14e9793a9c5",
+  "tests": {
+    "worktree": [
+      "27 passed in 1.95s"
+    ],
+    "clean": [
+      "27 passed in 1.61s"
+    ]
+  },
+  "b05": {
+    "original_accepted": 21,
+    "additional_accepted": 21001,
+    "errors": 0,
+    "validator_source_sha256": "791e64bd1060a188981b36fa7e1ce1f57e45544e11e7c414b25ed7c0d9d5e43d",
+    "validator_head": "ec648b4a46fa7adcaf12fa7d9cab506ea7d753ec"
+  },
+  "explicit_gaps": [
+    "Business membership inferred, not proved",
+    "4463 rows lack operation traces",
+    "Call syntax and consumer store binding do not prove effective persistence target, runtime effects, retry or failure semantics",
+    "Observer identity/roles and recovery evidence remain unresolved"
+  ],
+  "raw_matrix_exported": false,
+  "native_query_executed": false,
+  "independent_acceptance": "PENDING_PARENT"
+}

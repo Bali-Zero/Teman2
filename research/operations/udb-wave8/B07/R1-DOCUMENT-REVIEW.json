@@ -1,0 +1,98 @@
+{
+  "schema": "udb-wave8-scoped-document-review-v1",
+  "reviewer": "codex",
+  "requested_parent_seat": "Astra 6 / xhigh",
+  "effective_model": "UNOBSERVED",
+  "effective_effort": "UNOBSERVED",
+  "review_kind": "SCOPED_ADVERSARIAL_DOCUMENT_REVIEW",
+  "full_document_review": false,
+  "implementation_approval": false,
+  "final_blue_gate": false,
+  "scope": "Document headings, mandate, PR summary and verification sections, synthesis dispositions, and selected counterexample/unsafe-proposal sections. Sources were read with bounded excerpts; this is not blanket document or code approval.",
+  "observed_at": "2026-10-15T16:54:26.046617+00:00",
+  "block": "B07",
+  "head_before": "f56373bc6f87cb835f05b6215a7825f165e55e21",
+  "head_after": "f56373bc6f87cb835f05b6215a7825f165e55e21",
+  "verdict": "REVIEWED_PARTIAL_WITH_BLOCKERS",
+  "block_closed": false,
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "file": "DEFINITIVE-SYNTHESIS.md",
+      "lines": [8, 10, 19, 20, 22],
+      "finding": "Current correction banner truthfully records 199 SQL/138 Python manifest entries, full-SQL checksumming, 12 passing tests and 16 generated records, with native probe not admitted/executed. This is partial evidence, not live lineage closure."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "PR_BODY.md",
+      "lines": [35, 36, 37, 38],
+      "finding": "The old pg-restore-drill consumer is historical and absent; successor path existence alone is not identity lineage. Native PG and Olympus observations remain absent; do not execute a probe merely because it ships."
+    },
+    {
+      "severity": "MEDIUM",
+      "file": "PR_BODY.md",
+      "lines": [40],
+      "finding": "B16 consumer name is historical and unproved in this eight-block campaign. Cite the actually shipping pytest/adapter consumer and existing 12-pass receipt; do not invent a future assembler."
+    }
+  ],
+  "files": [
+    {
+      "path": "research/operations/udb-wave8/B07/ANALYSIS.md",
+      "sha256_before": "cdade916a3803c830e2db5a8f065f6e277187e847f93bf2e14f9b9458744831f",
+      "sha256_after": "cdade916a3803c830e2db5a8f065f6e277187e847f93bf2e14f9b9458744831f",
+      "stable": true,
+      "line_count": 269,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    },
+    {
+      "path": "research/operations/udb-wave8/B07/BATTLE.md",
+      "sha256_before": "f72e9d4fd2df51824d794897440287376b0741bbffaa49399c1f5748688452c4",
+      "sha256_after": "f72e9d4fd2df51824d794897440287376b0741bbffaa49399c1f5748688452c4",
+      "stable": true,
+      "line_count": 30,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "MANDATE_RECORDED_NO_IMPLEMENTATION_APPROVAL"
+    },
+    {
+      "path": "research/operations/udb-wave8/B07/DEFINITIVE-SYNTHESIS.md",
+      "sha256_before": "dfad02c867268fa36fa593b994b27d8e16e2c0a25c5d73d243fa1162c63a9e5f",
+      "sha256_after": "dfad02c867268fa36fa593b994b27d8e16e2c0a25c5d73d243fa1162c63a9e5f",
+      "stable": true,
+      "line_count": 151,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    },
+    {
+      "path": "research/operations/udb-wave8/B07/PROPOSAL.md",
+      "sha256_before": "6de9d4b53d88661038a6dfcf9210f4b23d6600389b9bc8603a68e78be70ece87",
+      "sha256_after": "6de9d4b53d88661038a6dfcf9210f4b23d6600389b9bc8603a68e78be70ece87",
+      "stable": true,
+      "line_count": 230,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED"
+    },
+    {
+      "path": "research/operations/udb-wave8/B07/PR_BODY.md",
+      "sha256_before": "100a4f4d1557720ce4887d5110a5fe44f38c271f3e6d8867b35e2a5c32d09e9d",
+      "sha256_after": "100a4f4d1557720ce4887d5110a5fe44f38c271f3e6d8867b35e2a5c32d09e9d",
+      "stable": true,
+      "line_count": 40,
+      "missing_r1_header": true,
+      "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+      "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+    }
+  ],
+  "limitations": [
+    "Parent contributed bounded source repairs to B03/B06/B07; this document review is not an independent grade of that code.",
+    "Fresh exact-head Opus 5.5 xhigh gate is still mandatory.",
+    "Any document edited after the listed SHA needs renewed scoped review; no blanket future attribution.",
+    "No native/client data, credentials, ACL provisioning or production writes were accessed or authorized."
+  ],
+  "extracted_from_sha256": "d25ee7505133bcd76dfee45be51febcf520585f5b9f3c8732e9a709df823b2b9",
+  "extraction_note": "B07 section only of the parent's scoped multi-block review receipt; other blocks omitted."
+}

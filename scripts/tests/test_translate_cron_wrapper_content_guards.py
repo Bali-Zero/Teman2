@@ -37,6 +37,11 @@ if "--task-id" in args:
     wt = repo / ".worktrees" / f"mouth-{task}"
     subprocess.run(["git", "worktree", "add", "-q", "-b", f"agent/test/mouth/{task}", str(wt)], check=True)
     print(f"WORKTREE_READY {wt}")
+elif "--release" in args:
+    task = args[args.index("--release") + 1]
+    wt = repo / ".worktrees" / f"mouth-{task}"
+    if wt.is_dir():
+        subprocess.run(["git", "worktree", "remove", "--force", str(wt)], check=True)
 """
 
 TRANSLATE = """\
@@ -54,6 +59,16 @@ with (pathlib.Path(os.environ["HOME"]) / "gh.log").open("a") as fh:
     fh.write(json.dumps(args) + "\\n")
 if args[:2] == ["pr", "create"]:
     print("https://github.com/Bali-Zero/Teman2/pull/901")
+elif args[:2] == ["pr", "list"] and "--head" in args:
+    head = args[args.index("--head") + 1]
+    states = json.loads(os.environ.get("FAKE_STALE_PR_STATES", "{}"))
+    print(states.get(head, ""))
+elif args[:2] == ["pr", "list"] and "--search" in args:
+    older = os.environ.get("FAKE_OLDER_OPEN_PRS", "")
+    if older:
+        print(older)
+elif args[:2] == ["api", "graphql"] and "mergeQueueEntry" in " ".join(args) and "pullRequests" not in " ".join(args):
+    print(os.environ.get("FAKE_OLDER_QUEUED", "null"))
 """
 
 # red on any BAD article; FAKE_MAIN_RED = red everywhere; FAKE_PAIR_RED = red only when alpha AND beta coexist
@@ -257,3 +272,84 @@ def test_exactly_60_slug_groups_are_still_bisected(home: Path) -> None:
 
     assert result.returncode == 0, (home / "logs" / "translate-hourly-wrapper.log").read_text()
     assert _promoted(home) == set(_many(59))
+
+
+def test_superseding_an_older_promote_pr_closes_without_delete_branch_and_releases_its_worktree(home: Path) -> None:
+    repo = home / "nuzantara"
+    old_task = "hourly-20261016053020"
+    old_branch = f"agent/nuzantara/mouth/{old_task}"
+    old_wt = repo / ".worktrees" / f"mouth-{old_task}"
+    _git("worktree", "add", "-q", "-b", old_branch, str(old_wt), cwd=repo)
+    _git("push", "-q", "-u", "origin", old_branch, cwd=old_wt)
+    old_oid = _git("rev-parse", "HEAD", cwd=old_wt).strip()
+    dirty_task = "hourly-20261016054000"
+    dirty_branch = f"agent/nuzantara/mouth/{dirty_task}"
+    dirty_wt = repo / ".worktrees" / f"mouth-{dirty_task}"
+    _git("worktree", "add", "-q", "-b", dirty_branch, str(dirty_wt), cwd=repo)
+    _git("push", "-q", "-u", "origin", dirty_branch, cwd=dirty_wt)
+    dirty_oid = _git("rev-parse", "HEAD", cwd=dirty_wt).strip()
+    (dirty_wt / "wip.txt").write_text("unsaved\n")
+    ahead_task = "hourly-20261016055000"
+    ahead_branch = f"agent/nuzantara/mouth/{ahead_task}"
+    ahead_wt = repo / ".worktrees" / f"mouth-{ahead_task}"
+    _git("worktree", "add", "-q", "-b", ahead_branch, str(ahead_wt), cwd=repo)
+    _git("push", "-q", "-u", "origin", ahead_branch, cwd=ahead_wt)
+    ahead_pushed_oid = _git("rev-parse", "HEAD", cwd=ahead_wt).strip()
+    (ahead_wt / "local.txt").write_text("committed locally\n")
+    _git("-c", "user.name=t", "-c", "user.email=t@t", "add", "local.txt", cwd=ahead_wt)
+    _git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "local-only", cwd=ahead_wt)
+
+    result = _run(
+        home,
+        ALPHA,
+        FAKE_OLDER_OPEN_PRS=f"850 {old_oid} {old_branch}\n851 {dirty_oid} {dirty_branch}\n852 {ahead_pushed_oid} {ahead_branch}",
+    )
+
+    assert result.returncode == 0, (home / "logs" / "translate-hourly-wrapper.log").read_text()
+    close_calls = [c for c in _gh_calls(home) if c[:2] == ["pr", "close"]]
+    assert [c[:3] for c in close_calls] == [["pr", "close", "850"], ["pr", "close", "851"], ["pr", "close", "852"]]
+    assert all("--delete-branch" not in c for c in close_calls)
+    assert not old_wt.exists()
+    assert dirty_wt.is_dir() and (dirty_wt / "wip.txt").read_text() == "unsaved\n"
+    assert ahead_wt.is_dir() and (ahead_wt / "local.txt").read_text() == "committed locally\n"
+    agent_log = (home / "agent_start.log").read_text()
+    assert f"--release {old_task} --force" in agent_log
+    assert f"--release {dirty_task} --force" not in agent_log
+    assert f"--release {ahead_task} --force" not in agent_log
+    remote_heads = _git("for-each-ref", "--format=%(refname)", "refs/heads/", cwd=home / "origin.git").split()
+    assert f"refs/heads/{old_branch}" not in remote_heads
+    assert f"refs/heads/{dirty_branch}" in remote_heads
+    assert f"refs/heads/{ahead_branch}" in remote_heads
+
+
+def test_startup_reaps_closed_or_merged_hourly_worktrees_and_spares_open_ones(home: Path) -> None:
+    repo = home / "nuzantara"
+    states = {}
+    for suffix, state in (("010000", "CLOSED"), ("020000", "MERGED"), ("030000", "OPEN"), ("040000", "CLOSED"), ("050000", "CLOSED")):
+        task = f"hourly-20261016{suffix}"
+        branch = f"agent/nuzantara/mouth/{task}"
+        wt = repo / ".worktrees" / f"mouth-{task}"
+        _git("worktree", "add", "-q", "-b", branch, str(wt), cwd=repo)
+        pr_oid = _git("rev-parse", "HEAD", cwd=wt).strip()
+        states[branch] = f"{state} {pr_oid}" if state != "OPEN" else "OPEN "
+    (repo / ".worktrees" / "mouth-hourly-20261016040000" / "dirty.txt").write_text("wip\n")
+    ahead_wt = repo / ".worktrees" / "mouth-hourly-20261016050000"
+    (ahead_wt / "local.txt").write_text("unpushed commit\n")
+    _git("-c", "user.name=t", "-c", "user.email=t@t", "add", "local.txt", cwd=ahead_wt)
+    _git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "local-only", cwd=ahead_wt)
+
+    result = _run(home, [], FAKE_STALE_PR_STATES=json.dumps(states))
+
+    assert result.returncode == 0, (home / "logs" / "translate-hourly-wrapper.log").read_text()
+    assert not (repo / ".worktrees" / "mouth-hourly-20261016010000").exists()
+    assert not (repo / ".worktrees" / "mouth-hourly-20261016020000").exists()
+    assert (repo / ".worktrees" / "mouth-hourly-20261016030000").is_dir()
+    assert (repo / ".worktrees" / "mouth-hourly-20261016040000").is_dir()
+    assert ahead_wt.is_dir() and (ahead_wt / "local.txt").read_text() == "unpushed commit\n"
+    log_lines = (home / "agent_start.log").read_text().splitlines()
+    assert "--release hourly-20261016010000 --force" in log_lines
+    assert "--release hourly-20261016020000 --force" in log_lines
+    assert "--release hourly-20261016030000 --force" not in log_lines
+    assert "--release hourly-20261016040000 --force" not in log_lines
+    assert "--release hourly-20261016050000 --force" not in log_lines
+

@@ -1,0 +1,17 @@
+mandate: universal-db-wave8-20261015-B08
+gear: 3
+colour: BLUE
+intent:
+  Ship the independently reviewed B08 diagnostic adapter, hermetic fixtures, output-boundary corrections
+  and honest unknowns.
+scope:
+  - research/operations/udb-wave8/B08/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b08-crossstore-8476bd38/
+  - .secrets.baseline
+constraints:
+  - Exactly one original B08 PR allocation.
+  - Owner explicitly removes unavailable Claude seats and procedural parking; available independent review
+    retained.
+  - No new native exercises or source correction rounds after original deadline; frozen packaging only.
+  - No PII or secret output, false runtime membership, altered legacy assertions or invented closure.
+  - S1 remains gated by original operational acceptance.
