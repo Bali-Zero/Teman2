@@ -48,10 +48,10 @@ receipts:
 decisions:
   - id: D-narrow-not-close-row-e
     text: >-
-      Row E is narrowed instead of closed because the brief asked for a rule testing the applicant's own shareholding
-      at or above IDR 10 billion, and the signed pack's el.e28a.investment still tests the company thresholds
-      (paid-up 2.5bn, investment capital 10bn, PT PMA committed); no own-shareholding fact exists in the pack. The
-      key-ceremony runbook also describes SEQ29-A2 as the role drop only.
+      Row E is narrowed instead of closed because the signed pack's el.e28a.investment still tests the company
+      thresholds and no own-shareholding fact exists in the pack. The official E28A page line 98 and Zero's
+      2026-10-15 ruling 1 make the applicant's own shareholding gte IDR 10 billion the test; the only missing step
+      is the seq-31 rule item (new fact, interview question, el.e28a.investment gte 10000000000).
   - id: D-runbook-seq30-activation-note
     text: >-
       The seq-30 runbook note said Activation: PENDING and, being the next section after the seq-29 note, broke

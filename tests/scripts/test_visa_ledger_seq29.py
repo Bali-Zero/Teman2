@@ -876,8 +876,9 @@ def test_observer_floor_is_the_true_count_of_this_file():
 def test_e_row_is_narrowed_to_the_own_shareholding_clause_and_seq30_is_recorded_active():
     row = _rows("E (narrowed 2026-10-17): seq-30 is signed and ACTIVE in production")[0]
     for token in ("`3f23a84da7`", "2026-10-16T14:20:35Z", "2e113982-c3ec-59f4-bfe5-88ec87f298a2", "2026-10-16T14:35:48Z", "`7163570a88`",
-                  "`el.e28d.branch-or-subsidiary`", "`el.e28f.ikn-subsidiary`", "`el.e28a.investment`", "STILL MISSING"):
+                  "`el.e28d.branch-or-subsidiary`", "`el.e28f.ikn-subsidiary`", "`el.e28a.investment`", "STILL MISSING", "df3ba889-20261015T142247Z.txt` line 98", "ruling 1 of the E28 close-out", "the seq-31 rule item"):
         assert row.count(token) >= 1, token
+    assert "LOW confidence" not in row and "ruling that the company thresholds stay" not in row
     assert "seq-30 is owned by the Pro conductor" not in ARMS.read_text(encoding="utf-8")
     entry = [ln for ln in LOG.read_text(encoding="utf-8").splitlines() if ln.startswith("- 2026-10-17 (M5, visaoracle E28 lane, ledger row E narrowed")]
     assert len(entry) == 1 and "NOT delivered" in entry[0] and "`3f23a84da7`" in entry[0]
