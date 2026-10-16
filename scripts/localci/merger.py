@@ -2511,7 +2511,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     print(f"hosted_aborted (B27, no hosted verdict, never compared): {len(aborted)}" + "".join(
         f" | #{x['pr']} {str(x['head_sha'])[:12]} {x['context']}: check run {x['check_run_id']} died in {x['step']!r}" for x in aborted))
     lv = live_block
-    print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
+    print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (merged_first={lv['merged_first']}" + (f", unread_pull={lv['merged_first_unread']}" if lv["merged_first_unread"] else "") + f") (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
           f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), label_ok_rows={lv['label_ok_rows']}, coverage_all_approx={lv['coverage_all_approx']} of {lv['merged_all_approx']} merged PR(s) (one page of 100 closed PRs; reported only)")
     print(f"phase E READY: {str(ready).lower()} liveness_ok: {str(lv['liveness_ok']).lower()}: needs 0 FALSE_GREEN and >= {READY_MIN_MERGES} compared merges and >= {READY_MIN_DAYS} days between the first "
           f"and last compared merge (a merge counts when GitHub merged the decided candidate and >= {MIN_COMPARED_CONTEXTS} contexts were "
@@ -2527,10 +2527,25 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     return (1 if fg else 0), out
 
 
-def mergeable_row(r: dict) -> bool:
-    """B24 L1: a ``would_enqueue`` row (original or retry) whose criterion has every term true but the ones that cannot be true before the flip."""
+def open_only_false(r: dict) -> bool:
+    """B37: a ``would_enqueue`` row whose criterion is a dict and whose ONLY false term outside ``LIVENESS_EXCLUDED`` is ``open``."""
     c = r.get("criterion")
-    return r.get("kind") == "would_enqueue" and isinstance(c, dict) and all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)
+    return (r.get("kind") == "would_enqueue" and isinstance(c, dict) and c.get("open") is False
+            and all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED and k != "open"))
+
+
+def merged_first_row(r: dict, pull) -> bool:
+    """B37 M1: GitHub merged the very head the row decided, while LocalCI was deciding it (a queue artefact that vanishes at the flip)."""
+    return (open_only_false(r) and isinstance(pull, dict) and pull.get("merged") is True
+            and is_sha(r.get("head_sha")) and head_of(pull) == r.get("head_sha"))
+
+
+def mergeable_row(r: dict, pull=None) -> bool:
+    """B24 L1: a ``would_enqueue`` row (original or retry) whose criterion has every term true but the ones that cannot be true before the flip.
+    B37: or whose only false such term is ``open`` and ``pull`` shows GitHub merged that very head."""
+    c = r.get("criterion")
+    strict = r.get("kind") == "would_enqueue" and isinstance(c, dict) and all(c.get(k) is True for k in CRITERION if k not in LIVENESS_EXCLUDED)
+    return strict or merged_first_row(r, pull)
 
 
 def in_liveness_window(ts, clock: float) -> bool:
@@ -2542,7 +2557,11 @@ def liveness(window: list, decisions: list, merged_prs: dict, listing: list | No
     merged head (replay decisions do not count as decided); ``label_ok_rows`` of the mergeable rows also had ``label_privileged`` true;
     ``coverage_all_approx`` (reported only, one page of 100 closed PRs) over every PR GitHub merged in it, ``None`` when ``listing`` is.
     ``liveness_ok`` needs rows and ``coverage_decided``."""
-    mergeable = [r for r in window if mergeable_row(r) and in_liveness_window(r.get("ts"), clock)]
+    in_window = [r for r in window if in_liveness_window(r.get("ts"), clock)]
+    pull_of = lambda r: merged_prs.get(r.get("pr")) if type(r.get("pr")) is int else None   # noqa: E731 — B37: the pull report() already read
+    mergeable = [r for r in in_window if mergeable_row(r, pull_of(r))]
+    merged_first = sum(1 for r in mergeable if open_only_false(r))   # B37: the part of the rows that rests on GitHub having merged the head first
+    unread = sum(1 for r in in_window if open_only_false(r) and not isinstance(pull_of(r), dict))   # B37 M2: fail closed, and said
     heads = {(r.get("pr"), r.get("head_sha")) for r in mergeable}
     decided_heads = {(d.get("pr"), d.get("head_sha")) for d in decisions if d.get("replay") is not True}   # a replay never journals a would_enqueue
     decided = [(n, head_of(p)) for n, p in merged_prs.items() if p.get("merged") is True and in_liveness_window(p.get("merged_at"), clock)
@@ -2550,7 +2569,7 @@ def liveness(window: list, decisions: list, merged_prs: dict, listing: list | No
     cov_decided = sum(1 for k in decided if k in heads) / len(decided) if decided else None
     everyone = [(p.get("number"), head_of(p)) for p in listing or [] if isinstance(p, dict) and in_liveness_window(p.get("merged_at"), clock)]
     cov_all = sum(1 for k in everyone if k in heads) / len(everyone) if listing is not None and everyone else None
-    return {"window_h": LIVENESS_WINDOW_S // 3600, "mergeable_rows": len(mergeable), "merged_decided": len(decided), "coverage_decided": cov_decided,
+    return {"window_h": LIVENESS_WINDOW_S // 3600, "mergeable_rows": len(mergeable), "merged_first": merged_first, "merged_first_unread": unread, "merged_decided": len(decided), "coverage_decided": cov_decided,
             "label_ok_rows": sum(1 for r in mergeable if r["criterion"].get("label_privileged") is True),
             "merged_all_approx": len(everyone) if listing is not None else None, "coverage_all_approx": cov_all,
             "liveness_ok": len(mergeable) >= LIVENESS_MIN_ROWS and cov_decided is not None and cov_decided >= LIVENESS_MIN_COVERAGE}
