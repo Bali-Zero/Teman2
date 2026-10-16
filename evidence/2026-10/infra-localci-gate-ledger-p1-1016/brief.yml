@@ -1,0 +1,57 @@
+task_id: infra-localci-gate-ledger-p1-1016
+gear: 2
+gear_reason: >-
+  Deterministic floor 2, measured: evidence_pack_lint --print-floor over the changed files and numstat of this branch
+  prints 2, source size (no hot-zone path term). The floor sets the gear, not the weight of the change: this code is the
+  trust root of every later merge decision, which is why it ships with an exhaustive table, 40 mutant rows and a fresh
+  Opus gate on an immutable archive.
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B25-prime P1 (docs/specs/localci-sovereign-2026-10-07.md section 2b.2, 2b.5 row P1). A gate verdict that no
+  candidate PR can write: a Pro-local append-only ledger (~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl, 0700/0600)
+  with ONE reader rule gate_verdict(path, repo, head) and a locked writer. scripts/localci/gate_ledger.py holds the
+  reader, append, verify and quarantine; the tick wrapper gets a gate-append mode that runs the gate_ledger.py of its own
+  mirror ref (one base64 argv, ts and via set by the appender); scripts/harness_fable_gate.py appends the ledger BEFORE it
+  posts the GitHub status and posts nothing when the append fails. The merger does not read the ledger yet (P2-P4).
+  Spec fixes ride along inside section 2b (gate conditions L22, L23, the --supersede flag, idempotency against the newest
+  entry, m-gate-not-failure accepted as equivalent).
+constraints:
+  - "Stdlib only, no syntax newer than 3.9 (the writer runs on Pro's python; M5's /usr/bin/python3 may import it)."
+  - "No live write to Pro's real ledger in any test: every test uses a temp path. Nothing is deployed on Pro by this PR."
+  - "merger.py, the runner and harness_gate_read.py are untouched; the hosted harness floor still reads the GitHub status."
+acceptance:
+  - text: >-
+      TB: gate_verdict over every ledger of 0..3 lines drawn from 13 atoms (2 380 files) equals an oracle written from the
+      spec text, plus the file states, the bad arguments, and the guilt/innocence rows.
+    probe: python3 -m pytest -q scripts/localci/tests/test_gate_ledger.py -k tb_
+  - text: >-
+      The writer rejects each malformed field, a client-supplied ts or via, a tail without newline; it never alters
+      existing bytes; supersede names one unsuperseded failure per append; verify and quarantine behave.
+    probe: python3 -m pytest -q scripts/localci/tests/test_gate_ledger.py
+  - text: >-
+      The publisher appends before it posts and a failed append posts nothing; no file under .github/ names the ledger.
+    probe: python3 -m pytest -q scripts/tests/test_harness_fable_gate.py scripts/localci/tests/test_gate_ledger.py -k "ledger or dot_github"
+assumptions:
+  - text: >-
+      The 2b.4 ledger-rule mutants and the P1 writer, verify, quarantine and wrapper rows are all killed.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(python3 scripts/localci/tests/mutants/merger_mutants.py --list | awk '$1 ~ /^(b25|g-gate|g-failed|m-gate|symlink|mode-or|torn-line|junk-skipped|supersede-any)/ {print $1}')
+consumer_map:
+  - >-
+    Every gate session publishing through scripts/harness_fable_gate.py (first the gate of P2) and, from P3 and P4, the merger
+    and the local harness floor reading gate_verdict.
+risks:
+  - >-
+    Anything executing as the Pro user can write the ledger (spec residual R2); gates run candidate code isolated and the
+    publisher runs from origin/main, never from a candidate checkout (R1, procedural, now in the runbook line).
+  - >-
+    The wrapper's gate-append mode runs the gate_ledger.py of the mirror's refs/merger/wrapper, so a gate cannot append
+    until a tick has fetched the merged P1; until then the publisher fails closed (rc 3, nothing posted).
+residual:
+  - text: >-
+      The publisher's own ordering (ledger before post) has no row in the mutant sweep: copy_tree of merger_mutants.py
+      does not carry scripts/harness_fable_gate.py. The ordering is pinned by test_harness_fable_gate.py and was mutated by hand.
+grader: |
+  Fresh Opus gate on an immutable git archive: full scripts/localci/tests on Mini, the b25p1 and ledger-rule mutants, the
+  guilt rows of 2b.4, prettier on the changed md/yml, merge-tree against origin/main and the in-flight spec heads.
