@@ -450,3 +450,7 @@ scripts/tests/test_lint_tcc_desktop_paths.py
 scripts/tests/test_tcc_migrate_desktop_paths.py
 scripts/tests/test_tg_gateway_census.py
 skills/bali-zero-brand/_external-bench-2026-05.md
+
+# B07 parses the frozen DR05 receipt; this literal is historical input, not
+# filesystem access. Preserve fixtures/dr05-pro.txt (2026-10-15), class 1 above.
+research/operations/udb-wave8/B07/b07_lineage_adapter.py

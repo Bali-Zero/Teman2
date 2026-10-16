@@ -61,6 +61,10 @@ Block **B07** (`D02`, `D11`, `D13`) of campaign `universal-db-wave8-20261015`. S
 4. **UN-04:** no restore drill receipt and no Pro backup log were read.
 5. **Disclosed discrepancy:** the adapter constants `DR05_EVIDENCE_TIMESTAMP` and `DR05_STDOUT_SHA256` do not match the DR-B07-05 receipt (see `RESULT.json`).
 
+## Historical receipt parser and TCC guard
+
+The adapter must recognize the frozen DR05 symlink observation verbatim. Its historical path is parser input, never a filesystem access. The TCC guard therefore receives one exact-file exception under its existing historical-record policy. The guard passes with this declaration and fails on this parser alone when the entry is removed; all 16 lineage tests still pass. The adapter and frozen DR05 fixture remain byte-identical. This correction does not provide operational closure or an independent final signature.
+
 ## Adversarial review
 
 The Codex document review was scoped, and the parent receipt is committed as [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json), observed `2026-10-15T16:54:26Z`. Its disposition is `REVIEWED_PARTIAL_WITH_BLOCKERS` for the documents at candidate `f56373bc6f87cb835f05b6215a7825f165e55e21`; this file's reviewed bytes have SHA256 `100a4f4d1557720ce4887d5110a5fe44f38c271f3e6d8867b35e2a5c32d09e9d`.
