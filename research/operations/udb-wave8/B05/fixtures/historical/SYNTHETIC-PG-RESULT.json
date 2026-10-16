@@ -1,0 +1,24 @@
+{
+  "synthetic_only": true,
+  "production_connections_requested": false,
+  "tcp_listener_requested": false,
+  "native_binary_sha256": {
+    "initdb": "3fc843ba917f57aeb5478101f650932ba4f117835ceb1a19d2a839027e080690",
+    "postgres": "613233dd3996aafd22e7cfcfe4878e307b4a02c43ac1549a7459318e9ae8a927",
+    "psql": "9e2a31153d92138f5494129bf8a22adc5def069a9dca7690cac720aca3d68ad1"
+  },
+  "owned_cluster_guard_passed": true,
+  "conversations_temp_helper_exercised": true,
+  "malformed_json_failed": true,
+  "valid_json_passed": true,
+  "missing_role_failure_reproduced": true,
+  "nologin_role_bootstrap_passed": true,
+  "table_sequence_function_ownership_and_acl_preserved": true,
+  "original_missing_column_diagnostic": false,
+  "candidate_missing_column_diagnostic": true,
+  "conservative_priority_preserved": true,
+  "complete_synthetic_schema_passed": true,
+  "owned_server_stopped": true,
+  "graceful_owned_cleanup": true,
+  "temporary_files_removed": true
+}

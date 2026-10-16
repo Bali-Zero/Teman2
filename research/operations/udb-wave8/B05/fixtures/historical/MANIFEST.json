@@ -1,0 +1,25 @@
+{
+  "schema_version": "b05-historical-inputs-v1",
+  "base_commit_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "files": {
+    "DUX-B05-01.out": "7454582231aaebbc6460c7839e26c3e3e948fc34ca611ecfd33df7dd77c72e25",
+    "DUX-B05-02.out": "e6d1f2fc0feda8f6fe3a8b36259dec7b2bce548c60569e1dadb7303109ae707c",
+    "DUX-B05-04.out": "3ba2c4c9b5065e2f36673256c3992fd3dcbc36276fa03c7f364ba10b56e641a2",
+    "conversation_repository.py": "c3a9c44b8f97b4ef2155194d440feb2f1a23216057eba94eb91d51e988dd15fe",
+    "retention_policy.py": "4250d14a07a16dc14f3e325369faec611c7f8c5424a09733c5363c533a4dcb1a",
+    "279_research_os_contract_core.sql": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+    "284_garuda_orders.sql": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+    "restore_drill_verify.py": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+    "LEAD-DELTA.json": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+    "LIVE-DB-METADATA.json": "2bb691c347efd556eb106877e4a84b5c566f765edaa597a1c12ca73820dd56e6",
+    "SYNTHETIC-PG-RESULT.json": "38f9500820971b08cb6bbe2ada8251294f436905db96f49d59de547ce60aaa81",
+    "POOL-FACTORY-SOURCE.json": "d93668cbd3bbc1e40352a333e3fd28ffa192909e4de7b9cc0f12dbfa9fb044b8",
+    "migration_manager.py": "8e0afb54e3727d3b5935687e78f832589fa25e73e42c96f24b78e289c7a5ed03",
+    "migrate.py": "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b"
+  },
+  "matrix_fixture": "research/operations/udb-wave8/B06/fixtures/consumer-matrix-metadata.csv",
+  "matrix_sha256": "dfe7c0b1967bfb70d732736bf9f808242d269551237318a0491add6a25ff32c7",
+  "source": "Recovered original pinned inputs; original digest values preserved. Source snapshots checked against the recorded base commit. Matrix projected from the already committed B06 metadata fixture; census and identity parity independently verified.",
+  "client_rows": false,
+  "runtime_coverage": "UNASSESSED"
+}

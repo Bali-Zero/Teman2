@@ -221,10 +221,7 @@ def test_live_db_metadata_md5_join_and_unobserved_pool_role() -> None:
         assert isinstance(rel_info["grants"], list) and len(rel_info["grants"]) > 0
 
     # Guilt case: name-only md5(rel) lookup matches 0 of the 8 default relations in LIVE-DB-METADATA.json
-    meta_path = (
-        REPO_ROOT
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.json"
-    )
+    meta_path = B05.resolve_input(REPO_ROOT, B05.PINNED_RELPATHS["LIVE-DB-METADATA.json"])
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     live_rel_ids = {
         r["relation_id"]
@@ -261,11 +258,8 @@ def test_committed_json_and_csv_artifacts_roundtrip_and_denominator(tmp_path: Pa
     assert csv_path.is_file()
 
     # Compute every expectation from the pinned inputs
-    matrix_path = REPO_ROOT / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
-    lead_delta_path = (
-        REPO_ROOT
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json"
-    )
+    matrix_path = B05.resolve_input(REPO_ROOT, B05.MATRIX_INPUT)
+    lead_delta_path = B05.resolve_input(REPO_ROOT, B05.PINNED_RELPATHS["LEAD-DELTA.json"])
     with matrix_path.open("r", encoding="utf-8", newline="") as f:
         csv_rows = list(csv.DictReader(f))
     expected_csv_rows = len(csv_rows)

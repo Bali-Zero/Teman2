@@ -141,6 +141,62 @@ PINNED_RELPATHS: dict[str, str] = {
 }
 
 
+# Frozen audit inputs. Current-source inspection never changes these pins.
+HISTORICAL_FIXTURES = Path("research/operations/udb-wave8/B05/fixtures/historical")
+MATRIX_INPUT = ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
+MATRIX_FIXTURE = "research/operations/udb-wave8/B06/fixtures/consumer-matrix-metadata.csv"
+MATRIX_SHA256 = "dfe7c0b1967bfb70d732736bf9f808242d269551237318a0491add6a25ff32c7"  # pragma: allowlist secret - SHA-256 integrity digest
+AST_INPUTS = {
+    "migration_manager.py": ("apps/backend-rag/backend/db/migration_manager.py",
+        "8e0afb54e3727d3b5935687e78f832589fa25e73e42c96f24b78e289c7a5ed03"),  # pragma: allowlist secret - SHA-256 integrity digest
+    "migrate.py": ("apps/backend-rag/backend/db/migrate.py",
+        "591522097cfd96155b0c08bd76de5474781766fe5f9d92a14f4c51a250708b7b"),  # pragma: allowlist secret - SHA-256 integrity digest
+}
+HISTORICAL_INPUTS = {
+    **{rel: (label, PINNED_SHA256[label]) for label, rel in PINNED_RELPATHS.items()},
+    **{rel: (label, sha) for label, (rel, sha) in AST_INPUTS.items()},
+}
+SOURCE_INPUTS = tuple(sorted(
+    rel for rel in HISTORICAL_INPUTS if rel.startswith(("apps/", "scripts/"))
+))
+
+
+def resolve_input(repo_root: Path, rel_path: str, *, mode: str = "historical") -> Path:
+    """Resolve explicit inputs without Git, ignored receipts or mutable fallbacks."""
+    if mode == "current":
+        if rel_path not in SOURCE_INPUTS:
+            raise ValueError("Current mode only admits the declared source files")
+        return repo_root / rel_path
+    if mode != "historical":
+        raise ValueError("Unsupported input mode")
+    if rel_path == MATRIX_INPUT:
+        return repo_root / MATRIX_FIXTURE
+    return repo_root / HISTORICAL_FIXTURES / HISTORICAL_INPUTS[rel_path][0]
+
+
+def build_current_observation(repo_root: Path) -> dict[str, Any]:
+    """Static source observations only; no historical contract is current coverage."""
+    hashes = {}
+    for rel in SOURCE_INPUTS:
+        data = resolve_input(repo_root, rel, mode="current").read_bytes()
+        if rel.endswith(".py"):
+            ast.parse(data)
+        hashes[rel] = hashlib.sha256(data).hexdigest()
+    return {
+        "schema_version": "udb-b05-current-source-v1",
+        "mode": "current",
+        "scope": "STATIC_SOURCE_ONLY",
+        "operation_contracts_status": "UNASSESSED",
+        "active_consumer_denominator": "UNKNOWN",
+        "operation_contracts": [],
+        "source_sha256": hashes,
+        "ast_observations": {
+            "conversation_repository": verify_conversation_repo_ast(repo_root, mode="current"),
+            "migration_lock_busy": verify_migration_lock_busy_ast(repo_root, mode="current"),
+        },
+    }
+
+
 def compute_census(csv_path: Path) -> list[dict[str, Any]]:
     """Compute deterministic (family, contract_coverage_status, disposition) census buckets from CSV."""
     counts: dict[tuple[str, str, str], int] = {}
@@ -168,11 +224,8 @@ def compute_census(csv_path: Path) -> list[dict[str, Any]]:
 
 def load_valid_consumer_ids(repo_root: Path) -> set[str]:
     """Return the set of valid consumer_ids from consumer-matrix.csv plus LEAD-DELTA.json additions."""
-    csv_path = repo_root / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
-    lead_delta_path = (
-        repo_root
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json"
-    )
+    csv_path = resolve_input(repo_root, MATRIX_INPUT)
+    lead_delta_path = resolve_input(repo_root, PINNED_RELPATHS["LEAD-DELTA.json"])
     with csv_path.open("r", encoding="utf-8", newline="") as f:
         ids = {row["consumer_id"] for row in csv.DictReader(f)}
     lead_delta = json.loads(lead_delta_path.read_text(encoding="utf-8"))
@@ -183,19 +236,17 @@ def load_valid_consumer_ids(repo_root: Path) -> set[str]:
 
 
 def verify_pinned_sha256(repo_root: Path) -> list[str]:
-    """Verify every digest in PINNED_SHA256 against the on-disk file under repo_root."""
+    """Verify all historical snapshots, including AST sources and the census."""
     errors: list[str] = []
-    for label, expected_sha in PINNED_SHA256.items():
-        rel_path = PINNED_RELPATHS[label]
-        fpath = repo_root / rel_path
+    inputs = {**HISTORICAL_INPUTS, MATRIX_INPUT: ("consumer-matrix.csv", MATRIX_SHA256)}
+    for rel_path, (label, expected_sha) in inputs.items():
+        fpath = resolve_input(repo_root, rel_path)
         if not fpath.is_file():
-            errors.append(f"Missing pinned file for '{label}' at {rel_path}")
+            errors.append(f"Missing historical input: {label}")
             continue
         actual_sha = hashlib.sha256(fpath.read_bytes()).hexdigest()
         if actual_sha != expected_sha:
-            errors.append(
-                f"SHA-256 mismatch for '{label}' ({rel_path}): expected {expected_sha}, got {actual_sha}"
-            )
+            errors.append(f"SHA-256 mismatch for historical input: {label}")
     return errors
 
 
@@ -447,7 +498,7 @@ def csv_row_to_instance(row: dict[str, str]) -> dict[str, Any]:
     return record
 
 
-def verify_conversation_repo_ast(repo_root: Path) -> dict[str, Any]:
+def verify_conversation_repo_ast(repo_root: Path, *, mode: str = "historical") -> dict[str, Any]:
     """AST-verify conversation_repository.py for the Wave-7 locking/transaction counterexample.
 
     Wave-7 consumer-matrix.csv:545 (`src_6ad3cb3fa4349521`) claims:
@@ -460,7 +511,7 @@ def verify_conversation_repo_ast(repo_root: Path) -> dict[str, Any]:
       - `cleanup_old_conversations` (L183-L236) and `anonymize_user_data` (L243-L290) execute
         DELETE/UPDATE without `conn.transaction()`.
     """
-    target = repo_root / "apps/backend-rag/backend/db/repositories/conversation_repository.py"
+    target = resolve_input(repo_root, "apps/backend-rag/backend/db/repositories/conversation_repository.py", mode=mode)
     source_bytes = target.read_bytes()
     source_text = source_bytes.decode("utf-8")
     sha256_hex = hashlib.sha256(source_bytes).hexdigest()
@@ -508,7 +559,7 @@ def verify_conversation_repo_ast(repo_root: Path) -> dict[str, Any]:
     }
 
 
-def verify_migration_lock_busy_ast(repo_root: Path) -> dict[str, Any]:
+def verify_migration_lock_busy_ast(repo_root: Path, *, mode: str = "historical") -> dict[str, Any]:
     """AST-verify migration_manager.py and migrate.py for the lock-busy exit code counterexample.
 
     Wave-7 consumer-matrix.csv lines 343 (`src_058ad32e4ad2e6a8`) and 4440 (`src_c8f206461cd9bf69`)
@@ -519,8 +570,8 @@ def verify_migration_lock_busy_ast(repo_root: Path) -> dict[str, Any]:
       - migrate.py:77 (`cmd_apply`) returns `len(result["failed"]) == 0` (True when `failed` is empty)
       - migrate.py:170 (`main`) executes `sys.exit(0 if success is not False else 1)` (exiting 0).
     """
-    mm_path = repo_root / "apps/backend-rag/backend/db/migration_manager.py"
-    m_path = repo_root / "apps/backend-rag/backend/db/migrate.py"
+    mm_path = resolve_input(repo_root, "apps/backend-rag/backend/db/migration_manager.py", mode=mode)
+    m_path = resolve_input(repo_root, "apps/backend-rag/backend/db/migrate.py", mode=mode)
 
     mm_bytes = mm_path.read_bytes()
     m_bytes = m_path.read_bytes()
@@ -657,14 +708,8 @@ def join_live_db_metadata_md5(
       - `relations`: list of dicts keyed by `relation_id` = md5(database || chr(31) || schema || chr(31) || relation)
       - `role_relation_grants`: list of dicts keyed by `(role_id, relation_id)`
     """
-    meta_path = (
-        repo_root
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.json"
-    )
-    pool_path = (
-        repo_root
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261013-1640/POOL-FACTORY-SOURCE.json"
-    )
+    meta_path = resolve_input(repo_root, PINNED_RELPATHS["LIVE-DB-METADATA.json"])
+    pool_path = resolve_input(repo_root, PINNED_RELPATHS["POOL-FACTORY-SOURCE.json"])
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     pool = json.loads(pool_path.read_text(encoding="utf-8"))
     native = meta.get("native_metadata", {})
@@ -1492,11 +1537,8 @@ def build_b05_operation_contracts() -> list[dict[str, Any]]:
 
 def build_artifact_payload(repo_root: Path) -> dict[str, Any]:
     """Assemble the complete operation-contracts.json payload with computed denominator accounting."""
-    csv_path = repo_root / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
-    lead_delta_path = (
-        repo_root
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json"
-    )
+    csv_path = resolve_input(repo_root, MATRIX_INPUT)
+    lead_delta_path = resolve_input(repo_root, PINNED_RELPATHS["LEAD-DELTA.json"])
 
     with csv_path.open("r", encoding="utf-8", newline="") as f:
         csv_rows = list(csv.DictReader(f))
@@ -1610,7 +1652,11 @@ def render_csv_text(instances: list[dict[str, Any]]) -> str:
 
 def write_artifacts(repo_root: Path, out_dir: Path) -> None:
     """Write operation-contracts.json and operation-contracts.csv to out_dir."""
+    errors = verify_pinned_sha256(repo_root)
+    if errors:
+        raise ValueError("; ".join(errors))
     payload = build_artifact_payload(repo_root)
+    out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / "operation-contracts.json"
     csv_path = out_dir / "operation-contracts.csv"
 
@@ -1730,14 +1776,29 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Validate existing operation-contracts.json and operation-contracts.csv",
     )
+    parser.add_argument("--mode", choices=("historical", "current"), default="historical")
     args = parser.parse_args(argv)
 
-    if args.generate:
-        write_artifacts(args.repo_root, args.out_dir)
-
-    if args.validate or not args.generate:
-        return validate_artifacts(args.repo_root, args.out_dir)
-    return 0
+    try:
+        if args.mode == "current":
+            expected = json.dumps(build_current_observation(args.repo_root), indent=2) + "\n"
+            target = args.out_dir / "current-source-observation.json"
+            if args.generate:
+                args.out_dir.mkdir(parents=True, exist_ok=True)
+                target.write_text(expected, encoding="utf-8")
+            if args.validate or not args.generate:
+                if not target.is_file() or target.read_text(encoding="utf-8") != expected:
+                    sys.stderr.write("ERROR: current source observation missing or stale.\n")
+                    return 1
+            return 0
+        if args.generate:
+            write_artifacts(args.repo_root, args.out_dir)
+        if args.validate or not args.generate:
+            return validate_artifacts(args.repo_root, args.out_dir)
+        return 0
+    except (OSError, ValueError, KeyError, SyntaxError) as exc:
+        sys.stderr.write(f"ERROR: {args.mode} input validation failed ({type(exc).__name__}).\n")
+        return 1
 
 
 if __name__ == "__main__":
