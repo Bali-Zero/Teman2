@@ -145,11 +145,16 @@ interface Props {
   /** True when a client filter is set: rows are grouped by due month. */
   groupByMonth: boolean;
   notes: Record<number, string>;
+  evidenceRefs: Record<number, string>;
+  declarations: Record<number, boolean>;
   rowError: Record<number, string>;
   busyId: number | null;
   onNoteChange: (id: number, value: string) => void;
   onApprove: (row: ObligationOut) => void;
   onReject: (row: ObligationOut) => void;
+  onComplete: (row: ObligationOut) => void;
+  onEvidenceChange: (id: number, value: string) => void;
+  onDeclarationChange: (id: number, value: boolean) => void;
 }
 
 export function ObligationsTable({
@@ -158,11 +163,16 @@ export function ObligationsTable({
   clientNames,
   groupByMonth,
   notes,
+  evidenceRefs,
+  declarations,
   rowError,
   busyId,
   onNoteChange,
   onApprove,
   onReject,
+  onComplete,
+  onEvidenceChange,
+  onDeclarationChange,
 }: Props) {
   const [openDetail, setOpenDetail] = useState<number | null>(null);
 
@@ -384,6 +394,58 @@ export function ObligationsTable({
                     role="alert"
                     className="text-xs"
                     style={{ color: "var(--bz-copper-text)" }}
+                  >
+                    {rowError[row.id]}
+                  </p>
+                )}
+              </div>
+            ) : row.status === "alerted" ? (
+              <div className="flex flex-col gap-2">
+                <input
+                  aria-label={`Evidence reference for obligation ${row.id}`}
+                  className="w-full min-w-0 max-w-40 rounded border px-2 py-1 text-xs"
+                  style={INPUT_STYLE}
+                  placeholder="Internal evidence reference"
+                  maxLength={500}
+                  value={evidenceRefs[row.id] ?? ""}
+                  onChange={(e) => onEvidenceChange(row.id, e.target.value)}
+                />
+                <label className="flex gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    aria-label={`I confirm this obligation is completed: obligation ${row.id}`}
+                    checked={declarations[row.id] ?? false}
+                    onChange={(e) =>
+                      onDeclarationChange(row.id, e.target.checked)
+                    }
+                  />
+                  I confirm this obligation is completed and the reference
+                  supports it.
+                </label>
+                <button
+                  type="button"
+                  disabled={
+                    busyId !== null ||
+                    !evidenceRefs[row.id]?.trim() ||
+                    !declarations[row.id]
+                  }
+                  onClick={() => onComplete(row)}
+                  aria-describedby={`completion-help-${row.id}`}
+                  className={cn(
+                    "min-h-8 border border-[var(--state-success)] bg-transparent px-3 text-xs font-[650] text-[var(--state-success)] disabled:opacity-40",
+                    FOCUS,
+                  )}
+                >
+                  {busyId === row.id ? "Recording…" : "Record completion"}
+                </button>
+                <span id={`completion-help-${row.id}`} className="sr-only">
+                  Obligation {row.id}: enter an evidence reference and confirm
+                  completion to enable recording.
+                </span>
+                {rowError[row.id] && (
+                  <p
+                    role="alert"
+                    className="text-xs text-[var(--bz-copper-text)]"
                   >
                     {rowError[row.id]}
                   </p>

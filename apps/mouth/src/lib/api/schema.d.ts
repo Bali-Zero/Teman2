@@ -4083,6 +4083,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/compliance/obligations/{obligation_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Complete Obligation
+     * @description Record a staff-confirmed completion, its evidence reference and alert outcome.
+     *
+     *     This records the declaration; it does not verify a filing or contact a client.
+     *     Lock order is obligation then alert. Retries cannot append another completion.
+     */
+    post: operations["complete_obligation_api_compliance_obligations__obligation_id__complete_post"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/compliance/obligations/{obligation_id}/reject": {
     parameters: {
       query?: never;
@@ -20873,6 +20896,21 @@ export interface components {
       /** Status */
       status?: string | null;
     };
+    /** CompleteBody */
+    CompleteBody: {
+      /** Declaration */
+      declaration: boolean;
+      /** Evidence Ref */
+      evidence_ref: string;
+    };
+    /** CompleteOut */
+    CompleteOut: {
+      /** Alert Id */
+      alert_id: string;
+      obligation: components["schemas"]["ObligationOut"];
+      /** Outcome Id */
+      outcome_id: number;
+    };
     /**
      * CompleteRegistrationRequest
      * @description Request to complete registration with PIN
@@ -35151,6 +35189,41 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ApproveOut"];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  complete_obligation_api_compliance_obligations__obligation_id__complete_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        obligation_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CompleteBody"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CompleteOut"];
         };
       };
       /** @description Validation Error */

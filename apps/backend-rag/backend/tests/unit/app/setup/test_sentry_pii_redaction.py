@@ -37,6 +37,7 @@ EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 # Sentinel values we scan events for. If any of these strings survive
 # `_before_send`, the test fails.
 PII_SAMPLES: dict[str, str] = {
+    "evidence_ref": "internal-document:synthetic-receipt-reference",
     "npwp": "01.234.567.8-901.000",
     "nib": "1234567890123",
     "tax_id": "98.765.432.1-000.000",
@@ -130,6 +131,7 @@ def test_redacts_request_body_json():
             "method": "POST",
             "url": "https://api/example/clients",
             "data": {
+                "evidence_ref": PII_SAMPLES["evidence_ref"],
                 "name": PII_SAMPLES["name"],
                 "surname": PII_SAMPLES["surname"],
                 "email": PII_SAMPLES["email"],

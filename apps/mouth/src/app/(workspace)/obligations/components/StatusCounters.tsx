@@ -20,7 +20,7 @@ interface Props {
  * A hairline KPI band: one row of cells divided by 1px rules, each cell a
  * small uppercase label above a large tabular Fraunces numeral. No card
  * chrome, no rounded corners, no drop shadow — the unit is the cell, not a
- * box around it. Two columns below `md`, four across on a desk.
+ * box around it. Two columns below `md`, five across on a desk.
  *
  * Selection reuses `PILL_SELECTED` verbatim — the SAME ink-fill treatment
  * `StatePill`'s `pressed` gives the filter strip on this page — never
@@ -41,7 +41,7 @@ export function StatusCounters({
       <p className="mb-2 text-xs" style={{ color: "var(--bz-text-3)" }}>
         {clientId ? `Client ${clientId}` : "All clients"}
       </p>
-      <div className="grid grid-cols-2 border-y border-[var(--bz-border)] md:grid-cols-4">
+      <div className="grid grid-cols-2 border-y border-[var(--bz-border)] md:grid-cols-5">
         {COUNTER_STATUSES.map((status) => {
           const value = counts[status];
           const selected = activeStatus === status;
@@ -54,8 +54,8 @@ export function StatusCounters({
               aria-pressed={selected}
               className={cn(
                 "min-w-0 px-4 py-3 text-left",
-                "[&:nth-child(odd)]:border-r [&:nth-child(-n+2)]:border-b",
-                "md:[&:nth-child(-n+2)]:border-b-0 md:[&:not(:nth-child(4))]:border-r",
+                "[&:nth-child(odd):not(:last-child)]:border-r [&:not(:last-child)]:border-b last:col-span-2",
+                "md:[&:not(:last-child)]:border-b-0 md:[&:not(:last-child)]:border-r md:last:col-span-1",
                 selected ? PILL_SELECTED : "bg-transparent",
               )}
               style={{
