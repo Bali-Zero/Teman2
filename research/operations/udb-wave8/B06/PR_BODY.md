@@ -40,7 +40,7 @@ Block **B06** (`D04`–`D10`) of campaign `universal-db-wave8-20261015`. Status 
 Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `REVIEWED_PARTIAL_WITH_BLOCKERS`; this file's reviewed bytes had SHA256 `03b6f11a4cc00c3e8eb537e04100a4abb55e3eaed9b54ba14bb272e704883e6d`. Its findings (NAGA source, 2,608 vs 683 premise, adopt actual receipts) are applied here. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. This revision was not re-reviewed.
 
 
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Preparation: original Gemini block work; current source integration and documentation reconciliation by Codex under the owner exception.
 
 ## 2026-10-16 bounded inventory completion
 

@@ -6,6 +6,12 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # DEFINITIVE-SYNTHESIS — Wave 8 Block `B06` (Business-Domain Paths `D04`–`D10`)
 
+## Current package and historical preparation boundary (2026-10-16)
+
+Current package evidence records 27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
+
+The preparation sections below preserve the earlier18-test scope and its corrected historical claims. They do not supersede the current inventory evidence or establish operational closure. References to raw untracked inputs, ungranted execution or pending synthesis describe that earlier preparation phase unless explicitly repeated in current RESULT.json. Current source files and their tests are unchanged by this document reconciliation.
+
 ## Current package status (2026-10-16)
 
 Current source tests: 27 passed (18 preserved legacy tests plus 9 inventory tests). All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent source execution is recorded; document and final commit gates remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.

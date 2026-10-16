@@ -6,6 +6,12 @@ review_disposition: MANDATE_RECORDED_NO_IMPLEMENTATION_APPROVAL
 
 # B06: Business-domain paths
 
+## Current package and historical preparation boundary (2026-10-16)
+
+Current package evidence records 27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
+
+The preparation sections below preserve the earlier18-test scope and its corrected historical claims. They do not supersede the current inventory evidence or establish operational closure. References to raw untracked inputs, ungranted execution or pending synthesis describe that earlier preparation phase unless explicitly repeated in current RESULT.json. Current source files and their tests are unchanged by this document reconciliation.
+
 ## 1 Mandate
 
 Campaign universal-db-wave8-20261015; block B06; host Mini; worktree ~/nuzantara/.worktrees/db-udb-b06-domains; base 8061c88e0c43dd42e735fd012f9ed072df3ef3d6. Success: Trace CRM/cases/services, pricing/invoices/payments, channels/conversations,RAG/KBLI/graphs,documents/assets,editorial WR2/WR3/News Room,research/intelligence/agent memory. Entry->operation->store->effect including failures/retries; submit B05-compatible instances.

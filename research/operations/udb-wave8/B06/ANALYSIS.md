@@ -6,6 +6,12 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # B06 Business-Domain Paths — Analysis Report (`D04`–`D10`)
 
+## Current package and historical preparation boundary (2026-10-16)
+
+Current package evidence records 27 passing source tests:18 preserved legacy tests and9 inventory tests. The C09 census retains6029 IDs;4231 public source paths yield1566 rows with static anchors,4463 untraced rows and21001 syntax signals accepted by actual B05 schema validation. These are overlapping path candidates, not proven business membership or complete operation semantics. Independent source execution is available; document and final committed-head acceptance remain incomplete. No native DB query or credential provisioning was performed. block_closed:false; production adoption:false.
+
+The preparation sections below preserve the earlier18-test scope and its corrected historical claims. They do not supersede the current inventory evidence or establish operational closure. References to raw untracked inputs, ungranted execution or pending synthesis describe that earlier preparation phase unless explicitly repeated in current RESULT.json. Current source files and their tests are unchanged by this document reconciliation.
+
 > **Dux addendum (2026-10-16, supersedes every conflicting statement below, including the 2026-10-15 correction).**
 > Authoritative status and evidence: `RESULT.json`. `test_b06_domain_paths.py` runs 18 passed, 0 skipped, offline over committed
 > files only (`fixtures/consumer-matrix-metadata.csv`, `fixtures/manifest.json`, `fixtures/receipts/`). Pinned receipts:
