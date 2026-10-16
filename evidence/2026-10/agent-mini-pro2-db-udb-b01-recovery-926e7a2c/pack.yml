@@ -1,0 +1,118 @@
+mandate: universal-db-wave8-20261015-B01
+brief_ref: evidence/brief.yml
+status: PARTIAL_PREPARED_NOT_CLOSED
+receipts:
+  - claim:
+      "Verifier candidate in the original worktree: 27 tests passed; the conversations check is DDL-free and
+      the clients predicate stays strict with lead_metadata required."
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
+      --color=no -q -rA scripts/tests/test_restore_drill_verify.py
+    exit: 0
+    ts: "2026-10-16T02:11:38Z"
+    seat: claude-opus-5-5
+    execution_context: Mini original worktree db-udb-b01-recovery at8061c88, uncommitted candidate
+    stdout_sha256: feb656070cbb155e53b0c20c4d6bd3d876eb8a1a1f89e1f5f97f26cfd29a4980
+    result: 27 passed
+    source_pins:
+      restore_drill_verify.py: 19686bb0b0a5d1ced48b1cbdb60c817869529450e2042a4aa5a0207bbf07114a
+      test_restore_drill_verify.py: 1dee5b622b38b93f2b40296725140ea69e837f992827a8c18ff5b19f7f39e46f
+  - claim:
+      "Recovery adapter after Dux fixture repair: 14 tests passed, including clean-checkout fixture use and
+      tamper rejection."
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
+      --color=no -q -rA research/operations/udb-wave8/B01/test_b01_recovery_adapter.py
+    exit: 0
+    ts: "2026-10-16T02:11:38Z"
+    seat: claude-opus-5-5
+    execution_context: Mini original worktree db-udb-b01-recovery at8061c88, uncommitted candidate
+    stdout_sha256: 90319bfceac6ce6ebe21ef5925423f50a5f6d62b0853c540c4dcb8854bd8809b
+    result: 14 passed
+    patch_sha256: 6567fb579fef81dfce923d4487097cbd59c7a86b9753e07f364779e8b1b3608f
+    source_pins:
+      b01_recovery_adapter.py: d91c0dfefa7dcc922c5ba6f040d43f1bf70e2c5dfbd9607e966fcfc29fa88697
+      test_b01_recovery_adapter.py: 937f2cc438e62b563e04710384fdf851d5920554bb9ace6819e3ea7307710ad9
+      b01-recovery-instances.json: b49327732dc795c00c12c4d8b6e06f8cc5bb4035dbabd0c56034393292f2e085
+      fixtures/REAL-RUN-RECEIPT.json: 9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d
+      fixtures/PROVENANCE.json: b4440b86ec399a5f704ed9cd71c3700031019f4b9b9e64c4f3069c3cf4e63db0
+  - claim:
+      "Both suites in a clean copy without .agent-receipts and dux-requests: 41 passed, 0 skipped, from
+      committed-candidate files only."
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
+      --color=no -q -rA scripts/tests/test_restore_drill_verify.py research/operations/udb-wave8/B01/test_b01_recovery_adapter.py
+    exit: 0
+    ts: "2026-10-16T02:11:38Z"
+    seat: claude-opus-5-5
+    execution_context: Mini clean scratch copy of the candidate, no ignored inputs
+    stdout_sha256: edbef6ffe313d432d93e8a83234f61ce68ed1bd27b0006d19fed045f15a95514
+    result: 41 passed, 0 skipped
+    patch_sha256: 6567fb579fef81dfce923d4487097cbd59c7a86b9753e07f364779e8b1b3608f
+  - claim:
+      "Synthetic PostgreSQL 17.11 check of the verifier SQL (throwaway cluster, private Unix socket, no TCP
+      listener): all_passed true; synthetic rows only, not a backup restore."
+    cmd: <backend-venv>/bin/python -I -B research/operations/udb-wave8/B01/b01_recovery_adapter.py --synthetic-pg-out <scratch>/SYNTHETIC-PG17-B01.json
+    exit: 0
+    ts: "2026-10-16T01:41:07Z"
+    seat: claude-opus-5-5
+    execution_context: Mini throwaway PostgreSQL 17.11 cluster, no production data
+    stdout_sha256: e496ae170778533800b6baf706d14afa8ed20ff0e2e41aa7d60d9746a98dacec
+    result: all_passed true
+  - claim: All six B01 Markdown files carry a scoped Codex adversarial review attribution.
+    cmd:
+      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B scripts/check_adversarial_review.py --files
+      research/operations/udb-wave8/B01/ANALYSIS.md research/operations/udb-wave8/B01/BATTLE.md research/operations/udb-wave8/B01/DEFINITIVE-SYNTHESIS.md
+      research/operations/udb-wave8/B01/PROPOSAL.md research/operations/udb-wave8/B01/RESTORE-ADMISSION-PROPOSAL.md
+      research/operations/udb-wave8/B01/PR_BODY.md
+    exit: 0
+    ts: "2026-10-16T02:57:18Z"
+    seat: claude-opus-5-5
+    stdout_sha256: d2a7d464b6f864de47e75b0e52d185d8bb4c7c10cecc6d7bfdd200a8cf409b45
+    evidence_ref: research/operations/udb-wave8/B01/R1-DOCUMENT-REVIEW.json:1
+dissent:
+  - seat: campaign-independent-adversary
+    objection:
+      "B01: the real restore with the candidate verifier is not run; clients FAILED and conversations was
+      CANNOT-VERIFY on the only run of record; the installed Mini verifier is the base bytes until this PR
+      merges and the pins are checked. See frozen ADVERSARY-FINDINGS.md B01 section (F1-F7). Native probe is
+      not executed by this preparation."
+    status: CONFIRMED
+  - seat: codex
+    objection:
+      "Scoped document review REVIEWED_PARTIAL_WITH_BLOCKERS: invented run date and 10/12 count, fabricated
+      consent fields and 12/12 acceptance, Option 2A dependency cycle, refresh execution evidence. Applied by
+      the RESULT.json withdrawals and the PR body; not re-reviewed."
+    status: CONFIRMED
+    evidence_ref: research/operations/udb-wave8/B01/R1-DOCUMENT-REVIEW.json:1
+pii_scan: clean
+block_closed: false
+native_probe_executed: false
+final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
+production_adoption: false
+limitations:
+  - The single owner-authorized isolated restore of an existing backup is not run by this pack; its result
+    is recorded outside the committed files after merge and pin check.
+  - clients and conversations invariants stay unproved; the strict predicate is not weakened.
+  - R1 adversarial-review metadata, secret-scan baseline decisions and the exact-head final gate are checked
+    by the Dux before arming.
+  - This pack does not authorize changing any armed branch or starting successors.
+lanes:
+  - lane: B01-original
+    role: build
+    seat: gemini-4-argon-high
+  - lane: B01-bounded-prepare
+    role: build
+    seat: codex-coordinator
+  - lane: B01-dux-apply
+    role: build
+    seat: claude-opus-5-5-dux
+  - lane: B01-campaign-adversary
+    role: review
+    seat: campaign-independent-adversary
+seat_override:
+  The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh support and Opus5.5/xhigh
+  support, with one adversarial pass then synthesis. This model assignment supersedes the legacy two-seat
+  council whitelist; no legacy Sol/Kimi/TP1 reviewer is invoked or claimed. Actual source-pinned modern-seat
+  evidence is retained. The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
+  and PENDING; this override does not sign a gate or grant block closure.
