@@ -16,16 +16,6 @@
       "name": "Akta Perubahan (Revision Company)",
       "price": "Depend (Contact for quote)",
       "icon_id": "company-akta"
-    },
-    "other-domicile": {
-      "name": "Alcohol License — Golongan A + B + C",
-      "price": "12.000.000 IDR",
-      "icon_id": "other-domicile"
-    },
-    "other-skck": {
-      "name": "PIRT (Home Industry Food)",
-      "price": "Depend (Contact for quote)",
-      "icon_id": "other-skck"
     }
   },
   "services_by_category": {
@@ -1035,7 +1025,7 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Licence to sell alcoholic beverages of Golongan B (above 5% up to 20% alcohol) and Golongan C (above 20%).",
+        "description_en": "Licence to sell alcoholic beverages of Golongan B (above 5% up to 20% alcohol) and Golongan C (above 20% up to 55% alcohol).",
         "icon_id": "other-domicile",
         "tier_range": null
       },

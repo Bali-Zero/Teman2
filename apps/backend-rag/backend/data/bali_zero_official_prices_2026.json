@@ -909,7 +909,13 @@
         "validity": "",
         "notes": "",
         "description_en": "Licence to sell alcoholic beverages of Golongan A (up to 5% alcohol).",
-        "icon_id": "other-domicile"
+        "icon_id": "other-domicile",
+        "keywords": [
+          "izin minuman beralkohol",
+          "minuman beralkohol",
+          "minuman keras",
+          "miras"
+        ]
       },
       "Alcohol License — Golongan B + C": {
         "name": "Alcohol License — Golongan B + C",
@@ -918,8 +924,14 @@
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Licence to sell alcoholic beverages of Golongan B (above 5% up to 20% alcohol) and Golongan C (above 20%).",
-        "icon_id": "other-domicile"
+        "description_en": "Licence to sell alcoholic beverages of Golongan B (above 5% up to 20% alcohol) and Golongan C (above 20% up to 55% alcohol).",
+        "icon_id": "other-domicile",
+        "keywords": [
+          "izin minuman beralkohol",
+          "minuman beralkohol",
+          "minuman keras",
+          "miras"
+        ]
       },
       "Alcohol License — Golongan A + B + C": {
         "name": "Alcohol License — Golongan A + B + C",
@@ -929,7 +941,13 @@
         "validity": "",
         "notes": "",
         "description_en": "Licence to sell alcoholic beverages of all three classes: Golongan A, B and C.",
-        "icon_id": "other-domicile"
+        "icon_id": "other-domicile",
+        "keywords": [
+          "izin minuman beralkohol",
+          "minuman beralkohol",
+          "minuman keras",
+          "miras"
+        ]
       },
       "SLHS (Sertifikat Laik Higiene Sanitasi)": {
         "name": "SLHS (Sertifikat Laik Higiene Sanitasi)",
