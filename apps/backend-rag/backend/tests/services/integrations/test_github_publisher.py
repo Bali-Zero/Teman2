@@ -512,3 +512,295 @@ class TestCreateCommitWithFiles:
             "hero_2": "newer-concurrent-story",
             "hero_3": "story",
         }
+
+
+# ---------------------------------------------------------------------------
+# _apply_merge_label (B31 P1: the label the LocalCI merger needs)
+# ---------------------------------------------------------------------------
+
+_SUITE_AT = "2026-10-17T10:00:05Z"
+_LABEL_AT = "2026-10-17T10:00:09Z"
+
+
+def _resp(status: int = 200, payload: dict | None = None, text: str = "") -> MagicMock:
+    item = MagicMock()
+    item.status_code = status
+    item.json.return_value = payload if payload is not None else {}
+    item.text = text
+    return item
+
+
+class _FakeGitHub:
+    """Routes the calls `_apply_merge_label` makes; records every request."""
+
+    def __init__(
+        self,
+        suites: list[list[str]] | None = None,
+        label_status: int = 200,
+        actor: dict | None = None,
+        labelled_at: str = _LABEL_AT,
+        role: str = "admin",
+        has_label: bool = True,
+    ) -> None:
+        self.suites = list(suites if suites is not None else [[_SUITE_AT]])
+        self.label_status = label_status
+        self.actor = actor if actor is not None else {"__typename": "User", "login": "owner"}
+        self.labelled_at = labelled_at
+        self.role = role
+        self.has_label = has_label
+        self.calls: list[tuple[str, str]] = []
+        self.is_closed = False
+
+    async def get(self, url: str, **kwargs):
+        self.calls.append(("GET", url))
+        if "/check-suites" in url:
+            stamps = self.suites.pop(0) if len(self.suites) > 1 else self.suites[0]
+            return _resp(
+                200,
+                {
+                    "total_count": len(stamps),
+                    "check_suites": [{"created_at": x} for x in stamps],
+                },
+            )
+        if "/collaborators/" in url:
+            return _resp(200, {"role_name": self.role})
+        raise AssertionError(f"unexpected GET {url}")
+
+    async def post(self, url: str, **kwargs):
+        self.calls.append(("POST", url))
+        if url.endswith("/issues/77/labels"):
+            assert kwargs["json"] == {"labels": ["localci:merge-shadow-ok"]}
+            return _resp(self.label_status, text="boom")
+        if url.endswith("/graphql"):
+            name = "localci:merge-shadow-ok"
+            pr = {
+                "labels": {"nodes": [{"name": name}] if self.has_label else []},
+                "timelineItems": {
+                    "nodes": [
+                        {
+                            "createdAt": self.labelled_at,
+                            "label": {"name": name},
+                            "actor": self.actor,
+                        }
+                    ]
+                },
+            }
+            return _resp(200, {"data": {"repository": {"pullRequest": pr}}})
+        raise AssertionError(f"unexpected POST {url}")
+
+
+def _labeller(fake: _FakeGitHub, wait_s: float = 4.0) -> GitHubPublisher:
+    pub = _make_publisher()
+    pub._client = fake
+    pub.MERGE_LABEL_SUITE_WAIT_S = wait_s
+    pub.MERGE_LABEL_POLL_S = 0.0
+    return pub
+
+
+@pytest.fixture
+def _no_sleep():
+    with patch("backend.services.integrations.github_publisher.asyncio.sleep", AsyncMock()):
+        yield
+
+
+@pytest.mark.usefixtures("_no_sleep")
+class TestApplyMergeLabel:
+    @pytest.mark.asyncio
+    async def test_normal_path_labels_and_reads_back(self):
+        fake = _FakeGitHub()
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is True
+        assert [m for m, _ in fake.calls].count("POST") == 2  # label + graphql read-back
+
+    @pytest.mark.asyncio
+    async def test_waits_for_the_first_check_suite_then_labels(self):
+        fake = _FakeGitHub(suites=[[], [], [_SUITE_AT]])
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is True
+        suite_polls = [u for m, u in fake.calls if "/check-suites" in u]
+        assert len(suite_polls) == 3
+        first_post = next(i for i, (m, _) in enumerate(fake.calls) if m == "POST")
+        assert first_post > 2  # no label written before the suite existed
+
+    @pytest.mark.asyncio
+    async def test_no_suite_in_window_is_loud_false_and_writes_nothing(self, caplog):
+        fake = _FakeGitHub(suites=[[]])
+        pub = _labeller(fake, wait_s=0.0)
+        with caplog.at_level("ERROR"):
+            assert await pub._apply_merge_label(77, "a" * 40) is False
+        assert not [1 for m, _ in fake.calls if m == "POST"]
+        assert "NOT applied" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_label_post_failure_is_false_loud_not_raised(self, caplog):
+        fake = _FakeGitHub(label_status=403)
+        with caplog.at_level("ERROR"):
+            assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+        assert "POST HTTP 403" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_transport_error_is_false_not_raised(self):
+        fake = _FakeGitHub()
+        fake.get = AsyncMock(side_effect=RuntimeError("network down"))
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+
+    @pytest.mark.asyncio
+    async def test_readback_with_bot_actor_is_false(self, caplog):
+        fake = _FakeGitHub(actor={"__typename": "Bot", "login": "github-actions"})
+        with caplog.at_level("ERROR"):
+            assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+        assert "not applied by a User" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_readback_before_first_suite_is_false(self):
+        fake = _FakeGitHub(labelled_at="2026-10-17T10:00:04Z")
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+
+    @pytest.mark.asyncio
+    async def test_label_at_the_same_second_as_the_suite_counts(self):
+        fake = _FakeGitHub(labelled_at=_SUITE_AT)
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is True
+
+    @pytest.mark.asyncio
+    async def test_actor_without_admin_or_maintain_is_false(self):
+        fake = _FakeGitHub(role="write")
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+
+    @pytest.mark.asyncio
+    async def test_label_missing_from_pr_after_post_is_false(self):
+        fake = _FakeGitHub(has_label=False)
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+
+
+class TestPublishPathsApplyTheLabel:
+    @pytest.mark.asyncio
+    async def test_create_path_labels_after_auto_merge_and_reports_it(self):
+        pub = _make_publisher()
+        order: list[str] = []
+        client = AsyncMock()
+        client.is_closed = False
+        client.get = AsyncMock(
+            side_effect=[
+                _resp(200, {"object": {"sha": "b" * 40}}),
+                _resp(200, {"tree": {"sha": "t" * 40}}),
+            ]
+        )
+        client.post = AsyncMock(
+            side_effect=[
+                _resp(201, {"sha": "blob"}),
+                _resp(201, {"sha": "tree"}),
+                _resp(201, {"sha": "c" * 40}),
+            ]
+        )
+        pub._client = client
+        pub._create_branch_ref = AsyncMock()
+        pub._create_pull_request = AsyncMock(
+            return_value={"number": 77, "node_id": "PR_x", "html_url": "u"}
+        )
+
+        async def auto_merge(node_id):
+            order.append("auto_merge")
+            return True
+
+        async def label(number, sha):
+            order.append(f"label:{number}:{sha}")
+            return True
+
+        pub._enable_auto_merge = auto_merge
+        pub._apply_merge_label = label
+
+        result = await pub.create_commit_with_files(
+            [{"path": "content/story.mdx", "content": "story"}],
+            "feat(article): story",
+            pull_request=True,
+        )
+
+        assert order == ["auto_merge", f"label:77:{'c' * 40}"]
+        assert result["merge_label_applied"] is True
+        assert result["auto_merge_enabled"] is True
+
+    @pytest.mark.asyncio
+    async def test_create_path_survives_a_failed_label(self):
+        pub = _make_publisher()
+        client = AsyncMock()
+        client.is_closed = False
+        client.get = AsyncMock(
+            side_effect=[
+                _resp(200, {"object": {"sha": "b" * 40}}),
+                _resp(200, {"tree": {"sha": "t" * 40}}),
+            ]
+        )
+        client.post = AsyncMock(
+            side_effect=[
+                _resp(201, {"sha": "blob"}),
+                _resp(201, {"sha": "tree"}),
+                _resp(201, {"sha": "c" * 40}),
+            ]
+        )
+        pub._client = client
+        pub._create_branch_ref = AsyncMock()
+        pub._create_pull_request = AsyncMock(
+            return_value={"number": 77, "node_id": "PR_x", "html_url": "u"}
+        )
+        pub._enable_auto_merge = AsyncMock(return_value=True)
+        pub._apply_merge_label = AsyncMock(return_value=False)
+
+        result = await pub.create_commit_with_files(
+            [{"path": "content/story.mdx", "content": "story"}],
+            "feat(article): story",
+            pull_request=True,
+        )
+
+        assert result["success"] is True
+        assert result["merge_label_applied"] is False
+
+    @pytest.mark.asyncio
+    async def test_resume_path_labels_the_recreated_pr(self):
+        pub = _make_publisher()
+        fingerprint = "f" * 64
+        pub._find_pull_request = AsyncMock(return_value=None)
+        pub._get_branch_commit_sha = AsyncMock(return_value="d" * 40)
+        pub._get_commit_message = AsyncMock(
+            return_value=f"feat\n\n{pub._fingerprint_marker(fingerprint)}"
+        )
+        pub._create_pull_request = AsyncMock(
+            return_value={"number": 78, "node_id": "PR_y", "html_url": "u"}
+        )
+        pub._enable_auto_merge = AsyncMock(return_value=True)
+        pub._apply_merge_label = AsyncMock(return_value=True)
+
+        result = await pub._resume_publication_pull_request(
+            head_branch="auto-publish/k",
+            base_branch="main",
+            message="feat: x",
+            files_count=1,
+            publication_fingerprint=fingerprint,
+        )
+
+        pub._apply_merge_label.assert_awaited_once_with(78, "d" * 40)
+        assert result["merge_label_applied"] is True
+        assert result["idempotent"] is True
+
+    @pytest.mark.asyncio
+    async def test_resume_path_survives_a_failed_label(self):
+        pub = _make_publisher()
+        fingerprint = "f" * 64
+        pub._find_pull_request = AsyncMock(return_value=None)
+        pub._get_branch_commit_sha = AsyncMock(return_value="d" * 40)
+        pub._get_commit_message = AsyncMock(
+            return_value=f"feat\n\n{pub._fingerprint_marker(fingerprint)}"
+        )
+        pub._create_pull_request = AsyncMock(
+            return_value={"number": 78, "node_id": "PR_y", "html_url": "u"}
+        )
+        pub._enable_auto_merge = AsyncMock(return_value=True)
+        pub._apply_merge_label = AsyncMock(return_value=False)
+
+        result = await pub._resume_publication_pull_request(
+            head_branch="auto-publish/k",
+            base_branch="main",
+            message="feat: x",
+            files_count=1,
+            publication_fingerprint=fingerprint,
+        )
+
+        assert result["success"] is True
+        assert result["merge_label_applied"] is False
