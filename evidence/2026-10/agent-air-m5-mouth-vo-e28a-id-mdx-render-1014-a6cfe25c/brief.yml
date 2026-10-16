@@ -1,7 +1,7 @@
 task_id: agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c
 gear: 3
 gear_reason: >-
-  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +3517/-11442 against origin/main, evidence staged); declared as printed, no gear_override.
+  scripts/evidence_pack_lint.py --print-floor printed 3 for size (43 files, +3722/-11532 against origin/main, evidence staged); declared as printed, no gear_override.
 l_level: L2
 mission_colour: BLUE
 gate_class: opus
