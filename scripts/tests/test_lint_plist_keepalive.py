@@ -435,3 +435,201 @@ def test_main_custom_root_widens_coverage(tmp_path: Path, capsys: pytest.Capture
     assert rc_widened == 1
     widened_payload = json.loads(capsys.readouterr().out)
     assert len(widened_payload["findings"]) == 1
+
+
+# ---------------------------------------------------------------- mutation survivors
+# Killed-mutant tests from the 2026-10-12 AST mutation sweep of
+# scripts/lint_plist_keepalive.py (105 mutants, 28 survived the suite above).
+# Expected values come from the documented contract (docstrings, `<200 lines`
+# spec, exit-code legend), never from reading the implementation back.
+
+
+def test_warn_boundary_is_strictly_below_200_lines() -> None:
+    def body(n: int) -> str:
+        return "\n".join(f"echo l{i}" for i in range(n)) + "\n"
+
+    assert len(body(199).splitlines()) == 199
+    assert lpk.classify_wrapper(body(199))[2] is True     # 199 lines: still a short wrapper
+    assert lpk.classify_wrapper(body(200))[2] is False    # 200 lines: spec says `< 200`
+
+
+@pytest.mark.parametrize(
+    ("arg", "expected"),
+    [
+        ("/opt/app/run", True),        # absolute, no extension
+        ("~/bin/run", True),           # home-rooted
+        ("~", True),                   # home-rooted, no slash at all
+        ("bin/runner", True),          # relative with a slash, no extension
+        ("runner.sh", True),           # bare script by extension
+        ("RUNNER.PY", True),           # extension match is case-insensitive
+        ("runner", False),             # bare word: a binary name, not a path
+        ("runner.txt", False),         # data extension
+        ("-x.sh", False),              # a flag is never a path, even with an extension
+        ("--cfg=bin/run.sh", False),   # ...nor a --flag=value glued to one
+        ("", False),
+    ],
+)
+def test_looks_like_path_contract(arg: str, expected: bool) -> None:
+    assert lpk._looks_like_path(arg) is expected
+
+
+def test_extract_argv_precedence_and_empty_shapes() -> None:
+    assert lpk.extract_argv({"ProgramArguments": ["/bin/a", "x"], "Program": "/bin/b"}) == ["/bin/a", "x"]
+    # an EMPTY ProgramArguments must not mask a real Program
+    assert lpk.extract_argv({"ProgramArguments": [], "Program": "/bin/b"}) == ["/bin/b"]
+    assert lpk.extract_argv({"Program": "/bin/b"}) == ["/bin/b"]
+    assert lpk.extract_argv({"Program": ""}) == []
+    assert lpk.extract_argv({"Program": 7}) == []
+    assert lpk.extract_argv({}) == []
+    assert lpk.extract_argv({"ProgramArguments": [1, "b"]}) == ["1", "b"]  # str()-coerced
+
+
+def test_is_process_exec_only_for_a_real_command() -> None:
+    assert lpk._is_process_exec("python3 server.py") is True
+    assert lpk._is_process_exec("  node bridge.js  ") is True
+    assert lpk._is_process_exec("") is False
+    assert lpk._is_process_exec("   ") is False
+    assert lpk._is_process_exec(">/var/log/x 2>&1") is False   # fd manipulation
+    assert lpk._is_process_exec("9>lock") is False
+
+
+def test_overlapping_roots_do_not_duplicate_plists_or_index_entries(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    plist = repo / "infra" / "launchagents" / "sub" / "com.t.a.plist"
+    write_plist(plist, keepalive=True, program_args=["/bin/bash", "/x/run.sh"])
+    script = repo / "infra" / "launchagents" / "sub" / "run.sh"
+    script.write_text("#!/bin/bash\n")
+    roots = [repo / "infra", repo / "infra" / "launchagents"]  # the second nests in the first
+    errors: list[str] = []
+    assert lpk.collect_plists(roots, errors) == [repo / "infra" / "launchagents" / "sub" / "com.t.a.plist"]
+    assert lpk.build_basename_index(roots, errors)["run.sh"] == [script]
+    assert errors == []
+
+
+def test_run_unreadable_wrapper_is_an_error_and_the_scan_continues(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    locked = repo / "apps" / "a" / "locked-run.sh"
+    locked.parent.mkdir(parents=True)
+    locked.write_text("#!/bin/bash\nnohup x &\n")
+    locked.chmod(0o000)
+    ok = repo / "apps" / "b" / "ok-run.sh"
+    ok.parent.mkdir(parents=True)
+    ok.write_text("#!/bin/bash\nnohup y &\n")
+    try:
+        for name, wrapper in (("a", locked), ("b", ok)):
+            write_plist(
+                repo / "infra" / "launchagents" / f"com.test.{name}.plist",
+                keepalive=True,
+                program_args=["/bin/bash", str(wrapper)],
+            )
+        result = lpk.run(default_roots(repo), repo, verbose=False)
+    finally:
+        locked.chmod(0o644)
+    assert len(result["errors"]) == 1 and "wrapper unreadable" in result["errors"][0]
+    assert len(result["findings"]) == 1 and "ok-run.sh" in result["findings"][0]  # not abandoned
+    assert result["exit"] == 1 | 4
+
+
+def test_run_non_dict_plist_is_one_error_not_a_crash(tmp_path: Path) -> None:
+    repo = make_repo(tmp_path)
+    (repo / "infra" / "launchagents" / "com.t.list.plist").write_bytes(plistlib.dumps(["a", "b"]))
+    result = lpk.run(default_roots(repo), repo, verbose=False)
+    assert result["errors"] == ["plist root is not a dict: infra/launchagents/com.t.list.plist"]
+    assert result["findings"] == [] and result["exit"] == 4
+
+
+def _warn_only_repo(tmp_path: Path) -> Path:
+    """One KeepAlive plist whose wrapper has an exec smell (WARN class, no finding)."""
+    repo = make_repo(tmp_path)
+    wrapper = repo / "apps" / "w" / "exec-run.sh"
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("#!/bin/bash\nexec python3 server.py\n")
+    write_plist(
+        repo / "infra" / "launchagents" / "com.test.exec.plist",
+        keepalive=True,
+        program_args=["/bin/bash", str(wrapper)],
+    )
+    return repo
+
+
+def test_strict_flag_promotes_warns_and_only_when_asked(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    repo = _warn_only_repo(tmp_path)
+    assert lpk.main(["--repo-root", str(repo), "--json"]) == 0           # default: WARN, exit 0
+    lenient = json.loads(capsys.readouterr().out)
+    assert len(lenient["warns"]) == 1 and lenient["findings"] == []
+    assert lpk.main(["--repo-root", str(repo), "--json", "--strict"]) == 1
+    strict = json.loads(capsys.readouterr().out)
+    assert strict["warns"] == [] and len(strict["findings"]) == 1
+    assert strict["findings"][0].startswith("[strict] ")
+    # INNOCENCE: --strict over a tree with nothing to promote stays green.
+    clean = make_repo(tmp_path / "clean")
+    assert lpk.main(["--repo-root", str(clean), "--json", "--strict"]) == 0
+    assert json.loads(capsys.readouterr().out)["exit"] == 0
+
+
+def test_text_report_sections_appear_only_when_they_have_something_to_say(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    clean = make_repo(tmp_path / "clean")
+    assert lpk.main(["--repo-root", str(clean)]) == 0
+    out = capsys.readouterr().out
+    assert "[findings] 0" in out
+    assert "clean — no KeepAlive=true wrapper shows a one-shot smell" in out
+    assert "[unresolved]" not in out and "[errors]" not in out and "KEEPALIVE LINT FAIL" not in out
+
+    # a payload that cannot be resolved is listed only under --verbose
+    write_plist(
+        clean / "infra" / "launchagents" / "com.t.bin.plist",
+        keepalive=True,
+        program_args=["/usr/bin/env", "node"],
+    )
+    assert lpk.main(["--repo-root", str(clean), "--verbose"]) == 0
+    verbose = capsys.readouterr().out
+    assert "[unresolved] 1" in verbose
+    assert lpk.main(["--repo-root", str(clean)]) == 0
+    assert "[unresolved]" not in capsys.readouterr().out
+
+    # a finding + a scan error: exit 5, both announced, never "clean"
+    wrapper = clean / "apps" / "w" / "run.sh"
+    wrapper.parent.mkdir(parents=True)
+    wrapper.write_text("#!/bin/bash\nnohup x &\n")
+    write_plist(
+        clean / "infra" / "launchagents" / "com.t.nohup.plist",
+        keepalive=True,
+        program_args=["/bin/bash", str(wrapper)],
+    )
+    (clean / "infra" / "launchagents" / "com.t.junk.plist").write_bytes(b"not a plist")
+    assert lpk.main(["--repo-root", str(clean)]) == 5
+    bad = capsys.readouterr().out
+    assert "[findings] 1" in bad and "[errors] 1 operational error(s)" in bad
+    assert "clean — no KeepAlive=true wrapper" not in bad
+    assert "KEEPALIVE LINT FAIL (exit 5: 1=one-shot-smell 4=scan-error)" in bad
+
+
+def test_resolve_wrapper_ignores_bare_words_even_when_a_tracked_file_shares_the_name(
+    tmp_path: Path,
+) -> None:
+    repo = make_repo(tmp_path)
+    decoy = repo / "apps" / "x" / "node"          # a tracked file that happens to be named `node`
+    decoy.parent.mkdir(parents=True)
+    decoy.write_text("not the interpreter\n")
+    real = repo / "apps" / "x" / "serve.sh"
+    real.write_text("#!/bin/bash\n")
+    index = lpk.build_basename_index([repo / "apps"], [])
+    # `node` is an interpreter name, not a payload path: must not bridge to the decoy ...
+    assert lpk.resolve_wrapper(["/usr/bin/env", "node"], repo, index) == (None, "not-resolvable-in-repo")
+    # ... while the genuine script argument in the same argv still resolves.
+    assert lpk.resolve_wrapper(["/usr/bin/env", "node", "serve.sh"], repo, index) == (real, None)
+
+
+def test_scan_errors_alone_never_print_the_clean_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    repo = make_repo(tmp_path)
+    (repo / "infra" / "launchagents" / "com.t.junk.plist").write_bytes(b"not a plist")
+    assert lpk.main(["--repo-root", str(repo)]) == 4
+    out = capsys.readouterr().out
+    assert "[errors] 1 operational error(s)" in out
+    assert "clean — no KeepAlive=true wrapper" not in out
