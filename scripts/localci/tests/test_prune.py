@@ -1001,19 +1001,19 @@ def test_b13_a_total_of_zero_is_zero_not_none(tmp_path):
 
 # ------------------------------------------------------------------ B15: image GC under host pressure
 def test_b15_under_host_pressure_the_second_slot_of_every_recipe_goes_and_the_newest_never(tmp_path, monkeypatch):
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)   # under 100 + 12 headroom
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 59)   # under 60 + 15 headroom
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # VM above its own floor: only the host asks
     line = prune_line(state, docker)
-    assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 99.0
+    assert line["host_pressure"] is True and line["host_free_gb"]["before"] == 59.0
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"], imgs[2]["tag"]]   # both slot 2: a plan of the last 5 h names them
-    assert all(r["rule"].startswith("host pressure: host free 99 GB < 115 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
+    assert all(r["rule"].startswith("host pressure: host free 59 GB < 75 GB; slot 2 of its recipe, 1 plan(s)") for r in line["images"]["removed"])
     assert [c for c in calls(tmp_path) if c.startswith("image rm")] == [f"image rm {imgs[0]['tag']}", f"image rm {imgs[2]['tag']}"]   # by explicit tag
     kept = {k["tag"] for k in line["images"]["kept"]}
     assert {imgs[1]["tag"], imgs[3]["tag"]} <= kept   # the newest of each recipe stays
 
 
 def test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_the_rebuild_cost(tmp_path, monkeypatch):
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 99)
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 59)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)   # the VM is above its own floor: only the host asks
     line = prune_line(state, docker)
     seq = [c for c in calls(tmp_path) if c.startswith(("image rm", "builder prune"))]
@@ -1021,7 +1021,7 @@ def test_b15_host_pressure_runs_the_builder_prune_after_its_removals_and_names_t
     assert all("cold rebuild of that recipe" in r["rule"] for r in line["images"]["removed"])
 
 
-@pytest.mark.parametrize("free", [115, 500])
+@pytest.mark.parametrize("free", [75, 500])
 def test_b15_at_or_above_the_start_floor_there_is_no_host_pressure_and_nothing_extra_goes(tmp_path, monkeypatch, free):
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
@@ -1072,16 +1072,16 @@ def _pressure_world(tmp_path: Path, lock: str) -> tuple[Path, str, list]:
 
 @pytest.mark.parametrize("lock", ["free", "absent"])
 def test_b16_an_evicted_run_does_not_keep_its_image_under_host_pressure(tmp_path, monkeypatch, lock):   # guilt: the Pro shape
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 89)
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 49)
     state, docker, imgs = _pressure_world(tmp_path, lock)
     line = prune_line(state, docker)
     assert [r["tag"] for r in line["images"]["removed"]] == [imgs[0]["tag"]]   # slot 2, named by a dead run's plan only
-    assert line["images"]["removed"][0]["rule"].startswith("host pressure: host free 89 GB < 115 GB; slot 2 of its recipe, 1 plan(s)")
+    assert line["images"]["removed"][0]["rule"].startswith("host pressure: host free 49 GB < 75 GB; slot 2 of its recipe, 1 plan(s)")
     assert {k["tag"]: k["rule"] for k in line["images"]["kept"]}[imgs[1]["tag"]] == "the newest image of recipe e2e-tests"
 
 
 def test_b16_a_lock_that_cannot_be_opened_counts_as_held(tmp_path, monkeypatch):   # innocence: unknown keeps the image
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 89)
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 49)
     state, docker, imgs = _pressure_world(tmp_path, "unopenable")
     line = prune_line(state, docker)
     assert line["images"]["removed"] == []
@@ -1119,10 +1119,10 @@ def test_headroom_at_105_over_a_start_floor_of_100_the_second_slots_are_shed_in_
 
 
 def test_headroom_at_120_nothing_is_shed(tmp_path, monkeypatch):   # innocence
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 120)
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 80)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
     line = prune_line(state, docker)
-    assert line["pressure_gb"] == 115 and line["host_pressure"] is False and line["images"]["removed"] == []
+    assert line["pressure_gb"] == 75 and line["host_pressure"] is False and line["images"]["removed"] == []
 
 
 def test_headroom_leaves_the_start_floor_where_it_was(tmp_path, monkeypatch):
@@ -1130,15 +1130,15 @@ def test_headroom_leaves_the_start_floor_where_it_was(tmp_path, monkeypatch):
     assert mg.HOST_FLOOR_GB + mg.START_MARGIN_GB == 60 and mg.RUN_HEADROOM_GB == 15
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
     line = prune_line(state, docker)
-    assert line["pressure_gb"] == 115 and line["host_pressure"] is True
+    assert line["pressure_gb"] == 75 and line["host_pressure"] is True
 
 
-def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 112 free: calm at 12, pressure at 20
-    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 112)
+def test_headroom_a_non_default_flag_moves_the_line(tmp_path, monkeypatch):   # 72 free: calm at 15, pressure at 20
+    monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", 72)
     state, docker, imgs = two_recipes_with_slot_2(tmp_path, 30)
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker, "--run-headroom-gb", "20"]) == 0
     line = journal(state)[-1]
-    assert line["pressure_gb"] == 120 and line["host_pressure"] is True and len(line["images"]["removed"]) == 2
+    assert line["pressure_gb"] == 80 and line["host_pressure"] is True and len(line["images"]["removed"]) == 2
 
 
 # ------------------------------------------------------------------ B22 K1 v3: main's tag is recomputed from main's tree
@@ -1192,7 +1192,7 @@ def _tag16(tag: str) -> str:
     return tag.split(":")[1]
 
 
-def _keeper_world(tmp_path: Path, monkeypatch, free: float = 105, mirror: bool = True, vm: float = 30, candidate: bool = True, pr_newer: bool = True, cand_id: str = CAND_ID, **kw):
+def _keeper_world(tmp_path: Path, monkeypatch, free: float = 65, mirror: bool = True, vm: float = 30, candidate: bool = True, pr_newer: bool = True, cand_id: str = CAND_ID, **kw):
     """Per recipe: main's image (older) and, when pr_newer, a PR's newer one. main's tags are the ones the mirror recomputes."""
     monkeypatch.setattr(sys.modules[__name__], "HOST_FREE_GB", free)
     m = Mirror(tmp_path / "mirror")
