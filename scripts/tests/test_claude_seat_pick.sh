@@ -93,5 +93,13 @@ for retired in 2 3 4; do
     [ "$R" = "1|" ] && ok "retired slot $retired never selected → SUSPEND" || bad "retired slot $retired: got '$R' (want 1|)"
 done
 
+# ── 8. a closed account's value is not spent through a LIVE numbered slot ────
+#    Council refuter (codex, 2026-10-17): slot 1 carrying slot 3's value must
+#    not make the closed account answer as token_1.
+BIN="$SANDBOX/claude_alias_live"; make_fake "$BIN" "LIVEALIAS"
+R="$(run_pick "${COMMON[@]}" CLAUDE_SEAT_TRY_DEFAULT=0 CLAUDE_SEAT_BIN="$BIN" \
+        CLAUDE_CODE_OAUTH_TOKEN_1=LIVEALIAS CLAUDE_CODE_OAUTH_TOKEN_3=LIVEALIAS)"
+[ "$R" = "1|" ] && ok "retired value aliased into slot 1 never selected → SUSPEND" || bad "retired alias: got '$R' (want 1|)"
+
 echo
 [ "$FAILED" -eq 0 ] && { echo "PASS — claude_seat_pick"; exit 0; } || { echo "FAIL — claude_seat_pick"; exit 1; }

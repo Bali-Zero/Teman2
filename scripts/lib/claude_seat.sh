@@ -179,6 +179,7 @@ claude_seat_run() {
         var="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         tok="${!var:-}"
         [ -z "$tok" ] && continue
+        _claude_seat_is_retired_value "$tok" && continue
         is_dup=0
         for existing in ${tokens[@]+"${tokens[@]}"}; do
             [ "$existing" = "$tok" ] && is_dup=1
@@ -281,6 +282,7 @@ claude_seat_pick() {
     for i in $(_claude_seat_slots); do
         var="CLAUDE_CODE_OAUTH_TOKEN_${i}"; tok="${!var:-}"
         [ -z "$tok" ] && continue
+        _claude_seat_is_retired_value "$tok" && continue
         dup=0
         for existing in ${seen[@]+"${seen[@]}"}; do [ "$existing" = "$tok" ] && dup=1; done
         [ "$dup" -eq 1 ] && continue

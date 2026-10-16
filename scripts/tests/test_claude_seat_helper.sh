@@ -135,6 +135,17 @@ run_helper "$SANDBOX/definitely-not-a-binary" CLAUDE_CODE_OAUTH_TOKEN_1=s1
 check "rc=2 and the reason mentions the binary" \
       "$(yesno eval 'test "$LAST_RC" -eq 2 && has "no claude binary" "$LAST_ERR"')"
 
+echo "guilt — a closed account is never spent, not even aliased into a live slot or the legacy name:"
+for retired in 2 3 4; do
+  W6="$(mktemp -d "$SANDBOX/world.XXXXXX")"
+  BIN6="$(make_fake_claude "$W6" 'echo "CLOSED ACCOUNT ANSWERED"; exit 0')"
+  : > "$W6/seats-tried"
+  run_helper "$BIN6" "CLAUDE_CODE_OAUTH_TOKEN_$retired=closed$retired" CLAUDE_CODE_OAUTH_TOKEN_1=closed$retired \
+      CLAUDE_CODE_OAUTH_TOKEN="closed$retired"
+  check "slot $retired value, aliased into slot 1 and legacy, is never invoked" \
+        "$(yesno eval 'test "$(wc -c < "$W6/seats-tried" | tr -d " ")" -eq 0 && test "$LAST_RC" -ne 0')"
+done
+
 echo "shared rule — the verdict comes from cron-agent.sh, not a copy:"
 copied=$(grep -c 'rate.?limit\|not logged in\|token_revoked' "$HELPER")
 check "the helper does NOT reimplement the refusal regex (found $copied occurrence(s))" \
