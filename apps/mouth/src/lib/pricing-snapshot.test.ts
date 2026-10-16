@@ -118,7 +118,7 @@ describe("generated PricingTool snapshot", () => {
         (count, rows) => count + Object.keys(rows).length,
         0,
       ),
-    ).toBe(116);
+    ).toBe(122);
   });
 
   it("omits internal Retirement rows from the mirror while keeping them in canonical", () => {

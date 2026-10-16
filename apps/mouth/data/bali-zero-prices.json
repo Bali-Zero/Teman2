@@ -16,6 +16,16 @@
       "name": "Akta Perubahan (Revision Company)",
       "price": "Depend (Contact for quote)",
       "icon_id": "company-akta"
+    },
+    "other-domicile": {
+      "name": "Alcohol License — Golongan A + B + C",
+      "price": "12.000.000 IDR",
+      "icon_id": "other-domicile"
+    },
+    "other-skck": {
+      "name": "PIRT (Home Industry Food)",
+      "price": "Depend (Contact for quote)",
+      "icon_id": "other-skck"
     }
   },
   "services_by_category": {
@@ -1003,6 +1013,78 @@
         "notes": "Required when changing company address, directors, or business activities.",
         "description_en": "Notarial amendment deed (Akta Perubahan) for an existing Indonesian company. Pricing depends on scope of changes.",
         "icon_id": "company-akta",
+        "tier_range": null
+      },
+      "Alcohol License — Golongan A": {
+        "category": "company_services",
+        "key": "Alcohol License — Golongan A",
+        "name": "Alcohol License — Golongan A",
+        "price": "4.000.000 IDR",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Licence to sell alcoholic beverages of Golongan A (up to 5% alcohol).",
+        "icon_id": "other-domicile",
+        "tier_range": null
+      },
+      "Alcohol License — Golongan B + C": {
+        "category": "company_services",
+        "key": "Alcohol License — Golongan B + C",
+        "name": "Alcohol License — Golongan B + C",
+        "price": "10.000.000 IDR",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Licence to sell alcoholic beverages of Golongan B (above 5% up to 20% alcohol) and Golongan C (above 20%).",
+        "icon_id": "other-domicile",
+        "tier_range": null
+      },
+      "Alcohol License — Golongan A + B + C": {
+        "category": "company_services",
+        "key": "Alcohol License — Golongan A + B + C",
+        "name": "Alcohol License — Golongan A + B + C",
+        "price": "12.000.000 IDR",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Licence to sell alcoholic beverages of all three classes: Golongan A, B and C.",
+        "icon_id": "other-domicile",
+        "tier_range": null
+      },
+      "SLHS (Sertifikat Laik Higiene Sanitasi)": {
+        "category": "company_services",
+        "key": "SLHS (Sertifikat Laik Higiene Sanitasi)",
+        "name": "SLHS (Sertifikat Laik Higiene Sanitasi)",
+        "price": "Depend (Contact for quote)",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Food hygiene and sanitation certificate for restaurants, cafés and other food businesses. Price on consultation.",
+        "icon_id": "other-skck",
+        "tier_range": null
+      },
+      "Halal Certificate": {
+        "category": "company_services",
+        "key": "Halal Certificate",
+        "name": "Halal Certificate",
+        "price": "Depend (Contact for quote)",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Halal certification through BPJPH for food and beverage products. Price on consultation.",
+        "icon_id": "other-skck",
+        "tier_range": null
+      },
+      "PIRT (Home Industry Food)": {
+        "category": "company_services",
+        "key": "PIRT (Home Industry Food)",
+        "name": "PIRT (Home Industry Food)",
+        "price": "Depend (Contact for quote)",
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Home-industry food production permit (SPP-IRT) for small food producers. Price on consultation.",
+        "icon_id": "other-skck",
         "tier_range": null
       }
     },
