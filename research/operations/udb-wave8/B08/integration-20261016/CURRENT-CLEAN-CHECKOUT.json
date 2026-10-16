@@ -1,0 +1,59 @@
+{
+  "scope": "PREPARER_CLEAN_INPUT_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:25:43.324796+00:00",
+  "scenario": "Current source and fixtures copied into temporary root within owned B08 directory, without .agent-receipts or dux-requests; no native probes.",
+  "source_sha256": {
+    "apps/admin-dashboard/app/api/war-room/metrics/costs/route.ts": "910eba9f6b8002d6cc915c6abf1f6d6e42360b362e3d085d2928c0d49e587d05",
+    "apps/backend-rag/backend/db/migrations_v2/154_asset_provenance.sql": "62e437d7de7c60300330d01ea4d2ff7957fc4b309016d229a3bd8051635eb01e",
+    "apps/backend-rag/backend/db/migrations_v2/165_reconcile_schema_migrations_duplicates.sql": "158ae027ee046684a6bd0ee70dd7ec7e54904b9540e3e3b4f1bd33e76aec8763",
+    "apps/backend-rag/backend/services/events/outbox.py": "fdf8f48cadf3fdd72b9393dc27ac385b9be489772c6931f7a9e453fb0f413269",
+    "apps/backend-rag/backend/services/monitoring/unified_health_service.py": "d74572f5e8dfa7aec4cbe63d6854541a2037248f889d54bd14838933fc38a65b",
+    "apps/backend-rag/backend/services/observability/llm_cost_recorder.py": "14bab578510a94609a94c0bdfb2c952a04efe2654c26b3485c23234a721f21cd",
+    "research/operations/udb-wave8/B08/b08_crossstore_adapter.py": "1718f618c14fc9b3fa390e93471f30fb3018903c0718eba5b4f08420e28e6aa5",
+    "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py": "4b8d2379c50a834e123b1850b2209f49736e61391f95b99a4aaaa01eaa865ca4",
+    "scripts/ci/restore_drill_verify.py": "3fe0dfc48e5f4e3e2000b0813b59d60a8500503f68c89596e4b09a0b91dad856",
+    "scripts/outbox-prune.sh": "316314201094a5660418b493596be6a7d7451463bbcf0284b4e17d77e47a49dd",
+    "scripts/pg-to-organism-bridge.py": "96226534ea52ff70418dbdc040680efa70f546dfbf8bbdd51b030d0ae3420333"
+  },
+  "tests": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "-m",
+      "pytest",
+      "-c",
+      "/dev/null",
+      "--noconftest",
+      "-p",
+      "no:cacheprovider",
+      "-q",
+      "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py"
+    ],
+    "exit_code": 0,
+    "summary": [
+      "37 passed in 0.19s"
+    ],
+    "stdout_sha256": "00c03343714c91c9d7d8b479c44c4194b8af9b46ea03d3a77ace39a382c25906",
+    "stderr_bytes": 0
+  },
+  "cli": {
+    "command": [
+      "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+      "-I",
+      "-B",
+      "research/operations/udb-wave8/B08/b08_crossstore_adapter.py",
+      "--repo-root",
+      "."
+    ],
+    "exit_code": 0,
+    "stdout_bytes": 0,
+    "stderr_bytes": 0
+  },
+  "artifact": {
+    "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+    "bytes": 77786
+  },
+  "artifact_byte_equal_current_receipts_run": true,
+  "block_closed": false
+}

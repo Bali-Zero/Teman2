@@ -1,0 +1,55 @@
+{
+  "reviewer": "codex",
+  "review_agent": "/root/b04_available_final_gate",
+  "kind": "SCOPED_METADATA_REVIEW_BEFORE_COORDINATOR_RECONCILIATION",
+  "full_document_review": false,
+  "B04_read_reuse": "Previously reviewed complete PR body and synthesis addendum; current full-file and selected-section hashes independently verified unchanged.",
+  "required_reconciliation": [
+    "B04 PR_BODY/current synthesis still present 14 passes as current; replace current claims using corrected preparer receipt plus independent fixture-only 18-pass execution. Preserve earlier 14-pass observations as historical.",
+    "B08 PR_BODY/current synthesis still present 37 passes as current; replace current claims using corrected preparer receipt plus independent fixture-only 102-pass execution. Preserve earlier 37-pass observations as historical.",
+    "Append accurate scoped Adversarial review section to PR bodies; do not claim full historical synthesis review.",
+    "Keep PARTIAL, block_closed=false and native unknowns. Bind committed head externally after metadata/baseline/freeze preparation."
+  ],
+  "permitted_attribution_text": "Codex independently reviewed the corrected output-boundary behavior, preserved legacy tests, and fixture-only execution. B04 passed 18 tests and B08 passed 102 tests; both CLIs reproduced their pinned artifacts. Fourteen independent boundary probes verified rejection without rejected-value diagnostics or unauthorized output writes. Review covered this PR summary and the current synthesis addendum only. Final committed-head acceptance remains pending; native operational closure is not established.",
+  "approval": "SOURCE_BOUND_PASS; METADATA_RECONCILIATION_AND_FINAL_HEAD_GATE_PENDING",
+  "reviewed": [
+    {
+      "block": "B08",
+      "path": "PR_BODY.md",
+      "sha256": "558e79c1790c0647cf56cae8cb8f2879c627829c5fb7e4e6fb00b1a783f0e868",
+      "reviewed_ranges": [
+        {
+          "start": 1,
+          "end": 29,
+          "sha256": "558e79c1790c0647cf56cae8cb8f2879c627829c5fb7e4e6fb00b1a783f0e868"
+        }
+      ],
+      "reviewed_json_fields": []
+    },
+    {
+      "block": "B08",
+      "path": "DEFINITIVE-SYNTHESIS.md",
+      "sha256": "fcef839403a6c3008f9f62c0bb1fd787325d746e69c42f0c4155e173977962e7",
+      "reviewed_ranges": [
+        {
+          "start": 7,
+          "end": 19,
+          "sha256": "68952beed3030d0329f374c51fd0a15af19f9d3154190137e6aa91a6bf722a4e"
+        }
+      ],
+      "reviewed_json_fields": []
+    },
+    {
+      "block": "B08",
+      "path": "RESULT.json",
+      "sha256": "849921c210e7710b7c45355ce072cd2a0e27261c5c28fbee4d4621bb3e88430b",
+      "reviewed_ranges": [],
+      "reviewed_json_fields": [
+        "block_id",
+        "status",
+        "block_closed",
+        "head_sha"
+      ]
+    }
+  ]
+}

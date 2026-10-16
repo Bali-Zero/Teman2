@@ -1,0 +1,210 @@
+{
+  "scope": "FROZEN_PREPARER_CANDIDATE_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:34:33.768553+00:00",
+  "campaign_id": "universal-db-wave8-20261015",
+  "block_id": "B08",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b08-crossstore",
+  "base_head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "candidate_commit": "PENDING_PARENT_BINDING",
+  "candidate_root": "research/operations/udb-wave8/B08",
+  "manifest_excludes": [
+    "CANDIDATE-FREEZE.json",
+    "__pycache__"
+  ],
+  "files": {
+    "ANALYSIS.md": {
+      "sha256": "6739b51bb5b1f141acb6148b9f684aa122ac3937c3150a757e85807da789089b",
+      "bytes": 43070
+    },
+    "BATTLE.md": {
+      "sha256": "768d5d8aa92025737ad4305817bb89cb0d063706f292081f002ff3cab236e9f5",
+      "bytes": 5628
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "sha256": "fcef839403a6c3008f9f62c0bb1fd787325d746e69c42f0c4155e173977962e7",
+      "bytes": 37091
+    },
+    "DUX-NOTE-ANALYSIS.md": {
+      "sha256": "a91636605b981d9278b96fd8e254a0c5049c9478113218affc5629252d7ff522",
+      "bytes": 2096
+    },
+    "DUX-NOTE-CORRECTION.md": {
+      "sha256": "aa6fe981a949c32d6c890e326056d3cfb003cddfe150d042b728f767d223b482",
+      "bytes": 12376
+    },
+    "DUX-NOTE-SYNTHESIS.md": {
+      "sha256": "8853fe3a951883b5a9913365e6d4faf762e5f4115c0c495c9ce7d8b43c11f131",
+      "bytes": 4355
+    },
+    "ISOLATED-REGENERATION-RECEIPT.json": {
+      "sha256": "7c0fdba03862509f53a3ff4adfb481a5c290f60743749ed62023f8ab900d14c2",
+      "bytes": 1363
+    },
+    "PROPOSAL.md": {
+      "sha256": "3e6c18f74af43277d23090e9a36ecd106ad3b46212ce8445a8a2a7396ede0304",
+      "bytes": 21376
+    },
+    "PR_BODY.md": {
+      "sha256": "558e79c1790c0647cf56cae8cb8f2879c627829c5fb7e4e6fb00b1a783f0e868",
+      "bytes": 2901
+    },
+    "R1-DOCUMENT-REVIEW.json": {
+      "sha256": "bd058a0e28c1830ec2893760b9b27f699ff94b138eeaad5df797d468d7370965",
+      "bytes": 4732
+    },
+    "RESULT.json": {
+      "sha256": "849921c210e7710b7c45355ce072cd2a0e27261c5c28fbee4d4621bb3e88430b",
+      "bytes": 8194
+    },
+    "RUN-ANALYSIS.started": {
+      "sha256": "26edb0d05aa2c0bf600d841aa421e4d87ad5896f414c0851bfdd52716915ea1f",
+      "bytes": 17
+    },
+    "RUN-CORRECTION.started": {
+      "sha256": "53bf694095565ad111aca56e7b2fce2f71a4625fb9204c16aff3515bf368ff39",
+      "bytes": 17
+    },
+    "RUN-SYNTHESIS.started": {
+      "sha256": "77c99c51359f00f19753dd8051b218fabb554115cc62486c70c4365b01199225",
+      "bytes": 17
+    },
+    "SESSION.json": {
+      "sha256": "26c5df52ccb0ce0686138a32403e642180229ebdc310b3852bc9b694dc8c508c",
+      "bytes": 597
+    },
+    "b08_crossstore_adapter.py": {
+      "sha256": "1718f618c14fc9b3fa390e93471f30fb3018903c0718eba5b4f08420e28e6aa5",
+      "bytes": 82733
+    },
+    "b08_crossstore_ledger.json": {
+      "sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "bytes": 77786
+    },
+    "dux-requests/DUX-AUTHORED.md": {
+      "sha256": "ffc16e4c954ca62a266cf3a1aecac930ca5f49ac3d524459f090de870f2d26f0",
+      "bytes": 2773
+    },
+    "dux-requests/DUX-REQ-B08-01.cmd.sh": {
+      "sha256": "ce7d734fe26c48fdbdf0678897c10176e2942f4868fb3c6638be3dd8fc7348d4",
+      "bytes": 643
+    },
+    "dux-requests/DUX-REQ-B08-01.out": {
+      "sha256": "74d784664ffca2b9b268738641880b9adc0d56e128319e80b61cad9048cbfaf2",
+      "bytes": 6329
+    },
+    "dux-requests/DUX-REQ-B08-02.cmd.sh": {
+      "sha256": "767b19c75b0fcecef4655c7ef71a0c2a2f050a2909d25dfd09a70de9c5c01a19",
+      "bytes": 865
+    },
+    "dux-requests/DUX-REQ-B08-02.out": {
+      "sha256": "e3ce0173f333b159ee1d706f35b061f8d81c9cd52fc9b93807b98ff54cc5cc69",
+      "bytes": 36467
+    },
+    "dux-requests/DUX-REQ-B08-03.cmd.sh": {
+      "sha256": "8f561df0c2e6d58de77ec19997346a6ad99836dd2d54d5fa8a1fafcea51a6b0a",
+      "bytes": 933
+    },
+    "dux-requests/DUX-REQ-B08-03.out": {
+      "sha256": "dfe2256fd1c51cbbfb1276faa6dd27342209760b5ecbaf2b80e0112551c5df68",
+      "bytes": 1555
+    },
+    "dux-requests/RECEIPTS.json": {
+      "sha256": "89c85a3aa71604d3ee7fc61ee2946d59633e033e3790be920e23ff3f56bf9ecd",
+      "bytes": 2954
+    },
+    "fixtures/DUX-REQ-B08-01.out": {
+      "sha256": "74d784664ffca2b9b268738641880b9adc0d56e128319e80b61cad9048cbfaf2",
+      "bytes": 6329
+    },
+    "fixtures/PROVENANCE.json": {
+      "sha256": "3892d340b80a6ba4926a8c6d69865a8c49fea9efdd1243463ed0e857d2f0516b",
+      "bytes": 3986
+    },
+    "fixtures/REAL-RUN-RECEIPT.json": {
+      "sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "bytes": 2427
+    },
+    "fixtures/STATE.json": {
+      "sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "bytes": 4152
+    },
+    "fixtures/consumer-matrix.projection.csv": {
+      "sha256": "496d0897cab7f3b0a3827239caf89c6878dd212419af8f914a662e7e24c1ad50",
+      "bytes": 238933
+    },
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json": {
+      "sha256": "c9ae082bbd25bf85ca724ffd7573d2e08a0a6708419bc12e48a3a3433f3c0a94",
+      "bytes": 2786
+    },
+    "integration-20261016/CURRENT-LEDGER-CHECK.json": {
+      "sha256": "0fc81635daf871c1647e3dd08091cdb4e6ea353b9481340fe9d1ae23fb1d3149",
+      "bytes": 1018
+    },
+    "integration-20261016/CURRENT-REGENERATION.json": {
+      "sha256": "ef72ce9bebe567cd1dd7b40cc008770173abed62493d54aa76a4820c2e1ad1be",
+      "bytes": 1676
+    },
+    "integration-20261016/CURRENT-SOURCE-TESTS.json": {
+      "sha256": "4d823d7da18f559ab27baefd93ad6cd1b4b52af93ac10d62e822e792caee8a1b",
+      "bytes": 1031
+    },
+    "integration-20261016/PATCH-INTAKE.json": {
+      "sha256": "ed95a9bf20a149c46343c1cc81f2f8dd330f3511d4af157825df777c0339629d",
+      "bytes": 11885
+    },
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json": {
+      "sha256": "dbe47d2cfd2cc45aff8110d2f69b868617104391e71a1f260feb610b946ef683",
+      "bytes": 6250
+    },
+    "test_b08_crossstore_adapter.py": {
+      "sha256": "4b8d2379c50a834e123b1850b2209f49736e61391f95b99a4aaaa01eaa865ca4",
+      "bytes": 38301
+    }
+  },
+  "changed_preexisting_files": [
+    "b08_crossstore_ledger.json",
+    "test_b08_crossstore_adapter.py",
+    "RESULT.json",
+    "PR_BODY.md",
+    "b08_crossstore_adapter.py",
+    "DEFINITIVE-SYNTHESIS.md"
+  ],
+  "new_files_before_this_manifest": [
+    "fixtures/DUX-REQ-B08-01.out",
+    "fixtures/PROVENANCE.json",
+    "fixtures/REAL-RUN-RECEIPT.json",
+    "fixtures/STATE.json",
+    "fixtures/consumer-matrix.projection.csv",
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+    "integration-20261016/CURRENT-LEDGER-CHECK.json",
+    "integration-20261016/CURRENT-REGENERATION.json",
+    "integration-20261016/CURRENT-SOURCE-TESTS.json",
+    "integration-20261016/PATCH-INTAKE.json",
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json"
+  ],
+  "removed_preexisting_files": [],
+  "hermetic_patch": {
+    "sha256": "b94b15241c166a16f60e919540b2df01372197070bfa54d7423d0f8c19712489",
+    "bytes": 288809,
+    "paths": 7,
+    "added_lines": 6955,
+    "removed_lines": 28
+  },
+  "all_7_patch_files_match_worker_prepared_candidate": true,
+  "followup_scope": {
+    "reconciled_docs": 3,
+    "regenerated_ledger": 1,
+    "execution_and_intake_receipts": 6,
+    "source_or_test_changes_beyond_prepared_patch": false
+  },
+  "current_verification": {
+    "with_receipts": "37 passed in 0.26s; 0 skipped",
+    "without_receipts": "37 passed in 0.19s; 0 skipped",
+    "cli": "exit 0 in both modes; exact pinned ledger parity",
+    "original_checks": "88 assert statements and 23 pytest.raises calls preserved",
+    "finding_ids": "original source finding IDs and 6 counterexamples preserved",
+    "native_probes_run": false
+  },
+  "independent_acceptance": "PENDING_PARENT",
+  "block_closed": false
+}

@@ -1,0 +1,31 @@
+{
+  "scope": "PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+  "command": [
+    "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+    "-I",
+    "-B",
+    "-m",
+    "pytest",
+    "-c",
+    "/dev/null",
+    "--noconftest",
+    "-p",
+    "no:cacheprovider",
+    "-q",
+    "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py"
+  ],
+  "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b08-crossstore",
+  "started_at": "2026-10-16T06:24:28.301163+00:00",
+  "ended_at": "2026-10-16T06:24:29.262541+00:00",
+  "exit_code": 0,
+  "summary": [
+    "37 passed in 0.26s"
+  ],
+  "stdout_sha256": "2ab2bfc3425572ef3842f0240be3ede1e82f5c2347be6d2d976c719a0d6a0b39",
+  "stderr_bytes": 0,
+  "source_sha256": {
+    "research/operations/udb-wave8/B08/b08_crossstore_adapter.py": "1718f618c14fc9b3fa390e93471f30fb3018903c0718eba5b4f08420e28e6aa5",
+    "research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py": "4b8d2379c50a834e123b1850b2209f49736e61391f95b99a4aaaa01eaa865ca4"
+  },
+  "block_closed": false
+}

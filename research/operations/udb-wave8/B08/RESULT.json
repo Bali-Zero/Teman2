@@ -1,0 +1,127 @@
+{
+  "block_id": "B08",
+  "status": "PARTIAL",
+  "block_closed": false,
+  "proofs": [
+    {
+      "dimension": "dependencies_and_census",
+      "evidence_path": "research/operations/udb-wave8/B08/dux-requests/DUX-REQ-B08-01.out",
+      "stdout_sha256": "74d784664ffca2b9b268738641880b9adc0d56e128319e80b61cad9048cbfaf2",
+      "summary": "Deterministic scan of 6,029 rows (36 columns) in consumer-matrix.csv identifying 1,803 multi-store or cross-boundary rows by family and store combination.",
+      "scope": "HISTORICAL_FROZEN_INPUT_RECEIPT_NOT_NEW_NATIVE_OBSERVATION"
+    },
+    {
+      "dimension": "cross_store_consumers_and_restore_rows",
+      "evidence_path": "research/operations/udb-wave8/B08/dux-requests/DUX-REQ-B08-02.out",
+      "stdout_sha256": "e3ce0173f333b159ee1d706f35b061f8d81c9cd52fc9b93807b98ff54cc5cc69",
+      "summary": "104 matched consumer rows in consumer-matrix.csv including exact restore-drill rows (CSV lines 25, 3280, 3727, 4046, 4047) and outbox/provenance/bridge/cost consumers.",
+      "scope": "HISTORICAL_FROZEN_INPUT_RECEIPT_NOT_NEW_NATIVE_OBSERVATION"
+    },
+    {
+      "dimension": "counterexample_source_hashes",
+      "evidence_path": "research/operations/udb-wave8/B08/dux-requests/DUX-REQ-B08-03.out",
+      "stdout_sha256": "dfe2256fd1c51cbbfb1276faa6dd27342209760b5ecbaf2b80e0112551c5df68",
+      "summary": "Pinned SHA256 hashes of the 12 repository files backing CE-01 through CE-06 at base commit 8061c88e0c43dd42e735fd012f9ed072df3ef3d6.",
+      "scope": "HISTORICAL_FROZEN_INPUT_RECEIPT_NOT_NEW_NATIVE_OBSERVATION"
+    },
+    {
+      "dimension": "all_eight_dimensions_ledger_and_adapter",
+      "evidence_path": "research/operations/udb-wave8/B08/b08_crossstore_adapter.py",
+      "artifact_path": "research/operations/udb-wave8/B08/b08_crossstore_ledger.json",
+      "summary": "The already prepared hermetic adapter was integrated once after exact baseline and patch verification. Both input modes pass 37 tests and regenerate the same pinned 77,786-byte ledger: 9 operation instances, 8 dimensions, 6 preserved counterexamples, active_consumer_denominator UNKNOWN, block_closed false. All original 88 assertions, 23 pytest.raises calls and source finding IDs are preserved.",
+      "scope": "CURRENT_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "artifact_sha256": "46021291588f409b301df5672ce1262929f6408912157750195f65be2217af13",
+      "receipts": [
+        "integration-20261016/PATCH-INTAKE.json",
+        "integration-20261016/CURRENT-SOURCE-TESTS.json",
+        "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+        "integration-20261016/CURRENT-REGENERATION.json",
+        "integration-20261016/CURRENT-LEDGER-CHECK.json"
+      ]
+    }
+  ],
+  "missing": [
+    "Parent coordinator acceptance, official source-bound verification receipt, externally bound committed head and fresh independent final review under the owner's recorded Claude-availability exception.",
+    "FROZEN_INPUT_BLOCKER (no new native observation): B01_RECOVERY_EVIDENCE_MISSING: Real-backup restore drill PASS proof on Mini is missing (STATE.json real_backup_restore_success_proved=false; REAL-RUN-RECEIPT.json has clients=FAIL with VIOLATION:1 and conversations=CANNOT-VERIFY with UNMEASURED_CHECK:1; disaggregating whether one or both clients subchecks failed and the conversations SQL error requires B01 RESTORE-ADMISSION-PROPOSAL.md execution).",
+    "FROZEN_INPUT_BLOCKER (no new native observation): B02_REDIS_OBSERVER_EVIDENCE_MISSING: Keyless nuzantara_observer Redis ACL admission and live stream/TTL observation on Pro (redis:pro:6379/db0) and Mini (redis:mini:6379/db0) are missing (STATE.json redis.pro/mini=AUTHORIZATION_REQUIRED).",
+    "FROZEN_INPUT_BLOCKER (no new native observation): B03_DENOMINATOR_UNCLOSED: Active-consumer denominator across the 6,030 union leads remains UNKNOWN (STATE.json active_consumer_denominator=UNKNOWN).",
+    "FROZEN_INPUT_BLOCKER (no new native observation): B04_QDRANT_PROD_METADATA_MISSING: Production Qdrant collection/vector/payload metadata and embedding model binding proof are missing (STATE.json qdrant_model_binding_proved=false; local Pro has only 2 collections af100a6d).",
+    "FROZEN_INPUT_BLOCKER (no new native observation): OPERATION_ID_PENDING_B05: Canonical operation_id assignment (op:<domain>:<verb>:<object>) is owned by B05; all B08 operation instances carry UNASSIGNED_B05.",
+    "FROZEN_INPUT_BLOCKER (no new native observation): SIBLING_RESULT_HASHES_PENDING_DUX: Candidate RESULT.json SHA256 hashes from B01, B02, B03, and B04 are pending Dux post-synthesis consolidation."
+  ],
+  "tests": [
+    {
+      "id": "DUX-REQ-B08-10",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B research/operations/udb-wave8/B08/b08_crossstore_adapter.py --repo-root .",
+      "result": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "exit_code": 0,
+      "receipt": "integration-20261016/CURRENT-REGENERATION.json",
+      "receipt_sha256": "ef72ce9bebe567cd1dd7b40cc008770173abed62493d54aa76a4820c2e1ad1be",
+      "notes": "Current source-bound preparer execution; the parent coordinator separately issues its official verification receipt."
+    },
+    {
+      "id": "DUX-REQ-B08-11",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "result": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "exit_code": 0,
+      "receipt": "integration-20261016/CURRENT-SOURCE-TESTS.json",
+      "receipt_sha256": "4d823d7da18f559ab27baefd93ad6cd1b4b52af93ac10d62e822e792caee8a1b",
+      "notes": "Current source-bound preparer execution; the parent coordinator separately issues its official verification receipt.",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "id": "DUX-REQ-B08-12",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -c 'import hashlib,json,pathlib; p=pathlib.Path(\"research/operations/udb-wave8/B08/b08_crossstore_ledger.json\"); d=json.loads(p.read_text()); print(json.dumps({\"ledger_sha256\":hashlib.sha256(p.read_bytes()).hexdigest(),\"instances\":len(d[\"operation_instances\"]),\"dimensions\":len(d[\"dimensions\"]),\"block_closed\":d[\"block_closed\"],\"active_consumer_denominator\":d[\"census_summary\"][\"active_consumer_denominator\"]}))'",
+      "result": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "exit_code": 0,
+      "receipt": "integration-20261016/CURRENT-LEDGER-CHECK.json",
+      "receipt_sha256": "0fc81635daf871c1647e3dd08091cdb4e6ea353b9481340fe9d1ae23fb1d3149",
+      "notes": "Current source-bound preparer execution; the parent coordinator separately issues its official verification receipt."
+    },
+    {
+      "id": "B08-CURRENT-CLEAN-CHECKOUT",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B08/test_b08_crossstore_adapter.py",
+      "result": "PASSED_PREPARER_EXECUTION_PENDING_INDEPENDENT_ACCEPTANCE",
+      "exit_code": 0,
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "receipt": "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+      "receipt_sha256": "c9ae082bbd25bf85ca724ffd7573d2e08a0a6708419bc12e48a3a3433f3c0a94",
+      "notes": "Current source and committed-candidate fixtures without .agent-receipts or dux-requests; CLI exit 0, exact ledger parity."
+    },
+    {
+      "id": "B08-HISTORICAL-PREPARED-RUNS",
+      "result": "HISTORICAL_NOT_CURRENT_CANDIDATE_EXECUTION",
+      "receipt": "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json",
+      "receipt_sha256": "dbe47d2cfd2cc45aff8110d2f69b868617104391e71a1f260feb610b946ef683",
+      "notes": "Original receipt-input suite: 16 passed; original clean checkout: 14 passed, 2 skipped. Missing-source variant: 3 passed, 1 failed, 2 skipped, 10 errors. Prepared patch observations and historical isolated 16-pass receipt retain their separate scope."
+    }
+  ],
+  "head_sha": "PENDING_DUX_COMMIT",
+  "boundary_correction": {
+    "status": "SOURCE_REVIEW_PASS_FINAL_HEAD_PENDING",
+    "source_sha256": "7a09dbe7dc2f576312c2824cfb44fb64fa996e1f5bc19118b2fc5f4f56f154ae",
+    "tests_passed": 102,
+    "clean_reproduction": true,
+    "independent_source_verdict_sha256": "3a293fe4753c70bdca213f577522d037d5bf5c69a08282633fb77b91e858715b",
+    "native_operational_closure": false,
+    "post_review_test_assertion_refactor": {
+      "receipt": "integration-20261016/ASSERTION-VISIBILITY-REFACTOR.json",
+      "test_sha256": "7fdea9866985f0bf273b5f4de10247445433301e53e88c2dc04991ea95b51034",
+      "tests_passed": 102,
+      "lint_exit": 0,
+      "original_prefix_preserved": true,
+      "independent_final_head_pending": true
+    }
+  },
+  "current_main_compatibility": {
+    "tests_passed": 108,
+    "source_gate": "PENDING_NEW_SOURCE_DELTA_REVIEW",
+    "historical_ledger_unchanged": true,
+    "current_runtime_recovery_proved": false,
+    "receipt": "integration-20261016/CURRENT-MAIN-COMPATIBILITY.json"
+  }
+}

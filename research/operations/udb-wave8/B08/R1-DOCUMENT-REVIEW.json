@@ -1,0 +1,100 @@
+{
+  "reviewer": "codex",
+  "review_kind": "SCOPED_ADVERSARIAL_DOCUMENT_REVIEW",
+  "full_document_review": false,
+  "implementation_approval": false,
+  "effective_model": "UNOBSERVED",
+  "effective_effort": "UNOBSERVED",
+  "scope": "Document headings, mandate, PR summary and verification sections, synthesis dispositions, and selected counterexample/unsafe-proposal sections. Sources were read with bounded excerpts; this is not blanket document or code approval.",
+  "source_review": {
+    "head_before": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "head_after": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "verdict": "REVIEWED_PARTIAL_WITH_BLOCKERS",
+    "block_closed": false,
+    "findings": [
+      {
+        "severity": "BLOCKER",
+        "file": "PROPOSAL.md",
+        "lines": [
+          21,
+          61
+        ],
+        "finding": "Historical proposal wrongly says CSV contains 6030 rows and proposes admin-secret Redis observation. Actual CSV has 6029 plus one delta; admin/app-secret reuse remains prohibited. Mark historical proposal blocked and defer observer admission to B02."
+      },
+      {
+        "severity": "MEDIUM",
+        "file": "PR_BODY.md",
+        "lines": [
+          42,
+          43,
+          44,
+          45,
+          46,
+          48
+        ],
+        "finding": "B01/B02 runtime proof, B03 denominator and B04 physical/model bindings remain missing. Bites still cites 12 tests; current source has actual 16-pass and isolated regenerated ledger receipt. Refresh without claiming native cross-store guarantees."
+      }
+    ],
+    "files": [
+      {
+        "path": "research/operations/udb-wave8/B08/ANALYSIS.md",
+        "sha256_before": "cd9f51be9e6a59e2f545d83d06639274a000d3d02209ff52b9ce9ca3080a388b",
+        "sha256_after": "cd9f51be9e6a59e2f545d83d06639274a000d3d02209ff52b9ce9ca3080a388b",
+        "stable": true,
+        "line_count": 224,
+        "missing_r1_header": true,
+        "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+        "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+      },
+      {
+        "path": "research/operations/udb-wave8/B08/BATTLE.md",
+        "sha256_before": "f2e893fab396c65b220160fe988aa4d0e5776be94970a36511ef8f1731bd39d5",
+        "sha256_after": "f2e893fab396c65b220160fe988aa4d0e5776be94970a36511ef8f1731bd39d5",
+        "stable": true,
+        "line_count": 30,
+        "missing_r1_header": true,
+        "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+        "disposition": "MANDATE_RECORDED_NO_IMPLEMENTATION_APPROVAL"
+      },
+      {
+        "path": "research/operations/udb-wave8/B08/DEFINITIVE-SYNTHESIS.md",
+        "sha256_before": "5447eb37abc05517a5f2233257a57c2c1c7be1fde4639f67402629a234d51c1b",
+        "sha256_after": "5447eb37abc05517a5f2233257a57c2c1c7be1fde4639f67402629a234d51c1b",
+        "stable": true,
+        "line_count": 167,
+        "missing_r1_header": true,
+        "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+        "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+      },
+      {
+        "path": "research/operations/udb-wave8/B08/PROPOSAL.md",
+        "sha256_before": "293372971df2e4bb736ea2c226322aaa3c30de059d02a46a138a9504d03a7d91",
+        "sha256_after": "293372971df2e4bb736ea2c226322aaa3c30de059d02a46a138a9504d03a7d91",
+        "stable": true,
+        "line_count": 166,
+        "missing_r1_header": true,
+        "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+        "disposition": "HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED"
+      },
+      {
+        "path": "research/operations/udb-wave8/B08/PR_BODY.md",
+        "sha256_before": "e0baac694bc88c1aaef280952466700eb20fa107e6f2f7901810031cef0ad915",
+        "sha256_after": "e0baac694bc88c1aaef280952466700eb20fa107e6f2f7901810031cef0ad915",
+        "stable": true,
+        "line_count": 48,
+        "missing_r1_header": true,
+        "codex_attribution": "YES_FOR_THIS_EXPLICITLY_SCOPED_REVIEW_ONLY",
+        "disposition": "PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION"
+      }
+    ],
+    "limitations": [
+      "Parent contributed bounded source repairs to B03/B06/B07; this document review is not an independent grade of that code.",
+      "Fresh exact-head Opus 5.5 xhigh gate is still mandatory.",
+      "Any document edited after the listed SHA needs renewed scoped review; no blanket future attribution.",
+      "No native/client data, credentials, ACL provisioning or production writes were accessed or authorized."
+    ]
+  },
+  "current_addendum": "Coordinator metadata preparation from real isolated receipt, not independent acceptance.",
+  "block_closed": false,
+  "final_blue_gate": "PENDING_FINAL_CANDIDATE"
+}
