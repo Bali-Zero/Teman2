@@ -11,8 +11,11 @@ Covers:
 - close() lifecycle
 """
 
+import asyncio
 import base64
 import json
+import re
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -541,7 +544,14 @@ class _FakeGitHub:
         labelled_at: str = _LABEL_AT,
         role: str = "admin",
         has_label: bool = True,
+        events: list[dict] | None = None,
+        suites_status: int = 200,
+        graphql_misses: int = 0,
     ) -> None:
+        self.events = events
+        self.suites_status = suites_status
+        self.graphql_misses = graphql_misses
+        self.graphql_vars: list[dict] = []
         self.suites = list(suites if suites is not None else [[_SUITE_AT]])
         self.label_status = label_status
         self.actor = actor if actor is not None else {"__typename": "User", "login": "owner"}
@@ -554,6 +564,8 @@ class _FakeGitHub:
     async def get(self, url: str, **kwargs):
         self.calls.append(("GET", url))
         if "/check-suites" in url:
+            if self.suites_status != 200:
+                return _resp(self.suites_status, text="limited")
             stamps = self.suites.pop(0) if len(self.suites) > 1 else self.suites[0]
             return _resp(
                 200,
@@ -572,18 +584,17 @@ class _FakeGitHub:
             assert kwargs["json"] == {"labels": ["localci:merge-shadow-ok"]}
             return _resp(self.label_status, text="boom")
         if url.endswith("/graphql"):
+            self.graphql_vars.append(kwargs["json"]["variables"])
             name = "localci:merge-shadow-ok"
+            if self.graphql_misses > 0:
+                self.graphql_misses -= 1
+                return _resp(200, {"data": {"repository": {"pullRequest": None}}})
+            nodes = self.events or [
+                {"createdAt": self.labelled_at, "label": {"name": name}, "actor": self.actor}
+            ]
             pr = {
                 "labels": {"nodes": [{"name": name}] if self.has_label else []},
-                "timelineItems": {
-                    "nodes": [
-                        {
-                            "createdAt": self.labelled_at,
-                            "label": {"name": name},
-                            "actor": self.actor,
-                        }
-                    ]
-                },
+                "timelineItems": {"nodes": nodes},
             }
             return _resp(200, {"data": {"repository": {"pullRequest": pr}}})
         raise AssertionError(f"unexpected POST {url}")
@@ -599,8 +610,10 @@ def _labeller(fake: _FakeGitHub, wait_s: float = 4.0) -> GitHubPublisher:
 
 @pytest.fixture
 def _no_sleep():
-    with patch("backend.services.integrations.github_publisher.asyncio.sleep", AsyncMock()):
-        yield
+    with patch(
+        "backend.services.integrations.github_publisher.asyncio.sleep", AsyncMock()
+    ) as sleep:
+        yield sleep
 
 
 @pytest.mark.usefixtures("_no_sleep")
@@ -668,6 +681,124 @@ class TestApplyMergeLabel:
     async def test_label_missing_from_pr_after_post_is_false(self):
         fake = _FakeGitHub(has_label=False)
         assert await _labeller(fake)._apply_merge_label(77, "a" * 40) is False
+
+
+_NAME = "localci:merge-shadow-ok"
+_USER = {"__typename": "User", "login": "owner"}
+_BOT = {"__typename": "Bot", "login": "github-actions"}
+
+
+def _event(at: str, actor: dict) -> dict:
+    return {"createdAt": at, "label": {"name": _NAME}, "actor": actor}
+
+
+@pytest.mark.usefixtures("_no_sleep")
+class TestApplyMergeLabelSurvivors:
+    @pytest.mark.asyncio
+    async def test_maintain_role_counts(self):
+        assert await _labeller(_FakeGitHub(role="maintain"))._apply_merge_label(77, "a" * 40)
+
+    @pytest.mark.asyncio
+    async def test_last_labeled_event_is_the_one_judged_bad_last(self):
+        events = [_event(_LABEL_AT, _USER), _event(_LABEL_AT, _BOT)]
+        assert not await _labeller(_FakeGitHub(events=events))._apply_merge_label(77, "a" * 40)
+
+    @pytest.mark.asyncio
+    async def test_last_labeled_event_is_the_one_judged_good_last(self):
+        events = [_event("2026-10-17T10:00:01Z", _USER), _event(_LABEL_AT, _USER)]
+        assert await _labeller(_FakeGitHub(events=events))._apply_merge_label(77, "a" * 40)
+
+    @pytest.mark.asyncio
+    async def test_poll_sleeps_between_suite_reads(self, _no_sleep):
+        fake = _FakeGitHub(suites=[[], [], [_SUITE_AT]])
+        pub = _labeller(fake)
+        pub.MERGE_LABEL_POLL_S = 2.0
+        assert await pub._apply_merge_label(77, "a" * 40)
+        assert [c.args for c in _no_sleep.await_args_list][:2] == [(2.0,), (2.0,)]
+
+    @pytest.mark.asyncio
+    async def test_readback_is_retried_for_timeline_lag(self, _no_sleep):
+        fake = _FakeGitHub(graphql_misses=2)
+        assert await _labeller(fake)._apply_merge_label(77, "a" * 40)
+        assert len(fake.graphql_vars) == 3
+
+    @pytest.mark.asyncio
+    async def test_readback_gives_up_after_the_bounded_tries(self):
+        fake = _FakeGitHub(graphql_misses=99)
+        assert not await _labeller(fake)._apply_merge_label(77, "a" * 40)
+        assert len(fake.graphql_vars) == 3
+
+    @pytest.mark.asyncio
+    async def test_owner_and_repo_are_not_swapped(self):
+        fake = _FakeGitHub()
+        await _labeller(fake)._apply_merge_label(77, "a" * 40)
+        assert fake.graphql_vars == [{"o": "org", "r": "repo", "n": 77}]
+        assert all("/repos/org/repo/" in u for m, u in fake.calls if "graphql" not in u)
+
+    @pytest.mark.asyncio
+    async def test_fractional_second_timestamp_is_unreadable_like_the_merger(self):
+        fake = _FakeGitHub(labelled_at="2026-10-17T10:00:09.500Z")
+        assert not await _labeller(fake)._apply_merge_label(77, "a" * 40)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("login", ["-lead", "a_b", "x" * 40, "ok\n"])
+    async def test_login_shape_is_the_mergers(self, login):
+        fake = _FakeGitHub(actor={"__typename": "User", "login": login})
+        assert not await _labeller(fake)._apply_merge_label(77, "a" * 40)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [403, 429])
+    async def test_rate_limit_is_named_not_reported_as_no_suite(self, status, caplog):
+        fake = _FakeGitHub(suites_status=status)
+        with caplog.at_level("ERROR"):
+            assert not await _labeller(fake)._apply_merge_label(77, "a" * 40)
+        assert "rate limit or permission" in caplog.text
+        assert "no check suite" not in caplog.text
+        assert not [1 for m, _ in fake.calls if m == "POST"]
+
+
+class TestMergeLabelDeadline:
+    @pytest.mark.asyncio
+    async def test_whole_labelling_is_bounded_by_one_deadline(self, caplog):
+        fake = _FakeGitHub()
+
+        async def hang(url, **kwargs):
+            await asyncio.Event().wait()
+
+        fake.get = hang
+        pub = _labeller(fake)
+        pub.MERGE_LABEL_DEADLINE_S = 0.05
+        with caplog.at_level("ERROR"):
+            assert await pub._apply_merge_label(77, "a" * 40) is False
+        assert "deadline" in caplog.text
+
+    def test_worst_case_is_stated_and_fits_the_request(self):
+        assert GitHubPublisher.MERGE_LABEL_DEADLINE_S <= 20.0
+        assert GitHubPublisher.MERGE_LABEL_CALL_TIMEOUT_S <= 5.0
+
+
+class TestMergerParity:
+    def test_timestamp_and_login_shapes_equal_merger_source(self):
+        from backend.services.integrations import github_publisher as gp
+
+        root = next(
+            (
+                q
+                for q in Path(__file__).resolve().parents
+                if (q / "scripts/localci/merger.py").is_file()
+            ),
+            None,
+        )
+        assert gp._TS_RE.pattern == r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"
+        assert gp._LOGIN_RE.pattern == "[A-Za-z0-9][A-Za-z0-9-]{0,38}"
+        if root is None:
+            pytest.skip("scripts/localci/merger.py not in this checkout")
+        text = (root / "scripts/localci/merger.py").read_text()
+        ts = re.search(r'^_TS_RE = re\.compile\(r"(.*?)"\)', text, re.M)
+        login = re.search(r'^_LOGIN_RE = re\.compile\(r"(.*?)"\)', text, re.M)
+        assert ts and login
+        assert ts.group(1) == gp._TS_RE.pattern
+        assert login.group(1) == gp._LOGIN_RE.pattern
 
 
 class TestPublishPathsApplyTheLabel:

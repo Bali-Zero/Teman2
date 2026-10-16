@@ -27,12 +27,12 @@ Usage:
 
 import asyncio
 import base64
+import calendar
 import hashlib
 import json
 import logging
 import re
 import time
-from datetime import datetime
 from typing import Any
 
 import httpx
@@ -40,6 +40,12 @@ import httpx
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Copied from scripts/localci/merger.py (_TS_RE, _LOGIN_RE): the merger reads the
+# label event with exactly these shapes, so the producer must not accept looser
+# ones. test_github_publisher.py pins the copies against merger.py when present.
+_TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+_LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 
 
 class GitHubPublisherError(Exception):
@@ -64,6 +70,10 @@ class GitHubPublisher:
     MERGE_LABEL_ROLES = ("admin", "maintain")
     # Bounded: the wait runs inside the publish request.
     MERGE_LABEL_SUITE_WAIT_S = 15.0
+    # One wall-clock bound over the whole labelling (wait + POST + read-back);
+    # every HTTP call inside it is capped at MERGE_LABEL_CALL_TIMEOUT_S.
+    MERGE_LABEL_DEADLINE_S = 20.0
+    MERGE_LABEL_CALL_TIMEOUT_S = 5.0
     MERGE_LABEL_POLL_S = 2.0
     MERGE_LABEL_READBACK_TRIES = 3
 
@@ -596,12 +606,9 @@ class GitHubPublisher:
     @staticmethod
     def _timestamp(value: Any) -> float | None:
         """Parse a GitHub ISO-8601 timestamp to epoch seconds, ``None`` if unreadable."""
-        if not isinstance(value, str):
+        if not isinstance(value, str) or _TS_RE.fullmatch(value) is None:
             return None
-        try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
-        except ValueError:
-            return None
+        return float(calendar.timegm(time.strptime(value, "%Y-%m-%dT%H:%M:%SZ")))
 
     async def _first_check_suite_at(self, head_sha: str) -> float | None:
         """Earliest ``created_at`` of the head's check suites, ``None`` when there is none yet."""
@@ -609,8 +616,12 @@ class GitHubPublisher:
             f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/commits/{head_sha}/check-suites",
             headers=self._get_headers(),
             params={"per_page": 100},
-            timeout=15.0,
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
         )
+        if response.status_code in (403, 429):
+            raise GitHubPublisherError(
+                f"check-suites HTTP {response.status_code} (rate limit or permission)"
+            )
         if response.status_code != 200:
             return None
         doc = response.json()
@@ -638,7 +649,7 @@ class GitHubPublisher:
                 "query": query,
                 "variables": {"o": self.owner, "r": self.repo, "n": pr_number},
             },
-            timeout=15.0,
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
         )
         if response.status_code != 200:
             return f"read-back HTTP {response.status_code}"
@@ -657,7 +668,12 @@ class GitHubPublisher:
             ):
                 actor, labelled_at = event.get("actor"), event.get("createdAt")
         login = actor.get("login") if isinstance(actor, dict) else None
-        if not (isinstance(actor, dict) and actor.get("__typename") == "User" and login):
+        if not (
+            isinstance(actor, dict)
+            and actor.get("__typename") == "User"
+            and isinstance(login, str)
+            and _LOGIN_RE.fullmatch(login)
+        ):
             return f"label not applied by a User account (actor {actor})"
         stamped = self._timestamp(labelled_at)
         if stamped is None or stamped < first_suite_at:
@@ -665,7 +681,7 @@ class GitHubPublisher:
         perm = await client.get(
             f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/collaborators/{login}/permission",
             headers=self._get_headers(),
-            timeout=15.0,
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
         )
         role = perm.json().get("role_name") if perm.status_code == 200 else None
         if role not in self.MERGE_LABEL_ROLES:
@@ -680,52 +696,66 @@ class GitHubPublisher:
         suite, so this waits (bounded) for that suite, applies the label and
         reads the ``LabeledEvent`` back against the merger's own rule.
         Best-effort like auto-merge: any failure is logged at ERROR and
-        returned as ``False``, never raised.
+        returned as ``False``, never raised. The whole thing is bounded by
+        ``MERGE_LABEL_DEADLINE_S`` wall-clock.
         """
         try:
-            first_suite_at = None
-            deadline = time.monotonic() + self.MERGE_LABEL_SUITE_WAIT_S
-            while True:
-                first_suite_at = await self._first_check_suite_at(head_sha)
-                if first_suite_at is not None or time.monotonic() >= deadline:
-                    break
-                await asyncio.sleep(self.MERGE_LABEL_POLL_S)
-            if first_suite_at is None:
-                logger.error(
-                    "Merge label NOT applied on PR #%s: no check suite on %s within %.0fs",
-                    pr_number,
-                    head_sha[:7],
-                    self.MERGE_LABEL_SUITE_WAIT_S,
-                )
-                return False
-            response = await self._get_client().post(
-                f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/issues/{pr_number}/labels",
-                headers=self._get_headers(),
-                json={"labels": [self.MERGE_LABEL]},
-                timeout=15.0,
+            return await asyncio.wait_for(
+                self._label_flow(pr_number, head_sha), self.MERGE_LABEL_DEADLINE_S
             )
-            if response.status_code != 200:
-                logger.error(
-                    "Merge label NOT applied on PR #%s: POST HTTP %s: %s",
-                    pr_number,
-                    response.status_code,
-                    response.text,
-                )
-                return False
-            problem = "not read"
-            for attempt in range(self.MERGE_LABEL_READBACK_TRIES):
-                problem = await self._label_readback_problem(pr_number, first_suite_at)
-                if problem is None:
-                    return True
-                if attempt + 1 < self.MERGE_LABEL_READBACK_TRIES:
-                    await asyncio.sleep(1.0)
-            logger.error("Merge label NOT valid on PR #%s: %s", pr_number, problem)
+        except TimeoutError:
+            logger.error(
+                "Merge label NOT applied on PR #%s: deadline of %.0fs exceeded",
+                pr_number,
+                self.MERGE_LABEL_DEADLINE_S,
+            )
             return False
         except Exception as exc:
             logger.error(
                 "Merge label NOT applied on PR #%s: %s: %s", pr_number, type(exc).__name__, exc
             )
             return False
+
+    async def _label_flow(self, pr_number: int, head_sha: str) -> bool:
+        """Suite wait, label POST and read-back; may raise, the caller owns the bound."""
+        first_suite_at = None
+        deadline = time.monotonic() + self.MERGE_LABEL_SUITE_WAIT_S
+        while True:
+            first_suite_at = await self._first_check_suite_at(head_sha)
+            if first_suite_at is not None or time.monotonic() >= deadline:
+                break
+            await asyncio.sleep(self.MERGE_LABEL_POLL_S)
+        if first_suite_at is None:
+            logger.error(
+                "Merge label NOT applied on PR #%s: no check suite on %s within %.0fs",
+                pr_number,
+                head_sha[:7],
+                self.MERGE_LABEL_SUITE_WAIT_S,
+            )
+            return False
+        response = await self._get_client().post(
+            f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/issues/{pr_number}/labels",
+            headers=self._get_headers(),
+            json={"labels": [self.MERGE_LABEL]},
+            timeout=self.MERGE_LABEL_CALL_TIMEOUT_S,
+        )
+        if response.status_code != 200:
+            logger.error(
+                "Merge label NOT applied on PR #%s: POST HTTP %s: %s",
+                pr_number,
+                response.status_code,
+                response.text,
+            )
+            return False
+        problem = "not read"
+        for attempt in range(self.MERGE_LABEL_READBACK_TRIES):
+            problem = await self._label_readback_problem(pr_number, first_suite_at)
+            if problem is None:
+                return True
+            if attempt + 1 < self.MERGE_LABEL_READBACK_TRIES:
+                await asyncio.sleep(1.0)
+        logger.error("Merge label NOT valid on PR #%s: %s", pr_number, problem)
+        return False
 
     async def _enable_auto_merge(self, pr_node_id: str) -> bool:
         """

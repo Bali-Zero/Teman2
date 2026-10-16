@@ -1,0 +1,29 @@
+task_id: localci-autopublish-label-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B31 P1, the auto-publish producer. GitHubPublisher opens the News Room article PRs
+  (auto-publish/*) with GitHub auto-merge and no label; after the LocalCI flip only PRs
+  labelled localci:merge-shadow-ok are merged, so those PRs would be stranded. Apply the label
+  after _enable_auto_merge on the create and resume paths, once the head has its first check
+  suite, and read the LabeledEvent back with the merger's own label_arm rule.
+constraints:
+  - "Best-effort: a failure is logged at ERROR and returned as merge_label_applied false, never raised."
+  - "One overall 20 s wall-clock deadline, per-call timeout 5 s; the request path is bounded."
+  - "TS and login shapes are copies of merger._TS_RE and merger._LOGIN_RE, pinned by a test."
+  - "Do not arm or merge; merge of apps/backend-rag/** is a Fly deploy, run by the conductor."
+acceptance:
+  - text: "WHEN a new auto-publish PR is opened and its head has a check suite, THEN the PR carries localci:merge-shadow-ok applied by a User with admin or maintain, stamped no earlier than the first suite."
+    probe: "scripts/localci/label_census.py verify <n>"
+  - text: "WHEN the label POST fails, the actor is not a User, the event predates the suite, or the deadline passes, THEN publish still succeeds and merge_label_applied is false with an ERROR log."
+    probe: "pytest backend/tests/services/integrations/test_github_publisher.py"
+consumer_map:
+  - "LocalCI merger label_arm: reads the LabeledEvent on every labelled PR before it merges."
+  - "scripts/localci/label_census.py census: names any auto-publish PR left unlabelled (the open-PR retry branch carries no label call, by spec)."
+risks:
+  - "Label not applied inside the 20 s window if the check suite is late: the PR stays unlabelled and census C1 names it."
+  - "The publisher token's user must hold admin or maintain on the repo; the read-back verifies it and reports false otherwise."
+grader: |
+  Fresh Opus on-disk gate re-grades the new sha; executed receipts are the targeted publisher
+  tests and the mutant runs.
