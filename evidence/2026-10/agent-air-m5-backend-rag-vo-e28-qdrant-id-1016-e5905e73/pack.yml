@@ -1,0 +1,44 @@
+brief_ref: evidence/brief.yml
+plan_ref: "Lane VO-E28-QDRANT-ID-1016: one corrupted point id in the E28 Qdrant fixer (found by the PROD dry-run refusing). Gear 1, single implementer seat."
+lanes:
+  - lane: e28-qdrant-id
+    role: build
+    seat: "claude-sonnet-5 implementer, one round, TDD with one mutation proven red"
+
+seat_override: "R8 ground_truth: the ground truth is the live visa_oracle scroll saved as qdrant-e28.txt (ids and codes), read on disk; no NotebookLM query was run, so no nb or query_hash exists and none is invented."
+
+pii_scan: clean
+cloud_ok: "Builder Contract 4: code and point ids only; no client data."
+pii_scan_note: "Diff holds one UUID and a test table of point ids and visa codes."
+
+grounding:
+  origin_main: "c645099bb3 (branch base, after #8578 merged as 5fe495bb02)"
+  live_scroll: "scratchpad qdrant-e28.txt, visa_oracle scroll of 2026-10-16: E28D = a2bc3a9d-d94f-57e4-a817-54d1a4b76884; the old value a2bc3a9d-e8e1-5ded-a4fa-6054379eff26 spliced the tail of C1's point 8d1a785b-e8e1-5ded-a4fa-6054379eff26"
+
+verification:
+  red_on_main: "mutation: the old E28D id restored in the fixer makes the new binding test fail (1 failed, 79 passed); file restored by cp"
+  green: "new test file + seed/migration tripwire: 85 passed; ruff clean ignoring the intentional prints"
+  local_floor: "evidence_pack_lint --print-floor = 1; gear 1 declared"
+
+dissent: []
+
+bites:
+  consumer: "the operator run of scripts/fix_visa_oracle_e28_points.py on PROD"
+  observation: "the PROD dry-run plans 7 changes instead of REFUSED (exit 0, 'planned (dry-run)')"
+
+receipts:
+  - claim: "New binding test and tripwire green"
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/kb/test_e28_kb_data_follows_the_official_pages.py backend/tests/test_visa_types_seed_vs_migration_tripwire.py -p no:cacheprovider"
+    result: "85 passed"
+    exit: 0
+    ts: "2026-10-16T01:30Z"
+    seat: claude-sonnet-5
+  - claim: "Mutation: the old E28D id restored is convicted; file restored by cp"
+    cmd: "sed the E28D id back to the old value in the fixer, pytest the test file, cp restore"
+    result: "1 failed, 79 passed; after restore 80 passed"
+    exit: 1
+    ts: "2026-10-16T01:31Z"
+    seat: claude-sonnet-5
+
+spend:
+  adversarial_rounds: 0
