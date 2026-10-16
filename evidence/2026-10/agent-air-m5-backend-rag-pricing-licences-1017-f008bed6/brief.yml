@@ -1,0 +1,42 @@
+task_id: pricing-licences-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Implement Zero's 2026-10-17 catalogue decisions in the pricing SSOT
+  apps/backend-rag/backend/data/bali_zero_official_prices_2026.json and its mouth mirror:
+  three alcohol licence rows (Golongan A 4.000.000 IDR, Golongan B + C 10.000.000 IDR,
+  Golongan A + B + C 12.000.000 IDR) and three price-on-consultation rows (SLHS, Halal
+  Certificate, PIRT) in company_services; standalone MERP and the ACC rows stay out of the
+  system, so the last code leftover (VISA_METADATA "MERP 1 Year"/"MERP 2 Year") goes.
+  After the deploy the six rows get Qdrant points with the merged --create-missing (ADD-ONLY).
+acceptance:
+  - text: >-
+      The six rows exist exactly once in company_services with the exact names and prices; the
+      three quote rows carry the same price string as Akta Perubahan (Revision Company); catalog
+      and mirror agree; no standalone MERP or ACC row exists in catalog or mirror;
+      VISA_METADATA has no standalone MERP key; plan_creates builds a point for each of the six
+      with the price occurring once in its text.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017.py
+  - text: >-
+      Existing catalogue, sync and price-description tests stay green; the mirror is in sync.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py tests/scripts/test_c1_c6_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_retirement_price_descriptions.py && python3 scripts/sync_frontend_prices.py --check
+  - text: >-
+      After the deploy, PricingTool and /api/pricing return the six rows, and the merged
+      --create-missing dry run on Pro shows creates=6 updates=0 deletes=0; after the apply,
+      /api/search on bali_zero_pricing_hybrid returns the alcohol licence rows at 4M/10M/12M.
+    probe: curl /api/search collection=bali_zero_pricing_hybrid "alcohol license price"
+assumptions:
+  - text: >-
+      No CRM practice_types row exists for standalone MERP, ACC, alcohol licence, SLHS, Halal
+      or PIRT (migration 157 hard-deleted merp_1yr/merp_2yr/other_acc_*).
+    status: verified
+    probe: 2026-10-17 scripts/pg.sh read-only query on practice_types by name/code pattern - 7 rows, none of them these services.
+  - text: >-
+      company_services rows render in mouth only in PricingTable.tsx's Company Services section,
+      which prints the price string verbatim (as for Akta Perubahan).
+    status: verified
+    probe: implementer read of apps/mouth (getCompanyServicePrice only called for company-pma and company-virtual).
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

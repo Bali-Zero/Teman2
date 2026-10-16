@@ -1,0 +1,81 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17, in reply to the list of services the 2026 catalog does not price:
+  "MERP venduto da solo, ACC Mutation e ACC Boarding Pass da far sparire dal sistema;
+  licenza alcolici: solo golongan A 4 jt, solo B+C 10jt, A+B+C 12jt; il resto rimandiamo a
+  contattarci" (the rest = SLHS, Halal, PIRT).
+mission: >-
+  The pricing SSOT carries the alcohol licence prices and the three price-on-consultation
+  licence rows, so PricingTool, /api/pricing, the mouth pricing table and (after the ADD-ONLY
+  Qdrant create) Zantara's vector retrieval answer with them instead of unrelated rows; no
+  standalone MERP or ACC item survives in code. Client articles that still quote the old
+  figures are a separate PR (mouth content).
+lanes:
+  - lane: pricing-licences
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: pricing-licences
+    role: build
+    seat: claude-sonnet-5 (subagent, same worktree)
+  - lane: pricing-licences
+    role: read
+    seat: claude-sonnet-5 (Explore census of the pricing surfaces)
+pii_scan: clean
+bites: >-
+  Consumer: PricingService/PricingTool (Zantara) and GET /api/pricing on nuzantara-rag, the
+  mouth chat PricingTable, and bali_zero_pricing_hybrid via --create-missing. Observation:
+  after the deploy, /api/pricing lists the three Alcohol License rows at 4.000.000 /
+  10.000.000 / 12.000.000 IDR and the SLHS/Halal/PIRT rows as "Depend (Contact for quote)";
+  the merged --create-missing dry run on Pro shows creates=6 updates=0 deletes=0; after the
+  apply, /api/search "alcohol license price" returns the three alcohol rows.
+receipts:
+  - claim: The 18 new pins and the 121 existing catalogue/sync/price-description tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py tests/scripts/test_c1_c6_price_descriptions.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_retirement_price_descriptions.py
+    result: "139 passed in 1.18s"
+    exit: 0
+    ts: "2026-10-16T20:41:28Z"
+    seat: this session
+  - claim: The mouth mirror is in sync with the catalog.
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical."
+    exit: 0
+    ts: "2026-10-16T20:41:28Z"
+    seat: this session
+  - claim: Backend pricing and visa-oracle suites pass with the catalog change and the VISA_METADATA removal.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing backend/tests/services/visa_oracle (+ the two test_visa_oracle_* files)
+    result: "176 passed"
+    exit: 0
+    ts: "2026-10-16T20:30:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Two mutants are killed (alcohol A price 4.500.000 in catalog+mirror; "MERP 1 Year" re-added to VISA_METADATA) and the files are restored byte-identical.
+    cmd: cp backup, one-site edit, python3 -m pytest -q tests/scripts/test_catalogue_decisions_1017.py, cp back + cmp
+    result: "3 failed / 1 failed; restored"
+    exit: 0
+    ts: "2026-10-16T20:35:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-category
+    text: >-
+      The rows go in company_services: the catalog has no business-licence category and a new
+      one would need mouth types, category lists and pricelist sections; company_services
+      already renders a quote price verbatim (Akta Perubahan).
+  - id: D-quote-string
+    text: >-
+      SLHS, Halal and PIRT reuse the catalog's existing quote price "Depend (Contact for
+      quote)" so every consumer that already handles Akta Perubahan handles them.
+  - id: D-icons
+    text: >-
+      Existing icons only (the pricelist PDF needs a PNG per icon_id): other-domicile (house
+      with a document) for the alcohol rows, other-skck (shield with a check) for the
+      certificates. No company-* id, because the mirror's legacy company_services map is keyed
+      by icon_id.
+  - id: D-no-regulatory-names
+    text: >-
+      Row names say "Alcohol License — Golongan ..." and descriptions state only the Golongan
+      alcohol bands; they do not name SKPL, NPBBKC or NPPBKC, which the repo spells
+      inconsistently.
+dissent: []
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
