@@ -974,7 +974,7 @@ Phase F asks "is phase E READY?" at every merge attempt, and the answer is `repo
 The note is `free_gb=N on /System/Volumes/Data (ok > 90, failed < 60)`; when the organ is not `ok` it adds
 `; biggest: ~/<dir> X.YGB, …` for the three biggest top-level directories of `~` (the walk took 94 s on Pro, so it runs only
 when the organ pages). The limits are compared in MB, so 90.5 GB is `ok`. Wrong node or `PRO_DISK_FLOOR_ENABLED=false`:
-`disabled`; a previous run still alive: `warning` (`skipped: previous run alive (pid N), free space not read`). Registry `expected_hb_seconds` 6000,
+`disabled`; a previous run still alive: `warning` (`skipped: previous run alive (pid N), free space not read`). Registry `expected_hb_seconds` 3600,
 silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro, user `nuzantara`, from a checkout at
 `origin/main`):
 

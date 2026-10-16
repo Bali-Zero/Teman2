@@ -10,7 +10,7 @@ objective: >-
   budget becomes the named constant RUN_TIMEOUT_S = 7200 (the need plus about 28%), the tick watchdog is
   recomputed as plan 7500 + run 7200 + status 900 + 600 margin = 16200, and the organ's expected_hb_seconds
   moves 5400 to 6000 so that 3 x it stays above the longest legal tick plus 600. The test that pinned
-  tick >= plan + run + 900 + 300 pins the new relation (margin 600) and a floor on the run budget; eight b35-*
+  tick >= plan + run + 900 + 300 pins the new relation (margin 600) and a floor on the run budget; nine b35-*
   mutants. A longer budget only turns INTERRUPTED into the PASS or FAIL the check earns; no check, verdict
   rule or tolerance changes. Ordering was not changed: the checks run one after another, so the sum is the
   same whatever the order.
