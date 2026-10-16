@@ -1,0 +1,26 @@
+task_id: infra-localci-judge-rewritten-p3-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B25-prime P3 (docs/specs/localci-sovereign-2026-10-07.md §2b.1-§2b.6): merger half of the judge-rewritten rescue,
+  gated by the Pro gate-verdict ledger (~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl), never by GitHub combined
+  statuses. Implements J1'' (gate_verdict from ledger, gate_sources, gate_provenance_mismatch, gate_ledger_unreadable),
+  J3'' (local inputs recorded on every would_enqueue row), J4'' (recorded_gate_only from recorded local inputs, never
+  reading judge_rewritten_gate_only to admit pending merges), --gate-ledger CLI and wrapper wiring, runner L1 fold,
+  normative oracle module (b25_oracle.py), T1/T2/T2b/T2c/TI test suite, MC/DC meta-test + AST check, and 36 mutant rows.
+constraints:
+  - "GitHub combined statuses never confer OK for judge_rewritten_base_ok; only the Pro gate ledger confers OK."
+  - "judge_rewritten_gate_only is never read by pending_merges or retry_pending_merges to admit a key."
+  - "The existing MUTANTS dict is untouched; new rows live in scripts/localci/tests/mutants/rows/b25p3.py."
+acceptance:
+  - text: "T1 (~6.5k), T2 (29,536 decision x retry), T2b (MC/DC), T2c (recorded-input), TI (real fw integration) and MC/DC + AST meta-test pass."
+    probe: "pytest scripts/localci/tests/test_merger_judge_gate.py scripts/localci/tests/test_judge_rewritten.py"
+  - text: "All 30 exact --only mutant names of §2b.4 plus 6 P3 rows report KILLED."
+    probe: "python3 scripts/localci/tests/mutants/merger_mutants.py --only b25-gate-not-required"
+consumer_map:
+  - "The merger tick on Pro (scripts/localci/localci_merger_tick.sh -> merger.py tick --gate-ledger): observation is the next judge-editing PR's would_enqueue row carrying J3'' fields and gate_sources."
+risks:
+  - "Until B25-prime P4 and the phase F flip, GitHub's hosted floor still reads GitHub statuses; disagreements are surfaced via gate_provenance_mismatch."
+grader: |
+  Fresh Astra (gpt-6-astra xhigh) gate review on an immutable archive of the commit SHA under Zero's 2026-10-16 ruling.

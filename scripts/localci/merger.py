@@ -46,8 +46,17 @@ from urllib.parse import quote
 _spec = importlib.util.spec_from_file_location("localci_hosted_compare", Path(__file__).resolve().parent / "hosted_compare.py")
 hc = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(hc)
+_gl_path = Path(__file__).resolve().parent / "gate_ledger.py"
+if _gl_path.exists():
+    _gl_spec = importlib.util.spec_from_file_location("localci_gate_ledger", _gl_path)
+    gl = importlib.util.module_from_spec(_gl_spec)
+    _gl_spec.loader.exec_module(gl)
+else:
+    gl = None
 
 DEFAULT_STATE = Path.home() / ".nuzantara-pilots" / "local-ci" / "merger"
+DEFAULT_GATE_LEDGER = Path.home() / ".nuzantara-pilots" / "local-ci-gate" / "verdicts.jsonl"
+JUDGE_BASE_OK = "judge_rewritten_base_ok"
 LABEL = "localci:merge"
 ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
@@ -1519,7 +1528,7 @@ def local_side(status: dict) -> dict:
     ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) else {}
     results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}
     required = ctx.get("required") if isinstance(ctx.get("required"), list) else []
-    non_executed, not_ok, not_full, host = {}, {}, {}, {}
+    non_executed, not_ok, not_full, host, judge_base_ok = {}, {}, {}, {}, []
     for name in required:
         res = results[name] if isinstance(name, str) and isinstance(results.get(name), dict) else {}
         nv = res.get("no_verdict") if isinstance(res.get("no_verdict"), str) else ""
@@ -1527,6 +1536,8 @@ def local_side(status: dict) -> dict:
             non_executed[name] = res["mapping"]
         elif res.get("verdict") in ("ERROR", "BLOCKED") and nv.split(" ")[0] in HOST_NO_VERDICT:
             host[str(name)] = nv   # not executed and not a FAIL: an executed mapping without a verdict still refuses (spec §2 C3a-2)
+        elif res.get("verdict") == "BLOCKED" and nv == JUDGE_BASE_OK:   # B25-prime: the BASE judge passed, the candidate rewrites it: the ledger gate decides
+            judge_base_ok.append(str(name))
         elif res.get("verdict") != "OK":
             not_ok[str(name)] = f"{res.get('verdict')} ({res.get('mapping')})"
         elif res.get("coverage") != "full":   # executed and OK on a subset of its hosted twin: it passes, and the line names it
@@ -1540,7 +1551,24 @@ def local_side(status: dict) -> dict:
                                                                f"required contexts not executed, no verdict on this host (not a FAIL): {host}"
                                                                if host else "") if x) or None)}
     return {"why": why, "executed_required": f"{len(required) - len(non_executed) - len(host)}/{len(required)}" + coverage_suffix(not_full),
-            "non_executed": non_executed, "partial": not_full, "host_no_verdict": host}
+            "non_executed": non_executed, "partial": not_full, "host_no_verdict": host, "contexts_status": ctx.get("status"),
+            "required_n": len(required), "not_ok": not_ok, "judge_rewritten_base_ok": judge_base_ok,
+            "judge_gate_only": bool(judge_base_ok) and why["executed_contexts_ok"] is None}
+
+
+def github_gate_success(live, head: str) -> bool:
+    """B25-prime J1'': does GitHub's combined status on THIS head carry harness/fable-gate = success? Recorded in gate_sources.github
+    and compared against the ledger for gate_provenance_mismatch; NEVER confers OK."""
+    if not isinstance(live, dict) or live.get("sha") != head or not isinstance(live.get("statuses"), list):
+        return False
+    states = [x.get("state") for x in live["statuses"] if isinstance(x, dict) and x.get("context") == GATE_CONTEXT]
+    return bool(states) and all(x == "success" for x in states)
+
+
+def gate_verdict(a, head: str) -> tuple[bool, str, Path]:
+    """B25-prime J1'': the head's verdict from the Pro gate ledger (never GitHub, never another sha)."""
+    path = Path(getattr(a, "gate_ledger", None) or DEFAULT_GATE_LEDGER)
+    return (*gl.gate_verdict(path, getattr(a, "repo", hc.DEFAULT_REPO), head), path) if gl is not None else (False, "ledger module absent", path)
 
 
 def coverage_suffix(not_full: dict) -> str:
@@ -1555,6 +1583,20 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
     here can turn the decision into ERROR, and a failed mutation is journalled, never retried in this tick."""
     n, head = rec["pr"], rec["head_sha"]
     why, facts = dict(loc["why"]), {}
+    rescued, gated, gate_sources = list(loc.get("judge_rewritten_base_ok") or []), {}, None
+    if rescued:   # B25-prime J1'': a judge-rewritten context with every BASE step rc=0 is OK only with a ledger success on THIS head
+        gate_ok, gate_why, ledger_path = gate_verdict(a, head)
+        if gate_why.startswith("ledger ") and gate_why != "ledger missing" and not any(
+                r.get("kind") == "gate_ledger_unreadable" and r.get("why") == gate_why for r in read_journal(state)):
+            journal(state, {"kind": "gate_ledger_unreadable", "why": gate_why, "ledger": str(ledger_path)})
+        gh_ok = github_gate_success(live, head)
+        gate_sources = {"ledger": gate_ok, "github": gh_ok}
+        if gh_ok and not gate_ok and not any(
+                r.get("kind") == "gate_provenance_mismatch" and r.get("pr") == n and r.get("head_sha") == head for r in read_journal(state)):
+            journal(state, {"kind": "gate_provenance_mismatch", "pr": n, "head_sha": head, "gate_why": gate_why, "gate_sources": gate_sources})
+        gated = dict.fromkeys(rescued, gate_ok and why.get("executed_contexts_ok") is None)
+        if why.get("executed_contexts_ok") is None and not gate_ok:
+            why["executed_contexts_ok"] = f"judge rewritten: needs ledger gate success on the head ({', '.join(rescued)}): {gate_why}"
     try:
         why["hosted_required_green"] = hosted_side(live)
         facts = pr_side(a, state, n, head, why)
@@ -1568,7 +1610,11 @@ def enqueue_step(a, state: Path, rec: dict, loc: dict, live) -> dict:
             "refused": [k for k, v in criterion.items() if not v] + ([] if armed_env else ["armed_env"]),
             "why": {k: why.get(k) or facts.get("read_error") or "not evaluated" for k, v in criterion.items() if not v},
             "executed_required": loc["executed_required"], "non_executed": loc["non_executed"], "partial": loc["partial"],
-            "host_no_verdict": loc["host_no_verdict"]}
+            "host_no_verdict": loc["host_no_verdict"], "contexts_status": loc.get("contexts_status"),
+            "required_n": loc.get("required_n"), "not_ok": loc.get("not_ok") or {}, "judge_rewritten_base_ok": rescued,
+            **({"judge_rewritten_gated": gated,
+                "judge_rewritten_gate_only": loc["judge_gate_only"] is True if "judge_gate_only" in loc else recorded_gate_only(loc),
+                "gate_sources": gate_sources} if rescued else {})}
     kind = "would_enqueue" if not (armed_env and criterion["label_privileged"]) else "enqueue_refused" if not line["ok"] else "enqueued"
     if kind == "enqueued":
         try:
@@ -2145,6 +2191,13 @@ def replay_pending(a, state: Path, repo_dir: Path, recs: list[dict]) -> dict | N
     return None
 
 
+def recorded_gate_only(e: dict) -> bool:
+    """B25-prime J4'': the RECORDED local inputs on ``e`` say the gate is the only reason executed_contexts_ok is false (never judge_rewritten_gate_only)."""
+    return (e.get("contexts_status") == "ok" and type(e.get("required_n")) is int and e["required_n"] > 0
+            and e.get("not_ok") == {} and e.get("host_no_verdict") == {}
+            and isinstance(e.get("judge_rewritten_base_ok"), list) and bool(e["judge_rewritten_base_ok"]))
+
+
 def pending_merges(recs: list[dict]) -> dict:
     """B19 P1: ``(pr, head, base)`` -> ``{decision, enq, last, expired}`` for every non-replay decision whose original ``would_enqueue`` had the
     local terms true and whose original ``would_merge`` was clean and disarmed, with no ``merged``/``pushed`` row (a ``merged`` row followed by ``push_unlanded`` is no merge; ``pushed`` always is). ``last`` is the epoch of
@@ -2175,6 +2228,7 @@ def pending_merges(recs: list[dict]) -> dict:
     out = {}
     for k, d in dec.items():
         e, w, crit = enq.get(k), wm.get(k), (enq.get(k) or {}).get("criterion")
+        crit = {**crit, "executed_contexts_ok": True} if isinstance(crit, dict) and isinstance(e, dict) and recorded_gate_only(e) else crit
         if (k in closed or e is None or w is None or not isinstance(crit, dict) or not is_ts(d.get("ts")) or d.get("gate_pending") is True
                 or d.get("overall") in ("CONFLICT", "ERROR", "FAIL") or e.get("kind") != "would_enqueue"
                 or not all(crit.get(x) is True for x in LOCAL_TERMS) or w.get("clean") is not True
@@ -2201,7 +2255,9 @@ def retry_pending_merges(a, state: Path, repo_dir: Path, lease_id: str, recs: li
     for _, n, head, p in sorted(due, key=lambda x: x[:3])[:PENDING_RETRY_MAX]:
         d, row = p["decision"], p["enq"]
         loc = {"why": dict.fromkeys(LOCAL_TERMS[:3]), "executed_required": row["executed_required"], "non_executed": row.get("non_executed") or {},
-               "partial": row.get("partial") or {}, "host_no_verdict": row.get("host_no_verdict") or {}}   # same_repo: pr_side reads it fresh
+               "partial": row.get("partial") or {}, "host_no_verdict": row.get("host_no_verdict") or {}, "contexts_status": row.get("contexts_status"),
+               "required_n": row.get("required_n"), "not_ok": row.get("not_ok") or {},
+               "judge_rewritten_base_ok": row.get("judge_rewritten_base_ok") or []}   # B25-prime J4'': no judge_gate_only; same_repo: pr_side reads it fresh
         tried_before = sum(1 for r in read_journal(state) if r.get("kind") in MERGE_ATTEMPT)
         try:
             try:
@@ -3177,6 +3233,7 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--host-floor-gb", type=float, default=HOST_FLOOR_GB,
                    help="B15: Pro keeps more than this free; a run is evicted under it + EVICT_MARGIN_GB (0 disables the watchdog)")
     t.add_argument("--docker", default="docker", help="B15: the docker CLI that removes an evicted run's labelled containers")
+    t.add_argument("--gate-ledger", default=str(DEFAULT_GATE_LEDGER), help="B25-prime: path to the Pro gate verdict ledger")
     r = sub.add_parser("report", help="phase D: every decision beside what GitHub did with that head")
     r.add_argument("--repo", default=hc.DEFAULT_REPO)
     r.add_argument("--base", default=hc.DEFAULT_BRANCH)

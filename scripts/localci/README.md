@@ -422,7 +422,7 @@ state, fails closed as before. `hosted_compare.json`, the journal's `hosted_comp
 
 ## Merger (phase C, shadow)
 
-The merge predicate for a PR that rewrites a file the BASE judge reads (any file: tests, workflows, `.gitattributes`), its oracle table and the Pro gate-verdict ledger are specified in `docs/specs/localci-sovereign-2026-10-07.md` §2b (B25-prime); that rescue is not in the code yet.
+The merge predicate for a PR that rewrites a file the BASE judge reads (any file: tests, workflows, `.gitattributes`), its oracle table (`tests/b25_oracle.py`, `tests/test_merger_judge_gate.py`) and the Pro gate-verdict ledger (`--gate-ledger`, default `~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl`) are specified in `docs/specs/localci-sovereign-2026-10-07.md` §2b (B25-prime): a `BLOCKED` context with `no_verdict: judge_rewritten_base_ok` is rescued in `enqueue_step` (and on B19 retry when `recorded_gate_only` holds on the recorded J3'' fields) only when `gate_verdict(ledger, repo, head)` is true for the decided head; a GitHub-only success journals `gate_provenance_mismatch` once per head and never confers OK.
 
 `merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would
 do with a pull request and journals it. It merges nothing, posts nothing, labels nothing; every GitHub API call is a bare
