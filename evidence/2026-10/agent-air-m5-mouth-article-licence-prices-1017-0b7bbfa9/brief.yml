@@ -1,0 +1,41 @@
+task_id: article-licence-prices-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Client articles on balizero.com still quote prices that Zero's 2026-10-17 ruling changed or
+  withdrew: the alcohol licence (NPBBKC A+B+C IDR 15,000,000, now Golongan A only 4,000,000 /
+  B + C only 10,000,000 / A + B + C 12,000,000), SLHS (9,000,000), halal through Bali Zero
+  (5-8M, 5-25M, 0-50M), PIRT (500,000-1,000,000) and standalone MERP (1,000,000; renewal
+  10-15M). Correct them in every locale (EN, id, it, fr, ru; body and frontmatter), keep
+  explicitly governmental tariffs and the KITAP + MERP bundles, re-stamp the edited locales
+  that were fresh so the hourly translator does not overwrite them, patch the committed llms
+  exports on the changed lines only, and add a guard test.
+acceptance:
+  - text: >-
+      No article quotes the old alcohol price; every alcohol licence amount is one of the three
+      new prices; no SLHS or PIRT line carries a Bali Zero price; no standalone MERP line
+      carries an IDR amount unless it also names KITAP.
+    probe: cd apps/mouth && vitest run src/content/licence-prices-1017.test.ts
+  - text: >-
+      The existing content, metadata and llms-export suites stay green.
+    probe: cd apps/mouth && vitest run src/content (pt-pma-setup-price, description-fields-integrity, llms-article-exports, kbli-llms-corpus, llms-public-file-guard)
+  - text: >-
+      After the merge and the Vercel promotion, the live pages show the new alcohol prices and
+      "price on request" for SLHS, halal and PIRT.
+    probe: curl https://balizero.com/business/kbli-2025-food-beverage-fnb (and the license-permit-requirements page)
+assumptions:
+  - text: >-
+      Locale bodies are overwritten by the hourly translator when their source_sha256 stamp is
+      stale; frontmatter is never propagated, so it is edited by hand in every locale.
+    status: verified
+    probe: scripts/translate-articles.py STAMP_FIELD source_sha256 (~l.147) and the frontmatter-preserving re-stamp (~l.439-448), read 2026-10-17.
+  - text: >-
+      The committed llms exports are already behind the article corpus; a full regeneration
+      would rewrite ~346k lines of unrelated content, so only the changed lines are patched,
+      as #8305 did.
+    status: verified
+    probe: 2026-10-17 full regeneration diff 345973+/347637-; targeted patch 209+/189-, every added line found verbatim in the regeneration.
+appetite:
+  wall_clock_hours: 5
+  adversarial_rounds: 1
