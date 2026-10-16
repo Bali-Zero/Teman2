@@ -1152,18 +1152,23 @@ RESOLVE_JS = r"""
   };
   // An occluder hides the text from its reader unless it is a scrim of the walk or lies inside another
   // surface the walk opened: a surface over the run's own is the surface order working (W0d-3).
-  const hides = (el, runEl) => !scrims.some((s) => s === el || s.contains(el))
-    && !roots.some((r) => r.contains(el) && !r.contains(runEl));
+  // A scrim, or a descendant of one, is exempt when the scrim itself is in the stack at p, where the run is, above
+  // the run's own layer (index < i): it already covers the run there, so what its children add is behind it too.
+  // No style of the scrim or of its ancestors decides it; a scrim absent from the stack at p, or under the run at p,
+  // never exempts. On the reach path `within` decides only THAT an overlay reaches the run, at its nearest point;
+  // the scrim test still reads this stack, p's own (SPEC-3b2bi r1).
+  const exempt = (el, runEl, st, i) => scrims.some((s) => s.contains(el) && st.indexOf(s) >= 0 && st.indexOf(s) < i) ? "scrim"
+    : roots.some((r) => r.contains(el) && !r.contains(runEl)) ? "surface" : null;
   const pointB = (x, y, runEl) => {
     const st = document.elementsFromPoint(x, y);
     let i = -1;
     for (let a = runEl; a && i < 0; a = a.parentElement) i = st.indexOf(a);
     if (i < 0) return { missed: true };
     const near = within(x, y, runEl);
-    if (near) return { occluded: path(near), fixed: true, hides: hides(near, runEl) };
+    if (near) return { occluded: path(near), fixed: true, exempt: exempt(near, runEl, st, i) };
     for (let k = 0; k < i; k++)
       if (!runEl.contains(st[k]) && (layersOf(st[k]).some((l) => !l.faint) || overlay(st[k])))
-        return { occluded: path(st[k]), fixed: position(st[k]), hides: hides(st[k], runEl) };
+        return { occluded: path(st[k]), fixed: position(st[k]), exempt: exempt(st[k], runEl, st, i) };
     const ls = st.slice(i).flatMap(layersOf);
     let k = ls.findIndex((l) => l.kind === "color" && l.a >= 0.999);
     const base = k >= 0 ? ls[k].rgb : canvasRgb();
@@ -1304,7 +1309,7 @@ RESOLVE_JS = r"""
         // a blur or a shadow reaches past the overlay's box onto the points that are left.
         if (occ && occ.fixed && this.target !== i) continue;
         if (!keep.length) {
-          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.hides = occ.hides; }
+          if (occ) { r.state = "occluded"; r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           continue;
         }
         const A = sample(keep.map(([p]) => p)), B = keep.map(([, b]) => b);
@@ -1325,7 +1330,9 @@ RESOLVE_JS = r"""
       while (this.pending.length) {
         const i = this.pending[0], r = runs[i];
         if (this.target === i) {
-          r.state = r.trial && r.trial.bs.some((b) => b.occluded) ? "occluded" : "unreached";
+          const occ = r.trial && r.trial.bs.find((b) => b.occluded);
+          r.state = occ ? "occluded" : "unreached";
+          if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }
           this.pending.shift();
           continue;
         }
@@ -1338,10 +1345,10 @@ RESOLVE_JS = r"""
     result() {
       return {
         runs: runs.map(({ text, path: p, fg, fa, clip, state: s, a, spread, b, image, approx, painter, action, occludedBy,
-                          hides }) =>
+                          exempt }) =>
           ({ text, path: p, fg, fa, clip, state: s === "pending" ? "unreached" : s, a: a || null, spread: spread ?? null,
              b: b || null, image: image || null, approx: !!approx, painter: painter || p, action: action || null,
-             occludedBy: occludedBy || null, hides: !!hides })),
+             occludedBy: occludedBy || null, hides: !!occludedBy && !exempt, exempt: exempt || null })),
         rootGround: this.rootGround,
       };
     },
@@ -2097,6 +2104,10 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
                    + "".join(f", {n} {what}" for n, what in (
                        (sum(bool(over_image(r)) for r in measured), "over an image"),
                        (sum(r["state"] == "occluded" for r in runs), "occluded"),
+                       (sum(r["state"] == "occluded" and r.get("exempt") == "scrim" for r in runs),
+                        "of them behind the walk's own scrim"),
+                       (sum(r["state"] == "occluded" and r.get("exempt") == "surface" for r in runs),
+                        "of them under another opened surface"),
                        (sum(r["state"] == "unreached" for r in runs), "unreached")) if n)
                    + f", {o.get('positions', 0)} position(s)" + (", INCOMPLETE" if o.get("incomplete") else ""))
     tail = (f" (INCOMPLETE: {len(failed)} walks failed, {len(short)} over the scroll cap, not a verdict)"
@@ -2111,8 +2122,10 @@ def opened_verdict(census: dict, surfaces: dict, contract: dict, pin: dict | Non
     out += disagree[:40] + ([f"  ... and {len(disagree) - 40} more"] if len(disagree) > 40 else [])
     # It also counts the disagreements read at rest, so a failed capture leaves it short too.
     cap_failed = census.get("failed", [])
+    cap_short = [c for c in census.get("captures", []) if "page_off" not in c or c.get("page_incomplete")]
     out.append(f"ground-resolver-disagree: {len(disagree)}"
-               + (tail or (f" (INCOMPLETE: {len(cap_failed)} captures failed, not a verdict)" if cap_failed else "")))
+               + (tail or (f" (INCOMPLETE: {len(cap_failed)} captures failed, {len(cap_short)} not read through, "
+                           "not a verdict)" if cap_failed or cap_short else "")))
     out += unpinned
     out.append(f"shared-touched-unpinned: {unpinned_count}")
     drift, count = shared_drift(census, pin)
