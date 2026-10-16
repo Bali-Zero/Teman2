@@ -298,6 +298,14 @@ def test_supersede_names_one_unsuperseded_failure_per_append_and_is_idempotent(l
     assert json.loads(Path(ledger).read_text().splitlines()[-1])["supersedes"] is None
 
 
+def test_supersede_finishes_what_a_partly_superseded_head_still_owes(ledger):
+    f1, f2 = (gl.append(ledger, b64(client(verdict="failure", evidence_sha256=c * 64)), now=NOW + i)[0] for i, c in enumerate("ab"))
+    gl.append(ledger, b64(client(supersedes=f2)), now=NOW + 5)   # a success naming only the newest failure: the head still reads false
+    assert gl.gate_verdict(ledger, R, H)[0] is False
+    assert len(gl.append(ledger, b64(client()), supersede=True, now=NOW + 6)) == 1
+    assert json.loads(Path(ledger).read_text().splitlines()[-1])["supersedes"] == f1 and gl.gate_verdict(ledger, R, H)[0] is True
+
+
 def test_supersede_does_not_name_a_failure_of_another_head_or_repo(ledger):
     gl.append(ledger, b64(client(verdict="failure", head_sha=OTHER, pr=8)), now=NOW)
     gl.append(ledger, b64(client(verdict="failure", repo="Bali-Zero/Other")), now=NOW)
