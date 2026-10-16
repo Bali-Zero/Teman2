@@ -81,7 +81,6 @@ const NOT_PUBLIC = [
 const KNOWN_BARE = [
   "(book)/book/[chapter]/page.tsx",
   "(book)/book/page.tsx",
-  "(tax-calendar)/tax-calendar/page.tsx",
   "agents/page.tsx",
 ];
 
