@@ -72,11 +72,23 @@ the ONLY sanctioned fallback (fleet-order-spec.md §4 "Ruling Zero
 2026-08-09": Opus 5 effort=max ONLY when no Anthropic account can run Fable
 for the Gear-3 verdict stage; never for the final on-disk gate; never paid).
 
+LEDGER FIRST (B25-prime P1, docs/specs/localci-sovereign-2026-10-07.md 2b.2): the verdict is appended to the Pro ledger
+(~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl) BEFORE the GitHub status is posted, over `ssh pro` through the tick wrapper's
+`gate-append` mode (the entry travels as ONE base64 argv; on Pro itself the wrapper runs locally). A failed append posts nothing, so a
+GitHub-only success is always an anomaly. The ledger is the verdict LocalCI trusts; the GitHub status is storage and, until the phase F
+flip, what the hosted floor reads. Run this script from origin/main, never from a candidate's checkout (a candidate's code must not
+reach the ssh key). `--supersede` also names, on the ledger, every unsuperseded failure of the head (success verdicts only).
+
 CLI:
-  python3 scripts/harness_fable_gate.py --verdict PASS --sha <commit-sha>
+  python3 scripts/harness_fable_gate.py --verdict PASS --sha <commit-sha> --pr <number>
       [--repo owner/repo] [--degraded] [--description "extra context"]
       [--conditions-ref <PENDING-ARMS pointer>] [--supersede "reason"]
-      [--dry-run]
+      [--gate-session NAME] [--evidence-sha256 HEX64] [--dry-run]
+
+  --pr             the PR number of --sha for the ledger entry; when omitted it is read from GitHub (the one PR whose head is
+                   --sha), and no single answer means exit 1
+  --gate-session   who gated, at most 80 characters (default: gate)
+  --evidence-sha256  the sha256 of the evidence pack, when there is one
 
   --sha           commit to post the status against (required — never
                    guessed from a local HEAD that may not be the PR's head)
@@ -126,7 +138,8 @@ Exit codes:
   1  usage error (bad --verdict, missing --sha, PWC without
      --conditions-ref) or `gh api` call failed; also returned when the
      existing-statuses read itself fails — fail-closed, a publisher that
-     cannot see what is already posted must not publish blind
+     cannot see what is already posted must not publish blind; also when
+     the ledger append fails (nothing is posted then)
   2  refused: a harness/fable-gate status already exists on --sha and
      --supersede was not given (or --supersede was given with nothing to
      supersede, or with an empty/whitespace-only reason)
@@ -135,11 +148,16 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
+import re
 import subprocess
 import sys
 
 CONTEXT = "harness/fable-gate"
+LEDGER_WRAPPER = "~/.nuzantara-cron/localci_merger_tick.sh"   # Pro's live copy of scripts/localci/localci_merger_tick.sh
+LEDGER_STATE = {"success": "success", "failure": "failure"}   # GitHub state -> ledger verdict
 
 # harness-v2-teman2.md §6 — the five legal verdicts and their GitHub state.
 VERDICT_STATE: dict[str, str] = {
@@ -245,6 +263,56 @@ def resolve_repo() -> str | None:
         return None
 
 
+def derive_pr(repo: str, sha: str) -> int | None:
+    """The one PR whose head is `sha`, or None when GitHub gives no single answer."""
+    try:
+        out = subprocess.run(
+            ["gh", "api", f"repos/{repo}/commits/{sha}/pulls", "--jq", f'.[] | select(.head.sha=="{sha}") | .number'],
+            capture_output=True, text=True, check=True, timeout=30,
+        ).stdout.split()
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    return int(out[0]) if len(out) == 1 and out[0].isdigit() else None
+
+
+def ledger_command(b64: str, supersede: bool) -> list[str]:
+    """The argv that appends: the wrapper locally on Pro, `ssh pro` from anywhere else."""
+    tail = ["gate-append", b64] + (["--supersede"] if supersede else [])
+    if os.uname().nodename.split(".")[0].lower() == "nuzantara":
+        return ["/bin/bash", os.path.expanduser(LEDGER_WRAPPER)] + tail
+    return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "pro", f"bash {LEDGER_WRAPPER} " + " ".join(tail)]
+
+
+def ledger_append(repo: str, sha: str, pr: int | None, state: str, session: str, evidence: str | None,
+                  supersede: bool, dry_run: bool) -> int:
+    """Append the verdict to the Pro ledger. Non-zero means the caller must post NOTHING."""
+    if dry_run:
+        print("DRY-RUN: ledger append would run:", " ".join(ledger_command("<entry-b64>", supersede and state == "success")))
+        return 0
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        print(f"harness_fable_gate: --sha {sha!r} is not a full 40-hex commit sha — the ledger keys on it", file=sys.stderr)
+        return 1
+    pr = pr if pr is not None else derive_pr(repo, sha)
+    if pr is None:
+        print(f"harness_fable_gate: no single PR has head {sha} — pass --pr", file=sys.stderr)
+        return 1
+    entry = {"repo": repo, "pr": pr, "head_sha": sha, "verdict": LEDGER_STATE[state], "gate_session": session[:80],
+             "evidence_sha256": evidence, "supersedes": None}
+    b64 = base64.b64encode(json.dumps(entry, separators=(",", ":")).encode()).decode()
+    try:
+        proc = subprocess.run(ledger_command(b64, supersede and state == "success"), capture_output=True, text=True,
+                              stdin=subprocess.DEVNULL, timeout=60)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        print(f"harness_fable_gate: ledger append could not run: {exc}", file=sys.stderr)
+        return 1
+    if proc.returncode != 0:
+        print(f"harness_fable_gate: ledger append FAILED (rc={proc.returncode}), nothing is posted: {proc.stderr.strip()[:300]}",
+              file=sys.stderr)
+        return 1
+    print(f"harness_fable_gate: ledger entry {proc.stdout.split()[-1][:12] if proc.stdout.split() else '?'} appended")
+    return 0
+
+
 def publish(repo: str, sha: str, state: str, description: str, dry_run: bool) -> int:
     cmd = [
         "gh", "api", f"repos/{repo}/statuses/{sha}",
@@ -267,7 +335,7 @@ def publish(repo: str, sha: str, state: str, description: str, dry_run: bool) ->
     return 0
 
 
-def main(argv: list[str] | None = None, read_statuses=read_existing_statuses) -> int:
+def main(argv: list[str] | None = None, read_statuses=read_existing_statuses, append_ledger=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--verdict", required=True, choices=sorted(VERDICT_STATE))
     parser.add_argument("--sha", required=True, help="commit SHA to post the status against")
@@ -280,6 +348,9 @@ def main(argv: list[str] | None = None, read_statuses=read_existing_statuses) ->
         help="reason for overwriting an existing harness/fable-gate status on --sha "
              "(only when overwriting is the decision — shown on the PR)",
     )
+    parser.add_argument("--pr", type=int, default=None, help="PR number of --sha, for the ledger entry (read from GitHub if omitted)")
+    parser.add_argument("--gate-session", default="gate", help="who gated, at most 80 characters")
+    parser.add_argument("--evidence-sha256", default=None, help="sha256 of the evidence pack, when there is one")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
 
@@ -339,6 +410,11 @@ def main(argv: list[str] | None = None, read_statuses=read_existing_statuses) ->
         supersedes=supersedes_text,
     )
 
+    # e. the ledger first: a failed append posts nothing, so a GitHub-only success is always an anomaly (B25-prime 2b.2)
+    rc = (append_ledger or ledger_append)(repo, args.sha, args.pr, state, args.gate_session, args.evidence_sha256,
+                                          args.supersede is not None, args.dry_run)
+    if rc != 0:
+        return 1
     return publish(repo, args.sha, state, description, args.dry_run)
 
 
