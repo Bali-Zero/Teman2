@@ -1,0 +1,44 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15 -
+  close the E28 (Investor KITAS) family end to end.
+mission: >-
+  The /visaoracle ledger records the three merged E28 close-out PRs (#8572, #8573, #8574) with their measured live
+  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix.
+lanes:
+  - lane: ledger-e28
+    role: build
+    seat: claude-sonnet-5 (Claude Code session)
+pii_scan: clean
+bites: >-
+  Consumer: the next session reading LIVE STATE and PENDING-ARMS. Observation: the ledger test and the observer
+  (python3 scripts/ci/observe_visa_ledger_seq29.py prints '51 passed' and 'seq-29 ledger holds') green on main.
+receipts:
+  - claim: The four ledger test files pass with the E28 pins (three PR/sha pairs, deploy and prove-live facts, four opened rows, the backlog items once each, the SKILL lead, the audit matrix and the page snapshots present, the floor equal to the file's test count).
+    cmd: python3 -m pytest tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py -p no:cacheprovider -q
+    result: "86 passed"
+    exit: 0
+    ts: "2026-10-15T17:32:55Z"
+    seat: claude-sonnet-5
+  - claim: The seq-29 observer holds with its floor raised from 46 to 51, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "51 passed; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-15T17:32:55Z"
+    seat: claude-sonnet-5
+  - claim: The facts recorded (merge shas, deploy run, live probes, dpl ids) are quoted as measured by the conductor session; this seat did not re-measure them, and the gate receipts are cited as session gate receipts, not repo paths.
+    cmd: "cross-check of each sha in the ledger text against the brief given to this seat"
+    result: "quoted as given; no claim upgraded"
+    exit: 0
+    ts: "2026-10-15T17:32:55Z"
+    seat: claude-sonnet-5
+decisions:
+  - id: D-floor-51
+    decision: >-
+      The observer floor is the true count after five new pins (51); the existing pin asserts the floor equals the
+      number of tests in the file.
+  - id: D-no-row-closed
+    decision: >-
+      No PENDING-ARMS row is closed; four rows are opened (C2, D, E, backlog), so the ledger states open work only.
+dissent: []

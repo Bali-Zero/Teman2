@@ -1,0 +1,22 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, the ledger test, the observer floor and the
+  audit matrix document. No engine rule pack, no data, no runtime change.
+mission: >-
+  The /visaoracle ledger records the three merged E28 close-out PRs (#8572, #8573, #8574) with their measured live
+  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix.
+objective: >-
+  live-state-log.md carries a dated 2026-10-15 E28 entry as newest, SKILL.md leads its LIVE STATE with one index line,
+  PENDING-ARMS.md carries four opened rows, the seq-29 ledger test pins them, and the observer floor equals the file's
+  test count.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+  - research/visa/2026-10-15-e28-family-audit.md
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

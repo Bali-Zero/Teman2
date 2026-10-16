@@ -52,13 +52,14 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
-    assert "ledger addendum after the E33 closure" in dated[1]
-    assert "ledger wave 5 — the E33 family closes" in dated[2]
-    assert "ledger after E33 wave 4" in dated[3]
-    assert "ledger after E33 wave 3" in dated[4]
+    assert dated[0].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
+    assert dated[1].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
+    assert "ledger addendum after the E33 closure" in dated[2]
+    assert "ledger wave 5 — the E33 family closes" in dated[3]
+    assert "ledger after E33 wave 4" in dated[4]
+    assert "ledger after E33 wave 3" in dated[5]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 5
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 6
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -510,7 +511,7 @@ def test_skill_live_state_leads_with_wave5_and_stays_an_index():
     for token in ("PARTIAL", "**Not done:**", "pre-delete backup was lost", "Backlog rows:", "no iQOO walk"):
         assert token in lead, token
     assert len(lead) < 3300 and "adb not installed" not in lead and "adb is installed on Pro" in lead
-    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 3
+    assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-15")]) == 4
     assert len([ln for ln in block.splitlines() if ln.startswith("- **2026-10-14")]) == 2
     assert "(updated 2026-10-15;" in text
 
@@ -645,22 +646,100 @@ def test_qdrant_backfill_row_is_closed_once_and_the_old_open_needle_is_gone():
     assert len(_rows("has no point for 65 catalog rows")) == 0
 
 
-def test_qdrant_backfill_log_entry_is_first_and_carries_the_apply_facts():
+def test_qdrant_backfill_log_entry_is_second_and_carries_the_apply_facts():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
-    start = text.index(dated[0])
+    assert dated[1].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
+    start = text.index(dated[1])
     body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
     for token in ("`b93adf342d`", "CREATED 66", "in_sync=116", "`6321afd152`"):
         assert body.count(token) >= 1, token
 
 
-def test_skill_live_state_first_bullet_is_the_qdrant_backfill_and_only_one_says_newest():
+def test_skill_live_state_second_bullet_is_the_qdrant_backfill_and_only_one_says_newest():
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
     bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
-    assert bullets[0].startswith("- **2026-10-15 (Qdrant pricing backfill, newest)**")
+    assert bullets[0].startswith("- **2026-10-15 (E28 close-out part 1, newest)**")
+    assert bullets[1].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
     assert len([ln for ln in bullets if "newest" in ln]) == 1
+
+
+E28_PRS = (("8572", "a5de6b1b3ac79975c5d38fbbb1c4a8280de3743e"), ("8573", "322ae68e3388a98a75097fd40682adc5ec450379"),
+           ("8574", "147cdf0adfae8f79262167f67b4dbcae1a92c1db"))
+E28_HEADS = "- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1"
+E28_AUDIT = REPO / "research/visa/2026-10-15-e28-family-audit.md"
+E28_PAGES = REPO / "research/visa/2026-10-15-e28-pages"
+
+
+def _e28_entry() -> str:
+    text = LOG.read_text(encoding="utf-8")
+    heads = [ln for ln in text.splitlines() if ln.startswith(E28_HEADS)]
+    assert len(heads) == 1
+    start = text.index(heads[0])
+    return " ".join(text[start:text.index("\n- 20", start + 1)].split())
+
+
+def test_e28_entry_carries_the_three_prs_with_full_merge_shas_once():
+    body = _e28_entry()
+    for pr, sha in E28_PRS:
+        assert body.count(f"#{pr},") == 1 and body.count(f"merge `{sha}`") == 1, pr
+    for token in ("run 38773190405", "2026-10-15T17:29:34Z", "dpl_AqVLBbqnCtsEgTzWyS9Py9oxrt97", "dpl_6CjUnBMaW3GVGT7RhAYDSAfj1pB5",
+                  "scripts/ci/observe_zantara_e28_1015.py", "scripts/ci/observe_visa_oracle_stay_permit_length.py",
+                  "Stay of 730 days (2 years), extendable online by the sponsor.", "All-inclusive price: government fees and Bali Zero service included.",
+                  "user-agent `bz-synthetic-prove-live-20261016`", "the renewal line is present, which is true per page df3ba889:69,72",
+                  "the lease was taken and released, the phone left locked", "session gate receipts, not repo paths",
+                  "except PR B, which had none", "(7) NOT done:"):
+        assert body.count(token) == 1, token
+
+
+def test_e28_entry_closes_no_row_and_ships_the_audit_matrix_with_the_pages_on_main():
+    body = _e28_entry()
+    assert "No row is closed." in body
+    assert "already on main via #8572" in body
+    assert E28_AUDIT.is_file() and E28_AUDIT.read_text(encoding="utf-8").startswith("---")
+    assert len(list(E28_PAGES.rglob("*.txt"))) == 6 and (E28_PAGES / "e28-pages.receipts.jsonl").is_file()
+
+
+def test_skill_live_state_leads_with_the_e28_closeout_and_stays_an_index():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    lead = block[block.index("- **2026-10-15 (E28 close-out part 1, newest)"):block.index("- **2026-10-15 (Qdrant pricing backfill)")]
+    for pr, sha in E28_PRS:
+        assert lead.count(f"#{pr} (`{sha[:10]}`") == 1, pr
+    for token in ("**Open:**", "C2", "SEQ29-A2", "SEQ29-D1", "READY-TO-SIGN", "research/visa/2026-10-15-e28-family-audit.md"):
+        assert token in lead, token
+    assert len(lead) < 2600
+
+
+E28_OPENED = (
+    ("C2: the KB data PR", "migration 128", "owner: me (next session; the PROD data op is operator-run)"),
+    ("D: the article PR", "/visa/kitas", "owner: me (next session)"),
+    ("E: seq-30 is owned by the Pro conductor", "SEQ29-D1", "owner: me (next session, visa-night conductor and signer)"),
+    ("BACKLOG of the E28 close-out", "F73", "owner: me (nuzantara-57)"),
+)
+
+
+def test_e28_opened_rows_each_appear_once_in_the_ledger_format():
+    opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E28 close-out)")]
+    assert len(opened) == len(E28_OPENED) == 4
+    for needle, token, owner in E28_OPENED:
+        rows = [r for r in opened if needle in r]
+        assert len(rows) == 1, needle
+        fields = rows[0].split(" | ")
+        assert len(fields) == 5 and token in fields[1] and fields[3] == owner, needle
+        assert fields[2].startswith("missing arming step:") and fields[4].startswith("proof-of-armed:"), needle
+    assert not [r for r in ARMS_LINES if r.startswith("- closed") and "VISA-ORACLE E28 close-out" in r]
+
+
+def test_e28_backlog_row_carries_every_item_once():
+    row = _rows("BACKLOG of the E28 close-out")[0]
+    for token in ("F5, the E28 documents catalogue", "F54, the Golden codes in the legacy enum", "F73, `services_data.ts:125` passport 18 months",
+                  "`golden-visa-2026-updates.mdx:49,65`", "`indonesia-golden-visa-2025-no-sponsor-no-merp-usd-25m-minimum.mdx:38`",
+                  "about 20 other investor/golden articles", "a Qdrant re-embed", "`visa_check.py:166` 25 days", "IMTA mentions left in KG routes",
+                  "`services_data.ts:165` KITAP", "`FunnelFeature.tsx:80`", "Last updated: April 2026", "government-fee inclusion for non-visa services",
+                  "Investor KITAS notes are empty", "extensions_possible 1 for E28A", "\"Covers 730 days\" but the pack has 180+180", "assumes a foreign branch"):
+        assert row.count(token) == 1, token
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
