@@ -1,0 +1,85 @@
+brief_ref: evidence/brief.yml
+pii_scan: clean
+plan_ref: >-
+  Branch agent/air-m5/infra/seat-roster-1017 from origin/main: slots 2,3,4 (A5, A3, A4, accounts closed
+  by Zero 2026-10-17) join the retired lists of cron-agent.sh, ai-dispatch.sh, scripts/lib/claude_seat.sh,
+  claude-cascade.sh and wr2-ig-metrics-analyst-run.sh, each pinned to FLEET_TOPOLOGY.json by test; AZ is
+  recorded launchable; closed accounts leave the role chains. Mission LOCALCI-SOVEREIGN.
+lanes:
+  - lane: seat-roster-1017-build
+    role: build
+    seat: "claude-sonnet-5.5 (impl-seats; inventory on M5/Pro/Mini, tests first for the new negatives)"
+  - lane: seat-roster-1017-council-codex
+    role: review
+    seat: "codex gpt-5.6 (refuter, falsify-the-claim prompt on 70901350f7; VERDICT FALSIFIED, then cured)"
+  - lane: seat-roster-1017-council-agy
+    role: review
+    seat: "agy gemini (supplementary refuter, same prompt on 70901350f7; VERDICT HOLDS, 3 non-blocking; NOT counted toward quorum, journal lists the two titolari only)"
+  - lane: seat-roster-1017-council-k3
+    role: review
+    seat: "kimi-code/k3 (refuter, same prompt on the cured head 08705869e8; VERDICT HOLDS, 1 non-blocking)"
+council_run: journal.jsonl
+what_changed: |
+  FLEET_TOPOLOGY.json: A3, A4 status retired (closed 2026-10-17), A5 note widened, AZ lane launchable, closed
+  accounts dropped from gear3_final_gate / grunt / batch_throughput chains, pending_arms widened (orphaned
+  logins and routines, secrets-line removal, owed python readers). cron-agent.sh, ai-dispatch.sh,
+  scripts/lib/claude_seat.sh: new retired lists (2 3 4) with the value counted as seen; claude-cascade.sh
+  RETIRED_OAUTH_SLOTS=(2 3 4); wr2-ig-metrics-analyst-run.sh RETIRED_TOKEN_VARS gains _3 and _4 and the
+  rotation list becomes 1 5 6. seat_map.json: A3/A4 profiles unmapped. Tests: new
+  test_closed_seats_never_selected.py; negatives for slots 2/3/4 in the cascade, cron-agent, claude_seat and
+  wr2 corpora; fixtures that used slots 2/3/4 as the next live seat now use 5/6; golden cascade fixture
+  re-recorded (4 of 5 scenarios, first_slot_answers unchanged).
+  Council cure (4d94f23c75): claude_seat.sh guarded only the legacy name, so slot 1 carrying a closed
+  account's value was still queued and selected; both numbered loops now skip it, with a test per path.
+receipts:
+  - claim: probes GREEN on the final head - cascade never attempts slots 2/3/4 (test_retired_slot_is_never_attempted_even_when_its_token_is_set), legacy name and earlier slot never spend them (test_retired_slot_value_is_not_retried_under_the_legacy_name, test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot), registry pins (test_closed_seats_never_selected.py)
+    cmd: pytest -q scripts/tests/test_claude_cascade_shell.py scripts/tests/test_claude_oauth_runtime_fallback.py scripts/tests/test_claude_oauth_slot6_coverage.py scripts/tests/test_closed_seats_never_selected.py scripts/tests/test_conductor_host_seat_maps.py scripts/tests/test_claude_seat_quota.py scripts/usage
+    exit: "0 (376 passed)"
+    ts: "2026-10-17T06:10Z"
+    seat: claude-sonnet-5.5
+  - claim: shell corpora GREEN - cron-agent fail closed (test_cron_agent_oauth_cascade.sh fail closed, four attempts then keychain), claude_seat_pick cases 7 and 8 (test_claude_seat_pick.sh 7, test_claude_seat_pick.sh 8), claude_seat_run closed-account loop (test_claude_seat_helper.sh), wr2 [R1][R2] for slots 2/3/4 (test_wr2_ig_metrics_analyst_wrapper.sh)
+    cmd: bash scripts/tests/<name>.sh for test_claude_seat_pick test_claude_seat_helper test_cron_agent_oauth_cascade test_wr2_ig_metrics_analyst_wrapper test_cron_agent_alert_verdict test_cron_agent_checkout_guard test_cron_agent_context_diet test_cron_agent_fingerprint_map test_cron_agent_no_git_commit_prompt test_ai_dispatch_shared_watchdog
+    exit: "0 (all ten rc=0)"
+    ts: "2026-10-17T06:10Z"
+    seat: claude-sonnet-5.5
+  - claim: fail-closed probes by name - test_claude_cascade_shell.py::test_retired_slot_is_never_attempted_even_when_its_token_is_set, test_retired_slot_value_is_not_retried_under_the_legacy_name, test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot, test_cron_agent_oauth_cascade.sh 'fail closed', test_claude_seat_pick.sh 7 and 8 all green in the runs above
+    cmd: same commands as the two receipts above (named here so each acceptance probe has an outcome on record)
+    exit: "0"
+    ts: "2026-10-17T06:10Z"
+    seat: claude-sonnet-5.5
+  - claim: registry-derived floor is 3 (hot zone), gear 3 declared
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt --net-lines 120
+    exit: "0 (3)"
+    ts: "2026-10-17T05:30Z"
+    seat: claude-sonnet-5.5
+  - claim: prettier --check clean on every changed md/json
+    cmd: npx --no-install prettier --check FLEET_TOPOLOGY.json scripts/usage/seat_map.json scripts/tests/fixtures/claude_cascade_golden.json docs/agents/fleet-continuity.md docs/runbooks/visa-reattestation-organ.md
+    exit: "0"
+    ts: "2026-10-17T06:10Z"
+    seat: claude-sonnet-5.5
+  - claim: live state measured read-only (Pro cron logs show slots 2,3,4 still attempted before the cure)
+    cmd: ssh pro grep -c "Trying token_N..." over the 40 newest ~/logs/cron-agent/*.log
+    exit: "0 (token_1 82, token_2 17, token_3 7, token_4 6, token_5 1)"
+    ts: "2026-10-17T05:40Z"
+    seat: claude-sonnet-5.5
+spend:
+  wall_clock_hours: 3
+dissent:
+  - seat: codex gpt-5.6
+    objection: |-
+      BLOCKING: scripts/lib/claude_seat.sh:191 _claude_seat_is_retired_value only guards the legacy fallback; the runner loop (:178) and the picker (:281) accept slots 1/5/6 without comparing them to retired values. Reproduced on Bash 3.2: _1 equal to _3 is queued by the runner and selected by the picker.
+    status: CONFIRMED
+    disposition: >-
+      Reproduced on disk by reading claude_seat.sh at 70901350f7: only the legacy branch called the helper. Cured in 4d94f23c75 by skipping a retired value in both numbered loops; new negatives test_claude_seat_pick.sh case 8 (picker) and test_claude_seat_helper.sh closed-account loop (runner, slots 2/3/4, aliased into slot 1 and the legacy name) are green.
+  - seat: agy gemini
+    objection: |-
+      NON-BLOCKING 1: same claude_seat.sh gap as codex (numbered slots not compared to retired values). NON-BLOCKING 2: _claude_seat_load_secrets returns early when CLAUDE_CODE_OAUTH_TOKEN is already set, so a caller exporting a retired legacy token while the retired numbered vars live only in the secrets file is not recognised as retired. NON-BLOCKING 3: stale prose in FLEET_TOPOLOGY.json (_invariants[0] rotation, A5 retired_note, tail of the owed-readers entry).
+    status: CONFIRMED
+    disposition: >-
+      1 cured with the codex finding (4d94f23c75). 3 cured in the following docs commit. 2 is real but needs a caller that exports a dead legacy token itself without the retired numbered vars; it was the pre-existing behaviour for the legacy name and fails open only to a closed (dead) token, so it is recorded here and left for the operator cure (delete the three secrets lines), not widened into this PR.
+  - seat: kimi-code/k3
+    objection: |-
+      NON-BLOCKING: value-alias inversion. Dedup is value-based with retired values seen first, so an operator who aliases a LIVE slot to the same value as a retired slot (TOKEN_1 equal to TOKEN_2) now has the live slot skipped too; before this change first-seen-wins kept it.
+    status: CONFIRMED
+    disposition: >-
+      Confirmed and accepted as the price of the fail-closed requirement: the registry says slots are distinct accounts, so a live slot sharing a value with a closed one is a misconfiguration, and skipping it is the safe side (the same shape the 2026-10-05 council required for claude-cascade.sh). Recorded; no code change.
