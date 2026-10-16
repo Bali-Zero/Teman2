@@ -17,6 +17,7 @@ import { describe, expect, it } from "vitest";
  * (portal + pointer APIs) and does not measure contrast.
  */
 const SRC = readFileSync(join(__dirname, "select.tsx"), "utf8");
+const GLOBALS = readFileSync(join(__dirname, "../../app/globals.css"), "utf8");
 const THEME = readFileSync(
   join(__dirname, "../../../../../packages/core/tailwind/theme.css"),
   "utf8",
@@ -28,16 +29,6 @@ describe("Select dropdown uses colours that exist in this app", () => {
     expect(SRC).toContain("SelectPrimitive.Item");
     expect(THEME).toContain("@theme");
     expect(THEME).toContain("--color-accent:");
-  });
-
-  it("the undefined shadcn tokens are really undefined in the theme", () => {
-    for (const token of [
-      "popover",
-      "popover-foreground",
-      "accent-foreground",
-    ]) {
-      expect(THEME).not.toContain(`--color-${token}:`);
-    }
   });
 
   it("GUILT: no dropdown class depends on an undefined token or the red accent", () => {
@@ -55,6 +46,41 @@ describe("Select dropdown uses colours that exist in this app", () => {
     expect(SRC).toContain("bg-[var(--background)]");
     expect(SRC).toContain("text-[var(--foreground)]");
     expect(SRC).toContain("border-[var(--border)]");
-    expect(SRC).toContain("focus:bg-[var(--background-hover)]");
+    expect(SRC).toContain(
+      "focus:bg-[var(--surface-selected,var(--background-hover))]",
+    );
+    expect(SRC).toContain(
+      "data-[highlighted]:bg-[var(--surface-selected,var(--background-hover))]",
+    );
+  });
+
+  // Review 12 Oct (REWORK-BUILD): the highlight must differ from the panel in
+  // every kita theme. Resolved from globals.css, one var() hop deep.
+  describe.each([
+    '[data-theme="operative-light"][data-product="kita"]',
+    '[data-theme="operative-dark"][data-product="kita"]',
+  ])("in %s the highlighted option is visible on the panel", (selector) => {
+    const block = (() => {
+      const start = GLOBALS.indexOf(`${selector} {`);
+      expect(start).toBeGreaterThan(-1);
+      return GLOBALS.slice(start, GLOBALS.indexOf("\n}", start));
+    })();
+    const read = (name: string): string => {
+      const m = block.match(new RegExp(`--${name}:\\s*([^;]+);`));
+      expect(m, `--${name} in ${selector}`).not.toBeNull();
+      const raw = (m as RegExpMatchArray)[1].trim();
+      const ref = raw.match(/^var\((--[\w-]+)\)$/);
+      return ref ? read(ref[1].slice(2)) : raw.toLowerCase();
+    };
+
+    it("--surface-selected differs from --background", () => {
+      expect(read("surface-selected")).not.toBe(read("background"));
+    });
+
+    it("GUILT: the old highlight (--background-hover) equalled the panel in light", () => {
+      if (selector.includes("operative-light")) {
+        expect(read("background-hover")).toBe(read("background"));
+      }
+    });
   });
 });
