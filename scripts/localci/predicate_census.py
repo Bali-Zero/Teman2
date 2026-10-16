@@ -89,8 +89,24 @@ def extract_python(src: str) -> list[tuple[str, int, int, str, str]]:
         s, e = _span(lines, offs, node)
         found.setdefault((s, e), (norm(src[s:e]), s, e, kind, owner.get(id(origin), "")))
 
-    dicts = {t.id for a in ast.walk(tree) if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict)
+    def _is_dict_init(v: ast.AST | None) -> bool:
+        return (isinstance(v, ast.Dict) and None not in v.keys) or (isinstance(v, ast.Call) and _call_name(v) == "dict")
+
+    def _is_seq_init(v: ast.AST | None) -> bool:
+        return isinstance(v, (ast.List, ast.Tuple, ast.Set)) or (isinstance(v, ast.Call) and _call_name(v) in ("list", "tuple", "set"))
+
+    dicts = ({(owner.get(id(a), ""), t.id) for a in ast.walk(tree) if isinstance(a, ast.Assign) and _is_dict_init(a.value)
+              for t in a.targets if isinstance(t, ast.Name)}
+             | {(owner.get(id(a), ""), a.target.id) for a in ast.walk(tree) if isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name)
+                and _is_dict_init(a.value)})
+    seqs = ({(owner.get(id(a), ""), t.id) for a in ast.walk(tree) if isinstance(a, ast.Assign) and _is_seq_init(a.value)
              for t in a.targets if isinstance(t, ast.Name)}
+            | {(owner.get(id(a), ""), a.target.id) for a in ast.walk(tree) if isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name)
+               and _is_seq_init(a.value)})
+
+    def _in_scope(table: set[tuple[str, str]], node: ast.AST, name: str) -> bool:
+        return (owner.get(id(node), ""), name) in table or ("", name) in table
+
     annotated = {id(m) for f in ast.walk(tree) for a in ([f.returns, *[x.annotation for x in f.args.args + f.args.kwonlyargs]] if isinstance(f, ast.FunctionDef) else
                                                       [f.annotation] if isinstance(f, ast.AnnAssign) else []) if a is not None for m in ast.walk(a)}   # `X | None` is a type
     for n in ast.walk(tree):
@@ -98,9 +114,13 @@ def extract_python(src: str) -> list[tuple[str, int, int, str, str]]:
             raise ValueError(f"line {n.lineno}: a loop `else` is a decision the census does not model")
         if isinstance(n, ast.Try) and (n.finalbody or n.orelse):
             raise ValueError(f"line {n.lineno}: `finally` / `else` is a path the census does not model")
-        if isinstance(n, ast.Subscript) and isinstance(n.value, (ast.List, ast.Tuple, ast.Dict, ast.Set)):
-            raise ValueError(f"line {n.lineno}: indexing a literal (a boolean or dict dispatch) hides a condition: write an if")
-        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id in dicts:
+        if isinstance(n, ast.Subscript) and (isinstance(n.value, (ast.List, ast.Tuple, ast.Dict, ast.Set)) or (isinstance(n.value, ast.Name) and _in_scope(seqs, n, n.value.id))):
+            raise ValueError(f"line {n.lineno}: indexing a literal or sequence variable (a boolean or dict dispatch) hides a condition: write an if")
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "get" and (
+            isinstance(n.func.value, ast.Dict) or (isinstance(n.func.value, ast.Name) and _in_scope(dicts, n, n.func.value.id))
+        ):
+            raise ValueError(f"line {n.lineno}: dict.get() on a dispatch dict hides a condition: use [] or an if")
+        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and _in_scope(dicts, n, n.value.id):
             add(n, "dispatch", n)
         if isinstance(n, ast.BinOp) and isinstance(n.op, (ast.BitAnd, ast.BitOr, ast.BitXor)) and id(n) not in annotated:
             raise ValueError(f"line {n.lineno}: a bitwise operator is a hidden boolean: write and/or")

@@ -102,6 +102,10 @@ ATTACKS = [
     ("Q12-module-dict-dispatch", "D = {'a': 1}\n\n\ndef q12(k):\n    return D[k]\n", ["D[k]"]),
     ("Q13-bitwise-and", "def q13(a, b):\n    return a & b\n", ["a"]),
     ("Q14-annotation-union", "def q14(a: int | None) -> int | None:\n    return a if a else 1\n", ["a"]),
+    ("Q15-ann-assign-dict-dispatch", "def q15(k):\n    d: dict = {'a': 1, 'b': 2}\n    return d[k]\n", ["d[k]"]),
+    ("Q16-dict-call-dispatch", "def q16(k):\n    d = dict(a=1, b=2)\n    return d[k]\n", ["d[k]"]),
+    ("Q17-dict-get-dispatch", "def q17(k):\n    d = {'a': 1, 'b': 2}\n    return d.get(k, 0)\n", ["k"]),
+    ("Q18-seq-var-index", "def q18(c):\n    t = (1, 2)\n    return t[c]\n", ["c"]),
     ("P30-except-tuple", "def gp30(p):\n    try:\n        return p['n']\n    except (KeyError, ValueError):\n        return 0\n", ["(KeyError, ValueError)"]),
 ]
 
@@ -118,7 +122,8 @@ def test_every_atom_of_a_construct_is_a_row_or_the_extractor_raises(name, src, a
 
 
 RAISES = {"P08-lambda-ifexp", "P09-match", "P10-assert", "P11-filter-lambda", "P16-suppress", "P17-for-else", "P18-match-guard", "P20-walrus", "P21-bare-except", "P27-await",
-          "P28-global", "P29-syntax-error", "Q01-for-else", "Q02-while-else", "Q03-try-finally", "Q05-bool-index", "Q09-dict-literal-index", "Q11-try-else", "Q13-bitwise-and"}
+          "P28-global", "P29-syntax-error", "Q01-for-else", "Q02-while-else", "Q03-try-finally", "Q05-bool-index", "Q09-dict-literal-index", "Q11-try-else", "Q13-bitwise-and",
+          "Q17-dict-get-dispatch", "Q18-seq-var-index"}
 
 
 def test_the_denied_constructs_raise_and_the_modelled_ones_do_not():

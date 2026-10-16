@@ -195,14 +195,14 @@ def test_verify_quiet_writes_the_invalid_line_to_stderr(monkeypatch, capsys):
 
 
 def test_the_poller_outlives_the_helpers_deadline_with_margin():
-    """B31 L5: the helper's wall-clock deadline plus the arm must end before the poller kills it (its subprocess timeout)."""
+    """B31 L5: the helper's wall-clock deadline plus the probe, last label command and arm must end before the poller kills it."""
     root = Path(__file__).resolve().parents[3]
     cfg = subprocess.run(["bash", str(root / "scripts/signal_merge_intent.sh"), "7"], capture_output=True, text=True, timeout=30,
                          env={"PATH": "/usr/bin:/bin", "SIGNAL_INTENT_SHOW_CONFIG": "1"}).stdout
     deadline = int(re.search(r"deadline=(\d+)", cfg)[1])
     poller = (root / "apps/bali-intel-scraper/scripts/post_publish_poller.py").read_text()
     timeout = int(re.search(r"\[str\(intent\), number\],[^\n]*timeout=(\d+)", poller)[1])
-    assert deadline <= 45 and timeout >= deadline + 15, (timeout, deadline)
+    assert deadline <= 45 and _li.CMD_TIMEOUT <= 15 and timeout >= deadline + 3 * _li.CMD_TIMEOUT + 15, (timeout, deadline, _li.CMD_TIMEOUT)
 
 
 def test_the_script_runs_as_a_program():
@@ -329,6 +329,24 @@ def test_the_poller_logs_labelled_only_for_exit_0_and_alerts_on_exit_2(monkeypat
     assert got is labelled
     assert any("labelled merge-intent" in line for line in logs) is labelled
     assert len([d for d in sent if "unlabelled" in d]) == alerts
+
+
+@pytest.mark.parametrize("mode", ["exit_2", "timeout"])
+def test_the_poller_timeout_or_exit_2_on_already_armed_pr_returns_false_and_alerts(monkeypatch, mode):
+    """Even when _pr_state says the PR is already armed, a helper exit 2 or timeout must alert unlabelled and return False."""
+    mod = _poller()
+    sent = []
+    monkeypatch.setattr(mod, "log", lambda *a, **k: None)
+    monkeypatch.setattr(mod, "send_telegram_alert", lambda *a, **k: sent.append(k.get("dedup_key", "")))
+    monkeypatch.setattr(mod, "_pr_state", lambda n: {"armed": True, "queued": False})
+    monkeypatch.setattr(mod, "_log_gh_failure", lambda *a, **k: None)
+    def fake_run(*a, **k):
+        if mode == "timeout":
+            raise subprocess.TimeoutExpired(a[0], k.get("timeout", 105))
+        return subprocess.CompletedProcess(a[0], 2, "", "label failed")
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    assert mod._arm_pr("https://github.com/o/r/pull/1", "article") is False
+    assert sent == ["post-publish:bot-pr-unlabelled:article"]
 
 
 def test_the_signal_merge_intent_shell_suite_passes():

@@ -706,10 +706,13 @@ def _arm_pr(pr_url: str, kind: str) -> bool:
     try:
         if intent.is_file() and os.access(intent, os.X_OK):
             # label + arm (arm skipped once main has no merge_queue rule — the label is the arm)
-            result = subprocess.run(
-                [str(intent), number], capture_output=True, text=True, timeout=60,
-                env={**os.environ, "SIGNAL_INTENT_REPO": repo},
-            )
+            try:
+                result = subprocess.run(
+                    [str(intent), number], capture_output=True, text=True, timeout=105,
+                    env={**os.environ, "SIGNAL_INTENT_REPO": repo},
+                )
+            except subprocess.TimeoutExpired as exc:
+                result = subprocess.CompletedProcess(exc.cmd, 2, exc.stdout or "", f"timed out after {exc.timeout}s")
             if result.returncode == 0 and "arm=skipped" in result.stdout:
                 log(f"  ✅ #{number} labelled merge-intent (no merge queue on main)")
                 return True
@@ -724,6 +727,7 @@ def _arm_pr(pr_url: str, kind: str) -> bool:
                 f"⚠️ Post-publish poller\nBot PR {pr_url} ({kind}) has no valid merge label — it will not merge after the flip",
                 dedup_key=f"post-publish:bot-pr-unlabelled:{kind}",
             )
+            return False
         if result.returncode != 0:
             _log_gh_failure(f"pr merge --auto #{number}", result)
     except Exception as e:

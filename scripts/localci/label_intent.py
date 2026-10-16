@@ -26,7 +26,7 @@ from pathlib import Path
 
 LABEL = "localci:merge-shadow-ok"
 DEFAULT_TRIES, DEFAULT_DEADLINE, DEFAULT_BACKOFF = 4, 45, 2
-CMD_TIMEOUT = 60   # one network command; the label deadline is asked between commands, this bounds a command that never returns
+CMD_TIMEOUT = 15   # one network command; the label phase also caps each step at the deadline left, so probe+label+arm <= 75s < poller 90s
 BENIGN_ARM = ("already queued", "auto-merge enabled", "already enabled", "clean status")
 
 
