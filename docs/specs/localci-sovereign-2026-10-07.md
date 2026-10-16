@@ -395,7 +395,7 @@ line, or null), `via` (measured from `SSH_CONNECTION` by the appender, never sup
 mode (so writer and reader are the code the tick runs; superscar #1), and only then posts the GitHub status. The entry
 travels as ONE base64 argv, never JSON on a shell line; the appender validates it, refuses a ledger whose last byte is
 not `\n`, takes `LOCK_EX`, `O_APPEND|O_CREAT` 0600, one `write()`, `fsync`, and prints the digest; it is idempotent on
-(repo, head, verdict, evidence, supersedes). A failed append exits non-zero and posts nothing, so a GitHub-only success is
+(repo, head, verdict, evidence, supersedes) while the head's NEWEST entry carries them (an older twin behind a later verdict is not one). A failed append exits non-zero and posts nothing, so a GitHub-only success is
 always an anomaly. `--supersede` (a flag of `gate-append`, success verdicts only; with nothing to supersede it is a plain append) makes the appender, under the lock, name the digest of the newest UNSUPERSEDED non-success entry of the head, one append per unsuperseded failure (so `F,F,S` takes two). The caller supplies exactly `repo`, `pr`, `head_sha`, `verdict`, `gate_session`, `evidence_sha256`, `supersedes` (null with `--supersede`); `v`, `ts` and `via` are the appender's, and any other key is rejected. `gate_ledger.py verify` reports the first bad line and the mode; `quarantine --line N` moves one
 bad line to `verdicts.quarantine.jsonl` and journals it, and REFUSES a line that validates (else it is an override). The
 tick journals `gate_ledger_unreadable` once; any session can run both, no human.
