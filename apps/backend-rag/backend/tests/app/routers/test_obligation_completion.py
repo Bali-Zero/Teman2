@@ -27,6 +27,29 @@ BODY = {"evidence_ref": "  internal-document:test-receipt  ", "declaration": Tru
 URL = "/api/compliance/obligations/1/complete"
 
 
+def is_test_database(name: str) -> bool:
+    """Accept the suite base, pre-push clones and their xdist workers only."""
+    return re.search(r"_test(?:_run_[0-9]+_[0-9]+)?(?:_gw[0-9]+)?$", name) is not None
+
+
+@pytest.mark.parametrize(
+    ("name", "allowed"),
+    [
+        ("nuzantara_test", True),
+        ("nuzantara_test_gw0", True),
+        ("nuzantara_test_run_123_456", True),
+        ("nuzantara_test_run_123_456_gw1", True),
+        ("nuzantara_dev", False),
+        ("nuzantara", False),
+        ("nuzantara_test_production", False),
+        ("nuzantara_test_run_123", False),
+        ("nuzantara_test_gw0_extra", False),
+    ],
+)
+def test_database_guard_covers_repository_test_names(name, allowed):
+    assert is_test_database(name) is allowed
+
+
 def client(pool=None, user=None):
     app = FastAPI()
     app.include_router(compliance_obligations.router)
@@ -45,9 +68,9 @@ async def db():
         pytest.skip("TEST_DATABASE_URL required for PostgreSQL completion proof")
     conn = await asyncpg.connect(dsn)
     name = await conn.fetchval("SELECT current_database()")
-    if not re.search(r"_test(?:_gw[0-9]+)?$", name):
+    if not is_test_database(name):
         await conn.close()
-        pytest.fail("Completion tests require a test database or its xdist worker")
+        pytest.fail("Completion tests require a test database, pre-push clone or xdist worker")
     schema = "ros_completion_" + uuid4().hex
     await conn.execute(f'CREATE SCHEMA "{schema}"')
     pool = await asyncpg.create_pool(

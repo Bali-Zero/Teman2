@@ -29,6 +29,24 @@ schema. Alert-schema coverage remains intentionally minimal for this slice.
 The final gate must be a fresh Opus 5.5 xhigh session on the committed candidate.
 This document is test evidence, not a final gate or deployment claim.
 
+## Pre-push naming correction
+
+The first final reviewer (fresh Opus session
+`81df3fdb-c325-4984-a51b-15c162c550bf`) passed candidate `dcc2a7d8c4`
+and independently executed 136 backend tests, with no skips, in 105s.
+Before PR creation, release preparation exposed the pre-push database name
+`nuzantara_test_run_<pid>_<random>` in `.husky/pre-push`. The test guard also
+needs to accept that name and its xdist suffix. Release was stopped before
+opening or arming a PR; application code is unchanged.
+
+The revised guard has nine explicit acceptance/rejection cases. All 34
+completion tests passed in 59.78s using an isolated database with the actual
+pre-push naming pattern and `-n auto --dist loadfile` (two workers). This
+proves the combined clone/worker case, not just a regular expression in
+isolation. Operational names and unrelated suffixes remain rejected.
+A new final gate must sign the new commit; the earlier signature does not
+authorize a different SHA.
+
 ## Production acceptance
 
 Verify both deployed revisions, endpoint schema/authentication, a synthetic

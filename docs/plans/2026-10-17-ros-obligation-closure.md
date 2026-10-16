@@ -56,6 +56,9 @@ a fresh Opus 5.5 xhigh session outside the contribution chain signs the final
 gate. Initial design session `c7c02d41-2f72-4f4e-95a6-4dcd3670ab88` approved
 the scope with explicit concurrency and acknowledgment safeguards.
 One branch, no concurrent writer. Existing sibling paths remain untouched.
-At most one corrective iteration before narrowing or revising the contract.
+Test-database contract: accept the suite's `_test` base, pre-push
+`_test_run_<pid>_<random>` clones and optional `_gw<worker>` suffixes;
+reject operational names and lookalike suffixes. This explicitly narrows
+the test-environment assumption found incomplete during release preparation.
 Both backend and frontend revisions must be live before completion is declared;
 rollback the release if authorization or the atomic completion proof fails. No data backfill.
