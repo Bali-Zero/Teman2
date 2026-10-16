@@ -131,8 +131,6 @@ VISA_METADATA: dict[str, dict[str, str]] = {
     "Investor KITAP + MERP": {"duration": "5 years", "validity": "KITAP — permanent residence"},
     "Retirement KITAP + MERP": {"duration": "5 years", "validity": "KITAP — permanent residence"},
     "Dependent KITAP MERP": {"duration": "5 years", "validity": "KITAP dependent"},
-    "MERP 1 Year": {"duration": "1 year", "validity": "Re-entry permit"},
-    "MERP 2 Year": {"duration": "2 years", "validity": "Re-entry permit"},
     # Visa extensions
     "C1 Tourism Extension": {"duration": "30 days", "validity": "Extension only"},
 }
