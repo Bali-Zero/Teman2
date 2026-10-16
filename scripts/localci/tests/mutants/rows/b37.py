@@ -15,7 +15,7 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b37-kind-ignored": (PY, 'return (r.get("kind") == "would_enqueue" and isinstance(c, dict) and c.get("open") is False', 'return (isinstance(c, dict) and c.get("open") is False', MF),
     "b37-strict-row-dropped": (PY, "return strict or merged_first_row(r, pull)", "return merged_first_row(r, pull)", MF),
     "b37-pull-never-passed": (PY, "mergeable_row(r, pull_of(r))", "mergeable_row(r)", MF),
-    "b37-pr-number-unguarded": (PY, 'if type(r.get("pr")) is int else None', "else None", MF),
+    "b37-pr-number-unguarded": (PY, 'if type(r.get("pr")) is int else None', "if True else None", MF),
     "b37-merged-first-uncounted": (PY, "merged_first = sum(1 for r in mergeable if open_only_false(r))", "merged_first = 0", MF),
     "b37-unread-uncounted": (PY, "unread = sum(1 for r in in_window if open_only_false(r) and not isinstance(pull_of(r), dict))", "unread = 0", MF),
     "b37-line-split-dropped": (PY, "(merged_first={lv['merged_first']}\"", "(\"", MF),

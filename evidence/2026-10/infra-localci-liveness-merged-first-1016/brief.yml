@@ -14,7 +14,7 @@ acceptance:
   - text: "Only `open` false plus a merged pull at the row's head counts; closed-unmerged, other head, missing or non-dict pull, a second false term and a non-dict criterion do not."
     probe: "python -m pytest -q scripts/localci/tests/test_liveness_merged_first.py scripts/localci/tests/test_liveness.py -p no:cacheprovider"
   - text: "All 16 b37-* mutants are killed."
-    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only $(python scripts/localci/tests/mutants/merger_mutants.py --list | grep b37 | tr '\n' ',')"
+    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only $(python scripts/localci/tests/mutants/merger_mutants.py --list | awk '/b37/{print $1}')"
 consumer_map:
   - "merger.py report on Pro: ready_cache and the flip checklist read liveness_ok from the liveness block."
 risks:
