@@ -1,0 +1,24 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, three test files and the observer floor
+  constant. No production runtime code path or live data mutation in this PR.
+mission: >-
+  The /visaoracle ledger records the Qdrant pricing contact-trailer patch (67 older points) and orphan deletion
+  (PR #8594, d85145eb8b, 17 orphan points removed), closes the operator[business] PENDING-ARMS row opened by #8575,
+  and adds the two --expect-orphans boundary tests requested by PR #8594 Gate Condition 1.
+objective: >-
+  live-state-log.md carries a dated 2026-10-16 Qdrant pricing cleanup entry as newest, SKILL.md leads its LIVE STATE
+  with it (only one bullet says newest), PENDING-ARMS.md closes the operator[business] row (reducing open count by 1),
+  the seq-29 ledger observer floor equals 57 (the file's test count), and test_sync_pricing_collection_prices_delete_orphans_1016.py
+  kills both surviving mutants on line 656 of sync_pricing_collection_prices.py.
+scope:
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - .claude/skills/modus/PENDING-ARMS.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0

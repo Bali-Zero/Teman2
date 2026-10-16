@@ -38,6 +38,9 @@ struct SearchListView: View {
     /// has no way to click the grabber, so `KBLI_SHEET_EXPANDED=1` opens the dossier under the
     /// verdict for the render. Unset in every normal launch.
     @State private var sheetExpanded = ProcessInfo.processInfo.environment["KBLI_SHEET_EXPANDED"] == "1"
+    /// The collapsed sheet's height to its verdict band (`SheetFit`): the detent grows to it when the default is short, up to three quarters
+    /// of the window and always leaving the list a peek (`collapsedMin`).
+    @State private var sheetFit: CGFloat = 0
 
     private var isID: Bool { lang.lang == .id }
     private var listHasFocus: Bool { focusedField.wrappedValue == .list }
@@ -135,6 +138,10 @@ struct SearchListView: View {
     // MARK: body
 
     var body: some View {
+        GeometryReader { g in paneBody(g.size, windowBottom: g.frame(in: .global).maxY) }
+    }
+
+    private func paneBody(_ pane: CGSize, windowBottom: CGFloat) -> some View {
         VStack(spacing: 0) {
             if searching {
                 queryLayout
@@ -147,9 +154,11 @@ struct SearchListView: View {
                 browseLayout
                     .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 300 : .infinity)
             }
-            sheetLayer
+            sheetLayer(pane, windowBottom: windowBottom)
         }
         .background(Theme.antracite)
+        .censusFrame("pane")
+        .onPreferenceChange(SheetFitKey.self) { sheetFit = $0 }
         // A filter, a sector or a query that hides the selected code closes its sheet: a verdict
         // sheet over a table that no longer holds the code was an open-code answer sitting over an
         // all-blocked list (council K2 round 1, both seats).
@@ -550,14 +559,23 @@ struct SearchListView: View {
 
     // MARK: the sheet over the table
 
-    @ViewBuilder private var sheetLayer: some View {
+    /// The least height the collapsed sheet takes: what its head needs down to the verdict band (and the 12 pt below it), no more than
+    /// 80% of the window and no more than the pane less a 64 pt peek of the list (one row stays on the screen).
+    private func collapsedMin(_ pane: CGSize, windowBottom: CGFloat) -> CGFloat {
+        guard sheetFit > 0, pane.height > 0 else { return 0 }
+        let cap = min(0.8 * max(windowBottom, pane.height), pane.height - 64)
+        return min(sheetFit, max(cap, 0))
+    }
+
+    @ViewBuilder private func sheetLayer(_ pane: CGSize, windowBottom: CGFloat) -> some View {
         if let k = state.selected, state.section == .search {
             RegistryVerdictSheet(kbli: k, expanded: $sheetExpanded) {
                 state.selected = nil
                 sheetExpanded = false
             }
             .immersiveHost()
-            .frame(maxHeight: sheetExpanded ? .infinity : 470)
+            .frame(minHeight: sheetExpanded ? nil : collapsedMin(pane, windowBottom: windowBottom),
+                   maxHeight: sheetExpanded ? .infinity : max(470, collapsedMin(pane, windowBottom: windowBottom)))
             .padding(.horizontal, 12).padding(.bottom, 10).padding(.top, 6)
         }
     }

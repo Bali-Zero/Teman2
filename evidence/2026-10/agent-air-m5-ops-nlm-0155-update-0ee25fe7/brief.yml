@@ -1,0 +1,34 @@
+mandate: nlm-0155-update
+colour: BLUE
+gear: 2
+objective:
+  Align NotebookLM runtimes and skills, preserve account-bound recovery, and validate direct
+  Python consumers.
+role: External builder; independent Claude verification and release required.
+owned_paths:
+  - apps/nlm-bridge/main.py
+  - apps/nlm-bridge/requirements.txt
+  - apps/nlm-bridge/test_nlm_bridge.py
+  - scripts/auth_sentinel.py
+  - scripts/nb_export_corpus.py
+  - scripts/nlm_watchdog.py
+  - scripts/wr3_nlm_subprocess.py
+  - scripts/tests/test_auth_sentinel_nlm.py
+  - scripts/tests/test_nb_export_client.py
+  - docs/runbooks/notebooklm-runtime.md
+  - evidence/2026-10/agent-air-m5-ops-nlm-0155-update-0ee25fe7/*
+acceptance:
+  - requirement: WHEN the Pro and Mini CLI packages are upgraded, saved authentication SHALL remain valid.
+    probe: nlm login --check --profile default; output reduced to auth_valid boolean
+  - requirement:
+      WHEN the bridge candidate uses 0.15.5, it SHALL authenticate and list notebooks without
+      displaying their data.
+    probe: candidate direct-library authenticated notebook-list check
+  - requirement: IF authentication is invalid, the sentinel SHALL not classify it as valid.
+    probe: scripts/tests/test_auth_sentinel_nlm.py::test_invalid_is_not_valid_and_refreshes_once
+  - requirement: IF the network result is inconclusive, the sentinel SHALL not refresh or expose raw output.
+    probe: scripts/tests/test_auth_sentinel_nlm.py::test_inconclusive_network_never_triggers_refresh_or_raw_output
+  - requirement: WHEN browserless refresh succeeds, the sentinel SHALL revalidate before reporting recovery.
+    probe: scripts/tests/test_auth_sentinel_nlm.py::test_successful_refresh_requires_successful_revalidation
+  - requirement: WHEN direct clients initialize, they SHALL preserve profile, host and credential revision.
+    probe: scripts/tests/test_nb_export_client.py; apps/nlm-bridge/test_nlm_bridge.py::TestCurrentLibraryContract

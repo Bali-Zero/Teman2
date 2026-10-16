@@ -1587,14 +1587,11 @@ async def update_practice(
                 try:
                     from backend.services.portal.portal_notification_service import (
                         PortalNotificationService,
+                        practice_display_name,
                     )
 
                     notif_service = PortalNotificationService(db_pool)
-                    practice_type = (
-                        response_practice.get("practice_type_code")
-                        or response_practice.get("practice_type_name")
-                        or "Practice"
-                    )
+                    practice_type = practice_display_name(response_practice)
                     spawn(
                         notif_service.notify_practice_status_changed(
                             client_id=practice_client_id,

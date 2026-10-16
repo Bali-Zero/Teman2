@@ -47,7 +47,7 @@ Repo convention to follow (measured 5 Oct, origin/main 64e3858d0c): triggers liv
 
 Portal profile (same trigger function or a sibling): if a portal profile is linked to the client,
 set it inactive and archive + NULL its `team_members.email` the same way, so the address is free
-for a later invitation. Open question Q3.
+for a later invitation. Resolved: yes (§7 Q3).
 
 ## 4. Restore direction — code
 
@@ -69,19 +69,32 @@ Once §3 lands this case should not recur; the relink is the guard for rows crea
 
 ## 6. Backfill
 
-One-time, for the 57 rows: archive then NULL, same logic as the trigger. Store the id list for rollback.
-Executed owner-side by Antonello after this spec is read (production write).
+One-time, same logic as the trigger, id lists stored for rollback. Re-measured 15 Oct 2026 (read-only):
+59 soft-deleted clients still hold a non-blank email (was 57 on 30 Sep), and 45 portal profiles
+(`team_members`) linked to a soft-deleted client still hold one, 40 of them `active = true`.
+The backfill covers both sets. Executed owner-side (production write), not by a migration.
 
-## 7. Open questions
+## 7. Questions — resolved 2026-10-15
 
-- Q1. Archive table: reuse `client_email_reconciliation_archive` (created in
-  `db/migrations_v2/166_reconcile_client_email_duplicates.sql:19`; columns seen 5 Oct include
-  `archive_id`, `archived_at`, `migration_name`, `reason`, `client_id`, `new_email`) with
-  `migration_name` / `reason` set to a soft-delete value — proposed — or a new table?
-  Reuse keeps one place to look for "where did this email go"; the cost is that the table's
-  name says reconciliation, not soft-delete.
-- Q2. Restore conflict: 409 + client restored without email (proposed), or block the restore?
-- Q3. Does the trigger also free `team_members.email` for a linked portal profile, or stays code-only?
+Antonello delegated the three calls to the owner-side session; decided on PROD measurements (read-only, 15 Oct).
+
+- Q1 → **reuse `client_email_reconciliation_archive`.** Columns measured 15 Oct: `archive_id`,
+  `archived_at`, `migration_name`, `client_id` (NOT NULL), `old_email`, `new_email`, `reason`,
+  `client_snapshot` (jsonb, NOT NULL). Client row: `old_email` = archived address, `new_email` NULL,
+  `reason = 'soft_delete'`, `migration_name` = the migration file name, `client_snapshot` = a minimal
+  `{client_id, deleted_at}` (not a full row copy). Portal-profile row: `client_id` = the soft-deleted
+  client, `reason = 'soft_delete_portal_profile'`, `client_snapshot` = `{team_member_id, linked_client_id, deleted_at}`.
+- Q2 → **as proposed:** restore the client without the email and return 409 naming the client that
+  now owns the address. Never block the restore, never overwrite the other row.
+- Q3 → **yes, the trigger also frees the linked portal profile.** 45 profiles linked to soft-deleted
+  clients still hold their address (40 still active), so code-only would leave the invitation failure
+  of case 12531 in place. `team_members.email` is NOT NULL, so the address is replaced, not NULLed:
+  set `active = false`, archive the old address, write the tombstone `soft-deleted+tm<id>@invalid`
+  (RFC 2606 reserved TLD, unique per row). On restore (§4) the address goes back to the profile only
+  if it is free in both tables; the profile is not reactivated automatically.
+
+Note for the A10 report: clients 11677 and 12542 are NOT blocked by this case — each already has its
+own portal profile linked to itself (measured 15 Oct). Their invitation failure has another cause.
 
 ## 8. Not in scope
 

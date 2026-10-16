@@ -1009,6 +1009,34 @@ CANVAS = ('<canvas id="cv" width="400" height="80" style="position:absolute;inse
           "</canvas>")
 # id: body, css, opener (JS, or None to click a selector that is not there), selectors,
 #     expected (P, K at least, M exactly or at least as ">=n", walk state, an excerpt every walk prints)
+MENU_TOP = ('<div id="d" style="position:fixed;left:0;top:0;width:100%;height:64px;background:#FFFCF7;z-index:40">'
+            + p(INK, "Menu") + "</div>")
+STRIP = "position:absolute;left:7px;top:calc(100vh - 36px);padding:8px;background:#FFFCF7;z-index:10;"
+STRIP_SCRIM = ('<div style="position:absolute;left:0;top:0;width:100%;height:calc(100vh - 40px);'
+               'background:rgba(29,44,59,.45)"><div style="position:fixed;left:0;right:0;bottom:40px;height:4px;'
+               'background:#25D366;z-index:30;{}"></div></div>' + MENU_TOP)
+
+
+def faded_a1(wrapper_style: str) -> str:
+    """A1: a flat absolute scrim in a wrapper, its child bar above the surface; the wrapper style is the variable."""
+    return ('<div style="' + wrapper_style + '">'
+            '<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+            '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B"></div></div>'
+            + surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+                      p(INK) + p(INK, "Villa", "margin-top:40px")) + '</div>')
+
+
+def scrim_over_static(scrim_style: str, child: bool = True) -> tuple:
+    """A scrim over a static surface: it covers the run itself, so what it holds is behind it too (SPEC-3b2bi)."""
+    bar = ('<div style="position:absolute;left:0;top:70px;width:100%;height:60px;background:#1D2C3B"></div>'
+           if child else "")
+    return (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+            appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45);'
+                     + scrim_style + f'">{bar}</div><div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
+                     f'height:64px;background:#FFFCF7;z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"],
+            (2, 0, 0, "ok", None))
+
+
 CASES = [
     ("G1", surface("background-color:rgb(28 28 31 / 0.95);padding:16px", cls="bg-[#1c1c1f]/95"), "", REVEAL, ["#s"],
      (0, 1, 0, "ok", "  bg-[#1c1c1f]/95  expected elevated #FFFCF7 (opaque)")),
@@ -1158,6 +1186,75 @@ CASES = [
      appended(SCRIM.format("rgba(29,44,59,.45)") + '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;'
               f'height:64px;background:#FFFCF7;z-index:20">{p(INK, "Menu")}</div>'), ["#s", "#d"],
      (2, 0, 0, "ok", None)),
+    # W0d-3b-2b (the #8249 gate's binding 3): a child of a FLAT scrim (absolute, no z-index, so no stacking context)
+    # can sit above the surface and hide a run; it is counted, where a child of a fixed scrim cannot rise.
+    ("G-flat-scrim-child", surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+                                   p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B">'
+              '</div></div>'), ["#s"], (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # W0d-3b-2b-i' (the #8560 gate's A1): the flat scrim sits inside a FIXED wrapper. The scrim's own ancestors do
+    # not make it a stacking context, so its child still rises above the surface and is counted.
+    ("G-flat-scrim-in-fixed-wrapper", '<div style="position:fixed;inset:0;z-index:5">'
+     '<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+     '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;z-index:20;background:#1D2C3B"></div></div>'
+     + surface("position:relative;z-index:10;background:#FFFCF7;padding:16px",
+               p(INK) + p(INK, "Villa", "margin-top:40px")) + '</div>', "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # Its innocence twins: a scrim that is itself fixed, or that blurs its backdrop, holds its child.
+    # SPEC-3b2bi: a wrapper that fades, or is positioned, does not make the scrim stack: the child still rises.
+    ("G-flat-scrim-faded-wrapper", faded_a1("position:fixed;inset:0;z-index:5;opacity:.99"), "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-flat-scrim-faded-abs-wrapper", faded_a1("position:absolute;inset:0;z-index:5;opacity:.99"), "", REVEAL, ["#s"],
+     (0, 1, None, "ok", "  occluded 'Villa' at ")),
+    # Its innocence: the scrim covers the run itself, by whatever it is that puts it above the surface.
+    # SPEC-3b2bi r1, the reach path. within() decides THAT an overlay reaches; whether a scrim exempts is read at p, where
+    # the run is. R-A: the bar's glow changes the run's pixels while the flat scrim lies UNDER the run at p: counted.
+    ("G-reach-glow-scrim-under-run", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;"
+                                             "background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px);'
+              'z-index:30"></div></div>' + MENU_TOP), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # R-D / R-C: the scrim ends 40px above the bottom and the run sits below it, so the scrim is absent at p; its
+    # child bar's shadow (R-D) or blur (R-C) still lands on the run: counted.
+    ("G-reach-shadow-scrim-absent", surface(STRIP, p(INK, "Villa")), "",
+     appended(STRIP_SCRIM.format('box-shadow:0 24px 8px 8px rgba(0,0,0,.85)')), ["#s", "#d"],
+     (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("G-reach-blur-scrim-absent", surface(STRIP, p(INK, "Villa")), "",
+     appended(STRIP_SCRIM.format('filter:blur(16px)')), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    # R-E / R-E2: the scrim covers the run at p and holds the reaching bar: behind the scrim, exempt.
+    ("I-reach-scrim-covers-run-fixed", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(8px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    ("I-reach-scrim-covers-run-flat", surface(AT_BOTTOM + "background:#FFFCF7", p(INK, "Villa")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(8px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    # R-B, DECLARED: a bar confined under the run's surface, in a fixed z5 scrim. within() says it reaches (its own,
+    # older nearest-point rule) and the scrim is under the run at p, so it is counted: an accepted over-count that errs
+    # in the fail-closed direction (SPEC-3b2bi section 2). The paint is unchanged (delta 0), see the receipts.
+    ("D-reach-bar-confined-under-surface", surface("position:absolute;left:7px;top:calc(100vh - 44px);padding:8px;"
+                                                   "background:#FFFCF7;z-index:10", p(INK, "Villa")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:5;background:rgba(29,44,59,.45)">'
+              '<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;filter:blur(12px)"></div>'
+              '</div>' + MENU_TOP), ["#s", "#d"], (2, 1, None, "ok", "  occluded 'Villa' at ")),
+    ("I-scrim-own-opacity", *scrim_over_static("opacity:.99")),
+    ("I-scrim-zindex", *scrim_over_static("z-index:30")),
+    ("I-scrim-isolate", *scrim_over_static("isolation:isolate")),
+    ("I-scrim-translate", *scrim_over_static("translate:1px 0")),
+    ("I-flat-scrim-itself", *scrim_over_static("", child=False)),
+    ("I-fixed-scrim-child", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:fixed;left:0;top:0;width:100%;height:100vh;z-index:30;background:rgba(29,44,59,.45)">'
+              '<div style="position:absolute;left:0;top:70px;width:100%;height:60px;background:#1D2C3B"></div></div>'
+              '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;height:64px;background:#FFFCF7;'
+              f'z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
+    ("I-blur-scrim-child", surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa", "margin-top:40px")), "",
+     appended('<div style="position:absolute;left:0;top:0;width:100%;height:100vh;z-index:30;'
+              'background:rgba(29,44,59,.45);backdrop-filter:blur(4px)"><div style="position:absolute;left:0;'
+              'top:70px;width:100%;height:60px;background:#1D2C3B"></div></div>'
+              '<div id="d" style="position:fixed;left:0;bottom:0;width:100%;height:64px;background:#FFFCF7;'
+              f'z-index:40">{p(INK, "Menu")}</div>'), ["#s", "#d"], (2, 0, 0, "ok", None)),
     # W0d-3b-2: a surface that fades in and holds its end state is read at its end state, not at opacity 0.
     ("I-surface-entrance-held", surface("background:#FFFCF7;padding:16px", p(INK)),
      "#s{opacity:0;animation:fade .3s forwards}@keyframes fade{to{opacity:1}}", REVEAL, ["#s"], (0, 0, 0, "ok", None)),
@@ -1190,6 +1287,15 @@ CASES = [
     ("G-blur-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
      appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
               'filter:blur(8px);z-index:30"></div>'), ["#s", "#s ~ p"], (0, 1, 0, "ok", "  occluded 'Villa' at ")),
+    # W0d-3b-2b (the #8488 gate's B2): a drop-shadow() in `filter` reaches nothing (contract 8.4), where the same
+    # element with a blur() is counted just above; the shadow is cast down, past the bar, so nothing paints above it.
+    ("I-drop-shadow-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;background:#25D366;'
+              'filter:drop-shadow(0 12px 2px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
+    # The #8560 gate's N1: a fixed element whose only paint is a drop-shadow() cast toward the run reaches nothing.
+    ("I-drop-shadow-only-no-reach", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")) + p(INK), "",
+     appended('<div style="position:fixed;left:0;right:0;bottom:0;height:4px;'
+              'filter:drop-shadow(0 0 8px rgba(0,0,0,.5));z-index:30"></div>'), ["#s", "#s ~ p"], (0, 0, 0, "ok", None)),
     # A transparent shadow paints nothing, so it reaches nothing.
     ("I-transparent-shadow", surface(f"{AT_BOTTOM}background:#FFFCF7", p(INK, "Villa")), "",
      appended('<div style="position:fixed;left:0;bottom:0;width:10px;height:10px;'
@@ -1360,8 +1466,8 @@ def test_e2e_i11_two_walks_print_the_same_verdict(tmp_path, monkeypatch):
 
 
 def test_the_origin_main_opened_walk_is_the_guilt(census):
-    """Main today, by pixels: every surface opens; the dropdown titles are white and readable, the red code chips
-    are not; the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
+    """Main today, by pixels: every surface opens; the dropdown titles and the red code chips read at 4.5 or more (the chips were 3.3 and 3.26 on the tree of the 3b-2a census),
+    and the resolvers agree on every run once the dev indicator is hidden and the glow retargets."""
     out = verdict_of(census, PIN, [])
     assert out[0] == "opened-surfaces: 50 ok, 0 failed"
     assert lines_of(out, "opened-outside-wrapper:") == "opened-outside-wrapper: 18"
@@ -1369,17 +1475,17 @@ def test_the_origin_main_opened_walk_is_the_guilt(census):
     assert lines_of(out, "ground-resolver-disagree:") == "ground-resolver-disagree: 0"
     assert lines_of(out, "shared-touched-unpinned:") == "shared-touched-unpinned: 0"
     assert lines_of(out, "shared-component-drift:") == "shared-component-drift: 0"
-    assert out[-1] == "opened-text-below-4.5: 784"
+    assert out[-1] == "opened-text-below-4.5: 741"
     drop = next(o for o in census["opened"] if o["name"] == "search-dropdown" and o["walk"] == "desktop/light")
     below = [(round(census_mod.contrast(census_mod.text_colour(r), r["a"]), 2), r["fg"], r["text"])
              for r in drop["runs"] if r["state"] == "ok" and r["fg"]
              and census_mod.contrast(census_mod.text_colour(r), r["a"]) < 4.5]
-    assert below == [(3.3, "#DC2626", "56101"), (3.26, "#DC2626", "55130")]
+    assert below == []
 
 
 def test_the_origin_main_page_grounds_name_the_consultation_card_over_its_gradient(census):
     """G25 on main: KBLIConsultationCTA's inline gradient puts its text over an image, on every state of 55203."""
-    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 579"
+    assert census_mod.page_verdict(census)[-1] == "page-grounds-off-contract: 577"
     card = {c["state"] for c in census["captures"] if c["page"] == "/kbli/55203"
             for ln in c["page_off"].values()
             if "over-image (gradient)" in ln and "section.rp-dark-island.mt-12>div.rounded-2xl" in ln}
@@ -1648,3 +1754,61 @@ def test_guilt_the_exit_step_fails_a_missing_scenario_and_a_red_part(tmp_path, c
     assert "  missing: shared MobileNav non-R19 /v2 mobile/light" in r.stdout
     r = run_exit_step(tmp_path, replay(capsys, parts_file(tmp_path, census_mod.load(FIXTURE))), "failure")
     assert r.returncode == 1 and "::error::wrapper-census-part concluded 'failure'" in r.stdout, r.stdout
+
+
+def test_every_census_context_asks_for_reduced_motion_from_one_place():
+    """The #8488 gate's B1: a context opened anywhere else in the module could drop reduced motion for one pass
+    (the capture pass or the state walk) with no browser row noticing."""
+    src = census_mod.__file__
+    text = open(src).read()
+    assert text.count("browser.new_context(") == 1 and text.count("= new_context(browser,") == 3
+    body = text.split("def new_context(", 1)[1].split("\n\n\n", 1)[0]
+    assert 'reduced_motion="reduce"' in body
+
+
+def test_the_drop_shadow_statement_is_in_the_contract_and_the_code_reads_only_blur():
+    """The #8488 gate's B2: 8.4 says a `drop-shadow()` in `filter` reaches nothing, and reachOf reads blur() only."""
+    flat = " ".join(CONTRACT.split())
+    assert "A `drop-shadow()` in `filter` reaches nothing" in flat
+    reach = census_mod.RESOLVE_JS.split("const reachOf", 1)[1].split("return side;", 1)[0]
+    assert "blur\\(" in reach and "drop-shadow" not in reach
+
+
+def test_the_bring_fallback_keeps_the_occluder_and_why_it_is_exempt():
+    """The #8249 gate's binding 4: a run still pending after it was brought keeps occludedBy and why it is exempt, if it is."""
+    fallback = census_mod.RESOLVE_JS.split("bring() {", 1)[1].split("return true;", 1)[0]
+    assert "if (occ) { r.occludedBy = occ.occluded; r.exempt = occ.exempt; }" in fallback
+
+
+def test_guilt_a_capture_not_read_through_leaves_ground_resolver_disagree_incomplete(census):
+    """The #8249 gate's binding 2: it also counts the disagreements read at rest, as G does."""
+    short = copy.deepcopy(census)
+    short["captures"][0]["page_incomplete"] = True
+    out = verdict_of(short, PIN, [])
+    assert "INCOMPLETE" in lines_of(out, "ground-resolver-disagree:")
+    assert "INCOMPLETE" not in lines_of(verdict_of(census, PIN, []), "ground-resolver-disagree:")
+
+
+def test_the_full_dispatch_has_headroom_and_the_exit_step_lists_the_declared_line():
+    """The #8488 gate's B4 and B5: `full` ran 39m06s against a 40-minute timeout; a declared walk is printed."""
+    assert "timeout-minutes: ${{ matrix.part == 'full' && 75 || 40 }}" in WORKFLOW
+    assert "|declared-|opened-|" in WORKFLOW
+
+
+MENU = '<div id="d" hidden style="position:absolute;left:0;top:0;width:100%;height:64px;background:#FFFCF7;z-index:20">' \
+       + p(INK, "Menu") + "</div>"
+
+
+@needs_browser
+@pytest.mark.parametrize("body, selectors, clause, absent", [
+    (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")) + MENU, ["#s", "#d"],
+     "of them under another opened surface", "behind the walk's own scrim"),
+    (surface("background:#FFFCF7;padding:16px", p(INK) + p(INK, "Villa")) + SCRIM.format("rgba(29,44,59,.45)"), ["#s"],
+     "of them behind the walk's own scrim", "under another opened surface"),
+], ids=["a surface over a surface", "the walk's own scrim"])
+def test_e2e_the_walk_line_names_the_cause_of_an_exempt_occlusion(tmp_path, monkeypatch, body, selectors, clause, absent):
+    """The #8560 gate's (b): an occluded run is counted under the cause that exempts it, never under the other."""
+    opener = "document.getElementById('s').hidden = false; const d = document.getElementById('d'); if (d) d.hidden = false"
+    out = verdict_of(open_case(tmp_path, monkeypatch, body, "", opener, selectors))
+    walks = [ln for ln in out if ln.startswith("  case ")]
+    assert walks and all(clause in ln and absent not in ln for ln in walks), walks

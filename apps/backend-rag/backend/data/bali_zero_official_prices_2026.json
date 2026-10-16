@@ -10,7 +10,7 @@
       "location": "Kerobokan, Bali, Indonesia",
       "website": "balizero.com"
     },
-    "last_updated": "2026-05-06"
+    "last_updated": "2026-10-15"
   },
   "services": {
     "single_entry_visas": {
@@ -208,6 +208,17 @@
         "description_en": "Multiple-entry business visa valid 2 years for business meetings and non-employment activities.",
         "icon_id": "visa-business"
       },
+      "D2 Business (5 Years)": {
+        "name": "D2 Business (5 Years)",
+        "price": "13.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "5 Years",
+        "notes": "",
+        "verified_on": "2026-10-15",
+        "description_en": "Multiple-entry business visa valid 5 years for business meetings and non-employment activities.",
+        "icon_id": "visa-business"
+      },
       "D12 Business Investigation (1 Year)": {
         "name": "D12 Business Investigation (1 Year)",
         "price": "7.500.000 IDR",
@@ -266,7 +277,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Onshore process via Altus.",
         "icon_id": "kitas-investor"
       },
@@ -276,7 +287,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Offshore process for applicants outside Indonesia.",
         "icon_id": "kitas-investor"
       },
@@ -286,7 +297,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "",
+        "notes": "All-inclusive price.",
         "description_en": "Onshore extension of an existing 2-year Investor KITAS for shareholders of a PT PMA.",
         "icon_id": "kitas-investor"
       },

@@ -205,7 +205,7 @@ reconfirming. Critical paths:
 | `/apps/backend-rag/backend/app/auth/`                                   | @Balizero1987              | auth middleware + JWT                 |
 | `/apps/backend-rag/backend/services/{invoicing,pricing,billing}/`       | @Balizero1987              | financial correctness                 |
 | `/infra/launchagents/`                                                  | @Balizero1987              | cron / daemon config                  |
-| Subhi lane `/apps/mouth/src/app/(blog\|marketing\|tax-calendar)/`, etc. | @SubBZ2026 + @Balizero1987 | co-review                             |
+| Subhi lane `/apps/mouth/src/app/(blog\|marketing\|tax-calendar)/`, etc. | @SubBZ2026 + @Balizero1987 | no review gate (RULED 2026-10-15)     |
 
 Full list: see `.github/CODEOWNERS`.
 

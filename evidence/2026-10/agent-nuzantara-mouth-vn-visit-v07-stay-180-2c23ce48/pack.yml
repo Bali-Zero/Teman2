@@ -1,0 +1,49 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" item V07, built on origin/main 4ac50e18e7 (contains V06 #8495) with the seq-29 pack active.
+mission: >-
+  One leading dead-end sentence for a declared visit stay past 180 days, EN and ID, advisor never promised.
+lanes:
+  - lane: v07-stay-180
+    role: build
+    seat: claude-sonnet-5-5 implementer, worktree mouth-vn-visit-v07-stay-180.
+  - lane: v07-ground-truth
+    role: ground_truth
+    seat: >-
+      claude-sonnet-5-5. rulepack-prod-029.source.json (apps/backend-rag/backend/services/visa_engine/contracts/packs):
+      el.c1.tourism-family, el.c2.business and el.c6.social all read intent.stay_days "lte 180" (source record
+      6f5135f2, Kepmen M.IP-08.GR.01.01/2025 visa catalogue). The 60-day start is cited from
+      apps/backend-rag/scripts/claims_db/immigration_claims_db.json (C1 and C2 "berlaku 60 hari, dapat diperpanjang
+      hingga 180 hari total"). Seq-29 stay-181 reason codes are the T06 census pins (PR #8539, not yet on main).
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "9666c7202d52f7f094ff3943e33ea69e491dadd6301e5f274c5ba92811a04cb6" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base 4ac50e18e7 (before the change).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (OutcomeSheet rendering noPathReasons built by buildEngineOutcome in
+  engine-adapter.ts) and the V07 pins in engine-adapter.test.ts on every PR. Observation, after the mouth deploy is
+  promoted on balizero.com/visa-oracle: a tourism walk, nationality IT, stay 181 shows the 180-day sentence first
+  (EN and ID).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout /Users/nuzantara/.codex/sessions/2026/10/15/rollout-2026-10-15T17-34-20-01a13ee9-a019-73d1-a19f-29925860f0e5.jsonl); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite after the cure."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 61 passed (61); Tests 1663 passed (1663)"
+    ts: "2026-10-15T09:42:00Z"
+  - claim: "Mutation: tourism bound 180 -> 181."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.test.ts' -t V07
+    result: "1 failed | 7 passed | 211 skipped (219); reverted"
+    ts: "2026-10-15T09:38:00Z"
+decisions:
+  - id: D-own-code
+    decision: "The sentence carries an adapter-own code, VISIT_STAY_EXCEEDS_180_DAYS, and no source ids; the business explorer (D12, 360 days) is never touched."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout /Users/nuzantara/.codex/sessions/2026/10/15/rollout-2026-10-15T17-34-20-01a13ee9-a019-73d1-a19f-29925860f0e5.jsonl (red team, MED x1, LOW x1, no HIGH)"
+    objection: "MED: Number(raw) accepted 181.5, ' 181 ', 2e2, 0181 that mapStayDays rejects. LOW: the no-promise pin was English only."
+    status: CONFIRMED
+    disposition: "CURED in 2f9cadf51e: the sentence gates on mapStayDays; the innocence test pins six malformed shapes and the promise pin covers Indonesian."

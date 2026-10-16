@@ -1,0 +1,159 @@
+{
+  "DUX-REQ-B03-01": {
+    "status": "OK_DUX_CORRECTED",
+    "exit": 0,
+    "ran_at": "2026-10-15T08:41:31.467586+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.03,
+    "cmd_sha256": "780d9f93cb6f7ca58c3dfe101e3d9ccc4043989b58a2fabff5f33ec754371a72",
+    "stdout_sha256": "5f75a3842b88278d37a44c46c033f7f9363ee8892a7c72144c5d77f124802b1c",
+    "stdout_bytes": 43410,
+    "stdout_truncated": false,
+    "stderr_sha256": "69634be5e63db16de0163af65a2ee3f201f94561b1210a6a2d4c08c788666756",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)",
+    "original_attempt": {
+      "status": "FAILED",
+      "exit": 1,
+      "stderr_first_line_class": "SyntaxError: unexpected character after line continuation character",
+      "cmd_sha256": "160792707393717f2e4b1f912a46167a81776f2caa66ce11fc51f2570bf64c9b"
+    },
+    "dux_correction": "worker command failed with SyntaxError (backslash-escaped quotes inside an f-string expression under bash single quotes); the Dux replaced that one statement with an equivalent string concatenation, no semantic change; see .dux-corrected.cmd.sh"
+  },
+  "DUX-REQ-B03-02": {
+    "status": "OK",
+    "exit": 0,
+    "ran_at": "2026-10-15T08:40:20.228015+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.05,
+    "cmd_sha256": "3a846eeab506ed72c9af3815dde4d0419ae5eb287ec54b1c51dd1336aac89843",
+    "stdout_sha256": "68dfa39474c7e7f69f835e3c7c6f4d9408073187c296921b75673e49b19ddc35",
+    "stdout_bytes": 2848,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)"
+  },
+  "DUX-REQ-B03-03": {
+    "status": "OK",
+    "exit": 0,
+    "ran_at": "2026-10-15T08:40:20.281766+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.05,
+    "cmd_sha256": "2e5c5f9d927c32bccf089497e2bcbe60d4634f075d4454b64c0831f447b1af37",
+    "stdout_sha256": "393e5450977dc09335cf1a3a000a53cc1822e64ca8617ac834818afa06d03786",
+    "stdout_bytes": 9332,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)"
+  },
+  "DUX-REQ-B03-04": {
+    "status": "OK",
+    "exit": 0,
+    "ran_at": "2026-10-15T08:41:08.389341+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 48.11,
+    "cmd_sha256": "a78053f9fb611ed96646b233e7906f3558a205a98203d3611a720d449370bc08",
+    "stdout_sha256": "e6e2d89b8da3c825606f5917040d9b355bf085ade24b51dd60c9ee3e0cc1cdc0",
+    "stdout_bytes": 193,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)"
+  },
+  "DUX-REQ-B03-10": {
+    "status": "FAILED",
+    "exit": 1,
+    "ran_at": "2026-10-15T10:47:53.356171+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.06,
+    "cmd_sha256": "849a3df21eb14f210372b0b28326ce4c7432535bdeb42419e184e1c3bc8bc44a",
+    "stdout_sha256": "ee9cd107a8651119b0b0bd5e14059572eae7a60f5ecbc2a16b629f34f1d2a981",
+    "stdout_bytes": 1408,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)",
+    "source_file": "dux-requests/DUX-AUTHORED.md"
+  },
+  "DUX-REQ-B03-11": {
+    "status": "FAILED",
+    "exit": 1,
+    "ran_at": "2026-10-15T10:47:53.703425+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.05,
+    "cmd_sha256": "ead3dcaf54832ee9439e55fe7bd0ac81e61862a9825a7275c347bdd02464e18d",
+    "stdout_sha256": "ccc00a341818bc8ac421a10ecd70021d237c35ed48646200bd1685771c5207a6",
+    "stdout_bytes": 1169,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)",
+    "source_file": "dux-requests/DUX-AUTHORED.md"
+  },
+  "DUX-REQ-B03-12": {
+    "status": "OK",
+    "exit": 0,
+    "ran_at": "2026-10-15T10:47:54.102212+00:00",
+    "host": "mini-pro2",
+    "cwd_worktree": "db-udb-b03-census",
+    "head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "elapsed_seconds": 0.12,
+    "cmd_sha256": "eec66fe698304b9209f223b39a5cc5540e69a43f1799afe4221b9edf925d4aea",
+    "stdout_sha256": "dbc54d786d78254cd799e6b35cdc51cbc1ec83eea26277c51062567a32ee32c2",
+    "stdout_bytes": 2689,
+    "stdout_truncated": false,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr_first_line_class": "",
+    "pii_scan": {
+      "email_like": 0,
+      "phone_like": 0,
+      "secret_like": 0
+    },
+    "admitted_by": "BLUE Dux (read-only, local frozen inputs/repo metadata)",
+    "source_file": "dux-requests/DUX-AUTHORED.md"
+  }
+}

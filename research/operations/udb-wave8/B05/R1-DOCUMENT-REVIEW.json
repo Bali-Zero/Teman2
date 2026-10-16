@@ -1,0 +1,75 @@
+{
+  "scope": "INDEPENDENT_R1_DOCUMENT_REVIEW_NOT_FINAL_RELEASE_GATE",
+  "campaign": "universal-db-wave8-20261015",
+  "block": "B05",
+  "head": "3cd10ccec8f6c47ab19629bf9c48cc0e5eb9ed7e",
+  "reviewer": "/root/b05_r1_docs",
+  "requested_model": "gpt-6-astra",
+  "requested_effort": "xhigh",
+  "effective_runtime_identity": "UNOBSERVED",
+  "verdict": "REVIEWED_PARTIAL_WITH_BLOCKERS",
+  "read_all_six_complete": true,
+  "source_pins_stable_and_head_bytes_matched": true,
+  "files": {
+    "ANALYSIS.md": {
+      "sha256": "12d96acdad0d3f8feea5ab41b09ab893658453576faca4c9b0066332b0ba020a",
+      "disposition": "REVIEWED_PARTIAL_PROVENANCE_AND_COUNT_ERRORS"
+    },
+    "BATTLE.md": {
+      "sha256": "b52ea73917e3f693ea7ae77da84e696a39c49e15ea8e63ba0f545679eb3dafe6",
+      "disposition": "REVIEWED_COHERENT_MANDATE"
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "sha256": "ce0098132aa50e7c6159549acf2d2f192256272c43d9a4fa4e154729ac3c29f2",
+      "disposition": "REVIEWED_PARTIAL_SUPERSEDED_BODY"
+    },
+    "PRINCIPAL-ROLE-BINDING-PROPOSAL.md": {
+      "sha256": "0bc4713b55ff3032255579947536a5aac447f3788cdc9d4b571242e883e2350f",
+      "disposition": "BLOCK_FOR_IMPLEMENTATION"
+    },
+    "PROPOSAL.md": {
+      "sha256": "945cbf17ea05efd8914b1e650c6ab82548011c0eae3cfbe28976f34e0b83e508",
+      "disposition": "REVIEWED_PARTIAL_HISTORICAL_DESIGN"
+    },
+    "PR_BODY.md": {
+      "sha256": "2a5e9ad0c90c8ac19fe45e0b79d695be0a63d252a34ed6718ebc026022ce6c1d",
+      "disposition": "REVIEWED_ACCURATE_PARTIAL_SCOPE"
+    }
+  },
+  "findings": [
+    {
+      "file": "PRINCIPAL-ROLE-BINDING-PROPOSAL.md",
+      "lines": "13-20,129-137",
+      "finding": "Name-only md5(relname),16 targets and nonexistent caller_chain/target_relations/grant_evidence_status do not match delivered23contracts/eight database-schema-relation joins."
+    },
+    {
+      "file": "PRINCIPAL-ROLE-BINDING-PROPOSAL.md",
+      "lines": "63-99",
+      "finding": "Session role is not effective current_user at operation execution; optional self-attestation and unrestricted application_name output make implementation unsafe. No actual PII disclosure observed."
+    },
+    {
+      "file": "DEFINITIVE-SYNTHESIS.md",
+      "lines": "29-80",
+      "finding": "Superseded alternative schema and absent innocence entry; not current executable specification."
+    },
+    {
+      "file": "PROPOSAL.md",
+      "lines": "19-25,109-111",
+      "finding": "Historical dotted IDs and PARTIAL_VERIFIED differ from current grammar/statuses."
+    },
+    {
+      "file": "ANALYSIS.md",
+      "lines": "44-45",
+      "finding": "Two inconsistent hashes for one artifact; accounting is6029matrix+1delta,not6030matrix."
+    }
+  ],
+  "codex_attribution_allowed_for_each_file": true,
+  "attribution_requires_exact_hash_disposition_and_limitations": true,
+  "source_writes": false,
+  "native_probes": false,
+  "tests_rerun": false,
+  "shipping": false,
+  "existing_opus_sign_remains_partial": true,
+  "block_closed": false,
+  "recorded_at": "2026-10-15T16:02:45.177536+00:00"
+}

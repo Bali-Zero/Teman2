@@ -1,0 +1,20 @@
+gear: 2
+gear_reason: >-
+  Test-only change to the Visa Oracle walk corpus and its census pins: 27 visit walks, regenerated fixtures and the
+  per-sequence tables they feed; touches no rule, no pack, no tree, no copy and no engine adapter.
+mission: >-
+  The walk corpus covers the stay bounds and entry patterns of the visit rules, and the census pins each new walk's
+  outcome, candidates and reason codes on every pinned sequence including seq-29.
+objective: >-
+  Visit-night tree item T06. Add boundary walks (SG 30/31, IT 60/61, tourism/business/other 180/181, explorer 360/361),
+  the MULTIPLE entry walks (VOA, business, transit) and every business_activity and other_purpose answer; pin measured
+  outcome, candidates and reasons per sequence 20..29. Global-filter walks wait for backend PR 8496.
+scope:
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/gold_coverage/fixtures/walks
+  - apps/backend-rag/backend/tests/services/visa_engine/test_interview_walk_census.py
+  - apps/backend-rag/backend/tests/services/visa_engine/test_seq21_pack.py
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

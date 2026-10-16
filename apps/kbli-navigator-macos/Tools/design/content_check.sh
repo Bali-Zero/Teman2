@@ -19,6 +19,7 @@ build() { swiftc -sdk "$(xcrun --sdk macosx --show-sdk-path)" -target arm64-appl
 build contenttest || { echo "build contenttest failed"; exit 1; }
 build headsuptest || { echo "build headsuptest failed"; exit 1; }
 build encensus || { echo "build encensus failed"; exit 1; }
+build titlewhole || { echo "build titlewhole failed"; exit 1; }
 rc=0
 "$T/contenttest" > "$T/out.json" && python3 Tools/design/content_check.py < "$T/out.json"
 if [ $? -eq 0 ]; then echo "step 1 ok: contenttest | content_check"; else echo "step 1 FAILED"; rc=1; fi
@@ -42,4 +43,11 @@ if python3 Tools/design/en_purity.py static; then echo "step 5 ok: never-drawn";
 if python3 Tools/design/live_host_check.py --selftest > /dev/null && python3 Tools/design/live_host_check.py; then echo "step 6 ok: live sites mount the immersive layout"; else echo "step 6 FAILED: a live site lost its ImmersiveHost"; rc=1; fi
 if python3 Tools/design/mark_order_check.py --selftest > /dev/null && python3 Tools/design/mark_order_check.py; then echo "step 7 ok: every census mark sits after its move"; else echo "step 7 FAILED: a census mark sits before an offset or a Beat"; rc=1; fi
 if python3 Tools/design/detail_identity_check.py --selftest > /dev/null && python3 Tools/design/detail_identity_mutants.py > /dev/null && python3 Tools/design/detail_identity_check.py; then echo "step 8 ok: the detail mark names the cell its detail describes"; else echo "step 8 FAILED: a detail is drawn for one cell and marked for another"; rc=1; fi
+# step 9: a title is never cut (#8492 gate binding 8): all 1,559 codes x en/id, the sheet collapsed and open at two column widths, the drawn
+# text holding the record's whole title. TITLE_CODES=a,b narrows it for a quick run. title_whole_mutant.sh is its guilt (`.lineLimit(2)`).
+if python3 Tools/design/title_whole.py --self-test > /dev/null \
+   && "$T/titlewhole" "$T/tw-en.jsonl" --lang en --codes "${TITLE_CODES:-all}" 2> "$T/tw.err" \
+   && "$T/titlewhole" "$T/tw-id.jsonl" --lang id --codes "${TITLE_CODES:-all}" 2>> "$T/tw.err" \
+   && python3 Tools/design/title_whole.py "$T/tw-en.jsonl" "$T/tw-id.jsonl"; then echo "step 9 ok: every title whole (${TITLE_CODES:-1,559 codes} x en/id, collapsed and open)"
+else echo "step 9 FAILED: a title is cut ($T/tw.err)"; rc=1; fi
 exit $rc

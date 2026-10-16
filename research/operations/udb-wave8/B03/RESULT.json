@@ -1,0 +1,62 @@
+{
+  "block_id": "B03",
+  "status": "OPEN_SCOPED_VERIFICATION_COMPLETE",
+  "block_closed": false,
+  "proofs": [
+    {
+      "artifact": "research/operations/udb-wave8/B03/INTEGRATION-VERIFICATION.json",
+      "description": "Current-source integration receipts: original worktree pytest 24 passed / 0 skipped; complete isolated candidate without ignored inputs 24 passed / 0 skipped; fixture CLI regeneration matches all three existing outputs byte for byte; fixture derivation check passed. The first isolated harness omitted reference output files and failed 1 of 24 tests; corrected harness rerun is retained. This is source verification, not a native observation or independent acceptance."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/fixtures/PROVENANCE.json",
+      "description": "Pinned, sanitized projections and byte-identical historical inputs for hermetic replay. Historical evidence timestamps and original source hashes are retained; fixtures are not fresh native observations."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/b03-census-summary.json",
+      "description": "6030 leads = frozen C09 6029 rows plus runtime_mini_46522da0ef79d3aa7422ca41. Dispositions: 1803 excluded, 43 duplicate, 4184 unresolved, 0 proven active, 0 proven retired. Actual active-consumer denominator remains UNKNOWN."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/DEFINITIVE-SYNTHESIS.md",
+      "description": "Historical restore-reference reconciliation, manual/break-glass surface accounting and explicit unresolved evidence requirements, updated with current-source verification."
+    },
+    {
+      "artifact": "research/operations/udb-wave8/B03/dux-requests/RECEIPTS.json",
+      "description": "Historical Dux receipts only: Stage-1 requests 01..04 exit 0; pre-correction 10 and 11 failed with PinVerificationError; 12 joined 10292 of 10299 source-index nodes. Historical receipts are preserved and are not relabelled as current execution."
+    }
+  ],
+  "missing": [
+    "Actual active-consumer denominator remains UNKNOWN: 4184 leads lack sufficient disposition/deployed-execution evidence.",
+    "Deployed-execution evidence and B04/B05 store/operation bindings remain unresolved; LEAD-DELTA store_id remains unknown:unknown:unknown and real backup/restore is not proved.",
+    "DUX-REQ-B03-13 cross-host LaunchAgents/crontab hashing was not admitted and remains deferred; no additional native inventory was authorized or performed.",
+    "Host-wide proof that legacy restore-drill copies are retired remains absent; legacy_copies_elsewhere_proved_retired is false.",
+    "Fresh independent acceptance and external binding to the final committed candidate head remain with the coordinator; current receipts verify an uncommitted worktree."
+  ],
+  "tests": [
+    {
+      "id": "CURRENT_SOURCE_PYTEST",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B03/test_b03_census_adapter.py -q",
+      "result": "PASS: 24 passed in 0.81s; 0 skipped; exit 0. Exact source hashes in INTEGRATION-VERIFICATION.json."
+    },
+    {
+      "id": "FIXTURE_CLI_REGENERATION",
+      "command": "python -I -B research/operations/udb-wave8/B03/b03_census_adapter.py --input-mode fixtures --output-dir <temporary-owned-output>",
+      "result": "PASS: exit 0; 6030 rows; actual active denominator UNKNOWN; CSV, JSONL and summary byte-identical to existing candidate outputs. Exact argv, timestamps and hashes in receipt."
+    },
+    {
+      "id": "FIXTURE_DERIVATION_CHECK",
+      "command": "python -I -B research/operations/udb-wave8/B03/fixtures/build_fixtures.py --check",
+      "result": "PASS: exit 0; all nine fixture payloads match deterministic derivation; projected adapter pins match."
+    },
+    {
+      "id": "CLEAN_COMPLETE_CANDIDATE_PYTEST",
+      "command": "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider research/operations/udb-wave8/B03/test_b03_census_adapter.py -q",
+      "result": "PASS: 24 passed in 0.58s; 0 skipped; exit 0; isolated complete candidate without .agent-receipts."
+    },
+    {
+      "id": "CLEAN_FIXTURES_ONLY_PYTEST_INITIAL_HARNESS",
+      "command": "Same pytest command in the first incomplete temporary candidate copy.",
+      "result": "FAILED: exit 1; 23 passed, 1 failed because the verification harness omitted generated reference outputs. Complete candidate copying corrected the harness; source/fixture code was unchanged. Failure and passing rerun retained in receipt."
+    }
+  ],
+  "head_sha": null
+}

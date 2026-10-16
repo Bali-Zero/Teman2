@@ -1,0 +1,187 @@
+{
+  "restore_hits_count": 18,
+  "restore_hits": [
+    {
+      "line": 25,
+      "consumer_id": "src_307bea3dfb94ec31",
+      "domain": "UNKNOWN",
+      "entry_point": ".github/workflows/restore-drill.yml",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "UNKNOWN",
+      "evidence": "postgresql:49,55,132,133,134,140,162,167,171,174,192,203,209,212,215,220,224,228,233,242,255,258,261,265;object_storage:3,69,106,112,265; census-20261012-0454/s"
+    },
+    {
+      "line": 3280,
+      "consumer_id": "src_d073f505ff1671ad",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/ci/restore_drill_verify.py",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "UNKNOWN",
+      "evidence": "postgresql:8,43,49,56,302,311,331,458,460;event_delivery:153,250,252,254,285; census-20261012-0454/source-index-enhanced.json classification=PYTHON_SOURCE_WITH_"
+    },
+    {
+      "line": 3496,
+      "consumer_id": "src_aa32cd2e94e42e2d",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/kbli_filiera/cure_restore_per_ancestor.py",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "UNKNOWN",
+      "evidence": "file_state:258; census-20261012-0454/source-index-enhanced.json classification=PYTHON_SOURCE_WITH_ENTRY_MARKERS; source_id=aa32cd2e94e42e2d78f42801"
+    },
+    {
+      "line": 3551,
+      "consumer_id": "src_842f675f4fe392df",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/kbli_filiera/tests/test_cure_restore_per_ancestor.py",
+      "disposition": "RETAINED_TEST_SOURCE",
+      "activation_status": "UNKNOWN",
+      "evidence": "file_state:89,99,209,220"
+    },
+    {
+      "line": 3727,
+      "consumer_id": "src_def7a4c288a552af",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/pg-restore-drill.sh",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "UNKNOWN",
+      "evidence": "postgresql:22,124,129,133,152;object_storage:4,40,78; census-20261012-0454/source-index-enhanced.json classification=SHELL_SOURCE_INVOCATION_CANDIDATE; source_i"
+    },
+    {
+      "line": 4046,
+      "consumer_id": "src_cdf3ae5e4ecf861c",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/tests/test_restore_drill_verify.py",
+      "disposition": "RETAINED_TEST_SOURCE",
+      "activation_status": "UNKNOWN",
+      "evidence": "postgresql:7;file_state:422;event_delivery:94,99,102,118,136,146,153,170,172,334,368,370,372"
+    },
+    {
+      "line": 4047,
+      "consumer_id": "src_2f350566b97aee80",
+      "domain": "UNKNOWN",
+      "entry_point": "scripts/tests/test_restore_drill_workflow_wiring.py",
+      "disposition": "RETAINED_TEST_SOURCE",
+      "activation_status": "UNKNOWN",
+      "evidence": "postgresql:100,122,143,144,147,152,159,165,214,216,220,226,228,235,237,251,258,266,267,282,293,300,304,314,317,323,325,334,340,360,366,385,390,556,565,570,576,5"
+    },
+    {
+      "line": 4738,
+      "consumer_id": "runtime-mini-plist-895fa5aa17eed55c",
+      "domain": "Mata Garuda procedural daily sentinel",
+      "entry_point": "runtime://Mini/Library/LaunchAgents/com.matagaruda.sentinel.daily.plist",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "REGISTRATION_OBSERVED",
+      "evidence": "metadata.json; installed_source_sha256=3bba3212c2964c0d7d53f44381e4f24df31a1ed5d5d44f5954a91581f5a10c49; census-20261012-0405 source/runtime/experiment records;"
+    },
+    {
+      "line": 4739,
+      "consumer_id": "runtime-mini-plist-8a472908aad306ea",
+      "domain": "operational-registration",
+      "entry_point": "runtime://Mini/Library/LaunchAgents/com.nuzantara.journey-sentinel.plist",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "REGISTRATION_OBSERVED",
+      "evidence": "metadata.json; installed_source_sha256=544334f825ab84d65a7973904ec27d05c907714008e082e4553dd9afa242d765; census-20261012-0454/source-index-enhanced.json classif"
+    },
+    {
+      "line": 4740,
+      "consumer_id": "runtime-mini-plist-cadff33c8eb40fef",
+      "domain": "Mata Garuda graph read API",
+      "entry_point": "runtime://Mini/Library/LaunchAgents/com.matagaruda.kg-query-api.plist",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "REGISTRATION_OBSERVED",
+      "evidence": "metadata.json; installed_source_sha256=670c84fbea80459957c342daa6287c5f3d1c60cb04ed862296b1ba759e41e29c; census-20261012-0405 source/runtime/experiment records;"
+    },
+    {
+      "line": 4741,
+      "consumer_id": "runtime-mini-plist-773c99df1d8f6550",
+      "domain": "Mata Garuda normalization",
+      "entry_point": "runtime://Mini/Library/LaunchAgents/com.matagaruda.normalizer.hourly.plist",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "REGISTRATION_OBSERVED",
+      "evidence": "metadata.json; installed_source_sha256=4218463cd6786ba2c1a9b04b93f8fc35b3221a915510a0a6f682286741b51032; census-20261012-0405 source/runtime/experiment records;"
+    },
+    {
+      "line": 4742,
+      "consumer_id": "runtime-mini-plist-5d0532354fc8195a",
+      "domain": "operational-registration",
+      "entry_point": "runtime://Mini/Library/LaunchAgents/com.nuzantara.zero-sync.plist",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "REGISTRATION_OBSERVED",
+      "evidence": "metadata.json; installed_source_sha256=63027c3c788ee66830696a01153ce6521746996a841744c65a1686c78770a59e; census-20261012-0454/source-index-enhanced.json classif"
+    },
+    {
+      "line": 4743,
+      "consumer_id": "runtime-pro-backup-fabecdf99dd5201c",
+      "domain": "File backup operator",
+      "entry_point": "runtime://Pro/registration/label#fabecdf99dd5201c",
+      "disposition": "BLOCKED_DISCOVERY",
+      "activation_status": "REGISTRATION_LOADED_EXECUTION_UNKNOWN",
+      "evidence": "backup-contract-leads.json; plist_source_sha256=e2c79e1f9a6198fc18063b2b81e3a0ab7cf9d2c8e2ca113cea8fbef5e5e82781; census-20261012-0454/source-index-enhanced.jso"
+    },
+    {
+      "line": 5787,
+      "consumer_id": "engine_pro_db290460f45d18f587ee2d73",
+      "domain": "infrastructure-engine-registration-candidate",
+      "entry_point": "engine://pro/POSTGRES/db290460f45d18f587ee2d7340a298846e77232d561c739846c2355cc2391ebd",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "ENGINE_PROCESS_AND_LISTENER_OBSERVED_OPERATION_TARGET_UNKNOWN",
+      "evidence": "census-20261012-0606/engines-pro.json; engines-runtime-pro.json; engines-20261012-0705/context-final-pro.json; context-pro.json; dispatch-20261013-0908/postgres"
+    },
+    {
+      "line": 5788,
+      "consumer_id": "engine_pro_50d92a3e7149a43398b9a3c1",
+      "domain": "infrastructure-engine-registration-candidate",
+      "entry_point": "engine://pro/REDIS/50d92a3e7149a43398b9a3c1c67e9246a0e2c2db8e8edb4a16a1629b35eda48c",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "ENGINE_PROCESS_AND_LISTENER_OBSERVED_OPERATION_TARGET_UNKNOWN",
+      "evidence": "census-20261012-0606/engines-pro.json; engines-runtime-pro.json; engines-20261012-0705/context-final-pro.json; context-pro.json; redis-placement-pro.json"
+    },
+    {
+      "line": 5789,
+      "consumer_id": "engine_mini_ee20d4b0d807071ea399a99e",
+      "domain": "infrastructure-engine-registration-candidate",
+      "entry_point": "engine://mini/POSTGRES/ee20d4b0d807071ea399a99e06c68f69eb52cd6575657b5cc825db73d160da04",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "ENGINE_PROCESS_AND_LISTENER_OBSERVED_OPERATION_TARGET_UNKNOWN",
+      "evidence": "census-20261012-0606/engines-mini.json; engines-runtime-mini.json; engines-20261012-0705/context-final-mini.json; context-mini.json"
+    },
+    {
+      "line": 5790,
+      "consumer_id": "engine_mini_87c7a25641f2121e838d067c",
+      "domain": "infrastructure-engine-registration-candidate",
+      "entry_point": "engine://mini/REDIS/87c7a25641f2121e838d067c30db9787931f29c0dbf6eda687b168b25aa93152",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "ENGINE_PROCESS_AND_LISTENER_OBSERVED_OPERATION_TARGET_UNKNOWN",
+      "evidence": "census-20261012-0606/engines-mini.json; engines-runtime-mini.json; engines-20261012-0705/context-final-mini.json; context-mini.json; redis-placement-mini.json"
+    },
+    {
+      "line": 5791,
+      "consumer_id": "engine_M5_ee20d4b0d807071ea399a99e",
+      "domain": "infrastructure-engine-registration-candidate",
+      "entry_point": "engine://M5/POSTGRES/ee20d4b0d807071ea399a99e06c68f69eb52cd6575657b5cc825db73d160da04",
+      "disposition": "PARTIAL_DISCOVERY",
+      "activation_status": "ENGINE_PROCESS_AND_LISTENER_OBSERVED_OPERATION_TARGET_UNKNOWN",
+      "evidence": "census-20261012-0606/engines-M5.json; engines-runtime-M5.json; engines-20261012-0705/context-final-M5.json; context-M5.json"
+    }
+  ],
+  "entry_marker_summary": {
+    "total": 2,
+    "by_domain_class": {
+      "OBSERVED_SCOPED_SOURCE": 2
+    },
+    "verified_or_non_blocked": [
+      {
+        "line": 343,
+        "consumer_id": "src_058ad32e4ad2e6a8",
+        "entry_point": "apps/backend-rag/backend/db/migration_manager.py",
+        "disposition": "ADAPTED_ISOLATED_VERIFIED"
+      },
+      {
+        "line": 4440,
+        "consumer_id": "src_c8f206461cd9bf69",
+        "entry_point": "apps/backend-rag/backend/db/migrate.py",
+        "disposition": "ADAPTED_ISOLATED_VERIFIED"
+      }
+    ]
+  }
+}

@@ -49,8 +49,8 @@ def rows(fw, kind, retry_=True):
 def decided_while_hosted_pends(fw, monkeypatch):
     state = toggle(fw, monkeypatch)
     assert fw.tick() == 0
-    assert fw.kinds() == ["decision", "would_enqueue", "would_merge"]
-    enq = fw.live()[1]
+    assert [k for k in fw.kinds() if k != "replay_deferred"] == ["decision", "would_enqueue", "would_merge"]   # B28 may journal the forfeited replay turn in shadow
+    enq = next(r for r in fw.live() if r["kind"] == "would_enqueue")
     assert enq["ok"] is False and "hosted_required_green" in enq["refused"] and fw.wm()["phase_f"]["armed"] is False
     return state
 
@@ -77,7 +77,7 @@ def test_in_shadow_the_retry_journals_the_measurement_and_changes_nothing_on_git
     state = decided_while_hosted_pends(fw, monkeypatch)
     state["green"] = True
     assert fw.tick() == 0
-    assert fw.kinds() == ["decision", "would_enqueue", "would_merge", "would_enqueue", "would_merge"]
+    assert [k for k in fw.kinds() if k != "replay_deferred"] == ["decision", "would_enqueue", "would_merge", "would_enqueue", "would_merge"]
     enq, wm = rows(fw, "would_enqueue")[0], rows(fw, "would_merge")[0]
     assert enq["ok"] is True and wm["retry"] is True and wm["phase_f"]["armed"] is False and wm["ok"] is True
     assert_nothing_merged(fw)

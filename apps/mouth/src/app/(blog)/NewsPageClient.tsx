@@ -56,7 +56,11 @@ const SECTIONS = [
 
 const TOPICS = [
   { id: "kitas", name: "KITAS", href: "/visas" },
-  { id: "golden", name: "Golden Visa", href: "/visas" },
+  {
+    id: "golden",
+    name: "Golden Visa",
+    href: "/visas/golden-visa-indonesia-complete-guide",
+  },
   { id: "e33g", name: "Digital Nomad", href: "/visas" },
   { id: "ptpma", name: "PT PMA", href: "/business" },
   { id: "kbli", name: "KBLI 2025", href: "/kbli" },

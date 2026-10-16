@@ -64,6 +64,12 @@ class VisaMeta:
     seed_source: str  # "seed" | "seed+NB2"
     duration_source: str  # human-readable citation
     fit_tags: frozenset[str] = field(default_factory=frozenset)
+    # True when min_budget_idr is an internal budget-band boundary used for ranking only, not a
+    # requirement; the user-facing reason then prints nothing about budget for this visa.
+    budget_gate_is_ranking_only: bool = False
+    # True when sources state the stay and the per-extension length but no maximum total, so the
+    # reason text must not print a computed "Covers N days total".
+    coverage_total_unstated: bool = False
 
 
 class FitTag:
@@ -271,9 +277,19 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             category="KITAS/Limited Stay",
             purposes=frozenset({Purpose.INVESTOR}),
             duration_days=365 * 2,
-            extensions=(1, 365 * 2),
-            min_budget_idr=500_000_000,  # 500M IDR = high-budget threshold
-            notes="Requires PT PMA + formal investment plan (~IDR 10bn capital).",
+            # Signed pack seq-29: stay 730 days, extension allowed 365 days each (VERIFIED).
+            extensions=(1, 365),
+            # Internal budget-band boundary for RANKING only, not a legal threshold: it keeps E28A
+            # out of the bands below OVER_500M. The only IDR figure on the official E28A page is
+            # the applicant's OWN shareholding of at least Rp10.000.000.000 in the sponsoring
+            # company (stated in `notes`); the reason text never prints this boundary.
+            min_budget_idr=500_000_000,
+            budget_gate_is_ranking_only=True,
+            coverage_total_unstated=True,
+            notes=(
+                "Requires a PT PMA sponsor and your own shareholding of at least IDR 10 billion "
+                "in it (official E28A page)."
+            ),
             seed_source=SEED,
             duration_source=NB2,
         ),

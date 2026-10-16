@@ -1,0 +1,77 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night work tree-lane item PR-13, built on origin/main 412f485975 (contains T06 6df4d467f7 and E31-B01
+  d460923bf1; seq-29 active). One tree PR fleet-wide: no open PR touched generate-walk-corpus.ts, fixtures/walks,
+  test_interview_walk_census.py or the _lib tree/flow/i18n files (30 open PRs checked).
+mission: >-
+  The walk corpus covers the global filters on the employment tile with outcome and reason pins on seq-20..29.
+lanes:
+  - lane: pr13-global-filter-walks
+    role: build
+    seat: claude-sonnet-5-5 implementer (worktree mouth-vn-work-pr13-global-filter-walks; the commit trailers carry the roster label Claude Opus 5.5 required by the task).
+pii_scan: clean
+bites: >-
+  Consumer: the census gate on every pack fold and tree change (test_interview_walk_census.py, test_seq21_pack.py and
+  walk-corpus-determinism.test.ts). Observation: the census run lists the nine new walks pinned and green on every
+  pinned sequence 20..29 including seq-29
+  (test_the_pr13_global_filter_walks_replay_to_their_pins_on_every_pinned_sequence, 10 params), with
+  OVERSTAY_EXCEEDS_60_DAYS pinned in two walks.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
+  paid_api: none
+  note: >-
+    One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI, rollout
+    rollout-2026-10-15T18-14-59-01a13f0e-d5ae-7ae3-bc59-e56930f40275, model line gpt-5.6-sol); no paid per-token API.
+results:
+  - claim: "Backend census files plus the gold coverage floor, Mini detached worktree at the pre-cure head d7c001ac39 (180-walk corpus; the cure commit changes comments only)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py backend/tests/services/visa_engine/test_gold_coverage_floor.py
+    result: "160 passed, 14 skipped"
+    exit: 0
+    ts: "2026-10-15T10:13:00Z"
+    ts_note: "approximate, taken from the session clock after the run"
+  - claim: "Whole visa_engine suite on Mini (baseline failures only: retention_fk_registry x2, test_evaluate_endpoint x31 errors, asyncpg schema)."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine -n 4
+    result: "3723 passed, 15 skipped, 3 xfailed, 2 failed, 31 errors (all baseline)"
+    exit: 1
+    ts: "2026-10-15T10:10:00Z"
+    ts_note: "approximate; run on the tree before the final formatting commit, test files byte-equal in the censused parts"
+  - claim: "The whole visa-oracle mouth suite including walk-corpus-determinism at 180 walks."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 61 passed (61); Tests 1693 passed (1693)"
+    exit: 0
+    ts: "2026-10-15T10:09:45Z"
+  - claim: "Determinism test re-run after the red-team cure commit d6e59d8431."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/walk-corpus-determinism.test.ts'
+    result: "1 file, 184 passed"
+    exit: 0
+    ts: "2026-10-15T10:26:00Z"
+  - claim: "Mutation: the pinned reason of onshore/work/overstay_30 flipped to OVERSTAY_EXCEEDS_60_DAYS turns the census red."
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py
+    result: "17 failed, 84 passed, 14 skipped; restored afterwards (cp backup, Mini worktree clean)"
+    exit: 1
+    ts: "2026-10-15T10:07:00Z"
+    ts_note: "approximate, taken from the session clock after the run"
+decisions:
+  - id: D-measured-not-copied
+    decision: "Every pin is the replay on each source pack seq-20..29. Measured against the audit's seq-27 expectations: all nine match on seq-23..29. They differ on seq-20..22, where the calling-visa and the three overstay walks end HUMAN_REVIEW_REQUIRED (CALLING_VISA_REVIEW, ACTIVE_OVERSTAY) before the E31-B01 causes land at seq-23, and on seq-20, where the two flagged walks lack E33B."
+  - id: D-minor-dead-end
+    decision: "offshore/work/minor ends NEEDS_INPUT on family.sponsor_confirmed on every sequence: the work tile never asks the family sponsor question. Allowlisted as QUESTION_NOT_IN_THIS_WALK and reported in the PR body, not cured here (tree change out of scope)."
+  - id: D-hold-kept
+    decision: "offshore/other/paid/medical: engine SUPPORTED, funnel NO_SUPPORTED_PATH with DISCLOSED_ACTIVITY_BOUNDARY_NO_PATH (owner default WORK-OD-7 (a): keep the hold)."
+  - id: D-conflicting-comment
+    decision: "The generator comment on CONFLICTING_IMMIGRATION_STATUS now says impossible by construction OFFSHORE only; the onshore overstay walks are measured to leave the flag unraised."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout rollout-2026-10-15T18-14-59-01a13f0e-d5ae-7ae3-bc59-e56930f40275 (red team, LOW)"
+    objection: "Generator comment claimed a no-path cause for each of the nine walks; four end in a question, a hold or SUPPORTED."
+    status: CONFIRMED
+    disposition: "CURED in d6e59d8431: the comment names which filters end a walk."
+  - seat: "codex gpt-5.6-sol, same rollout (red team, LOW)"
+    objection: "Census comment said seq-20..22 hold three walks for review; the table moves four."
+    status: CONFIRMED
+    disposition: "CURED in d6e59d8431."
+  - seat: "codex gpt-5.6-sol, same rollout (red team, LOW)"
+    objection: "The generator cites test_evaluate_endpoint.py:2641/:2727, which no longer point at the claimed checks."
+    status: CONFIRMED
+    disposition: "CURED in d6e59d8431: cites the two test names (a pre-existing stale citation)."

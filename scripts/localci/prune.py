@@ -13,7 +13,9 @@ free GB of the docker VM and of the host before and after.
 from __future__ import annotations
 
 import calendar
+import errno
 import fcntl
+import gzip
 import importlib.util
 import json
 import math
@@ -39,6 +41,8 @@ RUN_TS_RE = re.compile(r"-(\d{8}T\d{6}Z)$")
 BULK = ("call-graph.json", "higher-order-call-graph.json")   # Pysa's, 77-114 MB each (Pro, 2026-10-08); taint-output.json is the verdict
 TREE_PACK = ("tree.pack", "tree.pack.part", "tree.pack.json")   # B14's ~845 MB pack: the run's `finally` removes it, a SIGKILL or reboot does not
 TREE_PACK_STALE_H = 24   # a live run can last hours; a pack older than a day belongs to a run that is gone
+BULK_KEEP_H = TREE_PACK_STALE_H   # B26 U1': the same criterion for the Pysa call graphs, finished run or not (no status.json is asked)
+COMPRESS = ("taint-output.json", "dependency-graph.json")   # B26 U5: kept, gzipped in place after TREE_PACK_STALE_H
 VERDICT = ("status.json", "hosted_compare.json", "state/plan.json")
 HOST_PATH = "/System/Volumes/Data" if os.path.isdir("/System/Volumes/Data") else "/"
 CANDIDATE_IMAGE = "localci-candidate:1"
@@ -316,10 +320,86 @@ def image_decisions(images: list[dict], recent: dict, ids: dict, recipes: dict, 
              "live": im["tag"] in in_progress or im["id"] in in_progress} for im in images]
 
 
+class _Count:
+    """A write-only sink that counts: a dry run measures the gzip without writing it."""
+
+    def __init__(self):
+        self.n = 0
+
+    def write(self, b):
+        self.n += len(b)
+        return len(b)
+
+    def flush(self):
+        pass
+
+
+def compress_receipts(run: Path, skip: set, dry: bool, errors: list | None = None) -> tuple[int, bool]:
+    """B26 U5: gzip COMPRESS under `receipts/pysa/*/results/` in place, atomically (`.gz.part`, fsync, rename, then the original goes).
+    Returns (bytes freed, whether a receipt was compressed). A `.gz.part` is never valid: it is removed. A file with its `.gz` beside it
+    only loses its original; no symlink is followed (a linked directory is not entered, a linked file is not read); `skip` is what the
+    trim already doomed. An OSError on one file leaves that file whole and is appended to ``errors`` (run-relative path, errno name):
+    one entry that cannot be handled never stops the prune."""
+    freed, hit = 0, False
+    base = run / "receipts" / "pysa"
+    if run.is_symlink() or (run / "receipts").is_symlink() or base.is_symlink() or not base.is_dir():
+        return 0, False
+    for side in sorted(base.iterdir()):
+        res = side / "results"
+        if side.is_symlink() or res.is_symlink() or not res.is_dir():
+            continue
+        for stale in sorted(res.glob("*.gz.part")):
+            try:
+                size = stale.lstat().st_size
+                if not dry:
+                    stale.unlink()
+                freed += size
+            except OSError as exc:
+                if errors is not None:
+                    errors.append(f"{stale.relative_to(run).as_posix()}: {errno.errorcode.get(exc.errno, type(exc).__name__)}")
+        for name in COMPRESS:
+            src, gz, part = res / name, res / f"{name}.gz", res / f"{name}.gz.part"
+            if src in skip or src.is_symlink() or not src.is_file() or gz.is_symlink():
+                continue
+            try:
+                before = src.lstat().st_size
+                if gz.is_file():   # a rename that landed and an unlink that did not: the .gz is whole by construction
+                    after = 0
+                elif dry:
+                    sink = _Count()
+                    with open(src, "rb") as fi, gzip.GzipFile(filename=name, fileobj=sink, mode="wb", mtime=0, compresslevel=3) as g:
+                        shutil.copyfileobj(fi, g, 1 << 20)
+                    after = sink.n
+                else:
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+                    with open(src, "rb") as fi, os.fdopen(os.open(part, flags, 0o644), "wb") as fo:
+                        with gzip.GzipFile(filename=name, fileobj=fo, mode="wb", mtime=0, compresslevel=3) as g:
+                            shutil.copyfileobj(fi, g, 1 << 20)
+                        fo.flush()
+                        os.fsync(fo.fileno())
+                    os.replace(part, gz)
+                    after = gz.lstat().st_size
+                if not dry:
+                    dfd = os.open(res, os.O_RDONLY)   # the rename durable before the original goes
+                    try:
+                        os.fsync(dfd)
+                    finally:
+                        os.close(dfd)
+                    src.unlink()
+                freed += before - after
+                hit = True
+            except OSError as exc:
+                if errors is not None:
+                    errors.append(f"{src.relative_to(run).as_posix()}: {errno.errorcode.get(exc.errno, type(exc).__name__)}")
+    return freed, hit
+
+
 def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
     """7 days full; then `logs/` and the Pysa call graphs go; after 30 days only VERDICT stays. A run older than TREE_PACK_STALE_H
-    loses a tree pack its `finally` never removed, whatever its age. Symlinks are removed as links."""
-    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "freed_gb": 0.0}
+    loses a tree pack its `finally` never removed, whatever its age. B26: from BULK_KEEP_H on a run loses the Pysa call graphs
+    (`trimmed_bulk`) and has COMPRESS gzipped in place (`compressed`); the verdict and the rest keep their retention. Symlinks are
+    removed as links."""
+    out = {"trimmed_7d": [], "trimmed_30d": [], "trimmed_pack": [], "trimmed_bulk": [], "compressed": [], "errors": [], "freed_gb": 0.0}
     if runs.is_symlink():   # the prune never leaves the merger's state dir: a linked runs/ is someone else's tree
         return {**out, "refused": f"{runs} is a symlink"}
     freed = 0
@@ -328,28 +408,37 @@ def trim_runs(runs: Path, now_s: float, dry: bool) -> dict:
         if age_h is None or age_h < TREE_PACK_STALE_H:
             continue
         full = age_h < FULL_DAYS * 24
-        doomed = []
+        bulk_now = age_h >= BULK_KEEP_H
+        doomed, pack_hit, bulk_hit = [], False, False
         for root, dirs, files in os.walk(run):
             rel_root = Path(root).relative_to(run)
             for f in files + [d for d in dirs if (Path(root) / d).is_symlink()]:
                 rel = (rel_root / f).as_posix()
                 pack = rel_root.as_posix() == "state" and f in TREE_PACK
-                if pack or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
+                bulk = full and bulk_now and f in BULK
+                pack_hit, bulk_hit = pack_hit or pack, bulk_hit or bulk
+                if pack or bulk or (not full and ((age_h >= VERDICT_DAYS * 24 and rel not in VERDICT) or (age_h < VERDICT_DAYS * 24 and (rel == "logs" or rel.startswith("logs/") or f in BULK)))):
                     doomed.append(Path(root) / f)
-        if not doomed:
-            continue
-        for p in doomed:
-            freed += p.lstat().st_size
-            if not dry:
-                p.unlink()
-        if not dry and not full:   # a young run keeps its layout: only the pack goes
-            for root, dirs, _ in sorted(os.walk(run, topdown=False), key=lambda w: -len(w[0])):
-                if root != str(run) and not os.listdir(root):
-                    os.rmdir(root)
-        if full:
-            out["trimmed_pack"].append(run.name)
-        else:
-            out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
+        if doomed:
+            for p in doomed:
+                freed += p.lstat().st_size
+                if not dry:
+                    p.unlink()
+            if not dry and not full:   # a young run keeps its layout: only the pack goes
+                for root, dirs, _ in sorted(os.walk(run, topdown=False), key=lambda w: -len(w[0])):
+                    if root != str(run) and not os.listdir(root):
+                        os.rmdir(root)
+            if full:
+                if pack_hit:
+                    out["trimmed_pack"].append(run.name)
+                if bulk_hit:
+                    out["trimmed_bulk"].append(run.name)
+            else:
+                out["trimmed_30d" if age_h >= VERDICT_DAYS * 24 else "trimmed_7d"].append(run.name)
+        saved, hit = compress_receipts(run, set(doomed), dry, out["errors"])
+        freed += saved
+        if hit:
+            out["compressed"].append(run.name)
     out["freed_gb"] = round(freed / 1e9, 2)
     return out
 
@@ -606,7 +695,8 @@ def prune(state: Path, docker: str, dry: bool = False, fstrim: bool = False, col
         except (OSError, subprocess.TimeoutExpired) as e:
             rec["fstrim"] = {"rc": None, "tail": type(e).__name__}
         rec["host_free_gb"]["after_fstrim"] = host_free_gb(host_path)
-    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("deprecated_flag"))] + (["images"] if errors else [])
+    rec["failed"] = [k for k in ("builder_prune", "fstrim") if k in rec and (rec[k]["rc"] != 0 or rec[k].get("deprecated_flag"))] + (["images"] if errors else []) \
+        + (["runs"] if rec.get("runs", {}).get("errors") else [])   # B26: a prune that keeps failing to compress or clean is not green
     if rec.get("vm_discard", {}).get("remounted") and rec["vm_discard"]["after"] is not True:
         rec["failed"].append("vm_discard")
     return rec

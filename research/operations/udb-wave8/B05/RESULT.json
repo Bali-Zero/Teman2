@@ -1,0 +1,64 @@
+{
+  "block_id": "B05",
+  "status": "CORRECTED_TESTED_PARTIAL_NATIVE_BLOCKED",
+  "block_closed": false,
+  "base_commit_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_sha": "RECORDED_OUTSIDE_THIS_FILE (a commit cannot contain its own SHA; see the PR head and the gate receipt)",
+  "proofs": [
+    "research/operations/udb-wave8/B05/DEFINITIVE-SYNTHESIS.md",
+    "research/operations/udb-wave8/B05/PRINCIPAL-ROLE-BINDING-PROPOSAL.md",
+    "research/operations/udb-wave8/B05/b05_contracts_validator.py",
+    "research/operations/udb-wave8/B05/operation-contracts.json",
+    "research/operations/udb-wave8/B05/operation-contracts.csv",
+    "research/operations/udb-wave8/B05/test_b05_operation_contracts.py",
+    ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv (pinned input, not committed)",
+    ".agent-receipts/udb-wave8-inputs/LIVE-DB-METADATA.json (pinned input, not committed)",
+    ".agent-receipts/udb-wave8-inputs/POOL-FACTORY-SOURCE.json (pinned input, not committed)"
+  ],
+  "observed": {
+    "operation_contracts": 23,
+    "operation_contracts_status": {"PARTIAL": 19, "CONFLICT": 3, "BLOCKED": 1},
+    "complete_operation_contracts": 0,
+    "relation_id_derivation": "md5(database||chr(31)||schema||chr(31)||relation), database=nuzantara_rag, schema=public",
+    "matched_relations": 8,
+    "unmatched_relations": 0,
+    "matched_roles": ["postgres", "backend_rag_v2", "nuzantara_readonly"],
+    "unmatched_roles": ["nuzantara", "nuzantara_app"],
+    "pool_factory_target_role": "UNOBSERVED",
+    "principal_role_binding_closed": false,
+    "ast_counterexamples": ["conversation_repository (no advisory or FOR UPDATE row lock in save_messages)", "migration_lock_busy (apply_all_pending returns empty applied/skipped/failed when the lock is not acquired; cmd_apply and main exit 0)"],
+    "consumer_matrix_csv_rows": 6029,
+    "lead_delta_rows": 1,
+    "total_leads": 6030,
+    "census_bucket_count": 33,
+    "active_consumer_denominator": "UNKNOWN",
+    "uninstantiated_non_retained_leads": 4276
+  },
+  "missing": [
+    "Runtime principal-to-DB-role binding: POOL-FACTORY-SOURCE.json records target_role=UNOBSERVED, so catalog grants are joined but not bound to the runtime pool principal; needs an admitted native read that is not authorized in this campaign",
+    "Active-consumer denominator: LEAD-DELTA.json keeps active_consumer_denominator=UNKNOWN pending B03 reconciliation; 4,276 non-retained leads stay uninstantiated across the 33 computed census buckets",
+    "0 of 23 operation contracts are complete (19 PARTIAL, 3 CONFLICT, 1 BLOCKED)",
+    "2 of 5 configured role names (nuzantara, nuzantara_app) have no md5(rolname) match in LIVE-DB-METADATA.json actors",
+    "Live pg_indexes / pg_constraint definitions for the 8 matched relations (to verify ON CONFLICT targets) need an admitted native read that is not authorized in this campaign",
+    "Runtime session GUC observations and execution traces for the SQL operation contracts are not observed"
+  ],
+  "tests": [
+    {
+      "cmd": "apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider -q research/operations/udb-wave8/B05/test_b05_operation_contracts.py",
+      "result": "7 passed, exit 0 (Mini, source sha256 validator 791e64bd..., test 0c18fd96...)"
+    },
+    {
+      "cmd": "python3 -I -B research/operations/udb-wave8/B05/b05_contracts_validator.py --generate",
+      "result": "exit 0 (regenerated operation-contracts.json / .csv)"
+    },
+    {
+      "cmd": "python3 -I -B research/operations/udb-wave8/B05/b05_contracts_validator.py --validate",
+      "result": "exit 0"
+    }
+  ],
+  "superseded_claims": [
+    "16/16 relation joins (the name-only md5(relname) join matched 0; the database/schema/relation derivation matches 8 of 8 default relations)",
+    "45 + 3,477 + 2,508 = 6,030 conservation (replaced by 6,029 CSV rows + 1 lead delta, 33 computed buckets, active denominator UNKNOWN)",
+    "--self-test flag (the validator CLI has --generate and --validate only)"
+  ]
+}

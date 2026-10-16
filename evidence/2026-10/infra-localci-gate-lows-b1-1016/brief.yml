@@ -1,0 +1,24 @@
+task_id: localci-gate-lows-b1-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Batch 1 of the LOWs that independent Opus gates named while passing already-merged LocalCI PRs: test gaps and one
+  residual, closed by ADDING tests and one run-time guard. B28 L1 (the PR turn right after the starvation-bound replay defers nothing: replay_deferred count == REPLAY_MAX_SKIP),
+  B33 S1 L1 and L2 (an empty host_no_verdict chains; every parametrize id names its own case), B30 L2 and L3 (no candidate
+  text opens a runner ERROR/BLOCKED reason; host_checks membership is exact, never by prefix), B36 L1 and L2 (a rows file
+  that writes MUTANTS through any alias stops the loader at run time; the self-registration is pinned). Each new guard
+  has a mutant row in mutants/rows/lows1.py. No behaviour of merger.py, runner.py or any production path changes.
+constraints:
+  - "Tests and the mutant harness only: merger.py, runner.py, prune.py, label_intent.py, harness_fable_gate.py, gate_ledger.py are untouched."
+  - "No existing test is weakened; the MUTANTS dict entries are not edited."
+acceptance:
+  - text: "The new tests pass and every lows1 mutant is KILLED; --list is clean."
+    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only lows1-guard-not-called lows1-snapshot-is-live lows1-rebind-unchecked lows1-removed-unseen lows1-changed-unseen lows1-added-unseen lows1-defer-on-a-pr-turn lows1-module-table-unwatched lows1-setdefault-dropped lows1-host-checks-by-prefix"
+  - text: "A rows file writing MUTANTS through an alias stops the run naming the file; a normal rows file still loads."
+    probe: "python -m pytest -q scripts/localci/tests/test_mutant_rows_runtime_guard.py"
+consumer_map:
+  - "The localci-tests CI job runs the new tests; the mutant harness (merger_mutants.py) runs the loader guard on every sweep and the lows1 rows by name."
+risks:
+  - "The run-time guard also rejects a rows file that ADDS a name straight into MUTANTS (bypassing ROWS and the duplicate check); no existing rows file does."
+grader: "Fresh Opus gate on an immutable archive of the head sha."

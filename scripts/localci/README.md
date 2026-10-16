@@ -227,6 +227,21 @@ recipe: 394 s cold at plan (download, install, export), then a cache hit while t
 E2E and Visa Oracle smoke share one recipe (the backend closure plus node 24, the root lock's npm cache, chromium and
 postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Frontend Tests' node-only recipe is 1.4 GB.
 
+### The merge label is read back (B31)
+
+`scripts/signal_merge_intent.sh <PR>` no longer trusts a write. It first asks `scripts/localci/label_census.py verify` (the merger's own `label_arm`:
+the label on the PR, the last `LabeledEvent` by an admin or maintain user, stamped no earlier than the head's push). Valid: nothing is written. Absent:
+add. Present but stale: remove, then add. The add retries with bounded backoff (`SIGNAL_INTENT_TRIES`, `SIGNAL_INTENT_BACKOFF_S`, under the `SIGNAL_INTENT_DEADLINE_S` wall clock), then the label is read
+back again; a label not shown valid is exit 2 and `SIGNAL_INTENT_FAIL` on stderr, queue or no queue (with the queue rule present the arm is still
+attempted first). An unreadable read (rc other than 0 and 1, including a check-suites read that failed) is unknown, never invalid: it is retried and never removes a label. The whole helper runs under a wall-clock deadline (`SIGNAL_INTENT_DEADLINE_S`, default 45 s; the poller kills it at 60 s, pinned by test). No caller swallows it (`docs_guardian.sh` used `|| true`; a test now refuses that spelling). Before the flip run
+`python3 scripts/localci/label_census.py census --repo Bali-Zero/Teman2` (read-only; exit 1 and a list when open armed PRs lack a valid label; on
+2026-10-15 it named 7, among them the auto-publish article PR #8530) and re-run the helper on each. Auto-publish article PRs are opened by
+backend-rag's `GitHubPublisher`, which enables auto-merge but never labels; that change belongs to a backend-rag PR (its merge is a deploy).
+
+#### Predicate census (B31'')
+
+`scripts/signal_merge_intent.sh` has no decision in it: it is `exec python3 scripts/localci/label_intent.py`, whose pure `plan()` is the whole logic, compared with an independent oracle over the entire finite domain by `tests/test_label_intent.py`. The census is Python only and generated: `python3 scripts/localci/predicate_census.py` prints every conditional of `label_intent.py` and `label_census.py` (and raises on a construct it does not model); `predicate_census.jsonl` has one row each, naming its generated mutant (`b31-ast-*`); `python3 scripts/localci/predicate_census.py --draft` rewrites it; `tests/test_predicate_census.py` fails on a missing or stale row. Spec: `docs/specs/localci-sovereign-2026-10-07.md` (B31'').
+
 ### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
 
 Eight FAIL decisions of Pro's journal (2026-10-09 to 10-14) were environment, not candidate: the container had no `.git` (`git rev-parse
@@ -407,6 +422,8 @@ state, fails closed as before. `hosted_compare.json`, the journal's `hosted_comp
 
 ## Merger (phase C, shadow)
 
+The merge predicate for a PR that rewrites a file the BASE judge reads (any file: tests, workflows, `.gitattributes`), its oracle table and the Pro gate-verdict ledger are specified in `docs/specs/localci-sovereign-2026-10-07.md` §2b (B25-prime); that rescue is not in the code yet.
+
 `merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would
 do with a pull request and journals it. It merges nothing, posts nothing, labels nothing; every GitHub API call is a bare
 GET through `hosted_compare.gh_get`, and the only other traffic is `git fetch`. `merger.py merge` refuses with exit 2
@@ -414,7 +431,7 @@ whatever it is given (phase E is not armed); `merger.py --selftest` runs the tri
 
     python scripts/localci/merger.py tick --node Nuzantara [--repo Bali-Zero/Teman2] [--base main] \
         [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--seed ~/nuzantara] [--python <venv python>] \
-        [--plan-timeout 7500] [--run-timeout 5400] [--tick-timeout 14400]
+        [--plan-timeout 7500] [--run-timeout 7200] [--tick-timeout 16200]
 
 The plan step's budget (`--plan-timeout`, `PLAN_TIMEOUT_S`) stays above the runner's `DEPS_BUILD_TIMEOUT_S` (7200 s): a lock
 file change makes a new deps recipe, built cold inside the plan (e2e-tests on Pro, 2026-10-11: 3552 s, pip download 2728 s).
@@ -590,6 +607,8 @@ a conflict needs a tree and no error, a moved base needs a readable `remote_main
      "remote_main": "<same 40 hex>", "base_current": true, "head_unchanged": true, "merge_tree": "<40 hex>", "clean": true, "conflicts": [], "bites": true,
      "armed_env": false, "ok": false, "criterion": {"review_independent": false, "...": "..."}}
 
+B29: `review_not_blocking` is a criterion term (read by `pr_side`, re-read by `phase_f_arming` at the moment of merging): `reviewDecision` is not `CHANGES_REQUESTED` and no write-access reviewer's latest opinionated review is (`writersOnly: true`; a non-writer's review does not block, a dismissed one is not listed); anything unreadable is false. It replaces the one thing the classic protection did for reviews, which the flip deletes (spec B29 V5 lists the rest).
+
 Limits, stated: the runner plans `review.independent` and leaves it QUEUED (blocking) until a review is imported, so
 `overall` is never PASS in shadow today — the per-context columns are the comparison that carries information, and the report below sums them. A `kill -9`
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under
@@ -670,7 +689,11 @@ ones (the old order inside each group), and with `LOCALCI_MERGER_PHASE_F=1` sele
 timing are still checked at merge time). A `(pr, head)` whose newest decision, at any base, was BLOCKED with `gate_pending` is not decided
 again at a new base until `gate_ready` says its gate verdict is posted and its pending hosted runs completed after it; a failed read
 defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
+**B38: dead keys are decided last, never skipped** (spec B38). Inside each of B23's two groups `triage()` sorts a key that cannot yield a mergeable row behind the others: B29's changes-requested review, a required hosted context already completed red (`failure`, `timed_out`, `startup_failure`, `error`; never `cancelled`, never pending; complete required set validated first), a newest FAIL decision at the same head whose compared contexts hosted agreed on (excluding `drift.stale_locally`), or a PR whose newest decision was `gate_pending` and whose head carries no gate status. It is never dropped: with nothing else selectable it is decided as before. A read that fails means not dead. The extra reads per tick are one batched GraphQL query for the reviews and at most `DEAD_READ_CAP` (5) keys probed over REST (paged per endpoint up to `MAX_PAGES`), which stop at the first alive key; a tick that sorts a key dead journals `skipped: dead_last` once per `(pr, head, base)` and prints `merger: B38 ...`.
+**B30: a transient local no-verdict is decided again at the same base** (spec B30). A non-replay decision is re-decidable only through an ALLOW-LIST (spec D1; `REDECIDE_OVERALL/CTX/HOST_CTX/CHECK` in `merger.py`): overall `BLOCKED` or `ERROR` (an `ERROR` only with the merger's own driver text: plan, no-seal, status or unreadable-status failure), every context the host did not name `OK`, `UNCOVERED` or `QUEUED`, every host-named context `ERROR` or `BLOCKED`, every check `PASS`, `NOT_APPLICABLE`, `BLOCKED` or `QUEUED` (`ERROR` only for a check the row's `host_checks` names: the checks the runner itself pre-empted with a measured host reason, journalled by `decide()` from trusted runner state), and a measured host-disk (`host_disk_below_floor`, `_unmeasured`, `_floor_invalid`; never `host_disk_full`, which the sandbox's own output can forge) or driver no-verdict as the class. Any status not listed (`FAIL`, `INTERRUPTED`, `RUNNING`, `STALE`, a seal mismatch, a TickTimeout, a status added later) is a verdict or the candidate's and is never decided again. It is decided again at the same `(pr, head, base)`: at most `REDECIDE_CAP` (3) transient decisions per key within `REDECIDE_WINDOW_S` (6 h; older ones stop counting, so an outage cannot cap every head for good), `REDECIDE_BACKOFF_S` (600) times the count apart, a `host_disk` one only while the host's free GB is at least the start floor; `EVICT_CAP` applies and the backoff counts from the newest decision or eviction. The new row carries `redecide: {reason, attempt}`; a key past the cap is journalled once as `skipped: redecide_cap`.
 Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence (2026-10-14: 5 of 56 open PRs armed but unlabelled, 23 labelled).
+
+**B28: a waiting labelled PR is decided before a replay** (spec B28). After `triage()`, when the first PR of the order carries the arm label and `LOCALCI_MERGER_PHASE_F` is not `1`, the tick decides it instead of taking a replay turn, and journals `replay_deferred {reason, skipped_n, pr}` when it forfeits one. The replays deferred since the newest replay decision are counted from the journal; at `REPLAY_MAX_SKIP` (6) of them, or when the first is `REPLAY_MAX_SKIP_S` (12 h) old, one replay turn runs anyway, and one that finds nothing to replay journals `skipped replay_none` to reset the count. Unlabelled PRs and the phase F schedule are as before.
 
 ### Report (phase D's instrument)
 
@@ -783,11 +806,31 @@ Capacity (measured 2026-10-07). The runner executes its checks one after another
 single loop and no check starts before the previous one has its receipt — so a tick costs the sum of its checks. With
 phase A's contained contexts on main, ticks took 883 s, 886 s and 1097 s (#7978, #7979, #7943) against a `StartInterval` of
 600 s. launchd never overlaps a job with itself, so the cadence is one PR per tick + 600 s (about 25 minutes), and it grows
-with phase B's service contexts. `StartInterval` stays 600 (a shorter one buys nothing while a tick outlasts it); running
+with phase B's service contexts. `StartInterval` stays 600 as the idle cadence and the recovery path. "A shorter one buys nothing while a tick outlasts it" was wrong, and it was measured so on 2026-10-15: launchd re-arms the interval when the job EXITS, so
+every tick was followed by 600 s of nothing (the wrapper's start line came 601-603 s after the previous `prune` row in 5 of 5 cycles of 10-15; the median gap between two runs is 606-621 s on every day; 4.7-9.1 h a day of the lane were this wait, and a READY refresh tick added a second wait: decision ~4200 s + 600 + refresh ~400 + 600 = 5790 s per decision). The cure is B33 S1 below, not a shorter interval; running
 checks in parallel is phase B's runner work. The heartbeat is written when a tick ends, so two heartbeats are up to
-tick + 600 s apart: the organ's `expected_hb_seconds` is 3600, not 1800. A `running` heartbeat at tick start was not chosen
+tick + 600 s apart: the organ's `expected_hb_seconds` is 6000 (B35: 3 x it must exceed the 16200 s tick watchdog + 600), not 1800. A `running` heartbeat at tick start was not chosen
 — the sentinel's `running` branch has no staleness downgrade (`scripts/nuzantara-sentinel.py`), so a hung tick would read
 healthy for ever.
+
+### B33 S1 — a tick that bore a verdict starts the next at once
+
+`localci_merger_tick.sh` re-executes itself (`exec`, the same process: launchd still sees the one instance it started and never starts a sibling during a chain) when the tick that just ended bore a verdict. `scripts/localci/tick_chain.py`, extracted from `main` at the tick's sha like `prune.py` (absent: no chain), reads only the journal bytes the tick appended (the size of `decisions.jsonl` taken before it) and says `chain` iff the tick's rc is 0, at least one appended row is a sealed `decision` (`error` null, `seal` 64 hex), a `ready_refreshed`, a `ready_refresh_failed` or a `pushed`, and no appended row is `error`, `evicted`, `merge_error`, `push_unlanded`, `push_refused`, `storage_diverged` or a decision with an `error` or a non-empty `host_no_verdict`. Anything else, including a journal it cannot read, a tick that warned (host under the floor, a failed prune), a depth that is not a number, is today's behaviour: exit and wait for `StartInterval`.
+
+- A chained tick is a WHOLE tick: fetch, code at the new sha, start floor re-measured, lease, watchdog, prune, heartbeat (its note ends `depth=N`). Only `MERGER_CHAIN_DEPTH` crosses the exec; no lock does. The lease lives inside `merger.py tick`, so a manual tick that takes it makes the chained one journal `skipped: lease`, which is no verdict.
+- Cap: `MERGER_CHAIN_MAX` (default 12) chained ticks per launchd instance, then the wrapper exits and `StartInterval` resumes.
+- Switches: `LOCALCI_MERGER_CHAIN=0` in the plist environment, or `touch <state>/chain_off` (read before every chain: no reload needed; `rm` to re-enable). `LOCALCI_MERGER_ENABLED=false` keeps its meaning. The wrapper installs no signal handler: `launchctl bootout`/`kickstart -k` kills it as before and never reaches the exec.
+- Said aloud in `~/logs/localci-merger.out.log`: `merger_tick: chain depth=N after <kinds>` or `merger_tick: chain stop: <why>`.
+- `merger.py`, `runner.py`, `prune.py`, the plist, the lease, the gate and every verdict are untouched. Deploy: the wrapper is a declared home-fork pair; replace the live copy with temp file + `mv`, then `cmp -s` against `origin/main`. The predicate needs no deploy.
+- Observation (Bites): consecutive work ticks whose next `merger_tick:` start line comes under 120 s after the previous tick's end, each printing `chain depth=N`, and decisions a day against the 10-15 baseline (10-15).
+
+### B33 S2 — what each sandbox costs, in the receipt
+
+Every candidate container the runner starts leaves a probe in the check's receipt (`result.sandbox`, or `sandbox` on each `result.jobs[]` row): `t_create`, `t_copy_in`, `t_start_to_exit`, `t_junit`, `t_remove` (host monotonic seconds), `mem_peak_bytes` (the trusted side runs `docker stats --no-stream` every 2 s while the container runs and keeps the maximum; the candidate never writes it), `disk_rw_bytes` (`docker ps -s` before the removal) and `sampler_error`. It is data: no verdict function reads it, and a sampler failure is a `null` plus a string, never a status. `LOCALCI_SANDBOX_SAMPLER=0` in the environment turns the `docker stats` / `docker ps -s` reads off (the phase times stay).
+
+    python3 scripts/localci/capacity_report.py ~/.nuzantara-pilots/local-ci/merger/runs     # per context: n, p95 mem, p95 disk, p95 setup, p95 copy-in
+
+Consumer: whoever sizes B33 S3's `resources:` declarations (p95 + 25 %) and prices S4 from the copy-in. Spec: `docs/specs/localci-sovereign-2026-10-07.md` (B33 S2, M1-M7).
 
 The merger runs the BASE runner with its OWN coordinator venv, `~/.nuzantara-pilots/local-ci/merger/venv` (the plist's
 `MERGER_PYTHON`): the runner fingerprints the coordinator's `pip freeze` into every receipt, and a shared venv that another job
@@ -812,10 +855,10 @@ updates mid-run turns every PASS receipt STALE at `status` time (measured on the
 
 1. it reads the host's free GB (`df -Pk /System/Volumes/Data`, whole GB, floored); a `df` that gives no number starts no
    run and the heartbeat is `warning` (`host free space unreadable (df -Pk <path>): no run started`);
-2. `merger.py tick … --host-free-gb=N --min-host-free-gb=100`: under the start floor the tick journals
-   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":90,"start_floor_gb":100}` before the lease and starts no run (B15);
+2. `merger.py tick … --host-free-gb=N --min-host-free-gb=60`: under the start floor the tick journals
+   `{"kind":"skipped","why":"host_below_floor","free_gb":N,"floor_gb":50,"start_floor_gb":60}` before the lease and starts no run (B15);
 3. `merger.py prune --state-dir <state> --fstrim`, after the tick and never before it, whether the tick ran, skipped or failed;
-4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N start_floor_gb=100: no run
+4. the heartbeat: `error` when the tick failed, `warning` with the number (`host_below_floor free_gb=N start_floor_gb=60: no run
    started`) under the floor or when the prune failed, `ok` otherwise. The wrapper exits with the tick's code.
 
 A mirror sha older than B6 still ticks: `prune.py` and `runner.py` are extracted only when the sha has them, and the floor
@@ -874,7 +917,11 @@ The prune (`scripts/localci/prune.py`) touches only `localci-deps:*` images and 
   `Total: 12.53GB` while the VM data disk went from 39G used to 37G used. BuildKit also leaves more than the cap reclaimable
   (cache 22.83 GB before, 10.29 GB after, against 4 GB), so no size-based "over budget" rule is sound and none is applied.
   An old daemon (BuildKit before 0.17) ignores `max-used-space`, and `-a` then empties the cache: a rebuild cost, never a wrong verdict.
-- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. Under 7 days a
+- **Run directories.** Age from the timestamp in the run's name; an undated directory is never touched. After 24 hours (B26: `BULK_KEEP_H` = `TREE_PACK_STALE_H`, a
+  status.json is not required: a run older than a day is finished or gone) a run loses `call-graph.json` and
+  `higher-order-call-graph.json` (listed as `trimmed_bulk`) and has `receipts/pysa/*/results/taint-output.json` and
+  `dependency-graph.json` gzipped in place (`compressed`, atomic `.gz.part` then rename, symlinks never followed; the 30-day
+  rule treats the `.gz` as it treated the original). Otherwise, under 7 days a
   run is whole. From 7 days `logs/` and every `call-graph.json` and `higher-order-call-graph.json` go. From 30 days only
   `status.json`, `hosted_compare.json` and `state/plan.json` stay. `decisions.jsonl` is never touched, and a `runs/` that is a
   symlink is never trimmed.
@@ -917,15 +964,15 @@ reaches Pro when the wrapper's live copy is replaced with the commands of the bl
 
 ### Host floor held through the run (B15)
 
-`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps its host free above a floor, always (Zero, 2026-10-11: 90 GB, lowered from 100). B6 checked the host once,
+`docs/specs/localci-host-floor-2026-10-11.md`. Zero's directive: Pro keeps its host free above a floor, always (Zero, 2026-10-16: 50 GB, lowered from 90; 100 before 2026-10-11). B6 checked the host once,
 at the tick's start, against 60 GB; a tick that started at 111 GB ended at 99.6 (one shard container wrote 9.66 GB). kubelet's
-node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
+node-pressure model, with one constant (`HOST_FLOOR_GB` 50):
 
-- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 100 GB free: `--min-host-free-gb` (default 100;
-  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (90) and `start_floor_gb` (100).
+- **Start floor.** A run starts only at `HOST_FLOOR_GB + START_MARGIN_GB` (10) = 60 GB free: `--min-host-free-gb` (default 60;
+  the wrapper's `MERGER_MIN_HOST_FREE_GB`). The skip line carries `floor_gb` (50) and `start_floor_gb` (60).
 - **Hard eviction.** While the runner's `plan` and `run` steps execute, the runner leads its own process group and the host
   (`shutil.disk_usage` of `/System/Volumes/Data`, decimal GB, the janitor's sample) is read every 5 s. Under
-  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 91.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
+  `HOST_FLOOR_GB + EVICT_MARGIN_GB` (1.5) = 51.5 GB the group gets TERM, KILL after 10 s, and `docker rm -f -v` removes the
   containers carrying THIS run dir's label (`org.nuzantara.localci.run=<run_label>`, the label the runner sets — never a name
   pattern, never an age, never another run's). Three failed reads in a row count as below the floor. `--host-floor-gb 0`
   turns the watchdog off. The `status` read is never evicted: a verdict already produced is never undone.
@@ -933,13 +980,13 @@ node-pressure model, with one constant (`HOST_FLOOR_GB` 90):
   "context_in_flight":[…],"containers_removed":N,"pr","head_sha","base_sha","run_dir"}` — not a `decision`, so it counts toward
   nothing (READY included) and the same `(pr, head, base)` is decided again on a later tick, once the host is above the start floor. triage treats it as an attempt for ORDER only (behind every head not yet tried), and after `EVICT_CAP` (3) evictions of one `(pr, head, base)` the key is skipped (`{"kind":"skipped","why":"evicted_cap"}`, once) until the base or head moves. An eviction counts toward `EVICT_CAP` only within `EVICT_WINDOW_S` (6 h) of the tick. An older eviction is history for ORDER, never a cap: the host that could not afford a run then may afford it now. The report counts `evicted`.
 - **Orphaned runner.** The runner leaves launchd's job group (its own session): the merger passes `LOCALCI_PARENT_PID`, and the runner's `plan`/`run` TERM their own group when that pid is gone.
-- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 100) PLUS `RUN_HEADROOM_GB` (`--run-headroom-gb`, default 15: measured on Pro 2026-10-13, one run uses >= 13.4 GB, so the cache is shed before a run starves; the start floor and the eviction line are unchanged; the prune row journals `pressure_gb`) also
+- **Image GC under host pressure.** A prune that finds host free under the start floor (`--min-host-free-gb`, default 60) PLUS `RUN_HEADROOM_GB` (75 GB with the defaults; `--run-headroom-gb`, default 15: measured on Pro 2026-10-13, one run uses >= 13.4 GB, so the cache is shed before a run starves; the start floor and the eviction line are unchanged; the prune row journals `pressure_gb`) also
   removes, by explicit tag, every deps image that is not the newest of its recipe — fewest 48 h plan references first, never the
   never-list, never the run in progress's image — and the wrapper's `--fstrim` follows. The line carries `host_pressure: true`
   and `host_free_gb` before and after (also printed on the `merger prune:` line); the `builder prune` follows the removals, and the rule names the cost: dropping a second-slot image means a cold rebuild of that recipe.
   B22 (K1 v3): the keeper is main's image, recomputed. For each recipe with a `deps` block in the matrix at `refs/merger/base`, the prune calls runner.py's pure `deps_recipe` on the mirror at that commit with the current candidate image id, which gives the exact `localci-deps:` tag main's tree builds; that image, if it exists, holds slot 1 and is never shed by the cap or by host pressure (only the VM floor can take it). The prune line carries `main_tags` and `main_evidence` per recipe (`{recomputed_at, digest}` or `{reason}`), or `main_tags: null` with `main_reason`. Any error means unknown, and the old rule (the newest is slot 1) applies.
   B16: "in progress" means the run's coordinator still holds `state/coordinator.lock` (runner.py's flock for the whole `run`); an evicted, killed or crashed run leaves the lock free and no longer keeps its images.
-- **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: `cmp -s` of the live wrapper against the `origin/main` copy is silent and `scripts/lint_home_fork.py --check` is green for that pair; a `host_below_floor` skip line in the journal carries `start_floor_gb` 100 (the wrapper's start line does not print it).
+- **Ship step (deploy).** The live wrapper passes `--min-host-free-gb=$FLOOR_GB` explicitly, so the merger default alone does not move the start floor. At deploy, re-install it (`cp scripts/localci/localci_merger_tick.sh ~/.nuzantara-cron/.localci_merger_tick.sh.new`, `mv -f` onto `localci_merger_tick.sh`, `cmp -s` against the `origin/main` copy). Observable: `cmp -s` of the live wrapper against the `origin/main` copy is silent and `scripts/lint_home_fork.py --check` is green for that pair; a `host_below_floor` skip line in the journal carries `start_floor_gb` 60 (the wrapper's start line does not print it).
 - **Not touched.** uv, npm and Playwright caches stay `pro.janitor`'s.
 
 ### READY computed apart, with a cost bound (B20)
@@ -950,11 +997,11 @@ Phase F asks "is phase E READY?" at every merge attempt, and the answer is `repo
 
 `pro.disk_floor` (`scripts/ops/pro_disk_floor_tick.sh`, `infra/launchagents/com.nuzantara.disk-floor.plist`) reads
 `df -Pk /System/Volumes/Data` every 30 minutes (`StartInterval` 1800, `RunAtLoad`, no `KeepAlive`) and writes
-`~/.organism/last_seen/pro.disk_floor.json`: `ok` above 90 GB free (Zero, 2026-10-11, lowered from 100), `warning` from 60 to 90, and under 60 the mandate's
+`~/.organism/last_seen/pro.disk_floor.json`: `ok` above 60 GB free (the start floor; Zero, 2026-10-16, lowered the floor from 90 to 50), `warning` from 50 to 60, and under 50 the mandate's
 `failed`, written as `error` (the word `scripts/lib/heartbeat.sh` canonicalises it to and the sentinel and the healer read).
-The note is `free_gb=N on /System/Volumes/Data (ok > 90, failed < 60)`; when the organ is not `ok` it adds
+The note is `free_gb=N on /System/Volumes/Data (ok > 60, failed < 50)`; when the organ is not `ok` it adds
 `; biggest: ~/<dir> X.YGB, …` for the three biggest top-level directories of `~` (the walk took 94 s on Pro, so it runs only
-when the organ pages). The limits are compared in MB, so 90.5 GB is `ok`. Wrong node or `PRO_DISK_FLOOR_ENABLED=false`:
+when the organ pages). The limits are compared in MB, so 60.5 GB is `ok`. Wrong node or `PRO_DISK_FLOOR_ENABLED=false`:
 `disabled`; a previous run still alive: `warning` (`skipped: previous run alive (pid N), free space not read`). Registry `expected_hb_seconds` 3600,
 silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro, user `nuzantara`, from a checkout at
 `origin/main`):
@@ -976,6 +1023,8 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
     python scripts/localci/phase_e_flip.py --rollback <pre-flip-*.json> [--apply --confirm <digest> --quiescent]
 
 Before step 1 the report must also read `liveness_ok: true` (B24): READY proves the merger is safe, `liveness_ok` that it would merge — at least 10 mergeable `would_enqueue` rows in the last 48 h and at least 80 % of the GitHub-merged PRs it decided carrying one at their merged head. Phase F arming does not require it.
+
+B37: a `would_enqueue` row whose only false term (outside `label_privileged`, `not_in_queue`, `first_enqueue`) is `open` also counts when the `pulls/{n}` read the report already holds shows GitHub merged that very head — LocalCI lost the race to GitHub's queue, which the flip removes. A closed-unmerged PR, another head, a missing pull or a second false term never count. The liveness line prints `mergeable_rows=N (merged_first=M)` and adds `unread_pull=K` when rows were left out for lack of a pull. READY and every verdict are untouched.
 
 Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
 no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
