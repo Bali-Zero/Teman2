@@ -1263,13 +1263,15 @@ def classifier_needs(trusted: Path, cm: dict, changed: list, spec) -> tuple[dict
 RING_OVERRIDE_VAR, RING_OVERRIDE_SH = "MERGEOS_RING_GATING_DISABLED", "scripts/ci/ring_gating_override.sh"
 
 
-def _gh_variables(env: dict, path: str) -> list | None:
+def _gh_variables(env: dict, path: str, get=None) -> list | None:
     """Every variable a `gh api` list endpoint holds (per_page=100, paged), or None when the read cannot be trusted: any non-200 status (gh
     exits non-zero on it, a 404 included: a list that is missing is a read that failed, not an empty one), a body that is not JSON, one
     without a `variables` array of objects and an integer `total_count`, or a count that disagrees with the rows collected."""
     rows, total = [], None
     for page in range(1, 51):
-        r = subprocess.run(["gh", "api", f"{path}?per_page=100&page={page}"], capture_output=True, text=True, timeout=60, env=env)
+        q = f"{path}?per_page=100&page={page}"
+        r = (subprocess.CompletedProcess([], 0, json.dumps(get(q)), "") if get is not None
+             else subprocess.run(["gh", "api", q], capture_output=True, text=True, timeout=60, env=env))
         if r.returncode != 0:
             return None
         body = json.loads(r.stdout)
@@ -1283,7 +1285,7 @@ def _gh_variables(env: dict, path: str) -> list | None:
     return None
 
 
-def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: dict | None = None) -> dict:
+def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: dict | None = None, get=None) -> dict:
     """The manual override security.yml's `changes` job honours (`vars.MERGEOS_RING_GATING_DISABLED`), read now with the operator's gh and
     judged by BASE's own truth table (scripts/ci/ring_gating_override.sh, run, not re-implemented). Hosted resolves `vars.X` as a repository
     variable first, then an organization variable visible to the repository (an environment variable too, when the job names an
@@ -1295,15 +1297,18 @@ def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: di
     blob = _extract_base_file(wt, base, RING_OVERRIDE_SH)
     if blob is None or any(isinstance(j, dict) and "environment" in j for j in (jobs or {}).values()):
         return fail
+    if getattr(get, "__name__", None) == "gh_get":
+        get = None
     env = trusted_env()
     try:
-        owner = subprocess.run(["gh", "api", f"repos/{repo}"], capture_output=True, text=True, timeout=60, env=env)
+        owner = (subprocess.CompletedProcess([], 0, json.dumps(get(f"repos/{repo}")), "") if get is not None
+                 else subprocess.run(["gh", "api", f"repos/{repo}"], capture_output=True, text=True, timeout=60, env=env))
         owner_type = (json.loads(owner.stdout).get("owner") or {}).get("type") if owner.returncode == 0 else None
         if owner_type not in ("Organization", "User"):
             return fail
         value = None
         for path in (f"repos/{repo}/actions/variables", *((f"repos/{repo}/actions/organization-variables",) if owner_type == "Organization" else ())):
-            rows = _gh_variables(env, path)
+            rows = _gh_variables(env, path, get=get)
             if rows is None:
                 return fail
             hit = [v for v in rows if str(v.get("name", "")).upper() == RING_OVERRIDE_VAR]   # variable names are case-insensitive
@@ -1317,7 +1322,7 @@ def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: di
         script.write_bytes(blob)
         out = subprocess.run(["bash", str(script)], capture_output=True, text=True, timeout=30,
                              env={**env, **({RING_OVERRIDE_VAR: value} if value is not None else {})})
-    except (OSError, subprocess.SubprocessError, ValueError, AttributeError):
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError):
         return fail
     answer = out.stdout.strip()
     if out.returncode != 0 or answer not in ("active=true", "active=false"):
@@ -1371,7 +1376,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
     repo = str(local.get("repository") or "Bali-Zero/Teman2")
     gh = github_ctx(base, pr_number, repo)
     static = {"github": gh, "vars": dict(local.get("vars") or {}), "runner": RUNNER_CTX, "matrix": {}, "needs": {}, "env": {}, "steps": {}}
-    stood_in, flags_note, ov = dict(local.get("needs") or {}), None, None
+    stood_in, flags_note, ov, classifier_off = dict(local.get("needs") or {}), None, None, False
     if local.get("classifier"):   # a job whose `needs:` outputs the BASE classifier decides (CodeQL's per-language flags), not the matrix
         got, flags_note = classifier_needs(trusted, cm, changed, local["classifier"])
         if got is None:
@@ -1383,6 +1388,7 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
             flags_note = f"{flags_note}; ring-gating override " + ("ACTIVE (vars.MERGEOS_RING_GATING_DISABLED=true): both flags true" if ov["read"] == "ok"
                                                                   else "unreadable: fail-open, both flags true")
         stood_in[str(local["classifier"]["job"])] = got
+        classifier_off = got["result"] == "success" and all(v == "false" for v in (got.get("outputs") or {}).values())
     upstream, planned = set(stood_in), []
     for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
         jid, job = jl.get("job_id"), jobs_doc.get(jl.get("job_id"))
@@ -1504,10 +1510,16 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                 st["precomputed"] = run_host_reader(st["side"]["argv"], tdir, st.get("timeout_s"), ms.get("no_verdict_when"), ms.get("pending_when"))
         image_id, deps_note = iso["image_id"], ""
         if local.get("deps"):
-            image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir,   # deps_recipe: contexts sharing one image share its prune recipe
-                                                  re.sub(r"[^a-z0-9-]", "-", str(local.get("deps_recipe") or str(ctx["check"])[4:])))
-            if image_id is None:
-                return _blocked(f"job {jid}: {deps_note}")
+            if classifier_off:   # B39: every classifier output is false, so the leg skips its steps: validate the recipe without building the deps image
+                info, why_d = deps_recipe(wt, cand, iso, local["deps"], prefix)
+                if info is None:
+                    return _blocked(f"job {jid}: {why_d}")
+                deps_note = f"deps localci-deps:{info['digest'][:16]} skipped at plan (classifier flags all false)"
+            else:
+                image_id, deps_note = plan_deps_image(wt, cand, iso, local["deps"], prefix, run_dir,   # deps_recipe: contexts sharing one image share its prune recipe
+                                                      re.sub(r"[^a-z0-9-]", "-", str(local.get("deps_recipe") or str(ctx["check"])[4:])))
+                if image_id is None:
+                    return _blocked(f"job {jid}: {deps_note}")
         pw = jl.get("playwright_skips")
         if pw is not None and (not isinstance(pw, dict) or set(pw) != {"step", "skipped"} or type(pw["skipped"]) is not int or pw["skipped"] < 0
                                or pw["step"] not in {st["name"] for st in steps}):

@@ -1,0 +1,27 @@
+row | box_unchanged | point relations (S vs run i at the 5 census points) | census-point deltas [c,tl,tr,bl,br] (max) | whole-box max_delta
+G-flat-scrim-in-fixed-wrapper | True | S3>i1, S3>i1, S3>i1, S3>i1, S3>i1 | [226, 226, 226, 226, 226] (max 226) | box_max 226
+G-flat-scrim-faded-wrapper | True | S3>i1, S3>i1, S3>i1, S3>i1, S3>i1 | [224, 224, 224, 224, 224] (max 224) | box_max 224
+G-flat-scrim-faded-abs-wrapper | True | S3>i1, S3>i1, S3>i1, S3>i1, S3>i1 | [223, 223, 223, 223, 223] (max 223) | box_max 223
+G-reach-glow-scrim-under-run | True | S2>i0, S2>i0, S2>i0, S2>i0, S2>i0 | [3, 0, 0, 9, 10] (max 10) | box_max 12
+G-reach-shadow-scrim-absent | True | absent, absent, absent, absent, absent | [215, 155, 155, 172, 172] (max 215) | box_max 215
+G-reach-blur-scrim-absent | True | absent, absent, absent, absent, absent | [8, 11, 13, 3, 3] (max 13) | box_max 15
+D-reach-bar-confined-under-surface | True | S2>i0, S2>i0, S2>i0, S2>i0, S2>i0 | [0, 0, 0, 0, 0] (max 0) | box_max 0
+G-mix-reach | True | S0<i1, S0<i1, S0<i1, absent, absent | [139, 129, 129, 210, 210] (max 210) | box_max 217
+G-mix-reach-outside | True | S0<i1, S0<i1, S0<i1, absent, absent | [139, 129, 129, 210, 210] (max 210) | box_max 217
+G-mix-main | True | S1<i2, S1<i2, S1<i2, absent, absent | [124, 124, 124, 226, 226] (max 226) | box_max 226
+G-mix-main-outside | True | S1<i2, S1<i2, S1<i2, absent, absent | [124, 124, 124, 226, 226] (max 226) | box_max 226
+G-self-shadow-scrim-absent | True | absent, absent, absent, absent, absent | [214, 217, 217, 139, 139] (max 217) | box_max 217
+I-self-shadow-scrim-covers | True | S0<i1, S0<i1, S0<i1, S0<i1, S0<i1 | [0, 0, 0, 0, 0] (max 0) | box_max 0
+G-two-scrims-wrong-one-covers | True | S3>i1/S0<i1, S3>i1/S0<i1, S3>i1/S0<i1, S3>i1/S0<i1, S3>i1/S0<i1 | [2, 0, 0, 6, 6] (max 6) | box_max 8
+G-near-first-reacher-and-toast | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+G-near-first-toast-only | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+G-two-reachers-exempt-first | True | S0<i1, S0<i1, S0<i1, S0<i1, S0<i1 | [10, 0, 0, 29, 29] (max 29) | box_max 32
+I-fixed-scrim-child | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+I-blur-scrim-child | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+I-scrim-own-opacity | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [123, 123, 123, 123, 123] (max 123) | box_max 123
+I-scrim-zindex | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+I-scrim-isolate | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+I-scrim-translate | True | S1<i2, S1<i2, S1<i2, S1<i2, S1<i2 | [124, 124, 124, 124, 124] (max 124) | box_max 124
+I-flat-scrim-itself | True | S0<i1, S0<i1, S0<i1, S0<i1, S0<i1 | [0, 0, 0, 0, 0] (max 0) | box_max 0
+I-reach-scrim-covers-run-fixed | True | S0<i1, S0<i1, S0<i1, S0<i1, S0<i1 | [5, 0, 0, 15, 15] (max 15) | box_max 17
+I-reach-scrim-covers-run-flat | True | S0<i1, S0<i1, S0<i1, S0<i1, S0<i1 | [5, 0, 0, 15, 15] (max 15) | box_max 17

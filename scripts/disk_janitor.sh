@@ -26,6 +26,10 @@
 #   logarch   ~/logs/archive/*.gz  (direct children only)       >60 d (log-rotate-run.sh gzips, nothing pruned)
 #   qdrant    scripts/qdrant_backup_retention.sh                  delegated, same --apply mode
 #   tools     restic cache --cleanup · brew cleanup --prune=30   (uv's cache is pro.janitor's, rule uv-prune)
+#   tmp_stale direct children of /private/tmp (this user's files and dirs) with nothing inside younger than 3 d,
+#             no open file (lsof), no .git anywhere below, not named by a launchd plist, not a reserved name
+#             (claude*, com.apple.*, pytest-of-*, dotfiles); capped per run (5 GiB, 50 entries); own kill switch
+#             DISK_JANITOR_TMP_STALE_ENABLED=false or the file $HOME/logs/disk-janitor.tmp-stale.disabled (B41, 2026-10-16)
 # These tool steps land in the receipt's "steps" object with their own df -k delta on the Data volume.
 # Docker and the Colima VM are not this janitor's: scripts/localci/prune.py is their one owner (images
 # by explicit tag, never by age; it also trims the guest after every tick). Ruled 2026-10-10.
@@ -141,6 +145,20 @@ knob_range() { # $1 knob  $2 min  $3 max
   fi
 }
 for knob in CACHE_TIMEOUT; do knob_range "$knob" 1 86400; done
+TMP_STALE_ROOT="${DISK_JANITOR_TMP_STALE_ROOT:-/private/tmp}"
+TMP_STALE_DAYS="${DISK_JANITOR_TMP_STALE_DAYS-3}"
+TMP_STALE_CAP_MB="${DISK_JANITOR_TMP_STALE_CAP_MB-5120}"
+TMP_STALE_MAX="${DISK_JANITOR_TMP_STALE_MAX_ENTRIES-50}"
+TMP_STALE_LAUNCHD_DIR="${DISK_JANITOR_LAUNCHD_DIR:-$JH/Library/LaunchAgents}"
+for knob in TMP_STALE_DAYS:1:365 TMP_STALE_CAP_MB:1:102400 TMP_STALE_MAX:1:1000; do
+  IFS=: read -r kn kmin kmax <<< "$knob"
+  case "$kn" in TMP_STALE_DAYS) kenv=TMP_STALE_DAYS ;; TMP_STALE_CAP_MB) kenv=TMP_STALE_CAP_MB ;; *) kenv=TMP_STALE_MAX_ENTRIES ;; esac
+  v=${!kn}
+  case "$v" in ''|0*|*[!0-9]*) v="" ;; esac
+  if [ -z "$v" ] || [ "${#v}" -gt 6 ] || [ "$v" -lt "$kmin" ] || [ "$v" -gt "$kmax" ]; then
+    log "REFUSE: DISK_JANITOR_$kenv must be a plain integer $kmin..$kmax (no sign, no leading zero) — exit 2"; exit 2
+  fi
+done
 
 # The scratch root is the one target that can be pointed elsewhere by env/plist (council O3/R2):
 # absolute, basename exactly claude-<digits>, no "." or ".." components, and — when it exists —
@@ -321,6 +339,76 @@ if [ "$TOOLS" = "true" ]; then
     log "tools: would run brew cleanup --prune=30"
   fi
 fi
+
+# ── tmp_stale: direct children of $TMP_STALE_ROOT idle for TMP_STALE_DAYS (B41, 2026-10-16) ──
+# Other sessions' gate/fold scratch piles up in /private/tmp (5.6 GB on Pro, 2026-10-16) and no rule above
+# reached it: the scratch step only sees claude-<uid>/-<project>/<uuid>. A candidate is a file or directory
+# of THIS user, directly under the root, whose newest content is older than TMP_STALE_DAYS, and it is kept
+# (never an error) when ANY of these holds: reserved name, a launchd plist names it, a .git lives anywhere
+# below it (a checkout or a registered worktree: this janitor removes no git data), a process holds a file
+# open (lsof +D; a probe that cannot answer keeps it and counts an ERROR), or it would exceed the per-run
+# cap. The cap and the entry limit bound one bad plan; the kill switch is the env knob or the sentinel file.
+stale_root_ok() {
+  case "$1" in /private/tmp|/private/tmp/*|/private/var/folders/*|/tmp|/tmp/*) : ;; *) return 1 ;; esac
+  case "$1/" in */./*|*/../*|*//*) return 1 ;; esac
+  [ -d "$1" ] && [ ! -L "$1" ] && [ "$(physical "$1")" = "$1" ] || return 1
+  under_or_above "$1" "$JH" && return 1
+  is_protected "$1" && return 1
+  return 0
+}
+stale_reserved() { # $1 basename
+  case "$1" in .*|claude*|com.apple.*|pytest-of-*|*.pid|*.lock|*.sock) return 0 ;; esac
+  return 1
+}
+LAUNCHD_PY='import pathlib, plistlib, sys
+root = pathlib.Path(sys.argv[1])
+def walk(v):
+    if isinstance(v, str): print(v)
+    elif isinstance(v, bytes): print(v.decode("utf-8", "replace"))
+    elif isinstance(v, dict):
+        for k, val in v.items(): walk(k); walk(val)
+    elif isinstance(v, (list, tuple, set)):
+        for x in v: walk(x)
+if root.exists():
+    for p in sorted(root.iterdir()):
+        if (p.is_symlink() or p.is_file()) and p.name.endswith(".plist"):
+            walk(plistlib.loads(p.read_bytes()))
+'
+step_begin
+TMP_BYTES=0
+case "$(printf '%s' "${DISK_JANITOR_TMP_STALE_ENABLED:-true}" | tr '[:upper:]' '[:lower:]')" in
+  0|false|no|off) step_end tmp_stale skipped disabled ;;
+  *)
+  if [ -e "$JH/logs/disk-janitor.tmp-stale.disabled" ]; then step_end tmp_stale skipped disabled-sentinel
+  elif ! stale_root_ok "$TMP_STALE_ROOT"; then ERRORS=$((ERRORS + 1)); step_end tmp_stale error root-invalid
+  elif ! listable "$TMP_STALE_ROOT"; then ERRORS=$((ERRORS + 1)); step_end tmp_stale error root-unreadable
+  elif ! command -v "$LSOF" >/dev/null 2>&1; then ERRORS=$((ERRORS + 1)); step_end tmp_stale error lsof-unavailable
+  elif [ -e "$TMP_STALE_LAUNCHD_DIR" ] && ! listable "$TMP_STALE_LAUNCHD_DIR"; then ERRORS=$((ERRORS + 1)); step_end tmp_stale error launchd-unreadable
+  elif ! LAUNCHD_REFS=$(bounded 120 python3 -I -c "$LAUNCHD_PY" "$TMP_STALE_LAUNCHD_DIR" 2>/dev/null); then ERRORS=$((ERRORS + 1)); step_end tmp_stale error launchd-unreadable
+  else
+    SR_BASE=${TMP_STALE_ROOT##*/}; SR_CAP=$((TMP_STALE_CAP_MB * 1048576))
+    while IFS= read -r -d '' e; do
+      [ "$S_N" -ge "$TMP_STALE_MAX" ] && { log "tmp_stale: entry limit $TMP_STALE_MAX reached — rest kept"; break; }
+      n=${e##*/}
+      if stale_reserved "$n"; then log "tmp_stale: keep $(tag "$e") (reserved name)"; continue; fi
+      fnew=$(bounded 120 find "$e" ! -mtime +"$TMP_STALE_DAYS" -print -quit 2>/dev/null); fnrc=$?
+      if [ "$fnrc" -ne 0 ]; then ERRORS=$((ERRORS + 1)); log "tmp_stale: freshness probe failed rc=$fnrc on $(tag "$e") — kept"; continue; fi
+      if [ -n "$fnew" ]; then log "tmp_stale: keep $(tag "$e") (newer content inside)"; continue; fi
+      case "$LAUNCHD_REFS" in *"$SR_BASE/$n"*) log "tmp_stale: keep $(tag "$e") (named by a launchd job)"; continue ;; esac
+      g=$(bounded 120 find "$e" -name .git -print -quit 2>/dev/null); grc=$?
+      if [ "$grc" -ne 0 ]; then ERRORS=$((ERRORS + 1)); log "tmp_stale: git probe failed rc=$grc on $(tag "$e") — kept"; continue; fi
+      if [ -n "$g" ]; then log "tmp_stale: keep $(tag "$e") (carries a git checkout)"; continue; fi
+      if [ -d "$e" ]; then bounded 120 "$LSOF" +D "$e" >/dev/null 2>&1; lrc=$?; else bounded 120 "$LSOF" -- "$e" >/dev/null 2>&1; lrc=$?; fi
+      if [ "$lrc" -eq 0 ]; then log "tmp_stale: keep $(tag "$e") (open file)"; continue; fi
+      if [ "$lrc" -ne 1 ]; then ERRORS=$((ERRORS + 1)); log "tmp_stale: probe failed rc=$lrc on $(tag "$e") — kept"; continue; fi
+      b=$(bytes_of "$e"); b=${b:-0}
+      if [ $((TMP_BYTES + b)) -gt "$SR_CAP" ]; then log "tmp_stale: keep $(tag "$e") (over the ${TMP_STALE_CAP_MB} MB cap)"; continue; fi
+      remove "$e" tmp_stale "$(tag "$e")" && { S_N=$((S_N + 1)); TMP_BYTES=$((TMP_BYTES + b)); }
+    done < <(find "$TMP_STALE_ROOT" -mindepth 1 -maxdepth 1 \( -type d -o -type f \) -user "$(id -u)" -mtime +"$TMP_STALE_DAYS" -print0 2>/dev/null)
+    if $APPLY; then step_end tmp_stale "done"; else step_end tmp_stale dry-run; fi
+  fi
+  ;;
+esac
 
 DF_AVAIL=$(df -k "$DF_PATH" 2>/dev/null | awk 'NR==2{print $4*1024}')
 DF_PCT=$(df -k "$DF_PATH" 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')

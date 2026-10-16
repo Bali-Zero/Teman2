@@ -1,0 +1,51 @@
+task_id: kbli-r19-w0d3b2bii2-1016
+gear: 3
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, Track W, lot W0d-3b-2b-ii' (successor of #8617 at depth 1, census content and
+  accumulated gate bindings ii-1..ii-13 plus the #8617 gate cures B1, B2, N8 and N9, no apps/mouth/src file):
+    1. Section 8.7: overlay_hits scans the fence and its local imports across single-line and multiline string
+       literals and spaced/expression JSX role attributes (B1 cure, claiming all 34 hits on the tree including
+       KBLISectorOffcanvas.tsx::overlay::1 and ::overlay::2); parse_overlays validates header, separator (N8) and
+       rows; floating_results_unreachable (G31) requires every setSearchResults call and non-useState reference to
+       be an empty-array call setSearchResults([]) so nested-paren calls and callback references fail closed (B2
+       cure); the census prints surfaces-unclaimed: U after page-grounds and the exit step asserts
+       surfaces-unclaimed: 0. Subsections list the 6 DOM scrim shapes (18 instances across 18 walks, 0 descendants,
+       ii-1) and the 8 DOM reacher shapes (223 instances across 50 walks, 0 inside a scrim, ii-10).
+    2. bg-black/60 (ii-2): a token with two roles carries its section 5 row at rest and a declared per-surface scrim
+       row in section 8.1 (the explorer sidebar backdrop), with cross-reference notes in both sections.
+    3. Section 8.5 (ii-4): NavShell and Footer mount descriptions, 10 (pair, route) pins, 24 walks and the D 84 /
+       D 108 shared mutant counts match the contract and test_the_section_8_5_shared_component_counts_and_cells_match_the_contract.
+    4. Section 8.3: logo_proof (five proofs, including full flood-filled black-field alpha 0 check, N9), png_rows,
+       black_field, logo_corners and the dump's header logo record; the proof test skips until W2''' ships the
+       transparent file.
+    5. Gate bindings ii-5, ii-6, ii-7, ii-11, ii-12, ii-13:
+       - ii-5 (G6): test_e2e_the_capture_pass_asks_for_reduced_motion pins the capture pass reduced-motion emulation.
+       - ii-6 (M10): I-drop-shadow-only-no-reach sample points sit within 1 blur radius of the drop-shadow bar.
+       - ii-7: B3 composer card remains an undeclared product finding.
+       - ii-11 (MIX-reach, MIX-main): decode() and bring() select the first non-exempt occluded point before falling
+         back to an exempt one.
+       - ii-12 (NEAR-FIRST): within() returns all qualifying reachers and pointB() evaluates all reachers and
+         main-stack occluders at p, preferring the first non-exempt hit.
+       - ii-13: paint-receipts.txt reports the 5 census-point deltas and stack relations separately from whole-box
+         max_delta.
+constraints:
+  - "Zero files under apps/mouth/src."
+  - "Nothing of W0d-3b-2b-i''' (#8583) is undone: SPEC-3b2bi r1 scrim hit-test at p, new_context, NOT_JUDGEABLE, the declared line and the 50-walk count stay."
+  - "No npm install or npm ci."
+acceptance:
+  - text: "WHEN an overlay is added to the fence without a row (including multiline className or spaced/expression role), THEN surfaces-unclaimed counts it; WHEN a row goes stale or a setter call fills floating results (including nested parens), THEN a test fails."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+  - text: "WHEN the logo proofs meet a bad cut (including interior black-field pixels left opaque), THEN each names its failure."
+    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k logo"
+  - text: "Every mutant in instrument_mutants.py (33 mutants, including G6, M10, ii-11a, ii-11b, ii-12a, ii-12b, B1a, B1b, B2, N8, N9) is killed."
+    probe: "python3 evidence/2026-10/agent-air-m5-mouth-kbli-r19-w0d3b2bii2-1016-ef6c2612/instrument_mutants.py"
+  - text: "WHEN the regenerated fixture is replayed, THEN it prints the M5 live verdict byte for byte and K moves 188 -> 189 (sidebar backdrop bg-black/60)."
+    probe: "python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl"
+consumer_map:
+  - "r19-wrapper-census-tests runs the overlay, logo, ii-5, ii-6, ii-11, ii-12, B1 and B2 rows on every census PR, and its exit step asserts surfaces-unclaimed: 0 on the census it judges."
+risks:
+  - "The sidebar backdrop row moves opened-grounds-off-contract from 188 to 189 on live census and replay, and adds surfaces-unclaimed: 0 (493 lines total)."
+grader: |
+  An independent gate session (Astra gpt-6-astra xhigh appointed by Zero while Claude is at session limit, or fresh Opus 5.5) signs harness/fable-gate on the head sha.

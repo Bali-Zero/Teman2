@@ -1,0 +1,27 @@
+task_id: infra-localci-start-floor-by-plan-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B39: the merger's start floor follows what the run will execute. A plan that selects a context with a deps image
+  (e2e, backend, CodeQL, frontend, visa-oracle) or cannot be classified starts at 50+18=68 GB free; any other plan starts at
+  50+6=56. Measured on Pro 2026-10-13..16: heavy runs started with only 10-17 GB over the floor were evicted (17 named evictions, none a
+  light context), while 27 light runs never dropped more than 6 GB net.
+  Zero's HOST_FLOOR_GB (50 GB per B40), the eviction rule and the prune are unchanged; an explicit --min-host-free-gb wins.
+constraints:
+  - "HOST_FLOOR_GB (Zero's floor, 50 GB) is not changed; no verdict, GATE, READY or prune change."
+  - "An unknown or unreadable plan takes the heavy floor (fail closed)."
+  - "The existing MUTANTS dict is untouched; new rows live in mutants/rows/b39.py."
+acceptance:
+  - text: "A light plan starts at 56, a heavy one only from 68, an unclassifiable one at 68, an explicit floor wins, the journal names the floor and why."
+    probe: "pytest scripts/localci/tests/test_start_floor_by_plan.py"
+  - text: "Every context of the matrix is classified; a new one fails the pinned test."
+    probe: "pytest scripts/localci/tests/test_start_floor_by_plan.py -k classified"
+  - text: "Every b39 mutant row is killed."
+    probe: "python3 scripts/localci/tests/mutants/merger_mutants.py --only b39-heavy-margin-10"
+consumer_map:
+  - "The merger tick on Pro (the code rides the tick SHA): observation is a tick at host_free below 60 that starts a light run and journals floor_kind."
+risks:
+  - "A light plan at 56 has 4.5 GB over the eviction line (51.5 GB); the largest net drop measured for a light run was 6 GB, and the eviction watchdog stays the backstop."
+grader: |
+  Fresh gate on an archive of the sha: suite, mutants, merge-tree against origin/main and the in-flight local branches.

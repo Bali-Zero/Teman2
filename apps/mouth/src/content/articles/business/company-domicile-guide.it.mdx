@@ -75,50 +75,42 @@ ogImage: "/static/insights/business/company-domicile-guide.jpg"
 ogType: "article"
 twitterCard: "summary_large_image"
 locale: "it"
-source_sha256: "1966a523f9b6332caec6a79e02c8fc81e625ea3f9eab8dfcd514c67060b668d7"
+source_sha256: "fe3b564073c033aa8f33317d34f7a9f0eb51687d8de46945927f6e671526d176"
 ---
 
-import {
-  ComparisonTable,
-  Calculator,
-  InfoCard,
-  Checklist,
-  AskZantara,
-} from "@/components/insights/interactive";
+# Sede della Società: Come Stabilire l'Indirizzo del Tuo Business in Indonesia 2026
 
-# Domicilio Aziendale: Impostare il tuo Indirizzo Commerciale in Indonesia 2026
-
-Ogni azienda in Indonesia necessita di un indirizzo registrato (domicilio). Questo determina la tua giurisdizione fiscale e dove viene inviata la corrispondenza ufficiale.
+Ogni società in Indonesia necessita di un indirizzo registrato (sede). Questo determina la tua giurisdizione fiscale e dove vengono inviate le corrispondenze ufficiali.
 
 ## Panoramica delle Opzioni
 
 <ComparisonTable
-  title="Opzioni di Domicilio a Confronto"
-  description="Scegli l'opzione giusta per la tua azienda"
+  title="Opzioni di Sede Confrontate"
+  description="Scegli l'opzione giusta per la tua società"
   items={[
     {
-      name: "Ufficio Virtuale",
+      name: "Virtual Office",
       subtitle: "Indirizzo + gestione posta",
       values: {
         "Spazio Fisico": "No",
-        "Lettera di Domicilio": "Sì",
+        "Lettera di Sede": "Sì",
         "Gestione Posta": "Sì",
         "Sale Riunioni": "Disponibili (extra)",
         "Costo/Anno": "IDR 8-20M",
-        "Ideale Per": "La maggior parte delle PT PMA",
+        "Ideale Per": "Molti PT PMDN",
       },
       highlight: true,
     },
     {
-      name: "Ufficio con Servizi",
+      name: "Serviced Office",
       subtitle: "Ufficio privato arredato",
       values: {
         "Spazio Fisico": "Sì",
-        "Lettera di Domicilio": "Sì",
+        "Lettera di Sede": "Sì",
         "Gestione Posta": "Sì",
-        "Sale Riunioni": "Incluse",
+        "Sale Riunioni": "Incluso",
         "Costo/Anno": "IDR 60-150M",
-        "Ideale Per": "Necessità di spazio di lavoro",
+        "Ideale Per": "Chi necessita di spazio lavoro",
       },
     },
     {
@@ -126,11 +118,11 @@ Ogni azienda in Indonesia necessita di un indirizzo registrato (domicilio). Ques
       subtitle: "Affitto ufficio completo",
       values: {
         "Spazio Fisico": "Sì",
-        "Lettera di Domicilio": "Da organizzare autonomamente",
-        "Gestione Posta": "Da gestire autonomamente",
+        "Lettera di Sede": "Auto-gestito",
+        "Gestione Posta": "Auto-gestita",
         "Sale Riunioni": "Proprie",
         "Costo/Anno": "IDR 100M+",
-        "Ideale Per": "Aziende consolidate",
+        "Ideale Per": "Società consolidate",
       },
     },
   ]}
@@ -138,56 +130,56 @@ Ogni azienda in Indonesia necessita di un indirizzo registrato (domicilio). Ques
 
 ---
 
-## Ufficio Virtuale Spiegato
+## Virtual Office Spiegato
 
-L'ufficio virtuale è la scelta più comune per le PT PMA:
+Il virtual office è la scelta più comune per le PT PMA:
 
 ### Cosa Ottieni
 
-- **Indirizzo commerciale registrato** per scopi ufficiali
-- **Surat Keterangan Domisili** (lettera di domicilio)
-- **Ricezione** e inoltro **posta**
+- **Indirizzo aziendale registrato** a fini ufficiali
+- **Surat Keterangan Domisili** (lettera di sede)
+- **Ricezione e inoltramento della posta**
 - **Risposta telefonica** (opzionale)
-- **Accesso a sale riunioni** (tariffe orarie/giornaliere)
+- **Accesso alle sale riunioni** (tariffe orarie/giornaliere)
 
 ### Cosa Non Ottieni
 
 - Scrivania fisica o spazio permanente
-- Posto di lavoro quotidiano
+- Postazione di lavoro quotidiana
 
-<InfoCard variant="tip" title="L'Ufficio Virtuale È Legittimo">
-Gli uffici virtuali sono legali al 100% e accettati da:
-- Ministero della Legge (Kemenkumham)
-- Ufficio delle imposte (DJP)
-- sistema OSS
-- Banche (per l'apertura del conto)
+<InfoCard variant="tip" title="Il Virtual Office è Legittimo">
+I virtual office sono al 100% legali e accettati da:
+- Ministero della Giustizia (Kemenkumham)
+- Ufficio fiscale (DJP)
+- Sistema OSS
+- Banche (per l'apertura dei conti)
 
-Molte PT PMA operano in questo modo, specialmente le attività basate sui servizi.
+Molte PT PMA operano in questo modo, specialmente le aziende basate sui servizi.
 
 </InfoCard>
 
 ---
 
-## Confronto Costi
+## Confronto dei Costi
 
 <Calculator
-  title="Calcolatore Costi Domicilio"
-  description="Confronta le opzioni di domicilio per il tuo budget"
+  title="Calcolatore Costi Sede"
+  description="Confronta le opzioni di sede per il tuo budget"
   fields={[
     {
       id: "type",
-      label: "Tipo di Ufficio",
+      label: "Tipo Ufficio",
       type: "select",
       options: [
-        { value: "virtual", label: "Ufficio Virtuale" },
-        { value: "serviced", label: "Ufficio con Servizi" },
+        { value: "virtual", label: "Virtual Office" },
+        { value: "serviced", label: "Serviced Office" },
         { value: "lease", label: "Locazione Tradizionale" }
       ],
       defaultValue: "virtual"
     },
     {
       id: "location",
-      label: "Località",
+      label: "Localizzazione",
       type: "select",
       options: [
         { value: "jakarta-prime", label: "Jakarta Prime (SCBD, Sudirman)" },
@@ -223,15 +215,15 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
     const total = yearlyBase * years;
 
     const breakdown = [
-      { label: `${values.type} office - ${values.location}`, amount: yearlyBase },
-      { label: `Total for ${years} year(s)`, amount: total }
+      { label: `Ufficio ${values.type} - ${values.location}`, amount: yearlyBase },
+      { label: `Totale per ${years} anno/i`, amount: total }
     ];
 
     return {
       total,
       breakdown,
       currency: "IDR",
-      note: `Per year: IDR ${(yearlyBase/1000000).toFixed(0)}M (~$${Math.round(yearlyBase/16000)} USD)`
+      note: `All'anno: IDR ${(yearlyBase/1000000).toFixed(0)}M (~$${Math.round(yearlyBase/16000)} USD)`
     };
 
 }}
@@ -239,16 +231,16 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
 
 ---
 
-## Cosa Cercare
+## Cosa Verificare
 
 <Checklist
-  title="Checklist Ufficio Virtuale"
-  description: "Cosa verificare prima di iscriversi"
+  title="Checklist Virtual Office"
+  description="Cosa verificare prima di firmare"
   persistKey="vo-checklist"
   items={[
     {
       id: "domicile",
-      label: "Fornisce Lettera di Domicilio",
+      label: "Fornisce Lettera di Sede",
       description: "SKD o Surat Keterangan Domisili",
       required: true,
       category: "essential"
@@ -270,13 +262,13 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
     {
       id: "mail",
       label: "Gestione posta inclusa",
-      description: "Ricevere e notificare/inoltrare",
+      description: "Ricezione e notifica/inoltro",
       required: true,
       category: "services"
     },
     {
       id: "meeting",
-      label: "Disponibilità sala riunioni",
+      label: "Disponibilità sale riunioni",
       description: "Anche se a costo extra",
       required: false,
       category: "services"
@@ -284,7 +276,7 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
     {
       id: "renewal",
       label: "Processo di rinnovo chiaro",
-      description: "Conoscere la procedura di rinnovo annuale",
+      description: "Conosci la procedura di rinnovo annuale",
       required: true,
       category: "practical"
     }
@@ -302,13 +294,13 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
 ## Domande Frequenti
 
 <AskZantara
-  context="Company domicile, virtual office, business address Indonesia, PT PMA registered address"
-  placeholder="Chiedi informazioni sul domicilio aziendale..."
+  context="Sede aziendale, virtual office, indirizzo business Indonesia, sede registrata PT PMA"
+  placeholder="Chiedi sulla sede aziendale..."
   suggestedQuestions={[
     "Posso usare l'indirizzo di casa per la PT PMA?",
-    "Cosa è incluso nell'ufficio virtuale?",
-    "Posso cambiare domicilio in seguito?",
-    "L'ufficio virtuale è accettato dalle banche?",
+    "Cosa è incluso nel virtual office?",
+    "Posso cambiare la sede in seguito?",
+    "Il virtual office è accettato dalle banche?",
   ]}
 />
 
@@ -317,5 +309,5 @@ Molte PT PMA operano in questo modo, specialmente le attività basate sui serviz
 ## Articoli Correlati
 
 - [Guida alla Registrazione PT PMA](/insights/business/pt-pma-registration-guide)
-- [Avviare un'Attività in Indonesia](/insights/business/starting-a-business-in-indonesia-complete-guide)
-- [Tempistica PT PMA](/insights/business/pt-pma-timeline)
+- [Avviare un Business in Indonesia](/insights/business/starting-a-business-in-indonesia-complete-guide)
+- [Timeline PT PMA](/insights/business/pt-pma-timeline)
