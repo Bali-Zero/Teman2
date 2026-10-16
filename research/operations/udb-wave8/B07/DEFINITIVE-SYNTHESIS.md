@@ -6,6 +6,10 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # B07 Definitive Synthesis — Maintenance & Migration Lineage (`D02`, `D11`, `D13`)
 
+## Current package status (2026-10-16)
+
+Current focused source suite: 16 passed. The document reconciliation withdraws unsupported legacy examples and keeps 16 concrete operation entries distinct from active-consumer coverage. The parent observed no admitted readonly observer DSN; no native DB query was performed. Source effects, identities, recovery and the active denominator remain unresolved. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+
 > **Dux addendum (2026-10-16, supersedes every conflicting statement below, including the 2026-10-15 correction).**
 > Authoritative status and evidence: `RESULT.json`. `test_b07_lineage_invariants.py` runs 16 passed (exit 0) offline over the
 > committed `fixtures/` (`dr01.json`, the counts-only `dr05-pro.txt` projection, `consumer-ids.csv`, `PROVENANCE.json`).
@@ -132,7 +136,7 @@ Every `consumer_id` below was verified in `.agent-receipts/udb-wave8-inputs/cons
 - **`CE-06` (Hard Deletion of Terminal Outbox Rows Without Archive)**: `scripts/outbox-prune.sh:76-84` (`src_05d88b7c837c1309`) executes `DELETE FROM events_outbox WHERE status IN ('delivered', 'dead_letter', 'failed') AND created_at < now() - interval '7 days'` without archiving `dead_letter` or `failed` payloads to `events_outbox_dlq`.
 - **`CE-07` (Shallow PG Restore Drill)**: `scripts/pg-restore-drill.sh:124-135` (`src_def7a4c288a552af`) verifies restored backups solely via `SELECT count(*) FROM clients`, `practices`, and `schema_migrations`, omitting `_schema_versions`, checksum integrity, and `olympus_heartbeats` partitions.
 - **`CE-08` (CI Post-Deploy Migration Failure Swallowed)**: `.github/workflows/fly-deploy.yml:170-189` (`src_e98bb23501189d64`) overrides `release_command` to `""` during `flyctl deploy` and runs `python -m backend.db.migrate apply` over `flyctl ssh console` with `continue-on-error: true`.
-- _(Note: `CE-09` and `IN-03` from Stage 1 ANALYSIS were refuted by `DR-B07-05.pro.out` / `DR-B07-05.out` per `B07-F1` and have been dropped.)_
+- _(Note: `CE-09` and `IN-03` from Stage 1 ANALYSIS were refuted by `DR-B07-05.pro.out` / `DR-B07-05.out` per `B07-F1` and are excluded from active claims and proposals.)_
 
 ---
 

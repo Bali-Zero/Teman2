@@ -6,8 +6,8 @@ BLUE Dux execution.
 
 Privacy & Safety Invariants:
 1. Opens an explicit `READ ONLY` transaction (`SET TRANSACTION READ ONLY`).
-2. Never selects or exports `applied_by`, `applied_as`, migration names, role names,
-   rule names, or any string/text column from PostgreSQL.
+2. Reads ledger checksum strings and the session-role equality metadata only for
+   in-memory comparison; exports no names, role values, checksum strings or rows.
 3. Computes checksum equality in SQL/Python against the pinned `DR-B07-01.out`
    on-disk SHA-256 manifest and emits ONLY integer migration numbers, booleans,
    and aggregate integer counts.

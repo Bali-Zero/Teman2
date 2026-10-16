@@ -6,6 +6,10 @@ review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 
 # research(udb-wave8): B07 maintenance and migration lineage — offline adapter, read-only probe with pinned observer, fixture-backed invariants
 
+## Current package status (2026-10-16)
+
+Current focused source suite: 16 passed. The document reconciliation withdraws unsupported legacy examples and keeps 16 concrete operation entries distinct from active-consumer coverage. The parent observed no admitted readonly observer DSN; no native DB query was performed. Source effects, identities, recovery and the active denominator remain unresolved. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+
 Block **B07** (`D02`, `D11`, `D13`) of campaign `universal-db-wave8-20261015`. Status `PARTIAL`, `block_closed: false`. Authoritative evidence: [`RESULT.json`](RESULT.json).
 
 ## What ships
@@ -22,8 +26,8 @@ Block **B07** (`D02`, `D11`, `D13`) of campaign `universal-db-wave8-20261015`. S
   - `dr01.json`: DR-B07-01 at `2026-10-15T08:55:00Z`, 199 SQL rows and 138 Python rows;
   - `dr05-pro.txt`: a counts-only DR-B07-05 Pro projection at `2026-10-15T08:55:09Z`, symlink target redacted;
   - `consumer-ids.csv`: the 6029 `consumer_id` values projected from the campaign consumer matrix (sha256 `c09e1432…`).
-- Synthesis documents, each carrying a 2026-10-16 addendum that supersedes conflicting historical text. `PROPOSAL.md` no longer carries `CE-09` or the S3 remediation roadmap.
-- The `.secrets.baseline` entries for the fixture digests: 545 digest findings, sha256 values of migration files and fixtures; no credential values.
+- Synthesis documents with reconciled active claims and explicitly withdrawn historical findings. `PROPOSAL.md` drops the refuted `CE-09`/`IN-03` claims and marks deferred DR-B07-02..04 NOT ADMITTED.
+- The `.secrets.baseline` entries for the fixture digests: 606 digest findings, sha256 values of migration files and fixtures; no credential values.
 
 ## Contract values (embedded; the source is an external campaign control file)
 

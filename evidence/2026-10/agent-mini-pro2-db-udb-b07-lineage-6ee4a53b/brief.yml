@@ -1,16 +1,10 @@
 mandate: universal-db-wave8-20261015-B07
 gear: 3
 colour: BLUE
-intent:
-  Deliver a truthful partial B07 migration and maintenance lineage dossier with an
-  offline adapter, a read-only probe whose observer identity is source-pinned, and
-  fixture-backed invariant tests.
+intent: Prepare the original B07 evidence PR with verified source results and explicit unresolved acceptance.
 scope:
-  - research/operations/udb-wave8/B07/
-  - evidence/2026-10/agent-mini-pro2-db-udb-b07-lineage-6ee4a53b/
-  - .secrets.baseline
+  - research/operations/udb-wave8/B07
 constraints:
-  - Exactly one B07 PR; no production code, migration, configuration or runtime change.
-  - The probe is not executed; native admission needs an owner-provisioned observer credential.
-  - Historical restore lineage and live ledger state remain UNKNOWN.
-  - Fresh independent BLUE Opus5.5/xhigh exact-head final gate remains mandatory.
+  - One original PR for this block.
+  - No operational closure or active denominator inferred from static evidence.
+  - Owner unavailable-seat exception; independence and required checks remain binding.

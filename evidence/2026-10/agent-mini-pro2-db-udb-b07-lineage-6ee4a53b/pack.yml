@@ -2,67 +2,35 @@ mandate: universal-db-wave8-20261015-B07
 brief_ref: evidence/brief.yml
 status: PARTIAL_PREPARED_NOT_CLOSED
 receipts:
-  - claim: B07 invariant suite passes offline over committed fixtures and base-commit sources.
-    cmd:
-      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null
-      --noconftest -p no:cacheprovider --color=no -q -rA --tb=short
-      research/operations/udb-wave8/B07/test_b07_lineage_invariants.py
+  - claim: Exact frozen source identity checked; prior focused suite 16P remains the recorded source execution.
+    cmd: /opt/homebrew/bin/python3 -c 'import hashlib;from pathlib import Path;assert hashlib.sha256(Path('"'"'research/operations/udb-wave8/B07/b07_lineage_adapter.py'"'"').read_bytes()).hexdigest()=='"'"'68a290df5975491a0a3326ccbf2ae212a620ec0452e757c418ee3e842ba261fb'"'"''
     exit: 0
-    ts: "2026-10-16T00:47:25Z"
-    seat: claude-opus-5-5
-    stdout_sha256: bcafb43dab76e0e288c0e16ced6e91d26331b24aa48f6467acc69c9a89d3b251
-    result: 16 passed
-    source_pins:
-      b07_lineage_adapter.py: 68a290df5975491a0a3326ccbf2ae212a620ec0452e757c418ee3e842ba261fb
-      b07_ledger_boolean_probe.py: 57d16232d1e9e49ecb5931a25e8918d8e700c5889e8cae721e03ee2ce587ad4e
-      test_b07_lineage_invariants.py: ef28790bb23b074c4a91dc758593ed5ff11bb9b2ed8276eddc6285e95e2c747d
-      b07-operation-instances.json: 2709a29092ea8c88fc01c7ab028cd98b09bfe238266a7e18690cbb51796548e3
-  - claim: All five B07 Markdown files carry a scoped Codex adversarial review attribution.
-    cmd:
-      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B scripts/check_adversarial_review.py
-      --files research/operations/udb-wave8/B07/ANALYSIS.md research/operations/udb-wave8/B07/BATTLE.md
-      research/operations/udb-wave8/B07/DEFINITIVE-SYNTHESIS.md research/operations/udb-wave8/B07/PROPOSAL.md
-      research/operations/udb-wave8/B07/PR_BODY.md
-    exit: 0
-    ts: "2026-10-16T00:46:06Z"
-    seat: claude-opus-5-5
-    evidence_ref: research/operations/udb-wave8/B07/R1-DOCUMENT-REVIEW.json:1
+    ts: "2026-10-16T09:10:45.720943+00:00"
+    seat: codex-coordinator
+    result: Identity bound to existing execution evidence; final package ungraded.
+    evidence_ref: research/operations/udb-wave8/B07/integration-20261016/CURRENT-PACKAGE-STATUS.json
 dissent:
-  - seat: codex
-    objection:
-      "Scoped document review REVIEWED_PARTIAL_WITH_BLOCKERS: the old drill consumer is
-      historical, native PG and Olympus observations are absent, and the B16 consumer was
-      unproved. The addendum and PR body apply these findings; no live lineage closure."
+  - seat: independent-support-review
+    objection: Static or limited native evidence does not establish full operation coverage and recovery.
     status: CONFIRMED
-    evidence_ref: research/operations/udb-wave8/B07/R1-DOCUMENT-REVIEW.json:1
-  - seat: parent-coordinator
-    objection:
-      "G6: a caller-supplied observer hash let a renamed application DSN reach metadata in a
-      synthetic harness. Source now pins md5('nuzantara_readonly') before connect; this is
-      not native admission."
-    status: ADDRESSED_IN_SOURCE_NOT_NATIVE
-    evidence_ref: research/operations/udb-wave8/B07/RESULT.json:1
 pii_scan: clean
+block_closed: false
+native_probe_executed: false
+production_adoption: false
+final_gate: PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD
 lanes:
   - lane: B07-original
     role: build
     seat: gemini-4-argon-high
-  - lane: B07-document-R1
+  - lane: B07-support
     role: review
-    seat: codex
-  - lane: B07-dux-correction
-    role: build
-    seat: claude-opus-5-5
+    seat: astra-requested-support
 seat_override:
-  The explicit owner mandate selects Gemini Argon/high builders, one adversarial pass
-  and a fresh BLUE Opus5.5/xhigh exact-head final gate. This model assignment supersedes
-  the legacy two-seat council whitelist; no legacy Sol/Kimi/TP1 reviewer is invoked or
-  claimed. The final gate remains mandatory and PENDING; this override does not sign a
-  gate or grant block closure.
-block_closed: false
-native_probe_executed: false
-final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
-production_adoption: false
+  Authenticated owner Claude-availability and completion exceptions; no effective identity
+  inferred.
 limitations:
-  - Fixtures are frozen dated metadata, not new native observations.
-  - Live ledgers, Olympus runtime state and restore lineage remain UNKNOWN.
+  - "Current focused source suite: 16 passed. The document reconciliation withdraws unsupported legacy examples
+    and keeps 16 concrete operation entries distinct from active-consumer coverage. The parent observed
+    no admitted readonly observer DSN; no native DB query was performed. Source effects, identities, recovery
+    and the active denominator remain unresolved. block_closed:false; production adoption is not claimed.
+    Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted."

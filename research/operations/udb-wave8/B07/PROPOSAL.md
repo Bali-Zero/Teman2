@@ -68,11 +68,11 @@ A pure-Python, read-only static + receipt-joining adapter that inspects the work
    - **`D11` Scheduled & Manual Maintenance Writers**:
      - Maps all host-scheduled maintenance entrypoints (`pro.outbox_prune_daily` / `scripts/outbox-prune.sh`, `pro.backup_pg_fly`, `pro.postgres_Tunnel`, `mini.zero_sync`, `fly.rag_backend`), in-process background tasks (`service_initializer.py:1800-2261`), and manual/unscheduled workers (`retention_worker.py`, `schema_audit.py`).
 2. **`b07-counterexample-report.json`**:
-   - Machine-readable verification of `CE-01` through `CE-09` with exact file path, line range, file SHA-256, violated invariant, and runtime blast radius.
+   - Machine-readable verification of `CE-01` through `CE-08` with exact file path, line range, file SHA-256, violated invariant, and runtime blast radius.
 
 ### 2.2 Deliverable 2: `research/operations/udb-wave8/B07/test_b07_lineage_invariants.py`
 
-A self-contained `pytest` suite (requiring zero network or live DB access) that tests the adapter and AST/source invariants for `CE-01`..`CE-09`:
+A self-contained `pytest` suite (requiring zero network or live DB access) that tests the adapter and AST/source invariants for `CE-01`..`CE-08`:
 
 - `test_ce01_dual_ledger_asymmetry`: verifies that `MigrationManager.get_applied_migrations` queries `_schema_versions` while `BaseMigration._is_applied` and `_check_dependencies` query `schema_migrations`, and that `migration_manager.py:617-627` inserts `001_baseline_v2.sql` only into `_schema_versions`.
 - `test_ce02_lock_busy_exits_zero`: verifies with a mocked `lock_conn.fetchval("SELECT pg_try_advisory_lock($1)", 73491) -> False` that `apply_all_pending()` returns `{"applied": [], "skipped": [], "failed": []}` and `migrate.cmd_apply()` returns `True` (`exit 0`).
@@ -122,6 +122,8 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 
 ### `DR-B07-02` — Live Dual-Ledger Reconciliation & Provenance Aggregate (`_schema_versions` vs `schema_migrations`)
 
+**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
+
 - **ID**: `DR-B07-02`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
   ```sql
@@ -141,6 +143,8 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Resolves `UNK-B07-01` and `UNK-B07-02` by proving the exact live state of both migration ledgers and joining live checksums against `DR-B07-01`.
 
 ### `DR-B07-03` — Live `pg_proc` (`SECURITY DEFINER`), `pg_trigger`, and `pg_event_trigger` Catalog Inventory (`D02`)
+
+**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
 
 - **ID**: `DR-B07-03`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
@@ -182,6 +186,8 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 - **Why It Matters**: Resolves `UNK-B07-03` by binding installed DB-internal functions and triggers (`D02`) to repo migration DDL by SHA-256.
 
 ### `DR-B07-04` — Live Olympus Partition & Action Outcome Aggregate (`D02`)
+
+**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
 
 - **ID**: `DR-B07-04`
 - **Command** (run via read-only DB connection to `nuzantara-postgres`):
@@ -236,7 +242,7 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
   ```
 - **Inputs**: `organism_entrypoints.json` in repo + read-only verification on `Pro` of whether `~/nuzantara` exists or is a symlink to `~/Desktop/nuzantara` (`test -e ~/nuzantara && ls -ld ~/nuzantara`).
 - **Expected Output Shape**: JSON summary of `organism_entrypoints.json` and boolean/target for `~/nuzantara` on `Pro` plus any scheduler entry referencing `retention_worker.py`.
-- **Why It Matters**: Resolves `UNK-B07-05` (`CE-09` and `IN-03`) by confirming whether `pro.outbox_prune_daily` fails on `Pro` due to `REPO_ROOT="${HOME}/nuzantara"` and whether `retention_worker.py` has any active scheduler.
+- **Why It Matters**: Tests the scheduler/path hypotheses with host observations. The original wrong-Pro-path and absent-retention-scheduler claims were refuted; neither is an active finding.
 
 ## Adversarial review
 

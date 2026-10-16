@@ -1,7 +1,11 @@
 {
   "block_id": "B07",
   "campaign_id": "universal-db-wave8-20261015",
-  "dimensions": ["D02", "D11", "D13"],
+  "dimensions": [
+    "D02",
+    "D11",
+    "D13"
+  ],
   "status": "PARTIAL",
   "block_closed": false,
   "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
@@ -108,7 +112,7 @@
     "G6: the observer identity is pinned in source only. The probe is NOT native-admitted: no database call ran, and the server-side check proves the session role, never who holds the credential.",
     "DISCREPANCY (disclosed, not corrected in the tested code): adapter constant DR05_EVIDENCE_TIMESTAMP equals the DR-B07-01 time 2026-10-15T08:55:00.474686Z, while the DR-B07-05 receipt ran at 2026-10-15T08:55:09.894520Z (fixture observed_at 08:55:09Z). Adapter constant DR05_STDOUT_SHA256 69e746095c59620db1b7da09bc52992532aa43faeed72678350f3a51f8d47b7b matches neither the DR-B07-05 Pro source 58cac8c3c85f44c0945a00b98c3e7c24b4d09d5f5bf113fe5d816443ad4f53c3 nor the fixture; its source receipt is unverified.",
     "UNVERIFIED and withdrawn: earlier text claiming alembic.ini / versions lineage, launchctl NOT_LOADED or loaded states, a read_bytes checksum path, a 'manual-apply' stamp written by schema_audit, an enable_olympus default at config.py:423, hard-coded guardian table counts or partition-warning behaviour, and a 'migrate apply' release command. No receipt or test supports them.",
-    "R1: the parent's scoped document review covers seven blocks and does not include B07 at the f56373bc scope; no adversarial review of this candidate is claimed."
+    "R1: the parent's scoped review DOES cover B07 at f56373bc as REVIEWED_PARTIAL_WITH_BLOCKERS; it is not a review of later edited bytes or final implementation acceptance."
   ],
   "tests": [
     {
@@ -146,11 +150,12 @@
         "bytes": 253131,
         "paths": 7,
         "applied_at": "2026-10-15T17:09:02Z",
-        "secret_digest_findings": 545,
+        "secret_digest_findings": 606,
         "secret_baseline_proposal_sha256": "45052c41baf1626888d6e8e491af24ea7266a2114fe674c1f5bae5b8805dd425",
         "old_assertions_unchanged": 82,
         "default_output_parity": "16 records identical to the pre-patch output",
-        "tests_after": "14 passed, exit 0"
+        "tests_after": "14 passed, exit 0",
+        "historical_count_correction": "545 was stale; candidate baseline contains 606 B07 digest findings."
       },
       {
         "change": "G6 observer pin (spec written before the correction, after the synthetic counterexample receipt sha256 4a8eb2f381430ad8cdab44980f33fd3a59132055fc9fd10260e59642acd56393)",
@@ -170,5 +175,12 @@
     "native_probe_executed": false,
     "live_pg_probed": false,
     "runtime_unknowns_retained": true
+  },
+  "owner_extra_phase": {
+    "authorized": true,
+    "source_sha256": "bbe0a27dba6115758350c695d7313ec9f821278d628fbd3ea2458b87c46b3c3a",
+    "scope": "B07 bounded documentation and evidence reconciliation",
+    "native_execution_authorized_by_this_record": false,
+    "block_closed": false
   }
 }
