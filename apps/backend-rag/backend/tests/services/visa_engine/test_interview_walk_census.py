@@ -1322,8 +1322,9 @@ EXPECTED_OUTCOME_BY_SEQUENCE[29] = {
 }
 # seq-30 (SEQ29-D1): `el.e28d.branch-or-subsidiary` and `el.e28f.ikn-subsidiary` now read
 # `investment.proposed_role in [SHAREHOLDER_DIRECTOR, SHAREHOLDER_COMMISSIONER]` (`on_unknown:
-# NO_EFFECT`), so the five invest walks whose vehicle does not ask `investment_role`
-# (`investment.proposed_role` is `UNKNOWN NOT_ASKED`) lose E28D and E28F and keep E28B.
+# NEEDS_INPUT`), so the five invest walks whose vehicle does not ask `investment_role`
+# (`investment.proposed_role` is `UNKNOWN NOT_ASKED`) drop E28D and E28F from
+# `SUPPORTED_CANDIDATES` while E28B remains supported.
 _SEQ30_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
     "offshore/invest/family": ("SUPPORTED_CANDIDATES", ("C2", "E28B")),
     "offshore/invest/merit": ("SUPPORTED_CANDIDATES", ("C2", "E28B")),

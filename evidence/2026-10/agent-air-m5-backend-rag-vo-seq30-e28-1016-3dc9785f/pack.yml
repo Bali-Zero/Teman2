@@ -1,0 +1,117 @@
+# Gear-3 evidence pack - seq-30 fold and landing: deterministic content fold on top of signed seq-29 plus the bundle
+# signed on M5. Receipts are this session's own runs on M5 on 2026-10-16 (UTC timestamps). Activation runs on Pro after
+# merge and deploy.
+gear: 3
+brief_ref: evidence/brief.yml
+pii_scan: clean
+ruling: >-
+  Zero, 2026-10-16 - explicit execution and signing order ("procedi") and reviewer override ("poiche claude e' fuori
+  gioco, la review la fai fare ad Astra"): sign seq-30 on M5, verify via Codex + Astra gate, merge and activate after
+  deploy.
+seat_fallback_reason: >-
+  agy-gemini-4-argon replaces kimi-code/k3 alongside codex-gpt-5.6-sol and codex-gpt-6-astra per Zero's 2026-10-16
+  direct ruling ("poiche claude e' fuori gioco, la review la fai fare ad Astra") executing all reviews and gates on M5
+  via codex exec (gpt-5.6-sol + gpt-6-astra) and Antigravity Argon grounding verification.
+mission: >-
+  seq-30 = signed seq-29 (payload 3f3b45ed) with all 28 source_records byte-identical (boundary 2026-11-14T00:07:47Z)
+  plus six content items: SEQ29-A2 (el.e28a.investment drops investment.proposed_role), SEQ29-D1
+  (el.e28d.branch-or-subsidiary and el.e28f.ikn-subsidiary require investment.proposed_role in
+  [SHAREHOLDER_DIRECTOR, SHAREHOLDER_COMMISSIONER] with on_unknown NEEDS_INPUT), S02
+  (hf.a1.onshore-conversion-excluded excludes A1 when process.wants_onshore_conversion == true), SEQ29-E30-02
+  (E30A 365/730d and E30B 365/730/1460d duration_options), SEQ29-S1 (E28B/E28D/E28F sponsor_types ["NONE"]), and
+  SEQ29-N1 (E28C/E28D/E28F official titles). 118 rules (117 + 1). Signed bundle payload_sha256
+  972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413.
+lanes:
+  - lane: seq30-fold-and-sign
+    role: build
+    seat: Antigravity (Conductor/Builder, worktree backend-rag-vo-seq30-e28-1016, M5)
+  - lane: seq30-ground-truth
+    role: ground_truth
+    seat: >-
+      the signed seq-29 bundle, the 2026-10-15 E28 official portal capture ledger (research/visa/2026-10-15-e28-pages/),
+      Permen Imipas 10/2026 and the Imigrasi Alih Status portal text in source_records, and
+      bali_zero_official_prices_2026.json; no notebook, no memory.
+    nb: apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-030.signed.json and research/visa/2026-10-15-e28-pages/
+    query_hash: "972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413" # pragma: allowlist secret
+    note: query_hash = the signed seq-30 payload_sha256 (JCS digest, equal to the source's and to the bundle's payload_sha256).
+  - lane: seq30-red-team
+    role: review
+    seat: codex-gpt-5.6-sol, agy-gemini-4-argon, and codex-gpt-6-astra (cross-family read-only review and gate on M5)
+bites:
+  consumer: >-
+    Visa Oracle runtime and PricingService after activation: review_hold_inventory, PricingService and the evaluate
+    path read the highest SIGNED pack on disk, which with rulepack-prod-030.signed.json is seq-30; the observer asserts
+    the inventory reads seq-30 and runs the seq-30 pack gate (signed-bundle ties included), the E30 family pricing
+    tests, the walk census and the inventory tests.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq30_signed.py
+  expect: "contains:inventory reads seq-30 and all three consumers green"
+receipts:
+  - claim: The seq-30 pack gate (including backend/tests/services/visa_engine/test_seq30_pack.py::TestSignedBundleTiesToSource and backend/tests/services/visa_engine/test_seq30_pack.py::TestCommittedSourceMatchesFold) and observer parser unit tests with the signed bundle on disk and the public trust-store key.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_seq30_pack.py ../../tests/scripts/test_observe_visa_seq30_signed.py
+    result: "64 passed in 9.80s (51 in test_seq30_pack.py, 13 in test_observe_visa_seq30_signed.py)"
+    exit: 0
+    ts: "2026-10-16T13:27:19Z"
+    seat: Antigravity (M5)
+  - claim: The E30 family pricing suite (including backend/tests/services/visa_engine/test_e30_family_pricing.py::test_e30a_duration_options_match_official_2026_prices) with SEQ29-E30-02 landed in seq-30 and the strict xfail lifted.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_e30_family_pricing.py -p no:cacheprovider
+    result: "50 passed in 1.90s (0 xfailed)"
+    exit: 0
+    ts: "2026-10-16T12:41:56Z"
+    seat: Antigravity (M5)
+  - claim: The full interview walk census across all pinned sequences including seq-30 (with the 5 non-PT-PMA invest walks updated to C2 + E28B under SEQ29-D1).
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider
+    result: "106 passed, 14 skipped in 150.55s"
+    exit: 0
+    ts: "2026-10-16T12:41:41Z"
+    seat: Antigravity (M5)
+  - claim: All visa_engine script tests including backend/tests/scripts/visa_engine/test_review_hold_inventory.py::test_inventory_counts_match_the_signed_pack on seq-30.
+    cmd: PYTHONPATH=. .venv/bin/pytest backend/tests/scripts/visa_engine/ -p no:cacheprovider
+    result: "335 passed in 24.46s"
+    exit: 0
+    ts: "2026-10-16T12:42:35Z"
+    seat: Antigravity (M5)
+  - claim: All mouth Visa Oracle frontend unit and component tests, including the updated E28A_INVESTMENT_ELIGIBLE reason copy and refreshed no-path-doors replay fixture on seq-30.
+    cmd: cd apps/mouth && npx vitest run src/app/\(visa-oracle\)/visa-oracle/_lib/ src/app/\(visa-oracle\)/visa-oracle/_components/
+    result: "58 test files passed, 1719 tests passed (322 passed in engine-adapter.test.ts + copy-truth.test.ts after E28A_INVESTMENT_ELIGIBLE cure)"
+    exit: 0
+    ts: "2026-10-16T13:19:45Z"
+    seat: Antigravity (M5)
+  - claim: The seq-30 bundle was signed offline on M5 with the production key (never read or printed); sign_pack self-verified; prettier --write applied once after signing per the seq-25..29 precedent (file sha256 prefix b845fbefa5782a1e to 31c611994ea43a9d), JCS payload digest 972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413 unchanged.
+    cmd: PYTHONPATH=. .venv/bin/python3 -m backend.scripts.visa_engine.sign_pack backend/services/visa_engine/contracts/packs/rulepack-prod-030.source.json --private-key-file "$HOME/.config/nuzantara/keys/visa-engine-prod-2026-07-1.pem" --kid prod-2026-07-1 --environment PRODUCTION --sequence 30 --i-know-this-is-production --output backend/services/visa_engine/contracts/packs/rulepack-prod-030.signed.json
+    result: "signed and self-verified; signed_at 2026-10-16T12:24:48.389183Z; rule_pack_id 2e113982-c3ec-59f4-bfe5-88ec87f298a2; public key gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA" # pragma: allowlist secret
+    exit: 0
+    ts: "2026-10-16T12:24:48Z"
+    seat: Antigravity (M5, offline CLI)
+  - claim: The kept unsigned-candidate observer (observe_visa_seq29_candidate.py) and stay-permit length observer remain green alongside observe_visa_seq30_signed.py.
+    cmd: python3 scripts/ci/observe_visa_seq29_candidate.py && python3 scripts/ci/observe_visa_oracle_stay_permit_length.py
+    result: "seq-29 candidate gate and census green; stay-permit length holds"
+    exit: 0
+    ts: "2026-10-16T12:51:16Z"
+    seat: Antigravity (M5)
+council_run: journal.jsonl
+dissent:
+  - seat: codex-gpt-6-astra (first gate pass on 813a3758bb, read-only)
+    objection: "HIGH - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts still rendered E28A_INVESTMENT_ELIGIBLE with 'as shareholder-director or shareholder-commissioner' after SEQ29-A2 removed investment.proposed_role from el.e28a.investment."
+    status: CONFIRMED
+    note: "Cured in working tree: updated E28A_INVESTMENT_ELIGIBLE EN/ID copy in engine-adapter.ts and engine-adapter.test.ts to state only the IDR 2.5bn paid-up and IDR 10bn investment commitment."
+  - seat: codex-gpt-5.6-sol and codex-gpt-6-astra (review on 813a3758bb, read-only)
+    objection: "MEDIUM - docs/runbooks/visa-engine-key-ceremony.md seq-30 note had stale descriptions for SEQ29-A2, S02 rule ID (excl.a1-no-onshore-conversion instead of hf.a1.onshore-conversion-excluded), and SEQ29-S1, and fold_pack_seq30.py docstring mislabelled 808d691c-374e-5581-8186-9eb54d0ca7ab as PP 48/2021 instead of Permen Imipas 10/2026."
+    status: CONFIRMED
+    note: "Cured in working tree: updated docs/runbooks/visa-engine-key-ceremony.md and fold_pack_seq30.py docstring to match the exact rule IDs, predicates, and source_record titles."
+  - seat: codex-gpt-5.6-sol (adversarial red-team review on 813a3758bb, read-only)
+    objection: "LOW - observe_visa_seq30_signed.py did not run test_e30_family_pricing.py, and test_interview_walk_census.py:1324 comment said on_unknown: NO_EFFECT instead of on_unknown: NEEDS_INPUT."
+    status: CONFIRMED
+    note: "Cured in working tree: added test_e30_family_pricing.py (min_passed=50) to TEST_MODULES in observe_visa_seq30_signed.py and fixed the comment in test_interview_walk_census.py."
+decisions:
+  - decision: Retire observe_visa_seq29_signed.py, replace with observe_visa_seq30_signed.py, and keep observe_visa_seq29_candidate.py.
+    why: >-
+      observe_visa_seq29_signed.py asserts the highest signed pack on disk is 29, which turns red as soon as
+      rulepack-prod-030.signed.json lands. observe_visa_seq30_signed.py asserts sequence 30 and runs test_seq30_pack.py,
+      test_e30_family_pricing.py, test_interview_walk_census.py, and test_review_hold_inventory.py.
+  - decision: Update no-path-doors.replay.json pack metadata to rulepack-prod-030.signed.json.
+    why: >-
+      no-path-doors-fixture-freshness.test.ts enforces that no-path-doors.replay.json matches the latest signed pack on
+      disk; re-running all 27 walks and 5 counterexamples against seq-30 produces identical outcomes and door orders.
+spend:
+  wall_clock_hours: 1

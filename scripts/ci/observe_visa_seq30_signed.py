@@ -25,6 +25,7 @@ EXPECTED_SIGNED_SEQUENCE = 30
 # an xfail or an extra skip is red.
 TEST_MODULES = (
     ("backend/tests/services/visa_engine/test_seq30_pack.py", 51, 0),
+    ("backend/tests/services/visa_engine/test_e30_family_pricing.py", 50, 0),
     ("backend/tests/services/visa_engine/test_interview_walk_census.py", 106, 14),
     ("backend/tests/scripts/visa_engine/test_review_hold_inventory.py", 7, 0),
 )

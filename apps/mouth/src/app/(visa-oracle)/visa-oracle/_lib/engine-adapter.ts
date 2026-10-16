@@ -452,8 +452,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan rencana total masa tinggal ${C6_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   E28A_INVESTMENT_ELIGIBLE: text(
-    "You committed to a PT PMA as shareholder-director or shareholder-commissioner, with paid-up capital of IDR 2.5 billion or more and total investment capital of IDR 10 billion or more.",
-    "Anda berkomitmen pada PT PMA sebagai pemegang saham dan direktur atau pemegang saham dan komisaris, dengan modal disetor minimal Rp 2,5 miliar dan total modal investasi minimal Rp 10 miliar.",
+    "You committed to a PT PMA with paid-up capital of IDR 2.5 billion or more and total investment capital of IDR 10 billion or more.",
+    "Anda berkomitmen pada PT PMA dengan modal disetor minimal Rp 2,5 miliar dan total modal investasi minimal Rp 10 miliar.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
     `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus income or allowance of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,

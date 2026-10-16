@@ -361,19 +361,26 @@ to 118.
 
 What the pack contains:
 
-1. `SEQ29-A2` (E28A pricing): `E28A` `pricing_key` set to `kitas_permits` / `Investor KITAS (Offshore)`
-   (IDR 17,000,000) and `duration_options` `[365 -> Investor KITAS (Offshore), 730 -> Investor KITAS 2 Years (Offshore)]`
-   (IDR 17,000,000 / 19,000,000).
+1. `SEQ29-A2` (`el.e28a.investment` passive shareholders): drops the `investment.proposed_role in
+[SHAREHOLDER_DIRECTOR, SHAREHOLDER_COMMISSIONER]` conjunct and `"investment.proposed_role"` from
+   `required_facts` so a passive PT PMA shareholder meeting the IDR 2.5bn paid-up and IDR 10bn total
+   investment thresholds is admitted to `E28A` (verified against saved official page
+   `research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt`).
 2. `SEQ29-D1` (E28D/E28F director/commissioner requirement): `el.e28d.branch-or-subsidiary` and
    `el.e28f.ikn-subsidiary` require `investment.proposed_role in [SHAREHOLDER_DIRECTOR, SHAREHOLDER_COMMISSIONER]`
-   (Permenkumham 22/2023 Pasal 39(2)(a), 41(2)(a)).
-3. `S02` (A1 onshore conversion exclusion): new rule `hf.a1-onshore-conversion-excluded` (`A1_NOT_CONVERTIBLE`)
-   excludes `A1` when `process.wants_onshore_conversion == true` (UU 6/2011 Pasal 166(3)(a), PP 31/2013 Pasal 166(3)(a)).
+   with `on_unknown: NEEDS_INPUT` (Permenkumham 22/2023 Pasal 44(1), 46(1); saved official pages
+   `dd5e2a06-20261015T142249Z.txt` and `74e25e50-20261015T142250Z.txt`).
+3. `S02` (A1 onshore conversion exclusion): new rule `hf.a1.onshore-conversion-excluded` (`A1_NOT_CONVERTIBLE`)
+   excludes `A1` when `process.wants_onshore_conversion == true` (Permen Imipas 10/2026
+   `808d691c-374e-5581-8186-9eb54d0ca7ab` and Imigrasi Alih Status portal
+   `dcf08e19-fbc3-5f96-93fa-0325b1ffe91d`: "Izin Tinggal yang berasal dari Bebas Visa Kunjungan tidak dapat
+   dialihstatuskan").
 4. `SEQ29-E30-02` (E30A/E30B duration options): `E30A` gains 365/730-day `duration_options` (IDR 9,000,000 /
    11,500,000) and `E30B` gains 365/730/1460-day `duration_options` (IDR 9,000,000 / 11,500,000 / 15,000,000).
-5. `SEQ29-S1` (E28 portal source receipts): the six official E28A–E28F Imigrasi portal records move to the
-   verified 2026-10-15 snapshots (`research/visa/2026-10-15-e28-pages/receipts.json`, `verified_by:
-claude-opus-5-5-20261015`), with `content_sha256` set to the saved `*.txt` sha256.
+5. `SEQ29-S1` (E28B/E28D/E28F `sponsor_types`): `E28B`, `E28D`, and `E28F` `sponsor_types` move from
+   `["INVESTMENT"]` to `["NONE"]` (`Anda tidak membutuhkan penjamin/sponsor untuk mengajukan visa ini`,
+   verified against `research/visa/2026-10-15-e28-pages/e28-pages.receipts.jsonl`; the 28 `source_records`
+   remain byte-identical to signed seq-29).
 6. `SEQ29-N1` (E28C/E28D/E28F titles): `E28C.names.id`, `E28D.names.id`, and `E28F.names.{id,en}` match the
    current headings on `imigrasi.go.id`.
 

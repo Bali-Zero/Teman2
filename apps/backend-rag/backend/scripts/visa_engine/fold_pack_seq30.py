@@ -24,8 +24,10 @@ stay byte-identical to signed seq-29 and six source-backed items land:
    Insert a ``HARD_FILTER`` ``EXCLUDE`` rule on ``A1``
    (``aee1a12d-3285-526e-8a6f-3d8467fe5d72``) when
    ``process.wants_onshore_conversion == True`` with reason code ``A1_NOT_CONVERTIBLE`` and
-   ``on_unknown: "NO_EFFECT"``, backed by ``808d691c-374e-5581-8186-9eb54d0ca7ab`` (PP 48/2021)
-   and ``dcf08e19-fbc3-5f96-93fa-0325b1ffe91d`` (Imigrasi Alih Status portal).
+   ``on_unknown: "NO_EFFECT"``, backed by ``808d691c-374e-5581-8186-9eb54d0ca7ab`` (Permen Imipas
+   10/2026 — A1 BVK product authority) and ``dcf08e19-fbc3-5f96-93fa-0325b1ffe91d`` (Imigrasi
+   Alih Status portal: "Izin Tinggal yang berasal dari Bebas Visa Kunjungan tidak dapat
+   dialihstatuskan").
 4. ``SEQ29-E30-02`` — ``E30A`` and ``E30B`` ``duration_options``:
    Populate ``E30A`` ``duration_options`` (365d -> 9.000.000 IDR, 730d -> 11.500.000 IDR) and
    ``E30B`` ``duration_options`` (365d -> 9.000.000 IDR, 730d -> 11.500.000 IDR, 1460d ->
