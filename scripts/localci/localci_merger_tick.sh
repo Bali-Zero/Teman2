@@ -128,12 +128,12 @@ if grep -q -- "--code-sha" "$CODE/merger.py"; then CODE_FLAG="--code-sha=$SHA"; 
 # prune runs AFTER it: the decision first, then the gate removes what it wrote and trims the VM when an image went
 HOST_PATH="${MERGER_HOST_PATH:-/System/Volumes/Data}"
 [ -d "$HOST_PATH" ] || HOST_PATH=/
-FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"   # B15: the START floor = Zero's 50 GB (2026-10-16, was 90) + 10 (merger.py HOST_FLOOR_GB + START_MARGIN_GB)
+FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"   # B15: Zero's 50 GB (2026-10-16, was 90) + 10. B39: the heartbeat's threshold only; the START floor follows the plan and is the merger's (56 light, 68 heavy)
 FREE="$(df -Pk "$HOST_PATH" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ { printf "%d", $4 * 1024 / 1000000000 }' || true)"
 FREE_FLAG=""
 FLOOR_FLAG=""
-if [ -n "$FREE" ] && grep -q -- "--host-free-gb" "$CODE/merger.py"; then FREE_FLAG="--host-free-gb=$FREE"; FLOOR_FLAG="--min-host-free-gb=$FLOOR_GB"; fi
-if [ -n "$FREE" ] && [ "$FREE" -lt "$FLOOR_GB" ]; then WARN="host_below_floor free_gb=$FREE start_floor_gb=$FLOOR_GB: no run started"; fi
+if [ -n "$FREE" ] && grep -q -- "--host-free-gb" "$CODE/merger.py"; then FREE_FLAG="--host-free-gb=$FREE"; FLOOR_FLAG="${MERGER_MIN_HOST_FREE_GB:+--min-host-free-gb=$MERGER_MIN_HOST_FREE_GB}"; fi   # B39: a floor only when the operator set one
+if [ -n "$FREE" ] && [ "$FREE" -lt "$FLOOR_GB" ]; then WARN="host_below_floor free_gb=$FREE start_floor_gb=$FLOOR_GB: no run started"; [ -n "${MERGER_MIN_HOST_FREE_GB:-}" ] || WARN="host_below_floor free_gb=$FREE start_floor_gb=$FLOOR_GB: heavy runs wait, a light plan starts from 56 (the tick journals the floor it applied)"; fi
 if [ -z "$FREE" ]; then WARN="host free space unreadable (df -Pk $HOST_PATH): no run started"; fi   # a floor unread is not a floor met
 echo "merger_tick: $(date -u +%FT%TZ) code=${SHA:0:12} host_free_gb=${FREE:-unread}"
 TICK_RC=0
