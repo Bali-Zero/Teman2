@@ -298,6 +298,37 @@ def test_docs_guardian_without_the_helper_falls_back_to_a_bare_arm_that_cannot_f
     assert _called(tmp_path, "gh.log").split() == ["pr", "merge", "12", "--auto"] and "MERGE INTENT FAILED" not in notified
 
 
+def _poller():
+    import importlib.util
+    root = Path(__file__).resolve().parents[3]
+    spec = importlib.util.spec_from_file_location("b31_post_publish_poller", root / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.mark.parametrize("rc, stdout, labelled, alerts", [
+    (0, "SIGNAL_INTENT pr=1 label=applied queue=absent arm=skipped\n", True, 0),
+    (2, "SIGNAL_INTENT pr=1 label=failed queue=absent arm=skipped\n", False, 1),   # B31: exit 2 also prints arm=skipped; it is NOT a labelled PR
+    (2, "SIGNAL_INTENT pr=1 label=failed queue=present arm=armed\n", False, 1),
+    (3, "", False, 0),
+])
+def test_the_poller_logs_labelled_only_for_exit_0_and_alerts_on_exit_2(monkeypatch, rc, stdout, labelled, alerts):
+    """B31 C4: `returncode == 0 and "arm=skipped"` — a helper that failed the label still says arm=skipped on stdout."""
+    mod = _poller()
+    logs, sent = [], []
+    monkeypatch.setattr(mod, "log", logs.append)
+    monkeypatch.setattr(mod, "send_telegram_alert", lambda *a, **k: sent.append(k.get("dedup_key", "")))
+    monkeypatch.setattr(mod, "_pr_state", lambda n: None)
+    monkeypatch.setattr(mod, "_log_gh_failure", lambda *a, **k: None)
+    monkeypatch.setattr(mod.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a[0], rc, stdout, "boom"))
+    got = mod._arm_pr("https://github.com/o/r/pull/1", "article")
+    assert got is labelled
+    assert any("labelled merge-intent" in line for line in logs) is labelled
+    assert len([d for d in sent if "unlabelled" in d]) == alerts
+
+
 def test_the_signal_merge_intent_shell_suite_passes():
     """B31 L1: the guilt/innocence table of the helper (valid left alone, stale refreshed, bounded retry, read-back, exit 2) lives in shell."""
     root = Path(__file__).resolve().parents[3]

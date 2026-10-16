@@ -32,5 +32,12 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b31-dg-exit-always": ('scripts/docs_guardian.sh', 'if [[ "${INTENT_FAILED:-0}" == "1" ]]; then exit 1; fi', 'if [[ "${INTENT_FAILED:-0}" != "X" ]]; then exit 1; fi', ("scripts/localci/tests/test_label_census.py",)),
     "b31-dg-exit-default-failed": ('scripts/docs_guardian.sh', 'if [[ "${INTENT_FAILED:-0}" == "1" ]]; then exit 1; fi', 'if [[ "${INTENT_FAILED:-1}" == "1" ]]; then exit 1; fi', ("scripts/localci/tests/test_label_census.py",)),
     "b31-dg-gate-url-empty-allowed": ('scripts/docs_guardian.sh', '-n "$PR_URL" && "$PR_URL" =~', '-z "$PR_URL" && "$PR_URL" =~', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-w-rc-negative-is-zero": ("scripts/localci/label_intent.py", "return res.returncode, res.stdout if stdout_only", "return max(res.returncode, 0), res.stdout if stdout_only", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-w-oserror-rc1": ("scripts/localci/label_intent.py", "return 127, f", "return 1, f", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-w-decode-errors-strict": ("scripts/localci/label_intent.py", 'text=True, errors="replace", env=env', "text=True, env=env", ("scripts/localci/tests/test_label_census.py",)),
+    "b31-w-arm-failure-beats-label": ("scripts/localci/label_intent.py", 'yield Outcome(label, why, "failed" if failed else "armed", 2 if label == "failed" else (3 if failed else 0)', 'yield Outcome(label, why, "failed" if failed else "armed", 3 if failed else (2 if label == "failed" else 0)', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-poller-returncode-conjunct-dropped": ("apps/bali-intel-scraper/scripts/post_publish_poller.py", 'if result.returncode == 0 and "arm=skipped" in result.stdout:', 'if "arm=skipped" in result.stdout:', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-poller-skipped-conjunct-dropped": ("apps/bali-intel-scraper/scripts/post_publish_poller.py", 'if result.returncode == 0 and "arm=skipped" in result.stdout:', 'if result.returncode == 0:', ("scripts/localci/tests/test_label_census.py",)),
+    "b31-poller-exit-2-alert-dropped": ("apps/bali-intel-scraper/scripts/post_publish_poller.py", "if result.returncode == 2:   # B31", "if result.returncode == 99:   # B31", ("scripts/localci/tests/test_label_census.py",)),
 }
 ROWS.update(_pc.auto_mutants(ROOT))

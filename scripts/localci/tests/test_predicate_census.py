@@ -54,7 +54,7 @@ def test_a_generated_mutant_changes_exactly_its_conditional():
     assert mutants
     for name, (rel, old, new, _tests) in mutants.items():
         assert (ROOT / rel).read_text().count(old) == 1 and old != new, name
-        assert "(not (" in new or new.rstrip().endswith(("ZeroDivisionError", "False")) or "ZeroDivisionError" in new or "False" in new, name
+        assert any(m in new for m in ("(not (", "ZeroDivisionError", "False", "next(iter(")), name
 
 
 # ---- the extractor's own tests: gate-b31p's python constructs. Every atom is a row, or the extractor raises (never silent).
@@ -88,6 +88,16 @@ ATTACKS = [
     ("P27-await", "async def gp27(a):\n    return await a\n", ["a"]),
     ("P28-global", "def gp28():\n    global G\n    G = 1\n", ["G"]),
     ("P29-syntax-error", "def gp29(:\n", ["x"]),
+    ("Q01-for-else", "def q1(xs):\n    for x in xs:\n        pass\n    else:\n        return 0\n    return 1\n", ["x"]),
+    ("Q02-while-else", "def q2(n):\n    while n:\n        n -= 1\n    else:\n        return 0\n    return 1\n", ["n"]),
+    ("Q03-try-finally", "def q3(p):\n    try:\n        return p['n']\n    except KeyError:\n        return 0\n    finally:\n        pass\n", ["KeyError"]),
+    ("Q04-dict-dispatch", "def q4(k):\n    d = {'a': 1, 'b': 2}\n    return d[k]\n", ["d[k]"]),
+    ("Q05-bool-index", "def q5(a, b, c):\n    return [a, b][c]\n", ["c"]),
+    ("Q06-min", "def q6(a, b):\n    return min(a, b)\n", ["min(a, b)"]),
+    ("Q07-max", "def q7(a, b):\n    return max(a, b)\n", ["max(a, b)"]),
+    ("Q08-getattr", "def q8(a):\n    return getattr(a, 'x', None)\n", ["getattr(a, 'x', None)"]),
+    ("Q09-dict-literal-index", "def q9(k):\n    return {'a': 1}[k]\n", ["k"]),
+    ("Q10-isnumeric", "def q10(s):\n    return s.isnumeric()\n", ["s.isnumeric()"]),
     ("P30-except-tuple", "def gp30(p):\n    try:\n        return p['n']\n    except (KeyError, ValueError):\n        return 0\n", ["(KeyError, ValueError)"]),
 ]
 
@@ -103,9 +113,13 @@ def test_every_atom_of_a_construct_is_a_row_or_the_extractor_raises(name, src, a
     assert not missing, f"{name}: silent miss {missing} in {sorted(texts)}"
 
 
+RAISES = {"P08-lambda-ifexp", "P09-match", "P10-assert", "P11-filter-lambda", "P16-suppress", "P17-for-else", "P18-match-guard", "P20-walrus", "P21-bare-except", "P27-await",
+          "P28-global", "P29-syntax-error", "Q01-for-else", "Q02-while-else", "Q03-try-finally", "Q05-bool-index", "Q09-dict-literal-index"}
+
+
 def test_the_denied_constructs_raise_and_the_modelled_ones_do_not():
     for name, src, _ in ATTACKS:
-        if name.split("-", 1)[1] in ("match", "match-guard", "assert", "suppress", "walrus", "await", "global", "syntax-error") or name in ("P08-lambda-ifexp", "P21-bare-except") or name == "P11-filter-lambda":
+        if name in RAISES:
             with pytest.raises(ValueError):
                 pc.extract_python(src)
         else:

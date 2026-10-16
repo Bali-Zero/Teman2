@@ -10,7 +10,8 @@ Rules the plan carries (B31, B31-prime):
   - the label is read back first with `label_census.py verify` (rc 0 valid, 1 not valid; ANYTHING else is unknown and is retried, never read as valid);
   - valid: nothing is written; not valid: remove (when present) then add, retried; then read back again; only a read-back rc 0 is success;
   - the wall-clock deadline is asked before every network call and every sleep; a sleep never runs past it;
-  - a label not shown valid at the end is FATAL: exit 2; an arm failure is exit 3; usage is exit 1.
+  - a label not shown valid at the end is FATAL: exit 2, even when the arm fails too (the label is what merges after the flip); an arm failure
+    with a valid label is exit 3; usage is exit 1. A command that cannot start is rc 127; a command killed by a signal has a negative rc: both unknown.
 """
 from __future__ import annotations
 
@@ -174,14 +175,14 @@ def plan(cfg: Cfg):
         return
     r = yield Act("arm")
     failed = r.rc != 0 and not arm_is_benign(r.out)
-    yield Outcome(label, why, "failed" if failed else "armed", 3 if failed else (0 if label == "applied" else 2), r.rc, r.out)
+    yield Outcome(label, why, "failed" if failed else "armed", 2 if label == "failed" else (3 if failed else 0), r.rc, r.out)
 
 
 # --------------------------------------------------------------------------------------------------- the world (I/O only)
 def _run(cmd: list[str], stdout_only: bool = False, env: dict | None = None) -> tuple[int, str]:
     """A command that cannot start is rc 127 (what the shell said), never a traceback."""
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, env=env)
+        res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", env=env)
     except OSError as exc:
         return 127, f"{cmd[0]}: {exc}"
     return res.returncode, res.stdout if stdout_only else res.stdout + res.stderr

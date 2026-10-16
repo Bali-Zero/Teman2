@@ -27,11 +27,11 @@
 #      it is what merges until the flip — and the exit stays 2).
 #
 # Output (one line): SIGNAL_INTENT pr=N label=applied|failed queue=present|absent|unknown arm=armed|skipped
-# Exit: 0 ok, 1 usage, 2 label failed, 3 arm failed.
+# Exit: 0 ok, 1 usage, 2 label failed (also when the arm failed), 3 arm failed with a valid label.
 # Env: SIGNAL_INTENT_REPO (default Bali-Zero/Teman2), SIGNAL_INTENT_BASE (default main),
 #      SIGNAL_INTENT_TRIES (default 4), SIGNAL_INTENT_BACKOFF_S (default 2, doubled each try),
 #      SIGNAL_INTENT_DEADLINE_S (default 45),
-#      SIGNAL_INTENT_SHOW_CONFIG=1 (print the effective tries/deadline/backoff and exit 0: how the defaults are pinned),
-#      SIGNAL_INTENT_VERIFY (a command run as `<cmd> <repo> <pr>`: 0 valid, other not; default label_census.py verify).
+#      SIGNAL_INTENT_SHOW_CONFIG=1 (print the effective tries/deadline/backoff and exit 0 WITHOUT labelling anything: a diagnostic, never export it),
+#      SIGNAL_INTENT_VERIFY (a command run as `<cmd> <repo> <pr>`: rc 0 valid, 1 not valid, ANY other rc unknown; default label_census.py verify).
 HERE="$(dirname "${BASH_SOURCE[0]}")"
 exec python3 "$HERE/localci/label_intent.py" "$@"

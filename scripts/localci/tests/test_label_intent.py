@@ -140,7 +140,7 @@ def reference(cfg, world):
     rc, out = world.call("arm")
     benign = any(m in out.lower() for m in ("already queued", "auto-merge enabled", "already enabled", "clean"))
     if rc != 0 and not benign:
-        return li.Outcome(label, why, "failed", 3, rc, out)
+        return li.Outcome(label, why, "failed", 2 if label == "failed" else 3, rc, out)
     return li.Outcome(label, why, "armed", 0 if label == "applied" else 2, rc, out)
 
 
@@ -187,7 +187,7 @@ def test_every_action_kind_and_exit_is_reached_in_the_domain():
             kinds |= {k for k, _ in ca}
             exits.add((a.exit, a.label, a.arm))
     assert kinds == {"verify", "view", "remove", "add", "sleep", "arm"}
-    assert {(0, "applied", "armed"), (0, "applied", "skipped"), (2, "failed", "armed"), (2, "failed", "skipped"), (3, "failed", "failed"), (3, "applied", "failed")} <= exits
+    assert {(0, "applied", "armed"), (0, "applied", "skipped"), (2, "failed", "armed"), (2, "failed", "skipped"), (2, "failed", "failed"), (3, "applied", "failed")} <= exits
 
 
 # ---- the named cases: the ones a grader attacked, stated as sentences

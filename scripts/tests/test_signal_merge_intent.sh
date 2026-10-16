@@ -28,7 +28,7 @@ cat > "$SANDBOX/bin/gh" <<'FAKEGH'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$FAKE_GH_LOG"
 case "$1 $2" in
-  "pr view") [ -z "${FAKE_VIEW_SLEEP:-}" ] || /bin/sleep "$FAKE_VIEW_SLEEP"; [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "${FAKE_LABEL_NAME:-localci:merge-shadow-ok}"; exit 0 ;;
+  "pr view") [ -z "${FAKE_VIEW_BAD:-}" ] || printf '\377\376\n'; [ -z "${FAKE_VIEW_SLEEP:-}" ] || /bin/sleep "$FAKE_VIEW_SLEEP"; [ "${FAKE_HAS_LABEL:-0}" = 0 ] || echo "${FAKE_LABEL_NAME:-localci:merge-shadow-ok}"; exit 0 ;;
   "pr edit")
     case "$*" in
       *--add-label*)
@@ -62,6 +62,10 @@ FAKEVERIFY
 REAL_PY="$(command -v python3)"
 printf '#!/usr/bin/env bash\ncase "$1" in *label_census.py) if [ -n "${FAKE_PY_LOG:-}" ]; then echo "PY $*" >> "$FAKE_PY_LOG"; exit 0; fi ;; esac\nexec %s "$@"\n' "$REAL_PY" > "$SANDBOX/bin/python3"
 printf '#!/usr/bin/env bash\necho "$1" >> "$FAKE_SLEEP_LOG"\n[ "${FAKE_REAL_SLEEP:-0}" = 1 ] && exec /bin/sleep "$1"\nexit 0\n' > "$SANDBOX/bin/sleep"
+printf '#!/bin/sh\nprintf "VERIFY killed\\n" >> "$FAKE_GH_LOG"\nkill -KILL $$\n' > "$SANDBOX/bin/verify-kill"
+printf '#!/bin/sh\nprintf "VERIFY termed\\n" >> "$FAKE_GH_LOG"\nkill -TERM $$\n' > "$SANDBOX/bin/verify-term"
+printf '#!/bin/sh\nprintf "VERIFY badutf\\n" >> "$FAKE_GH_LOG"\nprintf "\\377\\376 not utf8\\n"\nexit 0\n' > "$SANDBOX/bin/verify-badutf"
+chmod +x "$SANDBOX/bin/verify-kill" "$SANDBOX/bin/verify-term" "$SANDBOX/bin/verify-badutf"
 chmod +x "$SANDBOX/bin/gh" "$SANDBOX/bin/verify" "$SANDBOX/bin/sleep" "$SANDBOX/bin/python3"
 
 run() {  # run <PR> [ENV=VAL...]
@@ -112,7 +116,7 @@ for q in 1 probefail; do
   check "label failure, queue $q: SIGNAL_INTENT_FAIL on stderr, label=failed reported" "$([ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && echo 1 || echo 0)"
 done
 run 7 FAKE_EDIT_RC=1 FAKE_RULES_COUNT=1 FAKE_MERGE_RC=1
-check "label ko + arm ko, queue present: exit 3 (the arm result)" "$([ $RC = 3 ] && echo 1 || echo 0)"
+check "label ko + arm ko, queue present: exit 2 (the label is what merges after the flip)" "$([ $RC = 2 ] && [ "$(has 'arm=failed' "$ERR")" = 1 ] && echo 1 || echo 0)"
 
 # The mutants of the helper's logic are the b31-* table of scripts/localci/tests/mutants/merger_mutants.py (a bash-sed copy of it lived here).
 
@@ -243,7 +247,19 @@ done
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_RC=137 FAKE_VERIFY_UNREADABLE=0
 check "verify rc 137 on a label that is really there is never read as valid: no 'label=applied'" "$([ "$(has 'label=applied' "$OUT")" = 0 ] && echo 1 || echo 0)"
 run 7 FAKE_RULES_COUNT=0 PATH="$SANDBOX/nogh:/usr/bin:/bin"
-check "gh cannot start (rc 127 from the executor): label=failed, the arm fails too (exit 3), loud, no traceback" "$([ $RC = 3 ] && [ "$(has 'Traceback' "$ERR")" = 0 ] && [ "$(has 'label=failed' "$ERR")" = 1 ] && [ "$(has 'arm=failed' "$ERR")" = 1 ] && echo 1 || echo 0)"
+check "gh cannot start (rc 127 from the executor): label=failed, the arm fails too (exit 2), loud, no traceback" "$([ $RC = 2 ] && [ "$(has 'Traceback' "$ERR")" = 0 ] && [ "$(has 'label=failed' "$ERR")" = 1 ] && [ "$(has 'arm=failed' "$ERR")" = 1 ] && echo 1 || echo 0)"
+
+# B31'' cure: a verify killed by a signal (negative rc), one that cannot start (rc 127) and invalid UTF-8 are all UNKNOWN reads, never a write, never success
+for v in verify-kill verify-term; do
+  run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 SIGNAL_INTENT_VERIFY="$SANDBOX/bin/$v"
+  check "$v: exit 2, label=failed, SIGNAL_INTENT_FAIL, no pr edit, four reads" "$([ $RC = 2 ] && [ "$(has 'label=failed' "$OUT")" = 1 ] && [ "$(has 'SIGNAL_INTENT_FAIL' "$ERR")" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && [ "$(printf '%s\n' "$CALLS" | grep -c '^VERIFY')" = 4 ] && echo 1 || echo 0)"
+done
+run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 SIGNAL_INTENT_VERIFY="$SANDBOX/bin/does-not-exist"
+check "a verify that cannot start: exit 2, (rc=127), no pr edit" "$([ $RC = 2 ] && [ "$(has '(rc=127)' "$ERR")" = 1 ] && [ "$(has 'pr edit' "$CALLS")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 SIGNAL_INTENT_VERIFY="$SANDBOX/bin/verify-badutf"
+check "invalid UTF-8 from the verify: no traceback, valid label, exit 0" "$([ $RC = 0 ] && [ "$(has 'Traceback' "$ERR")" = 0 ] && echo 1 || echo 0)"
+run 7 FAKE_RULES_COUNT=0 FAKE_VIEW_BAD=1 FAKE_HAS_LABEL=1
+check "invalid UTF-8 from gh: no traceback, the stale label is refreshed, exit 0" "$([ $RC = 0 ] && [ "$(has 'Traceback' "$ERR")" = 0 ] && [ "$(has '--remove-label' "$CALLS")" = 1 ] && echo 1 || echo 0)"
 
 # L4: an unreadable verify is unknown, never a reason to remove the label
 run 7 FAKE_RULES_COUNT=0 FAKE_HAS_LABEL=1 FAKE_VERIFY_UNREADABLE=1 FAKE_VERIFY=valid

@@ -23,10 +23,10 @@ ROOT = Path(__file__).resolve().parents[2]
 TABLE = ROOT / "scripts/localci/predicate_census.jsonl"
 SCOPE = ("scripts/localci/label_intent.py", "scripts/localci/label_census.py")
 PURE_FUNCTIONS = {"plan", "_pause", "_first_read", "_write", "_readback", "parse_config", "has_label", "arm_is_benign", "_tail", "_note", "_number"}
-PREDICATE_CALLS = {"isinstance", "issubclass", "bool", "any", "all", "filter", "hasattr", "callable", "startswith", "endswith", "isdigit", "isalpha",
+PREDICATE_CALLS = {"min", "max", "getattr", "truth", "isnumeric", "isdecimal", "islower", "isupper", "istitle", "isinstance", "issubclass", "bool", "any", "all", "filter", "hasattr", "callable", "startswith", "endswith", "isdigit", "isalpha",
                    "isascii", "isalnum", "isspace", "fullmatch", "match", "search", "exists", "is_file", "is_dir"}
-DENIED = (ast.Match, ast.Assert, ast.With, ast.AsyncWith, ast.Lambda, ast.NamedExpr, ast.Global, ast.Nonlocal, ast.AsyncFor, ast.AsyncFunctionDef,
-          ast.Await, ast.TryStar)
+DENIED = tuple(getattr(ast, n) for n in ("Match", "Assert", "With", "AsyncWith", "Lambda", "NamedExpr", "Global", "Nonlocal", "AsyncFor",
+                                          "AsyncFunctionDef", "Await", "TryStar") if hasattr(ast, n))   # Match and TryStar do not exist before py3.10 / 3.11
 
 
 @dataclass(frozen=True)
@@ -89,7 +89,17 @@ def extract_python(src: str) -> list[tuple[str, int, int, str, str]]:
         s, e = _span(lines, offs, node)
         found.setdefault((s, e), (norm(src[s:e]), s, e, kind, owner.get(id(origin), "")))
 
+    dicts = {(owner.get(id(a), ""), t.id) for a in ast.walk(tree) if isinstance(a, ast.Assign) and isinstance(a.value, ast.Dict)
+             for t in a.targets if isinstance(t, ast.Name)}
     for n in ast.walk(tree):
+        if isinstance(n, (ast.For, ast.While)) and n.orelse:
+            raise ValueError(f"line {n.lineno}: a loop `else` is a decision the census does not model")
+        if isinstance(n, ast.Try) and n.finalbody:
+            raise ValueError(f"line {n.lineno}: `finally` is a path the census does not model")
+        if isinstance(n, ast.Subscript) and isinstance(n.value, (ast.List, ast.Tuple, ast.Dict, ast.Set)):
+            raise ValueError(f"line {n.lineno}: indexing a literal (a boolean or dict dispatch) hides a condition: write an if")
+        if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and (owner.get(id(n), ""), n.value.id) in dicts:
+            add(n, "dispatch", n)
         if isinstance(n, DENIED):
             raise ValueError(f"line {n.lineno}: {type(n).__name__} is a construct the census does not model: write it as an if/boolean or extend the extractor")
         if isinstance(n, (ast.If, ast.While)):
@@ -138,7 +148,15 @@ def auto_mutants(rootdir: Path = ROOT) -> dict[str, tuple[str, str, str, tuple[s
         src = (rootdir / rel).read_text()
         for c in (c for c in conds if c.file == rel):
             text = src[c.start:c.end]
-            new = "ZeroDivisionError" if c.kind == "except" else ("False" if c.text == '__name__ == "__main__"' else f"(not ({text}))")   # a negated entry guard would run main() at import
+            if c.kind == "dispatch":
+                base = text[: text.index("[")]
+                new = f"{base}[next(iter({base}))]"
+            elif c.kind == "except":
+                new = "ZeroDivisionError"
+            elif c.text == '__name__ == "__main__"':
+                new = "False"   # a negated entry guard would run main() at import
+            else:
+                new = f"(not ({text}))"
             lo, hi = c.start, c.end
             while src.count(src[lo:hi]) > 1:
                 lo, hi = max(0, lo - 12), min(len(src), hi + 12)
