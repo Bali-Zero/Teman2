@@ -106,6 +106,7 @@ _PII_EXACT_KEYS: frozenset[str] = frozenset(
         "csrf_token",
         "nz_access_token",
         "nz_csrf_token",
+        "evidence_ref",
     }
 )
 

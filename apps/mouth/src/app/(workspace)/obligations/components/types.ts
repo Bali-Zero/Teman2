@@ -27,6 +27,7 @@ export const COUNTER_STATUSES = [
   "approved",
   "rejected",
   "alerted",
+  "done",
 ] as const;
 export type CounterStatus = (typeof COUNTER_STATUSES)[number];
 
