@@ -2128,3 +2128,361 @@ def test_negated_firebreak_row_with_bare_status_owner_is_malformed():
 def test_declared_firebreak_row_with_bare_status_owner_stays_exempt():
     raw = "- opened 2026-06-01 | fb artifact | step, DELIBERATE FIREBREAK | closed | proof"
     assert par.parse_entry(raw, par._parse_now(NOW)).cls == par.CLASS_FIREBREAK
+
+
+# ---------------------------------------------------------------------------
+# Mutation-pinned decisions (lane-4 sweep, 2026-10-12). Each case below was a
+# surviving mutant of a parse / PR-ref / freshness decision. Expected values come
+# from the docstrings and comments of the functions named.
+# ---------------------------------------------------------------------------
+
+import subprocess as _mut_sp  # noqa: E402
+from types import SimpleNamespace as _MutNS  # noqa: E402
+
+
+def _mut_fake_run(returncode=0, stdout="", stderr="", raises=None, calls=None):
+    """A stand-in for subprocess.run that, like the real one, yields captured
+    text ONLY when asked for capture_output=True and text=True."""
+
+    def run(cmd, **kw):
+        if calls is not None:
+            calls.append((cmd, kw))
+        if raises is not None:
+            raise raises
+        if kw.get("capture_output") is True and kw.get("text") is True:
+            return _MutNS(returncode=returncode, stdout=stdout, stderr=stderr)
+        return _MutNS(returncode=returncode, stdout=None, stderr=None)
+
+    return run
+
+
+_MUT_NOW = par._parse_now(NOW)
+
+
+def _mut_reasons(raw: str):
+    return par.parse_entry(raw, _MUT_NOW).malformed_reasons
+
+
+# --- _extract_missing_step: the middle of an over-split entry --------------
+
+
+def test_missing_step_rejoins_the_whole_middle_with_pipes():
+    parts = ["- opened 2026-07-01", "art", "m1", " m2 ", "me", "proof"]
+    assert par._extract_missing_step(parts) == "m1|m2"
+
+
+def test_missing_step_single_middle_field_is_that_field():
+    parts = ["- opened 2026-07-01", "art", "the step", "me", "proof"]
+    assert par._extract_missing_step(parts) == "the step"
+
+
+def test_missing_step_four_field_shape_falls_back_to_field_two():
+    # artifact + owner + proof with nothing "in the middle": the documented
+    # fallback is field[2] (see _extract_missing_step), never field 1 or 3.
+    parts = ["- opened 2026-07-01", "art", "field-two", "last"]
+    assert par._extract_missing_step(parts) == "field-two"
+
+
+# --- _split_trailing_update_notes ------------------------------------------
+
+
+def test_trailing_update_note_is_peeled_from_a_five_field_entry():
+    parts = ["d", "art", "step", "me", "**UPDATE 07-12** did a thing"]
+    core, notes = par._split_trailing_update_notes(parts)
+    assert core == ["d", "art", "step", "me"]
+    assert notes == ["**UPDATE 07-12** did a thing"]
+
+
+def test_update_shaped_last_field_of_a_four_field_entry_is_not_peeled():
+    # Peeling must leave a plausible >=4-field entry: with exactly 4 fields the
+    # last one IS the proof, even if it starts like an update note.
+    parts = ["d", "art", "me", "**UPDATE** proof text"]
+    core, notes = par._split_trailing_update_notes(parts)
+    assert core == parts and notes == []
+
+
+def test_multiple_trailing_update_notes_keep_their_original_order():
+    parts = ["d", "art", "step", "me", "proof", "**UPDATE 1**", "**UPDATE 2**"]
+    core, notes = par._split_trailing_update_notes(parts)
+    assert core == ["d", "art", "step", "me", "proof"]
+    assert notes == ["**UPDATE 1**", "**UPDATE 2**"]
+
+
+# --- extract_open_entries: headings and blockquotes are not continuation ---
+
+
+def test_heading_and_blockquote_lines_never_leak_into_an_open_entry():
+    text = (
+        "- opened 2026-07-01 | art | step | me | proof\n"
+        "# a heading that must not join the row\n"
+        "stray text after the heading\n"
+        "- opened 2026-07-02 | art2 | step2 | me | proof2\n"
+        "> a quote that must not join the row either\n"
+        "more stray text\n"
+    )
+    entries = par.extract_open_entries(text)
+    assert len(entries) == 2
+    assert "heading" not in entries[0] and "stray text after the heading" not in entries[0]
+    assert "quote" not in entries[1] and "more stray text" not in entries[1]
+
+
+def test_a_plain_continuation_line_still_joins_its_entry():
+    """Innocence twin: ordinary wrapped text IS part of the row."""
+    text = "- opened 2026-07-01 | art | step\n  continues | me | proof\n"
+    entries = par.extract_open_entries(text)
+    assert len(entries) == 1 and "continues" in entries[0]
+
+
+# --- parse_entry: segment-count thresholds ---------------------------------
+
+
+def test_two_pipe_segments_is_malformed_with_the_count_named():
+    reasons = _mut_reasons("- opened 2026-07-01 | only-artifact")
+    assert any("only 2 pipe-segment(s)" in r for r in reasons), reasons
+
+
+def test_three_pipe_segments_meets_the_floor():
+    reasons = _mut_reasons("- opened 2026-07-01 | art | a-step")
+    assert not any("pipe-segment" in r for r in reasons), reasons
+
+
+def test_empty_owner_in_a_three_segment_row_is_malformed():
+    reasons = _mut_reasons("- opened 2026-07-01 |  | something")
+    assert any("owner field is empty" in r for r in reasons), reasons
+
+
+def test_empty_owner_is_not_double_reported_on_a_two_segment_row():
+    # Already malformed for its segment count; the owner backstop is guarded
+    # "so this doesn't relabel an already-malformed line's reason".
+    raw = "| - opened 2026-07-01"
+    # Premise: the row IS dated, so the backstop's date guard is not what
+    # keeps the owner reason away.
+    assert par.parse_entry(raw, _MUT_NOW).opened_date is not None
+    reasons = _mut_reasons(raw)
+    assert any("pipe-segment" in r for r in reasons), reasons
+    assert not any("owner field is empty" in r for r in reasons), reasons
+
+
+def test_bare_status_word_owner_is_malformed_in_a_three_segment_row():
+    reasons = _mut_reasons("- opened 2026-07-01 | closed | proof")
+    assert any("bare status word" in r for r in reasons), reasons
+
+
+def test_bare_status_word_is_not_reported_on_a_two_segment_row():
+    raw = "closed | - opened 2026-07-01"
+    assert par.parse_entry(raw, _MUT_NOW).opened_date is not None
+    assert par.parse_entry(raw, _MUT_NOW).owner == "closed"
+    reasons = _mut_reasons(raw)
+    assert any("pipe-segment" in r for r in reasons), reasons
+    assert not any("bare status word" in r for r in reasons), reasons
+
+
+# --- parse_entry: label-anchored missing_step ------------------------------
+
+
+def test_only_an_owner_label_anchors_missing_step_before_it():
+    e = par.parse_entry(
+        "- opened 2026-07-01 | art | the step | owner: me | extra note | the proof", _MUT_NOW
+    )
+    assert e.missing_step == "the step"
+    assert e.owner == "me"
+
+
+def test_only_a_proof_label_anchors_missing_step_before_it():
+    e = par.parse_entry(
+        "- opened 2026-07-01 | art | the step | proof: p | a | b", _MUT_NOW
+    )
+    assert e.missing_step == "the step"
+    assert e.proof == "p"
+
+
+def test_labeled_middle_fields_are_rejoined_up_to_the_first_anchor():
+    e = par.parse_entry(
+        "- opened 2026-07-01 | art | m1 | m2 | owner: me | proof: p", _MUT_NOW
+    )
+    assert e.missing_step == "m1|m2"
+
+
+def test_labeled_row_with_nothing_between_artifact_and_anchor_uses_field_two():
+    # Documented fallback (`if middle else _safe_get(parts, 2)`): nothing sits
+    # between artifact and the first anchor, so field[2] is what is reported.
+    e = par.parse_entry("- opened 2026-07-01 | art | owner: me | proof: p", _MUT_NOW)
+    assert e.missing_step == "owner: me"
+
+
+# --- parse_entry: overdue needs a date --------------------------------------
+
+
+def test_an_undated_row_is_never_overdue():
+    e = par.parse_entry("- opened someday | art | step | me | proof", _MUT_NOW)
+    assert e.opened_date is None
+    assert e.overdue is False and e.age_days is None
+
+
+def test_a_dated_old_row_is_overdue():
+    """Innocence twin: the date, not the shape, is what makes a row overdue."""
+    e = par.parse_entry("- opened 2020-01-01 | art | step | me | proof", _MUT_NOW)
+    assert e.overdue is True
+
+
+# --- _truncate --------------------------------------------------------------
+
+
+def test_truncate_default_limit_is_120_and_exactly_the_limit_is_untouched():
+    s = "x" * 120
+    assert par._truncate(s) == s
+    t = par._truncate("x" * 121)
+    assert len(t) == 120 and t.endswith("…")
+
+
+def test_truncate_honours_an_explicit_limit_including_the_ellipsis():
+    assert par._truncate("abcdef", 6) == "abcdef"
+    assert par._truncate("abcdefg", 6) == "abcde…"
+
+
+# --- _git (the shared read-only runner) ------------------------------------
+
+
+def test_git_runner_reports_a_missing_binary_as_127(monkeypatch, tmp_path):
+    monkeypatch.setattr(par.subprocess, "run", _mut_fake_run(raises=FileNotFoundError()))
+    assert par._git(["status"], cwd=tmp_path) == (127, "", "git not on PATH")
+
+
+def test_git_runner_never_reports_a_spawn_failure_as_success(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        par.subprocess, "run", _mut_fake_run(raises=_mut_sp.TimeoutExpired("git", 1))
+    )
+    rc, out, err = par._git(["status"], cwd=tmp_path)
+    assert rc != 0 and out == ""
+    assert "git invocation failed: TimeoutExpired" in err
+
+
+def test_git_runner_strips_output_and_tolerates_none(monkeypatch, tmp_path):
+    monkeypatch.setattr(par.subprocess, "run", _mut_fake_run(stdout=" abc \n", stderr=" e \n"))
+    assert par._git(["x"], cwd=tmp_path) == (0, "abc", "e")
+
+    def none_run(cmd, **kw):
+        return _MutNS(returncode=0, stdout=None, stderr=None)
+
+    monkeypatch.setattr(par.subprocess, "run", none_run)
+    assert par._git(["x"], cwd=tmp_path) == (0, "", "")
+
+
+# --- _check_pr_merged: only a clean MERGED reply is "merged" ----------------
+
+
+def test_pr_check_asks_gh_for_state_with_captured_text(monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(
+        par.subprocess, "run", _mut_fake_run(stdout='{"state": "MERGED"}', calls=calls)
+    )
+    assert par._check_pr_merged("8368") == {"checked": True, "merged": True, "detail": "MERGED"}
+    cmd, kw = calls[0]
+    assert cmd == ["gh", "pr", "view", "8368", "--json", "state,mergedAt"]
+    assert kw.get("capture_output") is True and kw.get("text") is True
+
+
+def test_pr_check_open_is_checked_but_not_merged(monkeypatch):
+    monkeypatch.setattr(par.subprocess, "run", _mut_fake_run(stdout='{"state": "OPEN"}'))
+    assert par._check_pr_merged("1") == {"checked": True, "merged": False, "detail": "OPEN"}
+
+
+def test_pr_check_payload_without_state_is_checked_not_merged(monkeypatch):
+    monkeypatch.setattr(par.subprocess, "run", _mut_fake_run(stdout="{}"))
+    assert par._check_pr_merged("1") == {
+        "checked": True, "merged": False, "detail": "unknown state"
+    }
+
+
+@pytest.mark.parametrize(
+    "run, detail",
+    [
+        (_mut_fake_run(raises=FileNotFoundError()), "gh not on PATH"),
+        (
+            _mut_fake_run(raises=_mut_sp.TimeoutExpired("gh", 1)),
+            "gh invocation failed: TimeoutExpired",
+        ),
+        (_mut_fake_run(raises=PermissionError("nope")), "gh invocation failed: PermissionError"),
+        (_mut_fake_run(returncode=1, stderr="warn\nHTTP 404: not found\n"), "HTTP 404: not found"),
+        (_mut_fake_run(returncode=4, stderr=""), "gh exited 4"),
+        (_mut_fake_run(stdout="not json"), "unparseable gh output"),
+        (_mut_fake_run(stdout=""), "unparseable gh output"),
+        (_mut_fake_run(stdout="[]"), "unexpected gh payload shape"),
+        (_mut_fake_run(stdout='"MERGED"'), "unexpected gh payload shape"),
+    ],
+)
+def test_pr_check_untrustworthy_replies_are_never_merged(monkeypatch, run, detail):
+    """"checked" False is the only honest answer when the call cannot be trusted;
+    in particular a reply that merely CONTAINS the word MERGED must not count."""
+    monkeypatch.setattr(par.subprocess, "run", run)
+    assert par._check_pr_merged("1") == {"checked": False, "merged": False, "detail": detail}
+
+
+def test_pr_check_nonzero_exit_wins_over_a_merged_looking_stdout(monkeypatch):
+    monkeypatch.setattr(
+        par.subprocess, "run", _mut_fake_run(returncode=1, stdout='{"state": "MERGED"}', stderr="x")
+    )
+    r = par._check_pr_merged("1")
+    assert r["checked"] is False and r["merged"] is False
+
+
+# --- _ledger_freshness: failure detail is the last stderr line -------------
+
+
+def test_freshness_nonzero_exit_reports_the_last_stderr_line(tmp_path, monkeypatch):
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text("x\n")
+    monkeypatch.setattr(
+        par.subprocess, "run",
+        _mut_fake_run(returncode=128, stderr="fatal: first\nfatal: bad revision 'origin/main'\n"),
+    )
+    f = par._ledger_freshness(led)
+    assert f == {"state": "unknown", "behind": None, "detail": "fatal: bad revision 'origin/main'"}
+
+
+def test_freshness_nonzero_exit_with_no_stderr_names_the_code(tmp_path, monkeypatch):
+    led = tmp_path / "PENDING-ARMS.md"
+    led.write_text("x\n")
+    monkeypatch.setattr(par.subprocess, "run", _mut_fake_run(returncode=128, stderr=""))
+    assert par._ledger_freshness(led)["detail"] == "git exited 128"
+
+
+# --- _freshness_line with --ref: the gap wording ---------------------------
+
+
+def test_ref_freshness_line_states_how_many_commits_behind_only_when_behind():
+    behind3 = par._freshness_line({"state": "stale", "behind": 3, "detail": ""}, ref="origin/main")
+    assert "3 commit(s) behind" in behind3
+    behind1 = par._freshness_line({"state": "stale", "behind": 1, "detail": ""}, ref="origin/main")
+    assert "1 commit(s) behind" in behind1
+    even = par._freshness_line({"state": "current", "behind": 0, "detail": ""}, ref="origin/main")
+    assert "commit(s) behind" not in even
+    assert "checkout gap current" in even
+
+
+# --- _default_repo_root: a git answer counts only when it is a real one ----
+
+
+def test_default_repo_root_uses_git_toplevel_when_git_answers(monkeypatch):
+    monkeypatch.delenv("NUZ_REPO_ROOT", raising=False)
+    calls: list = []
+    monkeypatch.setattr(
+        par.subprocess, "run", _mut_fake_run(stdout="/some/where\n", calls=calls)
+    )
+    assert par._default_repo_root() == Path("/some/where")
+    assert calls[0][0] == ["git", "rev-parse", "--show-toplevel"]
+
+
+@pytest.mark.parametrize(
+    "run",
+    [
+        _mut_fake_run(returncode=128, stdout=""),
+        _mut_fake_run(returncode=1, stdout="/nope"),   # failed exit with output
+        _mut_fake_run(returncode=0, stdout="  \n"),    # success with nothing
+        _mut_fake_run(raises=FileNotFoundError()),
+    ],
+)
+def test_default_repo_root_falls_back_to_the_script_location(monkeypatch, run):
+    monkeypatch.delenv("NUZ_REPO_ROOT", raising=False)
+    monkeypatch.setattr(par.subprocess, "run", run)
+    assert par._default_repo_root() == MODULE_PATH.resolve().parent.parent
