@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BLUE Dux note — DEFINITIVE SYNTHESIS + EXECUTION run
 
 Same conversation as your ANALYSIS. Runtime limits are unchanged: you can read and write files inside
@@ -47,3 +51,7 @@ CONTRACT-CONVENTIONS.md is the frozen value domain for the sibling fields; follo
 ## Block-specific Dux facts and decisions for B03
 Use the pinned pre-images in .agent-receipts/udb-wave8-inputs-dux/prior/ (source-index-enhanced, jobs-*, cron-*, job-source-links, GITHUB-WORKFLOW-METADATA, SOURCE-BOUNDARY-PRO, LEAD-DELTA). Observed: naive joins index_* -> src_* matched 0/678 and CI-REGISTRATION-UNMATCHED -> workflow rows 0/114 (dux-requests/DUX-REQ-B03-02.out); your duplicate assumptions must be re-derived from the pre-images, not asserted. The 6030th lead is `runtime_mini_46522da0ef79d3aa7422ca41` and the five historical restore source references are listed verbatim in LEAD-DELTA.json (historical_source_references_retained): src_307bea3dfb94ec31, src_d073f505ff1671ad, src_def7a4c288a552af, src_cdf3ae5e4ecf861c, src_2f350566b97aee80. Check every consumer_id you cite exists (DUX-REQ-B03-03.out lists restore rows).
 Deliver a deterministic census adapter (stdlib, reads only frozen + pinned inputs, refuses on any sha256 mismatch) that emits one row per lead (6030) with the frozen fields, an `x_disposition` in {active, retired, duplicate, excluded, unresolved} and `x_evidence_ref`, plus tests including negative cases. 'active' requires deployed-execution evidence; registration alone is not execution. Expect many `unresolved`; that is honest, not failure.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-39, 47-50, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

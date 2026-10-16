@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # BLUE Dux note — ANALYSIS run (campaign universal-db-wave8-20261015)
 
 Written by the appointed BLUE Dux (claude-opus-5-5, xhigh requested, hosted on Pro). This note
@@ -31,3 +35,7 @@ synthesis run. Native probes against live stores are NOT authorized by ANALYSIS.
 
 ## Resume note for B03 (same conversation 21deb6db-2bcf-4f65-ae16-47e1040160bd)
 Your previous turn ended with two `write_to_file` calls (ANALYSIS.md, PROPOSAL.md) that were never applied: the files do not exist on disk. Re-issue both writes now in full, correcting anything you learned. Earlier `view_file` errors were for paths that do not exist (for example under `.agents/skills/db/references/`); verify a path with list_dir/find before citing it.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-34, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

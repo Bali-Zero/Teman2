@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # B03 Analysis — Active-Consumer Denominator & 6,030-Lead Reconciliation
 
 ## 0. Mandate & Execution Metadata
@@ -84,9 +88,9 @@
 ### Counterexample 2 — Unjoined Multi-Phase Representation Duplicates
 - **Fact Base**:
   1. `consumer-matrix.csv:3-34` (`src_*` for `.github/workflows/*.yml`) already record `GITHUB-WORKFLOW-METADATA.json; workflow sha256 <64hex>` in column 34, while `consumer-matrix.csv:5850-5963` (`CI-REGISTRATION-UNMATCHED-GH-*`, 114 rows) append workflow metadata records keyed by `source-path-sha256=<64hex>`.
-  2. `index_<24hex>` rows (`consumer-matrix.csv:4800-5421`) record `source_id=<24hex>` from `source-index-enhanced.json`, whose 16-hex prefix corresponds to `src_<16hex>` rows from the same index.
+  2. `index_<24hex>` rows (`consumer-matrix.csv:4800-5421`) record `source_id=<24hex>` from `source-index-enhanced.json`, whose proposed 16-hex prefix equality with `src_<16hex>` was falsified by later evidence; no duplicate join follows from that hypothesis.
   3. `SOURCE-PATH-UNMATCHED-PRO-*` and `SOURCE-TRACE-UNMATCHED-PRO-*` (`consumer-matrix.csv:5792-5849`, 58 rows) explicitly state `activation_status=PATH_NOVELTY_NOT_ACTOR_NOVELTY`.
-- **Counterexample**: A single underlying code unit is represented multiple times across disjoint ID namespaces (`src_*`, `index_*`, `CI-REGISTRATION-UNMATCHED-GH-*`, `SOURCE-PATH-UNMATCHED-PRO-*`), inflating the lead count unless cross-namespace identity joins mark secondary rows `duplicate`.
+- **Withdrawn historical inference**: The initial analysis hypothesized one underlying code unit across disjoint ID namespaces (`src_*`, `index_*`, `CI-REGISTRATION-UNMATCHED-GH-*`, `SOURCE-PATH-UNMATCHED-PRO-*`), but namespace/path similarity does not prove actor identity. Current unproved joins remain unresolved; no duplicate promotion is authorized by this historical hypothesis.
 
 ### Counterexample 3 — Cross-Host Launchd Fan-Out and Unverified Retirement
 - **Fact Base**: Identical 24-hex registration digests appear across `pro`, `mini`, and `M5`:
@@ -123,3 +127,7 @@ Consequently:
    - Promotion of `BLOCKED_DISCOVERY` and `BLOCKED_RUNTIME_CONTRACT` leads to `status="active"` with a concrete `store_id` and `operation_id` requires runtime execution and store-target bindings from sibling blocks `B04` and `B07` (and operation-instance contracts from `B05`).
 4. **Runtime Invocation Binding of `scripts/ci/restore_drill_verify.py` to `mini.restore_drill`**:
    - Whether the loaded Mini launchd organ `mini.restore_drill` invokes `scripts/ci/restore_drill_verify.py` (`src_4aa41913f64f2f8c`) or a separate verification path is unobserved in the 7 frozen files.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-20, 78-125, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Surviving objections DOC1 are retained in that receipt; the parent reconciled the current synthesis facts and labels the rejected historical schema/join/retirement hypotheses as superseded. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

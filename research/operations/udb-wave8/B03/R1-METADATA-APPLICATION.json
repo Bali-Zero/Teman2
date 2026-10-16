@@ -1,0 +1,45 @@
+{
+  "at": "2026-10-16T07:12:55.580103+00:00",
+  "kind": "FACTUAL_DOCUMENT_RECONCILIATION_AND_ACTUAL_SCOPED_REVIEW_ATTRIBUTION",
+  "changed": {
+    "research/operations/udb-wave8/B03/ANALYSIS.md": {
+      "before": "9d5371dea7277b4dd8944b00b42c903975d06710008cea6d2d608e05433a4b02",
+      "after": "4d47026db6fff39bada509410acf3523e3981f5ccc8e9e1bb18ac4f075c27a09"
+    },
+    "research/operations/udb-wave8/B03/PROPOSAL.md": {
+      "before": "41ed9cd5fa89ce77427765226c876fdc40fced4df329c380ec7e108f0469a66b",
+      "after": "a3210087b33b80358c4de75bf154c172b14badfb253e45328330cf7246510a4c"
+    },
+    "research/operations/udb-wave8/B03/BATTLE.md": {
+      "before": "3d065bc7f3a3e4f308817a345eac8da01fae066353c9f392b94c45bf5625cc8e",
+      "after": "382098ad0d0eb89ba3adf0c1f5e3682b0e15c21c4e4b6e2d6dee7507478462d3"
+    },
+    "research/operations/udb-wave8/B03/DEFINITIVE-SYNTHESIS.md": {
+      "before": "0566eccc0b0cdea1ceb46a839e7a5b2897501b956b240cc067297a0141a77e9f",
+      "after": "afd4c8ab642d1b4c6246d64a2106fc96ce5db4488effb982cc5aa6ecc453ecac"
+    },
+    "research/operations/udb-wave8/B03/DUX-NOTE-ANALYSIS.md": {
+      "before": "6d5916a780dcf2eec5bd5748be9872a9c2ea572e1baa5f6476b4be38be9186f4",
+      "after": "46cc6f4ebf973884c2bbb41d79478bb5edcb5011918b0a9ddb99a05df5f03522"
+    },
+    "research/operations/udb-wave8/B03/DUX-NOTE-CORRECTION.md": {
+      "before": "dd1f8ba0a33daf3b7d4f13543be9fcd67a59391f033f59f6b83fc40808a35439",
+      "after": "e110c9ef357f9a0b6bcf243bb02d488bccdb4ab00b0163c16b62aa8d556fb6f7"
+    },
+    "research/operations/udb-wave8/B03/DUX-NOTE-SYNTHESIS.md": {
+      "before": "ac208436d422695cd4ceb54a11b3a64e93edaa7835486d6a6d15ae22f8367205",
+      "after": "6f7be735023304305fed3342563a34293b744e12d89af8dc564fa4db0bf6978e"
+    },
+    "research/operations/udb-wave8/B03/PR_BODY.md": {
+      "before": "2c98de84a30e4b3fd8829d4f60549c86cb26a827cdc20d459db7c73dc5bad63f",
+      "after": "48b66527cf22eacec178602aa6eeca6840267c39997c7a70a630494d1f55d549"
+    },
+    "research/operations/udb-wave8/B03/dux-requests/DUX-AUTHORED.md": {
+      "before": "6c8776bab930009ddb8330363cf59afdfccad58cf3025af51958d530c4696f21",
+      "after": "b3a9379d150765b9848f0e7179400bfdd1f5a2bc3ae117212d7613b82229d15b"
+    }
+  },
+  "code_tests_fixtures_outputs_unchanged": true,
+  "finding_ids_and_first_four_finding_cells_unchanged": true,
+  "block_closed": false
+}

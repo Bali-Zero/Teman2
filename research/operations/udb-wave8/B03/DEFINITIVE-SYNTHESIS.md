@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # B03 Definitive Synthesis — Active-Consumer Denominator
 
 - **Campaign ID:** `universal-db-wave8-20261015`
@@ -36,8 +40,8 @@ All frozen inputs, Dux synthesis conventions, prior wave artifacts, and `DUX-REQ
 | `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-02.out` | `68dfa39474c7e7f69f835e3c7c6f4d9408073187c296921b75673e49b19ddc35` | `OK` (`exit 0`): `index_*` vs `src_*` overlap = `0/678` |
 | `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-03.out` | `393e5450977dc09335cf1a3a000a53cc1822e64ca8617ac834818afa06d03786` | `OK` (`exit 0`): Restore-drill & manual/break-glass row inventory |
 | `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-04.out` | `e6e2d89b8da3c825606f5917040d9b355bf085ade24b51dd60c9ee3e0cc1cdc0` | `OK` (`exit 0`): Non-dot glob receipt (`**` skipped `.agent-receipts/`) |
-| `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-10.out` | `ee9cd107a8651119b0b0bd5e14059572eae7a60f5ecbc2a16b629f34f1d2a981` | Pre-correction diagnostic `FAILED` (`exit 1`, `PinVerificationError` on old manifest pin); awaits post-correction Dux re-run |
-| `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-11.out` | `ccc00a341818bc8ac421a10ecd70021d237c35ed48646200bd1685771c5207a6` | Pre-correction diagnostic `FAILED` (`exit 1`, `PinVerificationError` on old manifest pin); awaits post-correction Dux re-run |
+| `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-10.out` | `ee9cd107a8651119b0b0bd5e14059572eae7a60f5ecbc2a16b629f34f1d2a981` | Pre-correction diagnostic `FAILED` (`exit 1`, `PinVerificationError` on old manifest pin); historical failure retained; current-source verification is recorded in INTEGRATION-VERIFICATION.json |
+| `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-11.out` | `ccc00a341818bc8ac421a10ecd70021d237c35ed48646200bd1685771c5207a6` | Pre-correction diagnostic `FAILED` (`exit 1`, `PinVerificationError` on old manifest pin); historical failure retained; current-source verification is recorded in INTEGRATION-VERIFICATION.json |
 | `research/operations/udb-wave8/B03/dux-requests/DUX-REQ-B03-12.out` | `dbc54d786d78254cd799e6b35cdc51cbc1ec83eea26277c51062567a32ee32c2` | `OK` (`exit 0`): `matched_index_nodes: 10292 of 10299` (`source_id == sha256(path)[:24]` of `git ls-files`) |
 
 Note on `DUX-REQ-B03-13` (cross-host LaunchAgents/crontab hashing): **DEFERRED / NOT ADMITTED** (`DUX-NOTE-CORRECTION.md:13-14`). Removed from `## DUX-REQUESTS`; nothing is claimed from it.
@@ -69,7 +73,7 @@ Every cross-block finding naming `B03` (`X1`, `X2`, `X3`, `X5`, `X9`, `X10`, `X1
 
 ## 3. Verified Facts: 6,030-Lead Population & Prefix Accounting (`DUX-REQ-B03-01.out`)
 
-From `DUX-REQ-B03-01.out:25-316`, `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (`6,029` data rows, lines `2–6030`), and `.agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json` (`1` delta row), the `6,030` leads partition as follows under `b03_census_adapter.py` (subject to post-correction Dux execution of `DUX-REQ-B03-10` and `DUX-REQ-B03-11`):
+From `DUX-REQ-B03-01.out:25-316`, `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (`6,029` data rows, lines `2–6030`), and `.agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json` (`1` delta row), the `6,030` leads partition as follows under `b03_census_adapter.py` (confirmed by the current-source integration receipts in `INTEGRATION-VERIFICATION.json`):
 
 | Lead Family / Prefix | CSV Lines | Total Leads | `excluded` | `duplicate` | `retired` | `active` | `unresolved` | `evidence_timestamp` | Backing Artifact (`x_evidence_ref`) |
 |---|---:|---:|---:|---:|---:|---:|---:|---|---|
@@ -118,7 +122,7 @@ Per `ASTRA-ADVICE.md`, `DUX-REQ-B03-03.out`, and `DUX-REQ-B03-12.out`, manual/br
    - `src_058ad32e4ad2e6a8` (CSV line `343`, `apps/backend-rag/backend/db/migration_manager.py`, `BLOCKED_DISCOVERY`) — `x_manual_break_glass_class = "manual_migration_manager"`.
    - `src_def7a4c288a552af` (CSV line `3727`, `scripts/pg-restore-drill.sh`, `BLOCKED_DISCOVERY`) — `x_manual_break_glass_class = "manual_restore_drill_shell"`.
    - `src_d073f505ff1671ad` (CSV line `3280`, `scripts/ci/restore_drill_verify.py`, `BLOCKED_DISCOVERY`) — `x_manual_break_glass_class = "manual_or_cron_restore_verifier"`.
-   - `src_07703aa402d20fc0` (CSV line `932`, `apps/bali-intel-scraper/backend/db/migrations/env.py`, `BLOCKED_DISCOVERY`) — `x_manual_break_glass_class = "manual_alembic_migration_surface"`.
+   - The previously asserted `src_07703aa402d20fc0` mapping for `apps/bali-intel-scraper/backend/db/migrations/env.py` is withdrawn: that ID is absent from the emitted census. No emitted consumer mapping or manual-surface classification is established here.
    - `src_2879480f813f3a7d` (CSV line `1584`, `apps/mouth/scripts/Migrate.sh`, `BLOCKED_DISCOVERY`) — `x_manual_break_glass_class = "manual_migration_shell"`.
 2. **Additional Operator & Migration Scripts Confirmed in `source-index-enhanced.json` via `DUX-REQ-B03-12.out`**:
    - `DUX-REQ-B03-12.out` proved `10,292 / 10,299` `source-index-enhanced.json` `source_id` values equal `sha256(path)[:24]` of `git ls-files`, including `565f0d7a0ce55c64dd06f943` (`scripts/fly-pg-backup.sh`), `582504540432ac2b3c759feb` (`scripts/mini-migration/migrate-job.sh`), `7d0da4637b3306d0416b4f13` (`apps/backend-rag/scripts/release_migrate.sh`), `0da4162c9c64c774e2613f7a` (`infra/launchagents/wrappers/fly-pg-proxy-wrapper.sh`), `19634d31464404f32d4c98ea` (`infra/launchagents/install_fly_pg_tunnel.sh`), and `47a78a46e51d8aeb919f20b7` (`infra/scripts/pg-organism-bridge-watchdog.sh`).
@@ -127,12 +131,14 @@ Per `ASTRA-ADVICE.md`, `DUX-REQ-B03-03.out`, and `DUX-REQ-B03-12.out`, manual/br
 
 ## 6. Bounded Inferences & Explicit Unknowns
 
+The earlier source-disposition category totals describe frozen source categories, not the unresolved output denominator; exclusions and duplicate handling intervene. The authoritative emitted unresolved count is `4184`, and the active denominator remains `UNKNOWN`.
+
 ### Bounded Inferences
-1. **`CI-REGISTRATION-UNMATCHED-GH-*` ↔ `index_*` Path-Hash Alignment**: Every `CI-REGISTRATION-UNMATCHED-GH-*` row (`114` rows, lines `5850–5963`) carries `entry_point = source-path-sha256:<64hex>`, where `<64hex>[:24]` matches an `index_<24hex>` node in `source-index-enhanced.json`. Under `consumer-matrix.csv` blocker `PATH_MATCH_DOES_NOT_PROVE_SAME_DATABASE_CONSUMER`, this is recorded in `x_candidate_join_id` as a candidate link rather than collapsed into `x_disposition = "duplicate"`.
+1. **`CI-REGISTRATION-UNMATCHED-GH-*` ↔ `index_*` Path-Hash Alignment**: Of the `114` frozen `CI-REGISTRATION-UNMATCHED-GH-*` rows (historical lines `5850–5963`), the emitted census records `98` nonempty candidate index joins and `16` empty joins. All `114` remain unresolved; the prior all-114 index-match claim is withdrawn. Under `consumer-matrix.csv` blocker `PATH_MATCH_DOES_NOT_PROVE_SAME_DATABASE_CONSUMER`, this is recorded in `x_candidate_join_id` as a candidate link rather than collapsed into `x_disposition = "duplicate"`.
 2. **`runtime-{pro,mini}-plist-*` ↔ `job_{pro,mini}_*` Pre-Image Identity**: All `43` `runtime-{pro,mini}-plist-<16hex>` rows (`38` Pro + `5` Mini, lines `4700–4742`) name a canonical `job_{pro,mini}_<24hex>` in `identity_relationships` whose `label_hash[:24]` is checked directly against `jobs-pro.json` and `jobs-mini.json` (`supp_meta["pro_job_ids"]` / `supp_meta["mini_job_ids"]`).
 
 ### Explicit Unknowns (`active_consumer_denominator = "UNKNOWN"`)
-1. **Post-Correction Adapter & Unit Test Execution Pending Dux Re-Run**: In the pre-correction diagnostic run (`RECEIPTS.json`), `DUX-REQ-B03-10` and `DUX-REQ-B03-11` failed with `PinVerificationError` (`exit 1`) before the `INPUT-MANIFEST.json` and prior SHA-256 pins were corrected.
+1. **Independent Acceptance and Committed-Head Binding Pending**: Current-source tests and fixture CLI now pass as recorded in `INTEGRATION-VERIFICATION.json`. Historical pre-correction `DUX-REQ-B03-10` and `DUX-REQ-B03-11` failures remain preserved in their original receipts. The coordinator must independently accept the frozen candidate and bind its final committed head.
 2. **Unresolved Consumer Leads**: Lack deployed-execution evidence (`PRODUCTION_EXECUTION_NOT_OBSERVED`), concrete store instance binding (`STORE_BINDING_PENDING_B04`), and operation contract assignment (`OPERATION_ID_PENDING_B05`).
 3. **Unproved Host Retirement of Legacy Restore Workflow Copies**: `LEAD-DELTA.json:55` records `legacy_copies_elsewhere_proved_retired: false` for `.github/workflows/restore-drill.yml` (`src_307bea3dfb94ec31`).
 
@@ -140,7 +146,7 @@ Per `ASTRA-ADVICE.md`, `DUX-REQ-B03-03.out`, and `DUX-REQ-B03-12.out`, manual/br
 
 ## DUX-REQUESTS
 
-Post-correction requests for the BLUE Dux to re-run with `python3 -I -B` in `/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census`:
+Historical requested commands are retained below for traceability. Their execution placeholders are superseded by the scoped current-source receipts in `INTEGRATION-VERIFICATION.json`; they are not additional execution orders:
 
 - **`DUX-REQ-B03-10` (Run Unit & Negative Test Suite)**:
   - **Command**: `python3 -I -B -m unittest discover -s research/operations/udb-wave8/B03 -p "test_*.py" -v`
@@ -151,3 +157,14 @@ Post-correction requests for the BLUE Dux to re-run with `python3 -I -B` in `/Us
 - **`DUX-REQ-B03-12` (Repository Path Pre-Image Join Against `index_*`)**:
   - **Command**: `python3 -I -B -c 'import hashlib, json, subprocess; files = subprocess.check_output(["git", "ls-files"], text=True).splitlines(); idx = json.load(open(".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json")); idx_set = {n["source_id"] for n in idx["nodes"]}; m = {hashlib.sha256(f.encode()).hexdigest()[:24]: f for f in files}; matched = sorted((sid, m[sid]) for sid in idx_set if sid in m); print("matched_index_nodes:", len(matched), "of", len(idx_set)); print("pg_sh_match:", [x for x in matched if "pg" in x[1] or "restore" in x[1] or "migrate" in x[1]][:30])'`
   - **Observed Pre-Correction Status**: Already passed (`exit 0`, `matched_index_nodes: 10292 of 10299`, stdout sha256 `dbc54d786d78254cd799e6b35cdc51cbc1ec83eea26277c51062567a32ee32c2`). Retained per `DUX-NOTE-CORRECTION.md:49`.
+
+
+## Current-source integration receipt — 2026-10-16
+
+The supplied hermetic patch passed exact preimage/hash verification and was applied to the original B03 worktree. Current-source pytest passed 24 tests with zero skips. The complete isolated candidate, without ignored inputs, also passed 24 tests with zero skips. Fixture CLI replay reproduced all three candidate census artifacts byte for byte; deterministic fixture derivation passed. Source and fixture hashes, commands, timestamps, the first incomplete-harness failure and its corrected rerun are in `INTEGRATION-VERIFICATION.json`. No source correction followed patch intake.
+
+These are offline historical-fixture replays, not fresh native observations. The frozen C09 remains 6029 rows at SHA-256 `c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`; the union remains 6030 after adding `runtime_mini_46522da0ef79d3aa7422ca41`. The actual active denominator remains `UNKNOWN`; 4184 leads remain unresolved. Native/store/operation/retirement unknowns above remain binding, `block_closed` remains false, and `head_sha` is null until the coordinator binds the committed candidate externally. The campaign deadline and correction budget are unchanged.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-11, 47-140, 156-160, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Surviving objections DOC3, DOC4, DOC5 are retained in that receipt; the parent reconciled the current synthesis facts and labels the rejected historical schema/join/retirement hypotheses as superseded. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

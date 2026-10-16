@@ -1,0 +1,19 @@
+{
+  "mandate": "universal-db-wave8-20261015-B03",
+  "gear": 3,
+  "colour": "BLUE",
+  "intent": "Ship the independently verifiable B03 diagnostic adapter, committed fixtures and exact evidence; original operational acceptance remains unmet.",
+  "scope":
+    [
+      "research/operations/udb-wave8/B03/",
+      "evidence/2026-10/agent-mini-pro2-db-udb-b03-census-6d25ce17/",
+      ".secrets.baseline",
+    ],
+  "constraints":
+    [
+      "Exactly one original PR allocation for B03.",
+      "Authenticated owner exception replaces unavailable named Claude seats with available independent seats; no colour switch.",
+      "No client rows, credentials, unadmitted native actions, weakened assertions or invented closure.",
+      "S1 remains gated on all eight actual block closures unless the owner approves the separate stage proposal.",
+    ],
+}

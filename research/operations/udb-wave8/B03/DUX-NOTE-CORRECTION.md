@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # DUX-NOTE-CORRECTION — B03 (the single permitted correction)
 
 Everything below was observed by the Dux on Mini in this worktree on 2026-10-15. State only what these
@@ -48,3 +52,7 @@ agrees with the on-disk sha256 of all 7 frozen inputs (Dux-checked).
    observation is the Dux re-run of DUX-REQ-B03-10/11 (not yet observed — say so).
 8. Keep DUX-REQ-B03-10/11/12 as the post-correction requests (the Dux re-runs them with `-I -B`).
 9. Do not touch RUN-*/SESSION*.json; the Dux preserves them outside the commit.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-15, 37-51, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

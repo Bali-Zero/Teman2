@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # B03: Active-consumer denominator
 
 ## 1 Mandate
@@ -28,3 +32,7 @@ Use the common deadline, no resets; no repeated rounds. Compact return <=500 wor
 
 ## 7 Evidence and release
 Exactly ONE final PR for B03. Freeze scope and candidate before opening. Release through BLUE Dux and Pro's canonical GitHub route, never a Mini origin push. Failure/blocked results remain open. Four-step successors are gated on actual all8 closure.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-30, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.

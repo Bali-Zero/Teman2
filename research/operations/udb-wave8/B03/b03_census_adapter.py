@@ -9,12 +9,22 @@ prior inputs under .agent-receipts/udb-wave8-inputs-dux/prior/, verifies
 SHA-256 digests before parsing (fails closed on mismatch), and emits a
 6,030-row census table (6,029 rows from consumer-matrix.csv + 1 row from
 LEAD-DELTA.json) conforming strictly to CONTRACT-CONVENTIONS.md.
+
+The .agent-receipts/ tree is gitignored. When .agent-receipts/udb-wave8-inputs/
+exists it is the only source, exactly as before. Otherwise (a clean checkout)
+the adapter reads the committed fixtures/ directory: byte-identical copies are
+verified against the same pinned SHA-256, projections against their own pinned
+SHA-256 plus the original's identity recorded in fixtures/PROVENANCE.json, and
+inputs that are only hashed (never parsed) are attested by the byte-verified
+INPUT-MANIFEST.json. Logical input paths, evidence_sha256 and every emitted
+byte stay those of the .agent-receipts originals.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -94,6 +104,65 @@ PINNED_PRIOR_INPUTS: Final[Mapping[str, str]] = {
         "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29"
     ),
 }
+
+RECEIPTS_INPUT_ROOT_REL: Final[str] = ".agent-receipts/udb-wave8-inputs"
+FIXTURES_DIR_REL: Final[str] = "research/operations/udb-wave8/B03/fixtures"
+FIXTURE_PROVENANCE_NAME: Final[str] = "PROVENANCE.json"
+FIXTURE_KIND: Final[str] = "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS"
+INPUT_MODES: Final[tuple[str, ...]] = ("auto", "receipts", "fixtures")
+
+# Committed byte-identical copies: verified against the SAME pin as the original.
+BYTE_IDENTICAL_FIXTURES: Final[Mapping[str, str]] = {
+    ".agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json": "INPUT-MANIFEST.json",
+    ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json": (
+        "LEAD-DELTA.json"
+    ),
+    SUPPLEMENTARY_PRIOR_PATHS["jobs_mini"]: "jobs-mini.json",
+    SUPPLEMENTARY_PRIOR_PATHS["jobs_m5"]: "jobs-M5.json",
+}
+
+# Committed projections: fixture bytes differ from the original, so each has its own
+# pinned SHA-256 (fixture name, fixture sha256); the original's identity is attested
+# by fixtures/PROVENANCE.json and checked against the pins above.
+PROJECTED_FIXTURES: Final[Mapping[str, tuple[str, str]]] = {
+    ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv": (
+        "consumer-matrix.projected.csv.gz",
+        (
+            "5d06602f5fc41d2e592705d2037d1eec6afc6c102f601ad123a2b3d122e73f77"
+        ),
+    ),
+    SUPPLEMENTARY_PRIOR_PATHS["source_index"]: (
+        "source-index-enhanced.projected.json",
+        (
+            "56fc3136f98b83aa95de4f893551e3521bd9de44ba59a5654b2d1ec94dc757df"
+        ),
+    ),
+    SUPPLEMENTARY_PRIOR_PATHS["jobs_pro"]: (
+        "jobs-pro.projected.json",
+        (
+            "bbd94d10e2810fae1b911b8a572c6cc4108bf83f53d742aa675bd16e045c5a61"
+        ),
+    ),
+    SUPPLEMENTARY_PRIOR_PATHS["gh_workflows"]: (
+        "GITHUB-WORKFLOW-METADATA.projected.json",
+        (
+            "6d70609014a602e39d42b2ed5121320b6b902a9dbb0ef273a7ca487882861ccd"
+        ),
+    ),
+}
+
+# Frozen inputs the adapter only hashes (never parses): in fixtures mode they are
+# attested by the byte-verified INPUT-MANIFEST.json 'files' map, not re-hashed.
+MANIFEST_ATTESTED_INPUTS: Final[frozenset[str]] = frozenset(
+    {
+        ".agent-receipts/udb-wave8-inputs/ASTRA-ADVICE.md",
+        ".agent-receipts/udb-wave8-inputs/FINAL-BLUE-GATE.json",
+        ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+        ".agent-receipts/udb-wave8-inputs/REPORT.md",
+        ".agent-receipts/udb-wave8-inputs/STATE.json",
+        ".agent-receipts/udb-wave8-inputs/research-lines.csv",
+    }
+)
 
 FROZEN_CONTRACT_FIELDS: Final[tuple[str, ...]] = (
     "consumer_id",
@@ -182,20 +251,135 @@ def compute_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def resolve_input_mode(repo_root: Path, requested: str = "auto") -> str:
+    """Return 'receipts' or 'fixtures'. 'auto' picks receipts iff the frozen input dir exists.
+
+    A present-but-incomplete .agent-receipts tree stays 'receipts' and fails closed;
+    it never falls back to fixtures.
+    """
+    if requested not in INPUT_MODES:
+        raise ValueError(f"input_mode must be one of {INPUT_MODES}, got {requested!r}")
+    if requested != "auto":
+        return requested
+    return "receipts" if (repo_root / RECEIPTS_INPUT_ROOT_REL).is_dir() else "fixtures"
+
+
+def _fixture_path(repo_root: Path, rel_path: str) -> Path:
+    if rel_path in BYTE_IDENTICAL_FIXTURES:
+        name = BYTE_IDENTICAL_FIXTURES[rel_path]
+    elif rel_path in PROJECTED_FIXTURES:
+        name = PROJECTED_FIXTURES[rel_path][0]
+    else:
+        raise PinVerificationError(f"No committed fixture for {rel_path}")
+    return repo_root / FIXTURES_DIR_REL / name
+
+
+def resolve_input_path(repo_root: Path, rel_path: str, input_mode: str) -> Path:
+    """Physical file for a logical .agent-receipts path in the given (resolved) mode."""
+    if input_mode == "receipts":
+        return repo_root / rel_path
+    return _fixture_path(repo_root, rel_path)
+
+
+def _projected_identity_sha(repo_root: Path, rel_path: str) -> str:
+    """Separate identity check for a projection; returns the ORIGINAL's attested SHA-256.
+
+    The fixture must match its own pinned SHA-256, and PROVENANCE.json must name the
+    same fixture bytes and the same original SHA-256 as this module's pin.
+    """
+    fixture_name, fixture_pin = PROJECTED_FIXTURES[rel_path]
+    actual = compute_content_sha256(_fixture_path(repo_root, rel_path))
+    if actual != fixture_pin:
+        raise PinVerificationError(
+            f"SHA-256 mismatch for projected fixture {fixture_name}: "
+            f"expected {fixture_pin}, got {actual}"
+        )
+    provenance_path = repo_root / FIXTURES_DIR_REL / FIXTURE_PROVENANCE_NAME
+    try:
+        provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise PinVerificationError(f"Unreadable fixture provenance {provenance_path}") from exc
+    if not isinstance(provenance, dict) or provenance.get("kind") != FIXTURE_KIND:
+        raise PinVerificationError("Fixture provenance kind mismatch")
+    entries = [
+        entry
+        for entry in provenance.get("fixtures", [])
+        if isinstance(entry, dict) and entry.get("source_rel_path") == rel_path
+    ]
+    if len(entries) != 1:
+        raise PinVerificationError(f"Fixture provenance has no unique entry for {rel_path}")
+    entry = entries[0]
+    original_pin = {**PINNED_FROZEN_INPUTS, **PINNED_PRIOR_INPUTS}[rel_path]
+    if (
+        entry.get("kind") != "projection"
+        or entry.get("fixture") != fixture_name
+        or entry.get("output_sha256") != actual
+        or entry.get("source_sha256") != original_pin
+    ):
+        raise PinVerificationError(f"Fixture provenance disagrees with pins for {rel_path}")
+    return original_pin
+
+
+def _observed_sha(
+    repo_root: Path,
+    rel_path: str,
+    input_mode: str,
+    manifest_attested: Mapping[str, str],
+) -> str:
+    """SHA-256 of the logical input as established by the active input mode."""
+    if input_mode == "receipts":
+        return compute_sha256(repo_root / rel_path)
+    if rel_path in BYTE_IDENTICAL_FIXTURES:
+        return compute_content_sha256(_fixture_path(repo_root, rel_path))
+    if rel_path in PROJECTED_FIXTURES:
+        return _projected_identity_sha(repo_root, rel_path)
+    if rel_path in manifest_attested:
+        return manifest_attested[rel_path]
+    raise PinVerificationError(
+        f"No committed fixture or manifest attestation for {rel_path}"
+    )
+
+
+def compute_content_sha256(path: Path) -> str:
+    """SHA-256 of a fixture's content; a '.gz' fixture is hashed after decompression.
+
+    The pin is on the decompressed bytes so it does not depend on the zlib build
+    that produced the stored file.
+    """
+    if not path.is_file():
+        raise PinVerificationError(f"Pinned input missing on disk: {path}")
+    if path.suffix != ".gz":
+        return compute_sha256(path)
+    try:
+        return hashlib.sha256(gzip.decompress(path.read_bytes())).hexdigest()
+    except (OSError, EOFError) as exc:
+        raise PinVerificationError(f"Corrupt gzip fixture: {path}") from exc
+
+
+def _open_text(path: Path) -> Any:
+    """Open a (possibly gzip-stored) fixture or receipt as UTF-8 text without newline translation."""
+    if path.suffix == ".gz":
+        return gzip.open(path, "rt", encoding="utf-8", newline="")
+    return path.open("r", encoding="utf-8", newline="")
+
+
 def verify_pinned_inputs(
     repo_root: Path,
     extra_pins: Mapping[str, str] | None = None,
+    input_mode: str = "auto",
 ) -> dict[str, str]:
     """Verify INPUT-MANIFEST.json ('files' map), all 7 frozen inputs, and all 6 prior inputs.
 
-    Returns a mapping from relative path to verified SHA-256 hex digest.
+    Returns a mapping from relative path to verified SHA-256 hex digest (always the
+    digest of the .agent-receipts original, in either input mode).
     Raises PinVerificationError on any mismatch or missing file.
     """
     verified: dict[str, str] = {}
+    input_mode = resolve_input_mode(repo_root, input_mode)
 
     manifest_rel = ".agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json"
-    manifest_path = repo_root / manifest_rel
-    actual_manifest_sha = compute_sha256(manifest_path)
+    manifest_path = resolve_input_path(repo_root, manifest_rel, input_mode)
+    actual_manifest_sha = _observed_sha(repo_root, manifest_rel, input_mode, {})
     if actual_manifest_sha != INPUT_MANIFEST_SHA256:
         raise PinVerificationError(
             f"SHA-256 mismatch for {manifest_rel}: "
@@ -220,8 +404,14 @@ def verify_pinned_inputs(
                 f"manifest has {manifest_sha}, pin has {PINNED_FROZEN_INPUTS.get(rel_path)}"
             )
 
+    manifest_attested = {
+        f".agent-receipts/udb-wave8-inputs/{filename}": manifest_sha
+        for filename, manifest_sha in manifest_files.items()
+        if f".agent-receipts/udb-wave8-inputs/{filename}" in MANIFEST_ATTESTED_INPUTS
+    }
+
     for rel_path, expected_sha in PINNED_FROZEN_INPUTS.items():
-        actual_sha = compute_sha256(repo_root / rel_path)
+        actual_sha = _observed_sha(repo_root, rel_path, input_mode, manifest_attested)
         if actual_sha != expected_sha:
             raise PinVerificationError(
                 f"SHA-256 mismatch for {rel_path}: "
@@ -230,7 +420,7 @@ def verify_pinned_inputs(
         verified[rel_path] = actual_sha
 
     for rel_path, expected_sha in PINNED_PRIOR_INPUTS.items():
-        actual_sha = compute_sha256(repo_root / rel_path)
+        actual_sha = _observed_sha(repo_root, rel_path, input_mode, manifest_attested)
         if actual_sha != expected_sha:
             raise PinVerificationError(
                 f"SHA-256 mismatch for {rel_path}: "
@@ -240,7 +430,7 @@ def verify_pinned_inputs(
 
     if extra_pins:
         for rel_path, expected_sha in extra_pins.items():
-            actual_sha = compute_sha256(repo_root / rel_path)
+            actual_sha = _observed_sha(repo_root, rel_path, input_mode, manifest_attested)
             if actual_sha != expected_sha:
                 raise PinVerificationError(
                     f"SHA-256 mismatch for {rel_path}: "
@@ -405,6 +595,7 @@ def validate_output_row(row: Mapping[str, Any]) -> None:
 def _load_supplementary_metadata(
     repo_root: Path,
     verified_hashes: Mapping[str, str],
+    input_mode: str = "receipts",
 ) -> dict[str, Any]:
     """Load pinned supplementary prior artifacts and build pre-image lookup indices."""
     meta: dict[str, Any] = {
@@ -419,7 +610,7 @@ def _load_supplementary_metadata(
             raise PinVerificationError(
                 f"Supplementary prior {rel_path} was not verified in PINNED_PRIOR_INPUTS"
             )
-        full_path = repo_root / rel_path
+        full_path = resolve_input_path(repo_root, rel_path, input_mode)
         meta["hashes"][rel_path] = verified_hashes[rel_path]
         data = json.loads(full_path.read_text(encoding="utf-8"))
         if key in {"jobs_pro", "jobs_mini", "jobs_m5", "gh_workflows"}:
@@ -446,6 +637,13 @@ def _load_supplementary_metadata(
     return meta
 
 
+def validate_source_headers(fieldnames: Sequence[str] | None) -> None:
+    """Require actual source columns; status and consumer_type are not substitutes."""
+    required = {"consumer_id", "entry_point", "disposition", "blocker"}
+    if not required.issubset(set(fieldnames or ())):
+        raise ContractValidationError("CENSUS_INPUT_SCHEMA_MISSING_REQUIRED_FIELDS")
+
+
 def _transform_csv_row(
     csv_row: Mapping[str, str],
     verified_hashes: Mapping[str, str],
@@ -453,9 +651,9 @@ def _transform_csv_row(
 ) -> dict[str, Any]:
     """Transform one row from consumer-matrix.csv into the frozen sibling contract."""
     cid = csv_row["consumer_id"].strip()
-    consumer_type = csv_row["consumer_type"].strip()
+    consumer_type = csv_row.get("consumer_type", "").strip()
     entry_point = csv_row["entry_point"].strip()
-    csv_status = csv_row["status"].strip()
+    source_disposition = csv_row["disposition"].strip()
     blocker_raw = csv_row["blocker"].strip()
     id_rel = csv_row.get("identity_relationships", "").strip()
 
@@ -463,6 +661,8 @@ def _transform_csv_row(
     matrix_sha = verified_hashes[matrix_rel]
 
     unknowns: list[str] = []
+    if not consumer_type:
+        unknowns.append("CONSUMER_TYPE_NOT_PROVIDED_BY_SOURCE")
     for token in blocker_raw.split(";"):
         cleaned = re.sub(r"[^A-Z0-9_]", "_", token.strip().upper()).strip("_")
         if cleaned and cleaned != "NONE":
@@ -536,14 +736,16 @@ def _transform_csv_row(
     x_candidate_join_id = ""
     x_restore_ref_role = HISTORICAL_RESTORE_REFS.get(cid, "")
     x_manual_break_glass_class = classify_manual_break_glass(
-        entry_point, consumer_type, csv_status
+        entry_point, consumer_type, source_disposition
     )
+    if not consumer_type and not x_manual_break_glass_class and source_disposition != "RETAINED_TEST_SOURCE":
+        unknowns.append("MANUAL_EXECUTION_UNRESOLVED")
 
     # Disposition and Contract Status
     if (
         cid.startswith("NOTEBOOK-CONTAINER-REFERENCE-NLM-")
         or cid.startswith("engine_")
-        or csv_status == "RETAINED_TEST_SOURCE"
+        or source_disposition == "RETAINED_TEST_SOURCE"
     ):
         x_disposition = "excluded"
         status = "PARTIAL"
@@ -588,9 +790,9 @@ def _transform_csv_row(
         else:
             x_disposition = "unresolved"
 
-        if csv_status == "PARTIAL_DISCOVERY":
+        if source_disposition == "PARTIAL_DISCOVERY":
             status = "PARTIAL"
-        elif csv_status in {
+        elif source_disposition in {
             "BLOCKED_DISCOVERY",
             "BLOCKED_RUNTIME_CONTRACT",
             "BLOCKED_MCP_REACHABILITY",
@@ -627,11 +829,18 @@ def _build_lead_delta_row(
     verified_hashes: Mapping[str, str],
 ) -> dict[str, Any]:
     """Build the 6,030th lead row from LEAD-DELTA.json + REAL-RUN-RECEIPT.json."""
-    cid = str(lead_delta_data["lead_id"]).strip()
+    additions = lead_delta_data.get("additions")
+    if not isinstance(additions, list) or len(additions) != 1 or not isinstance(additions[0], Mapping):
+        raise ContractValidationError("LEAD_DELTA_INPUT_SCHEMA_INVALID")
+    addition = additions[0]
+    cid = addition.get("consumer_id")
+    if not isinstance(cid, str) or not cid.strip():
+        raise ContractValidationError("LEAD_DELTA_INPUT_SCHEMA_INVALID")
+    cid = cid.strip()
     real_run_rel = ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json"
     real_run_sha = verified_hashes[real_run_rel]
 
-    blocker_raw = str(lead_delta_data.get("blocker", ""))
+    blocker_raw = str(addition.get("blocker", ""))
     unknowns: list[str] = []
     for token in blocker_raw.split(";"):
         cleaned = re.sub(r"[^A-Z0-9_]", "_", token.strip().upper()).strip("_")
@@ -664,22 +873,30 @@ def _build_lead_delta_row(
 def build_census_rows(
     repo_root: Path,
     extra_pins: Mapping[str, str] | None = None,
+    input_mode: str = "auto",
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Verify pins, transform all 6,030 leads, and compute summary accounting."""
-    verified_hashes = verify_pinned_inputs(repo_root, extra_pins=extra_pins)
-    supp_meta = _load_supplementary_metadata(repo_root, verified_hashes)
+    input_mode = resolve_input_mode(repo_root, input_mode)
+    verified_hashes = verify_pinned_inputs(
+        repo_root, extra_pins=extra_pins, input_mode=input_mode
+    )
+    supp_meta = _load_supplementary_metadata(repo_root, verified_hashes, input_mode)
 
-    matrix_path = repo_root / ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv"
-    lead_delta_path = (
-        repo_root
-        / ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json"
+    matrix_path = resolve_input_path(
+        repo_root, ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv", input_mode
+    )
+    lead_delta_path = resolve_input_path(
+        repo_root,
+        ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+        input_mode,
     )
 
     rows: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
 
-    with matrix_path.open("r", encoding="utf-8", newline="") as handle:
+    with _open_text(matrix_path) as handle:
         reader = csv.DictReader(handle)
+        validate_source_headers(reader.fieldnames)
         for csv_row in reader:
             out_row = _transform_csv_row(csv_row, verified_hashes, supp_meta)
             cid = out_row["consumer_id"]
@@ -791,9 +1008,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Optional directory to write b03-consumer-census.{csv,jsonl} and summary.",
     )
+    parser.add_argument(
+        "--input-mode",
+        choices=INPUT_MODES,
+        default="auto",
+        help="auto: .agent-receipts when present else committed fixtures/.",
+    )
     args = parser.parse_args(argv)
 
-    rows, summary = build_census_rows(args.repo_root)
+    input_mode = resolve_input_mode(args.repo_root, args.input_mode)
+    sys.stderr.write(f"input_mode={input_mode}\n")
+    rows, summary = build_census_rows(args.repo_root, input_mode=input_mode)
     if args.output_dir is not None:
         artifact_hashes = write_census_outputs(rows, summary, args.output_dir)
         summary = dict(summary)

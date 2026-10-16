@@ -1,0 +1,397 @@
+{
+  "assertions": {
+    "removed_self_assert_lines_in_patch": 0,
+    "self_assert_calls": 101,
+    "test_methods": 24
+  },
+  "block_id": "B03",
+  "campaign": "universal-db-wave8-20261015",
+  "candidate_head_binding": "Coordinator binds final committed head externally; no candidate commit is asserted.",
+  "census_summary": {
+    "active_consumer_denominator": "UNKNOWN",
+    "base_commit_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "block_id": "B03",
+    "campaign_id": "universal-db-wave8-20261015",
+    "disposition_counts": {
+      "active": 0,
+      "duplicate": 43,
+      "excluded": 1803,
+      "retired": 0,
+      "unresolved": 4184
+    },
+    "emitted_artifact_hashes": {
+      "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/cli/b03-census-summary.json": "2e392d4e46eac76471c953c136f7affc155c43d0f026fb65e3e4cf6df255a39a",
+      "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/cli/b03-consumer-census.csv": "c92a478e1c6407e1c9e695e90d87349fb74eff522fdc18eb67995ab6a8759f64",
+      "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/cli/b03-consumer-census.jsonl": "675f286eb6a24b27d3cfae55a26f48e3430f173c7ca87d35e08e91d5b2e669b4"
+    },
+    "historical_restore_references_reconciled": {
+      "runtime_mini_46522da0ef79d3aa7422ca41": "live_mini_restore_organ_partial_contract",
+      "src_2f350566b97aee80": "historical_restore_ref:workflow_wiring_unit_test_excluded",
+      "src_307bea3dfb94ec31": "historical_restore_ref:git_deleted_workflow_legacy_unproved",
+      "src_cdf3ae5e4ecf861c": "historical_restore_ref:verifier_unit_test_excluded",
+      "src_d073f505ff1671ad": "historical_restore_ref:restore_drill_verifier_script",
+      "src_def7a4c288a552af": "historical_restore_ref:pg_restore_drill_shell_script"
+    },
+    "lead_delta_leads": 1,
+    "manual_break_glass_counts": {
+      "manual_backfill_script": 27,
+      "manual_backup_script": 8,
+      "manual_migration_cli": 1,
+      "manual_migration_manager": 1,
+      "manual_or_cron_restore_verifier": 1,
+      "manual_pg_operator_shell": 1,
+      "manual_restore_drill_shell": 1,
+      "manual_restore_or_recovery_script": 2,
+      "manual_seed_script": 9,
+      "scheduled_and_manual_restore_drill_organ": 1
+    },
+    "matrix_leads": 6029,
+    "status_counts": {
+      "BLOCKED": 3940,
+      "CONFLICT": 0,
+      "EVIDENCED": 0,
+      "PARTIAL": 2086,
+      "UNKNOWN": 4
+    },
+    "supplementary_prior_hashes": {
+      ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261014-0535/GITHUB-WORKFLOW-METADATA.json": "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-M5.json": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-mini.json": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-pro.json": "4f7bf4e90c1aad7f47ca04cd80ca8fe304cf2affae56bbc68fca080185986703",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json": "9f90a66733d63b9183ad21beeca6b84b78db0b243e41aeb9a1d7bc5ab89363cd"
+    },
+    "total_leads": 6030,
+    "verified_input_hashes": {
+      ".agent-receipts/udb-wave8-inputs-dux/prior/advance-20261014-0535/GITHUB-WORKFLOW-METADATA.json": "115e40a4d82a89b11301ef17b7820ecf4ee94e0f51f4e8a3e94ad91fbb729a29",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-M5.json": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-mini.json": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/jobs-pro.json": "4f7bf4e90c1aad7f47ca04cd80ca8fe304cf2affae56bbc68fca080185986703",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/census-20261012-0454/source-index-enhanced.json": "9f90a66733d63b9183ad21beeca6b84b78db0b243e41aeb9a1d7bc5ab89363cd",
+      ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      ".agent-receipts/udb-wave8-inputs/ASTRA-ADVICE.md": "72f349f285bc681013b67ad1d25cdad54d3d4478080dc1f5e7e0512dd9e1fdb8",
+      ".agent-receipts/udb-wave8-inputs/FINAL-BLUE-GATE.json": "b9d284e1dba9e87ad340cbd4076061e7a35a93fdf8bc1c910340e6099d711856",
+      ".agent-receipts/udb-wave8-inputs/INPUT-MANIFEST.json": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+      ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      ".agent-receipts/udb-wave8-inputs/REPORT.md": "d289fb8660a6bd634cb7785fef3a8c0b47ceefe82463d134c4bbf66dc0563e9a",
+      ".agent-receipts/udb-wave8-inputs/STATE.json": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      ".agent-receipts/udb-wave8-inputs/research-lines.csv": "1b3d1f31df997500975311d3f49cbd3a50346c2fa7d27f45ff808c7203654c10"
+    }
+  },
+  "checks_complete": true,
+  "commands": [
+    {
+      "argv": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "-m",
+        "pytest",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+        "-q"
+      ],
+      "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census",
+      "evidence_origin": "Executed in this integration session before receipt creation.",
+      "exit_code": 0,
+      "id": "CURRENT_SOURCE_PYTEST",
+      "passed": 24,
+      "result": "24 passed in 0.81s",
+      "skipped": 0
+    },
+    {
+      "argv": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "research/operations/udb-wave8/B03/b03_census_adapter.py",
+        "--input-mode",
+        "fixtures",
+        "--output-dir",
+        "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/cli"
+      ],
+      "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census",
+      "exit_code": 0,
+      "id": "FIXTURE_CLI_REGENERATION",
+      "started_at": "2026-10-16T06:14:46.334390+00:00",
+      "stderr": "input_mode=fixtures\n",
+      "stdout_summary": {
+        "active_consumer_denominator": "UNKNOWN",
+        "disposition_counts": {
+          "active": 0,
+          "duplicate": 43,
+          "excluded": 1803,
+          "retired": 0,
+          "unresolved": 4184
+        },
+        "lead_delta_leads": 1,
+        "matrix_leads": 6029,
+        "total_leads": 6030
+      }
+    },
+    {
+      "argv": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "research/operations/udb-wave8/B03/fixtures/build_fixtures.py",
+        "--check"
+      ],
+      "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census",
+      "exit_code": 0,
+      "id": "FIXTURE_DERIVATION_CHECK",
+      "started_at": "2026-10-16T06:14:46.467208+00:00",
+      "stderr": "",
+      "stdout": "OK   GITHUB-WORKFLOW-METADATA.projected.json 6d70609014a602e39d42b2ed5121320b6b902a9dbb0ef273a7ca487882861ccd\nOK   INPUT-MANIFEST.json e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e\nOK   LEAD-DELTA.json 91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7\nOK   PROVENANCE.json 7482da2b6c907ec3ceabd6493d3f8da610dfade30ea7ca9ab8ea9723c0d880f2\nOK   consumer-matrix.projected.csv.gz 5d06602f5fc41d2e592705d2037d1eec6afc6c102f601ad123a2b3d122e73f77\nOK   jobs-M5.json b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198\nOK   jobs-mini.json 99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2\nOK   jobs-pro.projected.json bbd94d10e2810fae1b911b8a572c6cc4108bf83f53d742aa675bd16e045c5a61\nOK   source-index-enhanced.projected.json 56fc3136f98b83aa95de4f893551e3521bd9de44ba59a5654b2d1ec94dc757df\nprojected pins in adapter match: True\n"
+    },
+    {
+      "argv": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "-m",
+        "pytest",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+        "-q"
+      ],
+      "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/clean",
+      "exit_code": 1,
+      "id": "CLEAN_FIXTURES_ONLY_PYTEST",
+      "started_at": "2026-10-16T06:14:46.731168+00:00",
+      "stderr": "",
+      "stdout": "................F.......                                                 [100%]\n=================================== FAILURES ===================================\n_ TestB03HermeticFixtures.test_clean_checkout_reproduces_committed_outputs_byte_for_byte _\n\nself = <test_b03_census_adapter.TestB03HermeticFixtures testMethod=test_clean_checkout_reproduces_committed_outputs_byte_for_byte>\n\n    def test_clean_checkout_reproduces_committed_outputs_byte_for_byte(self) -> None:\n        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as out:\n            root = self.clean_root(tmp)\n            self.assertFalse((root / \".agent-receipts\").exists())\n            self.assertEqual(adapter.resolve_input_mode(root), \"fixtures\")\n            rows, summary = adapter.build_census_rows(root)\n            hashes = adapter.write_census_outputs(rows, summary, Path(out))\n            for name in self.OUTPUTS:\n                self.assertEqual(\n                    hashes[str(Path(out) / name)],\n>                   adapter.compute_sha256(self.B03_DIR / name),\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                    name,\n                )\n\nresearch/operations/udb-wave8/B03/test_b03_census_adapter.py:325: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ \n\npath = PosixPath('/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/clean/research/operations/udb-wave8/B03/b03-consumer-census.csv')\n\n    def compute_sha256(path: Path) -> str:\n        \"\"\"Compute hex SHA-256 of a file on disk.\"\"\"\n        if not path.is_file():\n>           raise PinVerificationError(f\"Pinned input missing on disk: {path}\")\nE           b03_census_adapter.PinVerificationError: Pinned input missing on disk: /Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-integration-3tpvf6xi/clean/research/operations/udb-wave8/B03/b03-consumer-census.csv\n\nresearch/operations/udb-wave8/B03/b03_census_adapter.py:246: PinVerificationError\n=========================== short test summary info ============================\nFAILED ../../../../../../../../../../../dev::TestB03HermeticFixtures::test_clean_checkout_reproduces_committed_outputs_byte_for_byte\n1 failed, 23 passed in 0.64s\n"
+    },
+    {
+      "argv": [
+        "/Users/nuzantara/nuzantara/apps/backend-rag/.venv/bin/python",
+        "-I",
+        "-B",
+        "-m",
+        "pytest",
+        "-c",
+        "/dev/null",
+        "--noconftest",
+        "-p",
+        "no:cacheprovider",
+        "research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+        "-q"
+      ],
+      "cwd": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census/research/operations/udb-wave8/B03/.b03-clean-complete-u6o15ua5/clean",
+      "exit_code": 0,
+      "id": "CLEAN_COMPLETE_CANDIDATE_PYTEST",
+      "ignored_inputs_present": false,
+      "passed": 24,
+      "skipped": 0,
+      "source_and_fixture_hashes_match_original": true,
+      "started_at": "2026-10-16T06:15:45.200460+00:00",
+      "stderr": "",
+      "stdout": "........................                                                 [100%]\n24 passed in 0.58s\n"
+    }
+  ],
+  "finished_at": "2026-10-16T06:15:46.212051+00:00",
+  "fixture_sha256": {
+    "GITHUB-WORKFLOW-METADATA.projected.json": "6d70609014a602e39d42b2ed5121320b6b902a9dbb0ef273a7ca487882861ccd",
+    "INPUT-MANIFEST.json": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+    "LEAD-DELTA.json": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+    "PROVENANCE.json": "7482da2b6c907ec3ceabd6493d3f8da610dfade30ea7ca9ab8ea9723c0d880f2",
+    "build_fixtures.py": "5f88d0147232be7bd29c19975ffe11bcf643ba8cdf57281c0801b7f083585537",
+    "consumer-matrix.projected.csv.gz": "d20ed3752a49ca35f12329544230f0342370e2edde1a9342f3c3d97b8975962c",
+    "jobs-M5.json": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198",
+    "jobs-mini.json": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2",
+    "jobs-pro.projected.json": "bbd94d10e2810fae1b911b8a572c6cc4108bf83f53d742aa675bd16e045c5a61",
+    "source-index-enhanced.projected.json": "56fc3136f98b83aa95de4f893551e3521bd9de44ba59a5654b2d1ec94dc757df"
+  },
+  "freeze": {
+    "at": "2026-10-16T06:20:16.199273+00:00",
+    "documentation_sha256": {
+      "DEFINITIVE-SYNTHESIS.md": "0566eccc0b0cdea1ceb46a839e7a5b2897501b956b240cc067297a0141a77e9f",
+      "PR_BODY.md": "2c98de84a30e4b3fd8829d4f60549c86cb26a827cdc20d459db7c73dc5bad63f",
+      "RESULT.json": "10650191c0b013d0095a1198488c97ef71df5952b2a6f9b8b6bf26ff2e7d21b2"
+    },
+    "fixture_set_sha256": "12a2e5be938c8ac8ddc2459e5c1ae40167551f6ceadd01af66ab0a23e9dceade",
+    "git_diff_check_exit": 0,
+    "observed_base_head": "f8612f9dc8a5bba332578832c99f963989168881",
+    "outside_ownership_status": [],
+    "owned_prefix": "research/operations/udb-wave8/B03/",
+    "remaining": "Coordinator independent review, exact synthetic/digest secret-baseline serialization, final committed-head binding and original acceptance; no ship action performed.",
+    "secret_baseline_diff_exit": 0,
+    "tracked_numstat": [
+      {
+        "added": "12",
+        "path": "research/operations/udb-wave8/B03/DEFINITIVE-SYNTHESIS.md",
+        "removed": "5"
+      },
+      {
+        "added": "14",
+        "path": "research/operations/udb-wave8/B03/PR_BODY.md",
+        "removed": "46"
+      },
+      {
+        "added": "39",
+        "path": "research/operations/udb-wave8/B03/RESULT.json",
+        "removed": "25"
+      },
+      {
+        "added": "248",
+        "path": "research/operations/udb-wave8/B03/b03_census_adapter.py",
+        "removed": "23"
+      },
+      {
+        "added": "289",
+        "path": "research/operations/udb-wave8/B03/test_b03_census_adapter.py",
+        "removed": "1"
+      }
+    ],
+    "uncommitted_candidate": true,
+    "untracked": [
+      {
+        "path": "research/operations/udb-wave8/B03/INTEGRATION-VERIFICATION.json",
+        "self_excluded": true
+      },
+      {
+        "bytes": 4309,
+        "lines": 66,
+        "path": "research/operations/udb-wave8/B03/b03-census-summary.json",
+        "sha256": "2e392d4e46eac76471c953c136f7affc155c43d0f026fb65e3e4cf6df255a39a"
+      },
+      {
+        "bytes": 3189981,
+        "lines": 6031,
+        "path": "research/operations/udb-wave8/B03/b03-consumer-census.csv",
+        "sha256": "c92a478e1c6407e1c9e695e90d87349fb74eff522fdc18eb67995ab6a8759f64"
+      },
+      {
+        "bytes": 5131836,
+        "lines": 6030,
+        "path": "research/operations/udb-wave8/B03/b03-consumer-census.jsonl",
+        "sha256": "675f286eb6a24b27d3cfae55a26f48e3430f173c7ca87d35e08e91d5b2e669b4"
+      },
+      {
+        "bytes": 51,
+        "lines": 1,
+        "path": "research/operations/udb-wave8/B03/fixtures/GITHUB-WORKFLOW-METADATA.projected.json",
+        "sha256": "6d70609014a602e39d42b2ed5121320b6b902a9dbb0ef273a7ca487882861ccd"
+      },
+      {
+        "bytes": 729,
+        "lines": 12,
+        "path": "research/operations/udb-wave8/B03/fixtures/INPUT-MANIFEST.json",
+        "sha256": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e"
+      },
+      {
+        "bytes": 2614,
+        "lines": 56,
+        "path": "research/operations/udb-wave8/B03/fixtures/LEAD-DELTA.json",
+        "sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7"
+      },
+      {
+        "bytes": 5386,
+        "lines": 140,
+        "path": "research/operations/udb-wave8/B03/fixtures/PROVENANCE.json",
+        "sha256": "7482da2b6c907ec3ceabd6493d3f8da610dfade30ea7ca9ab8ea9723c0d880f2"
+      },
+      {
+        "bytes": 10183,
+        "lines": 264,
+        "path": "research/operations/udb-wave8/B03/fixtures/build_fixtures.py",
+        "sha256": "5f88d0147232be7bd29c19975ffe11bcf643ba8cdf57281c0801b7f083585537"
+      },
+      {
+        "bytes": 153762,
+        "lines": null,
+        "path": "research/operations/udb-wave8/B03/fixtures/consumer-matrix.projected.csv.gz",
+        "sha256": "d20ed3752a49ca35f12329544230f0342370e2edde1a9342f3c3d97b8975962c"
+      },
+      {
+        "bytes": 12688,
+        "lines": 1,
+        "path": "research/operations/udb-wave8/B03/fixtures/jobs-M5.json",
+        "sha256": "b53d5b487c7da69e732e4bd31a57a422f655871b11b738f9ef136f3f596c7198"
+      },
+      {
+        "bytes": 32486,
+        "lines": 1,
+        "path": "research/operations/udb-wave8/B03/fixtures/jobs-mini.json",
+        "sha256": "99bff7025a5cfecd5b4413c8f9b19e921f884b6f80890a9e3fffc7342c2306e2"
+      },
+      {
+        "bytes": 17936,
+        "lines": 1,
+        "path": "research/operations/udb-wave8/B03/fixtures/jobs-pro.projected.json",
+        "sha256": "bbd94d10e2810fae1b911b8a572c6cc4108bf83f53d742aa675bd16e045c5a61"
+      },
+      {
+        "bytes": 422271,
+        "lines": 1,
+        "path": "research/operations/udb-wave8/B03/fixtures/source-index-enhanced.projected.json",
+        "sha256": "56fc3136f98b83aa95de4f893551e3521bd9de44ba59a5654b2d1ec94dc757df"
+      }
+    ]
+  },
+  "frozen_c09_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+  "generated_at": "2026-10-16T06:14:46.326955+00:00",
+  "harness_failures": [
+    {
+      "cause": "Integration harness omitted the three generated reference artifacts expected in the complete candidate; adapter and tests were unchanged.",
+      "id": "CLEAN_FIXTURES_ONLY_PYTEST",
+      "resolution": "Copy all required candidate source, fixture and generated reference artifacts into isolated root, then repeat only the affected clean test run."
+    },
+    {
+      "cause": "Freeze helper compared relative git-status paths with an absolute ownership prefix and rejected the in-scope paths before writing.",
+      "id": "FREEZE_SCOPE_ASSERTION_INITIAL",
+      "resolution": "Read-only check with repository-relative ownership prefix confirmed zero paths outside B03. No product file changes or test reruns."
+    }
+  ],
+  "host": "Mini",
+  "independent_review_verdict": null,
+  "kind": "SCOPED_SOURCE_VERIFICATION_NOT_NATIVE_OBSERVATION",
+  "native_observations_performed": false,
+  "observed_base_head": "f8612f9dc8a5bba332578832c99f963989168881",
+  "patch": {
+    "apply_check_exit": 0,
+    "apply_exit": 0,
+    "baseline_all_matched": true,
+    "bytes": 732919,
+    "preimage_sha256_verified": {
+      "b03-census-summary.json": "2e392d4e46eac76471c953c136f7affc155c43d0f026fb65e3e4cf6df255a39a",
+      "b03-consumer-census.csv": "c92a478e1c6407e1c9e695e90d87349fb74eff522fdc18eb67995ab6a8759f64",
+      "b03-consumer-census.jsonl": "675f286eb6a24b27d3cfae55a26f48e3430f173c7ca87d35e08e91d5b2e669b4",
+      "b03_census_adapter.py": "5f1812292b5bd95c38e9fd02358c785dc80310a0a3bac1adfb3b1ae12ec94827",
+      "test_b03_census_adapter.py": "ec573b706c53521fb63e71b843f435b0382864575fdd19037a8a740b6eda2745"
+    },
+    "sha256": "2af81e0956c4a0d8573b81ceec34ecc0249f20eeec1551b5c39d23d541e88716"
+  },
+  "regeneration_parity": {
+    "b03-census-summary.json": {
+      "current_sha256": "2e392d4e46eac76471c953c136f7affc155c43d0f026fb65e3e4cf6df255a39a",
+      "equal": true,
+      "regenerated_sha256": "2e392d4e46eac76471c953c136f7affc155c43d0f026fb65e3e4cf6df255a39a"
+    },
+    "b03-consumer-census.csv": {
+      "current_sha256": "c92a478e1c6407e1c9e695e90d87349fb74eff522fdc18eb67995ab6a8759f64",
+      "equal": true,
+      "regenerated_sha256": "c92a478e1c6407e1c9e695e90d87349fb74eff522fdc18eb67995ab6a8759f64"
+    },
+    "b03-consumer-census.jsonl": {
+      "current_sha256": "675f286eb6a24b27d3cfae55a26f48e3430f173c7ca87d35e08e91d5b2e669b4",
+      "equal": true,
+      "regenerated_sha256": "675f286eb6a24b27d3cfae55a26f48e3430f173c7ca87d35e08e91d5b2e669b4"
+    }
+  },
+  "schema": "B03_INTEGRATION_VERIFICATION_V1",
+  "source_changed_after_patch_intake": false,
+  "source_sha256": {
+    "b03_census_adapter.py": "355557c6cc5720fae8bbe82fdc31cd60fd6373b35ed9b56c1b789ec624adb339",
+    "test_b03_census_adapter.py": "d2e006f22dcad189106be96f2ac035f8443fccd399ad064af7323799f370be85"
+  },
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b03-census"
+}

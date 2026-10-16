@@ -1,3 +1,7 @@
+---
+adversarial_review: codex
+---
+
 # B03 Development Proposal — Deterministic 6,030-Lead Reconciliation & Denominator Engine
 
 ## 0. Mandate & Sibling Contract
@@ -15,9 +19,9 @@
 
 ## 1. Proposed Deterministic Reconciliation Architecture
 
-During `DEFINITIVE_SYNTHESIS+EXECUTION`, we will implement a deterministic reconciliation module and test suite under our owned perimeter that ingests `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (6,029 rows, SHA-256 `c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`), `STATE.json` (SHA-256 `caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4`), and the pinned `DUX-REQUESTS` outputs to reconcile all **6,030** union leads without guessing.
+This section retains a rejected historical development proposal, superseded by the tested adapter and definitive artifact contracts. The schema values, joins and retirement rules below are not admitted current behavior. It originally proposed to implement a deterministic reconciliation module and test suite under our owned perimeter that ingests `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (6,029 rows, SHA-256 `c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`), `STATE.json` (SHA-256 `caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4`), and the pinned `DUX-REQUESTS` outputs to reconcile all **6,030** union leads without guessing.
 
-### 1.1 Record Schema & Conservation Invariant
+### 1.1 Rejected Historical Record Schema & Conservation Invariant
 Every lead in the 6,030 universe (`6,029` baseline CSV rows + `1` `mini.restore_drill` runtime organ row) emits exactly one canonical record containing the frozen sibling contract fields:
 - `consumer_id`: Lead identifier (`src_*`, `runtime_*`, `index_*`, `job_*`, `cron_*`, `engine_*`, `SOURCE-PATH-UNMATCHED-PRO-*`, `SOURCE-TRACE-UNMATCHED-PRO-*`, `CI-REGISTRATION-UNMATCHED-GH-*`, `NOTEBOOK-CONTAINER-REFERENCE-NLM-*`, or `mini.restore_drill`).
 - `operation_id`: Proven operation identifier (e.g., `op:db:migrate:cli` for `src_c8f206461cd9bf69`, `op:mini:restore_drill` for `mini.restore_drill`), `NONE_EXCLUDED` for non-consumer rows, `JOINED_TO:<canonical_consumer_id>` for `duplicate` rows, or `UNKNOWN` when awaiting `B05`.
@@ -28,7 +32,7 @@ Every lead in the 6,030 universe (`6,029` baseline CSV rows + `1` `mini.restore_
 - `status`: Candidate disposition in `{active, retired, duplicate, excluded}` with explicit evidence-gate sub-state (`verified` vs. `blocked_evidence` when runtime/store proof is unresolved, ensuring zero unverified promotions).
 - `unknowns`: Deterministic list of unresolved evidence gaps (e.g., `["MISSING_B04_STORE_BINDING", "MISSING_B07_RUNTIME_EXECUTION_PROOF", "MISSING_REGISTRATION_HASH_PREIMAGE"]`).
 
-### 1.2 Disposition & Reconciliation Rules
+### 1.2 Rejected Historical Disposition & Reconciliation Rules
 1. **`excluded` (Non-Consumer Entities)**:
    - `NOTEBOOK-CONTAINER-REFERENCE-NLM-*` (67 rows): `NOT_DATABASE_CONSUMER_IDENTITY`.
    - `engine_{pro,mini,M5}_*` (5 rows): Target database/cache server engines (`D01_PHYSICAL_SCOPE`), not consumers.
@@ -226,3 +230,7 @@ Per `DUX-NOTE-ANALYSIS.md:18-24`, the following read-only computations over loca
 - **Inputs**: Current worktree filesystem metadata (filenames only).
 - **Expected output shape**: JSON map of artifact filenames to relative paths if present in the worktree, or empty lists if absent.
 - **Why it matters**: Determines whether pre-images for hashed `job_*`, `cron_*`, and `SOURCE-PATH-UNMATCHED-PRO-*` leads are available locally or must remain documented as an explicit upstream input boundary in `RESULT.json`.
+
+## Adversarial review
+
+Fresh independent Codex review by `/root/b03_available_final_gate` inspected pre-attribution lines 1-62, as pinned in `R1-DOCUMENT-REVIEW.json`. This is a scoped document review, not a complete document endorsement, implementation approval, native observation or final exact-head gate. Surviving objections DOC2 are retained in that receipt; the parent reconciled the current synthesis facts and labels the rejected historical schema/join/retirement hypotheses as superseded. Historical command/runtime statements are retained as recorded instructions and receipts, not newly observed events. Operational acceptance and the active denominator remain unproved.
