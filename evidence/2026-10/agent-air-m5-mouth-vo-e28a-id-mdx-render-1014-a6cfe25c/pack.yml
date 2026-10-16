@@ -88,7 +88,7 @@ receipts:
     exit: 0
     ts: "2026-10-16T00:17:12Z"
     seat: claude-sonnet-5
-  - claim: "Floor recomputed the CI way: 42 files, +1926/-6404 against origin/main."
+  - claim: "Floor recomputed the CI way: 43 files, +3517/-11442 against origin/main."
     cmd: "python3 scripts/ci/evidence_paths.py --ref <branch>; python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file changed.txt --numstat-file numstat.txt"
     result: "slug agent-air-m5-mouth-vo-e28a-id-mdx-render-1014-a6cfe25c; floor printed 3 (source: size)"
     exit: 0
@@ -112,6 +112,25 @@ receipts:
     exit: 0
     ts: "2026-10-16T01:02:37Z"
     ts_note: "load average at start 8.27 (1 min), no vitest/pytest of other sessions; the same files without the truth test had finished green at 01:01:04Z (8 files, 35 tests, exit 0)"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: truth test extended (unit-error and extension-length guards restored, E28A prices bound to offshore/onshore/extension, KITAP guarantee, director prohibition, dividend withholding, E28D/E28F director-only, E28C establishment/salary, E28C ninety days, real FAQ YAML reader, ITAP negation scrub, 90-day visa validity and IDR 2,500,000,000 now innocent)."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts"
+    result: "Test Files 1 passed (1); Tests 784 passed (784). First runs of the new rules had 7 then 2 failures, all in my own rules (Cyrillic needle, 'né' matching 'négocier', price nearest-figure on 'offshore, 19 000 000'); cured, then green."
+    exit: 0
+    ts: "2026-10-16T04:55:00Z"
+    ts_note: "minute of the green run; log in the scratchpad"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: fifteen mutations, one per new rule (Codex's seven appended claims in EN, plus ID/IT/FR variants, the unit error, the extension length, the English FAQ question in the FR E28A twin, a non-negated ITAP sentence), each red then restored by cp (cmp equal) and green again."
+    cmd: "python3 mut3.py (scratchpad): cp backup, inject, vitest run src/content/e28-family-articles.truth.test.ts, cp restore, cmp"
+    result: "all fifteen red on the named rule, all restored equal, final run 784 passed; EN unit-error mutation re-run separately (red on 'the E28A threshold is 10 billion, never 10 million', restored equal)"
+    exit: 0
+    ts: "2026-10-16T04:57:39Z"
+    seat: claude-sonnet-5
+  - claim: "Touch-up round: quiet-window combined run of my own test files (truth test, 15-file compile guard, en/id corpus guards, selftest, four content-integrity tests)."
+    cmd: "cd apps/mouth && npx vitest run src/content/e28-family-articles.truth.test.ts src/components/blog/MDXContentRSC.e28-family.test.tsx src/components/blog/MDXContentRSC.all-articles-selftest.test.tsx src/content/article-body-integrity.test.ts src/content/description-fields-integrity.test.ts src/content/frontmatter-title-integrity.test.ts src/content/content-freshness-sentinel.test.ts src/components/blog/MDXContentRSC.all-articles-en.test.tsx src/components/blog/MDXContentRSC.all-articles-id.test.tsx"
+    result: "Test Files 9 passed (9); Tests 819 passed (819); load average 2.99 (1 min), no other vitest/pytest running"
+    exit: 0
+    ts: "2026-10-16T04:58:11Z"
     seat: claude-sonnet-5
 mutation_receipts:
   - mutant: "KITAP pathway: 'After 3 consecutive years on E28A you can apply for Investor KITAP.' appended to e28a-investor-kitas-guide.mdx"
@@ -170,6 +189,66 @@ mutation_receipts:
     killed_by: "three required sentences missing and the word ratio below 0.6x (7 failed)"
     ts: "2026-10-16T01:02:01Z"
     restored: "cp from backup; cmp equal; the run after the last mutation is green, 642 passed"
+  - mutant: "E28A offshore 19M (Codex): 'E28A offshore costs IDR 19,000,000.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "E28A prices match their service :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28A offshore Rp 27 juta (ID): appended to e28a-investor-kitas-guide.id.mdx"
+    killed_by: "E28A prices match their service :: e28a...id.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28A guarantees KITAP (Codex): 'E28A guarantees KITAP.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no E28A KITAP guarantee :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "prohibited from acting as directors (Codex): appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no denial of directorship, supervision or signing on E28A :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "dividend withholding 10% (Codex): appended to investor-kitas-guide.mdx"
+    killed_by: "no tax percentages or 183-day advice :: investor...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28D neither directors nor commissioners (Codex): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "E28D and E28F are for a director or commissioner only :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28D non-directors (FR): French sentence appended to golden-visa-indonesia-complete-guide.fr.mdx"
+    killed_by: "E28D and E28F are for a director or commissioner only :: golden...fr.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28C company establishment and salary (Codex): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "E28C carries no company establishment and no post remuneration :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "E28C commitment within ninety days (Codex, spelled out): appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "no 90-day commitment on E28C :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "unit error IDR 10M: 'The E28A shareholding minimum is IDR 10M.' appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "the E28A threshold is 10 billion, never 10 million :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "unit error Rp 10 juta (ID): appended to investor-kitas-guide.id.mdx"
+    killed_by: "the E28A threshold is 10 billion, never 10 million :: investor...id.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "renewable annually: appended to e28a-investor-kitas-guide.mdx"
+    killed_by: "no invented E28A extension length :: e28a...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "extend for another 2 years (IT): 'Rinnova l'E28A per altri 2 anni' appended to e28a-investor-kitas-guide.it.mdx"
+    killed_by: "no invented E28A extension length :: e28a...it.mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "English FAQ question in the FR E28A twin: the FR question line replaced by the English question"
+    killed_by: "e28a...fr.mdx translates every user-visible frontmatter field"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
+  - mutant: "non-negated ITAP sentence: 'The Golden Visa (ITAP) grants permanent residence.' appended to golden-visa-indonesia-complete-guide.mdx"
+    killed_by: "Golden Visa is an ITAS, not ITAP / permanent residence :: golden...mdx"
+    ts: "2026-10-16T04:57:21Z to 04:57:37Z"
+    restored: "cp from backup; cmp equal; run after the last mutation green, 784 passed"
 defect_map:
   e28a_en_and_id:
     D1_work_rights: "frontmatter FAQ 1-3 and answerSnippet; title/H1/intro/'What is E28A' paragraph; key-characteristics Work Permission row; threshold scenarios 1-2; cost-comparison intro and Choose-E28A/E25B bullets; KITAP table Work permission row; Restrictions section (rewritten prohibited/can lists, dual-track option 1 and 2); body FAQ: can I work, below 10B, cost compare tail, become director, work for another company; Getting Started 'passive residence'"
@@ -255,7 +334,7 @@ twin_defect_map:
     I9_meta: "updatedAt"
 decisions:
   - id: D-gear-3
-    decision: "scripts/evidence_pack_lint.py --print-floor printed 3 (size: 43 files, +2775/-11442 against origin/main, evidence staged, computed the CI way from evidence_paths.py and a changed-files and numstat pair); the brief declares gear 3 with no gear_override. The council_run journal now records the two review seats that ran (codex-gpt-5.6-sol, agy-gemini-4-argon); seat_fallback_reason says why agy replaced kimi."
+    decision: "scripts/evidence_pack_lint.py --print-floor printed 3 (size: 43 files, +3517/-11442 against origin/main, evidence staged, computed the CI way from evidence_paths.py and a changed-files and numstat pair); the brief declares gear 3 with no gear_override. The council_run journal now records the two review seats that ran (codex-gpt-5.6-sol, agy-gemini-4-argon); seat_fallback_reason says why agy replaced kimi."
   - id: D-golden-replace-not-patch
     decision: "The Golden Visa guide rested on IDR 350M tiers, an ITAP permanent card and property/deposit vehicles end to end, so the body is replaced by a short true body (EN 48 lines in, 1155 out; ID the same; round 2 rewrote it again, now 125 lines per EN); the list above is the audit trail. Related Articles and Disclaimer kept, dated."
   - id: D-other-locales
@@ -712,3 +791,66 @@ deleted_sections_round2:
       section: "round 2 edits only: rights paragraph made per-code; What Each Route Requires and the stateless clause added; unused imports removed",
       reason: "Codex 10-12, Gemini 3 and 4.2 (nothing further deleted; the fifteen round-1 sections are in golden_deleted_sections)",
     }
+council_round2:
+  note: "Round-2 councils on 76404e4c85: agy-gemini-4-argon PASS (LOW findings only, gates/council-D2-agy-verdict.md); codex-gpt-5.6-sol FIX-FIRST, 15 of 18 round-one findings cured, 3 partial (gates/council-D2-codex-verdict.md). Seats and start times in journal.jsonl lines 3 and 4."
+  codex:
+    - {
+        n: 10,
+        was: "PARTIAL: E28C unrestricted mutual funds",
+        disposition: "CURED here: E28C mutual funds are funds in publicly listed companies in Indonesia in the table, the E28C bullet, the answerSnippet, the excerpt and the FAQ, all five locales (official E28C page line 106)",
+      }
+    - {
+        n: 15,
+        was: "PARTIAL: numeric check does not bind amounts to services; seven appended claims pass",
+        disposition: "CURED here: E28A offshore/onshore/extension prices are bound to their service (Dependent rows excluded), plus targeted entity-bound rules for KITAP guarantee, director prohibition, dividend withholding, E28D/E28F director-only, E28C establishment and salary, E28C ninety days incl. spelled-out numbers; one mutation each",
+      }
+    - {
+        n: 16,
+        was: "PARTIAL: negated (ITAP) sample rejected",
+        disposition: "CURED here: negated ITAP sentences are scrubbed before matching; 'not an ITAP', 'not permanent residence (ITAP)' and the IT form are innocence samples; a non-negated '(ITAP)' sentence is still red",
+      }
+    - {
+        n: "new 1",
+        was: "IDR 10M and 'renewable annually' guards lost in the rewrite",
+        disposition: "CURED here: 'the E28A threshold is 10 billion, never 10 million' and 'no invented E28A extension length' rules with guilt in five locales; 'Investor KITAS 2 Years (Extend)' stays an innocence sample",
+      }
+    - {
+        n: "new 2",
+        was: "rules reject source-backed statements (90-day visa validity, IDR 2,500,000,000)",
+        disposition: "CURED here: the E28C 90-day rule is bound to commitment/fulfilment wording; 'E28C visas must be used within 90 days of issuance' is an innocence sample; 2500000000 joins the E28A figures and has its own test",
+      }
+    - {
+        n: "new 3",
+        was: "translation assertion ignored '- question:' lines",
+        disposition: "CURED here: the reader parses the real YAML '- question:' / 'answer:' lines and block scalars; a unit test pins the reader; mutation: the English FAQ question in the FR E28A twin is red",
+      }
+    - {
+        n: "retained BKPM",
+        was: "BKPM Regulation 5/2025 attribution unsupported",
+        disposition: "CURED here: removed from the 15 files and visa/kitas/page.mdx; the IDR 2.5 billion stays only as the PT PMA's own paid-up threshold (owner ruling 1)",
+      }
+    - {
+        n: "retained K E33E",
+        was: "HIGH: E33E work-rights prohibition contradicts the price source (kitas page line 81)",
+        disposition: "BACKLOG, not touched: not E28 and pre-existing; visa/kitas/page.mdx is not routed live (https://balizero.com/visa/kitas is a soft 404, checked by the Dux), so no live page states it",
+      }
+    - {
+        n: "retained K marriage/student",
+        was: "marriage-processing and student-transfer instructions on visa/kitas/page.mdx unsupported (lines 69, 91)",
+        disposition: "BACKLOG, not touched: not E28, pre-existing, page not routed live",
+      }
+    - {
+        n: "retained K MDX",
+        was: "visa/kitas/page.mdx fails the article MDX parser on the {#...} heading ids",
+        disposition: "BACKLOG, not touched: the heading ids are pre-existing and content/visa/* is not routed live, so the article compile guard rightly does not cover it",
+      }
+  agy:
+    - {
+        verdict: PASS,
+        note: "only LOW findings; none requires a change in this round",
+      }
+  documented_limit: "The truth test is a canned-pattern guard: entity-scoped rules with guilt and innocence samples, whole-body matching, required sentences, price binding and structure. It does not establish sentence-level truth; a new false claim phrased outside the patterns passes. The claim_map and the per-claim sources are the audit of truth; the test keeps the known defect classes from coming back."
+backlog:
+  - "visa/kitas/page.mdx E33E blanket work prohibition vs price source (not E28; page not routed live)"
+  - "visa/kitas/page.mdx marriage-processing and student-transfer instructions (not E28; page not routed live)"
+  - "visa/kitas/page.mdx {#...} heading ids fail the article MDX parser (page not routed live; fix only if the route is ever enabled)"
