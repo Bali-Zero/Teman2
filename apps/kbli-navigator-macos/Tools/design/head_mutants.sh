@@ -77,8 +77,9 @@ edit(L, """                            ForEach(listEntries(groupStarts: groupSta
 ''' % E)
 edit(L, "        max(min(own, pane.height - expandedFloor(pane, windowBottom) - 16), 0)", "        %s[\"M5_PEEK300\"] != nil ? own : max(min(own, pane.height - expandedFloor(pane, windowBottom) - 16), 0)" % E)
 edit(L, "minHeight: sheetExpanded ? expandedFloor(pane, windowBottom) : h,", "minHeight: sheetExpanded ? (%s[\"M5_PEEK300\"] != nil ? nil : expandedFloor(pane, windowBottom)) : h," % E)
+edit(L, ".id(ListKey(sector: state.browsedSector, query: state.query, bali: baliFilter, risk: riskFilter))", ".id(%s[\"M5_NOID\"] != nil ? AnyHashable(0) : AnyHashable(ListKey(sector: state.browsedSector, query: state.query, bali: baliFilter, risk: riskFilter)))" % E)
 edit(L, ".onChange(of: followTick) { _, _ in followSelection(proxy, animated: false) }", ".onChange(of: followTick) { _, _ in if %s[\"M5_NOSETTLE\"] == nil { followSelection(proxy, animated: false) } }" % E)
-edit(L, "        guard let id = state.selected?.id else { return }\n        if animated,", "        guard let id = state.selected?.id, %s[\"M5_NOSCROLL\"] == nil else { return }\n        if animated," % E)
+edit(L, "        guard let id = state.selected?.id else { return }\n        followTask?.cancel()\n", "        guard let id = state.selected?.id, %s[\"M5_NOSCROLL\"] == nil else { return }\n        followTask?.cancel()\n" % E)
 edit(L, """                tableList(inset: 16) {
                     filterBar
                     VStack(alignment: .leading, spacing: 0) {
@@ -127,10 +128,10 @@ git checkout -q -- Sources/Views/RegistryVerdictSheet.swift Sources/Snapshot.swi
 shot() { local out=$1; shift; mkdir -p ${out:h}; "$BIN" --snapshot-band "$@" --layout-json ${out%.png}.json $out 2>/dev/null || echo "RENDER FAIL $out"; }
 WRONG=()
 for MUT in none $NAMES; do
-  D=$M/$MUT; unset M5_SQUASH M5_OVERLAP M5_NOCAP M5_GLYPH M5_HOSTOFF M5_NOGLYPH M5_SRCOPEN M5_NORULE M5_STACK M5_PLATEFIRST M5_COMPACTEXP M5_BANDMOVE M5_PLATE201 M5_SPACE10 M5_NOPLATE M5_SLACK M5_IDWRAP M5_NOSETTLE M5_NOSCROLL M5_MASTOUT M5_PEEK300 M5_NIGHTREVERT
+  D=$M/$MUT; unset M5_SQUASH M5_OVERLAP M5_NOCAP M5_GLYPH M5_HOSTOFF M5_NOGLYPH M5_SRCOPEN M5_NORULE M5_STACK M5_PLATEFIRST M5_COMPACTEXP M5_BANDMOVE M5_PLATE201 M5_SPACE10 M5_NOPLATE M5_SLACK M5_IDWRAP M5_NOSETTLE M5_NOSCROLL M5_MASTOUT M5_PEEK300 M5_NIGHTREVERT M5_NOID
   case $MUT in
     squash) export M5_SQUASH=1 ;; overlap) export M5_OVERLAP=1 ;; nocap) export M5_NOCAP=1 ;; glyph) export M5_GLYPH=1 ;; hostoff) export M5_HOSTOFF=1 ;; noglyph) export M5_NOGLYPH=1 ;; srcopen) export M5_SRCOPEN=1 ;; norule) export M5_NORULE=1 ;; stack) export M5_STACK=1 ;; platefirst) export M5_PLATEFIRST=1 ;; compactexp) export M5_COMPACTEXP=1 M5_NOGLYPH=1 ;; bandmove) export M5_BANDMOVE=1 ;; plate201) export M5_PLATE201=1 ;;
-    space10) export M5_SPACE10=1 ;; noplate) export M5_NOPLATE=1 ;; slack470) export M5_SLACK=1 ;; idwrap) export M5_IDWRAP=1 ;; nosettle) export M5_NOSETTLE=1 ;; noscroll) export M5_NOSCROLL=1 ;; mastout) export M5_MASTOUT=1 ;; peek300) export M5_PEEK300=1 ;; nightrevert) export M5_NIGHTREVERT=1 ;;
+    space10) export M5_SPACE10=1 ;; noplate) export M5_NOPLATE=1 ;; slack470) export M5_SLACK=1 ;; idwrap) export M5_IDWRAP=1 ;; nosettle) export M5_NOSETTLE=1 ;; noscroll) export M5_NOSCROLL=1 ;; mastout) export M5_MASTOUT=1 ;; peek300) export M5_PEEK300=1 ;; nightrevert) export M5_NIGHTREVERT=1 ;; noid) export M5_NOID=1 ;;
     none) ;; *) echo "head_mutants: no mutation for '$MUT' in this script"; exit 7 ;;
   esac
   shot $D/imm/sheet-open-56101-day-en.png registry-sheet --imm --sheet-open --theme day --lang en --code 56101 --height 3200
@@ -147,8 +148,10 @@ for MUT in none $NAMES; do
   "$BIN" --fold-census $D-fold300.jsonl --sidebar 300 --codes 56101,56306,38110,87202,77520,56102 --sizes 1040x700 > /dev/null 2>&1
   "$BIN" --fold-census $D-open.jsonl --open --codes 56101,56306,38110,87202,77520,56102 --sizes 1040x700,1180x800 > /dev/null 2>&1
   "$BIN" --fold-census $D-open300.jsonl --open --sidebar 300 --codes 56101,56306,38110,87202,77520,56102 --sizes 1040x700 > /dev/null 2>&1
-  python3 Tools/design/fold_census.py $D-fold.jsonl $D-fold300.jsonl $D-open.jsonl $D-open300.jsonl > $D-fold.log 2>&1; frc=$?
-  unset M5_SQUASH M5_OVERLAP M5_NOCAP M5_GLYPH M5_HOSTOFF M5_NOGLYPH M5_SRCOPEN M5_NORULE M5_STACK M5_PLATEFIRST M5_COMPACTEXP M5_BANDMOVE M5_PLATE201 M5_SPACE10 M5_NOPLATE M5_SLACK M5_IDWRAP M5_NOSETTLE M5_NOSCROLL M5_MASTOUT M5_PEEK300 M5_NIGHTREVERT
+  # the tail sweep (H1d O2): 96900 (the last long sector) then 97000..99000, a list that is shorter than the one before it
+  "$BIN" --fold-census $D-tail.jsonl --codes 96900,97000,98100,98200,99000 --sizes 1040x700,1180x800 > /dev/null 2>&1
+  python3 Tools/design/fold_census.py $D-fold.jsonl $D-fold300.jsonl $D-open.jsonl $D-open300.jsonl $D-tail.jsonl > $D-fold.log 2>&1; frc=$?
+  unset M5_SQUASH M5_OVERLAP M5_NOCAP M5_GLYPH M5_HOSTOFF M5_NOGLYPH M5_SRCOPEN M5_NORULE M5_STACK M5_PLATEFIRST M5_COMPACTEXP M5_BANDMOVE M5_PLATE201 M5_SPACE10 M5_NOPLATE M5_SLACK M5_IDWRAP M5_NOSETTLE M5_NOSCROLL M5_MASTOUT M5_PEEK300 M5_NIGHTREVERT M5_NOID
   python3 Tools/design/png_census.py $D --require C26,C27,C28,N1 > $D.log 2>&1; prc=$?; rc=$(( prc || frc )); echo "== mutant $MUT: census rc=$rc (png $prc, fold $frc: $(tail -1 $D.log); $(tail -1 $D-fold.log))"
   want=1; [ $MUT = none ] && want=0; [ $rc = $want ] || WRONG+=("$MUT(rc $rc, want $want)")
   grep -E "C26|C27|C28|N1" $D.log | grep -v "self-test" | cut -c1-260 | head -3
