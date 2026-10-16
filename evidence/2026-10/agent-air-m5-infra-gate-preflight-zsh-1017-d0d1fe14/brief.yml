@@ -1,0 +1,33 @@
+task_id: gate-preflight-zsh-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  scripts/harness_fable_gate.py's ledger preflight (#8605) is sent to `ssh pro` as one argv,
+  which sshd runs through the remote login shell, zsh on Pro. There "$R:scripts/..." is the
+  :s modifier, so cat-file reads refs/merger/wrapperi/gate_ledger.py and the preflight exits
+  11 although the ledger is deployed: no gate verdict can be published from M5 or Mini. Brace
+  the parameters so the preflight means the same under bash and zsh.
+acceptance:
+  - text: >-
+      Under both /bin/bash and /bin/zsh the formatted PREFLIGHT returns 0 when the mirror ref
+      carries scripts/localci/gate_ledger.py, 11 when it does not, 10 when the wrapper has no
+      gate-append mode; the old unbraced form fails under zsh.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_harness_fable_gate_preflight_zsh_1017.py
+  - text: >-
+      The existing publisher and verdict-reader tests stay green.
+    probe: python3 -m pytest -p no:cacheprovider -q scripts/tests/test_harness_fable_gate.py scripts/tests/test_harness_gate_read.py
+  - text: >-
+      After the merge, the publisher run from origin/main on M5 appends to the Pro ledger and
+      posts harness/fable-gate.
+    probe: python3 <origin/main scripts/harness_fable_gate.py> --verdict ... from M5
+assumptions:
+  - text: The remote login shell of the Pro user is zsh and it mangles "$R:scripts/...".
+    status: verified
+    probe: >-
+      2026-10-16T20:50Z, ssh pro: shell=zsh; rev-parse refs/merger/wrapper ok (1b69da7b03);
+      cat-file "$R:scripts/localci/gate_ledger.py" -> fatal: Not a valid object name
+      refs/merger/wrapperi/gate_ledger.py; the literal ref works.
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
