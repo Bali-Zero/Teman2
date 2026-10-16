@@ -57,7 +57,10 @@ def _const(name):
 
 
 def _loads(raw: bytes):
-    return json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs, parse_constant=_const)
+    try:
+        return json.loads(raw.decode("utf-8"), object_pairs_hook=_pairs, parse_constant=_const)
+    except RecursionError as exc:
+        raise ValueError("deeply nested JSON") from exc
 
 
 def digest(line: bytes) -> str:
@@ -274,7 +277,10 @@ def quarantine(path: str, line_no: int, now: "float | None" = None) -> "tuple[in
     fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
-        _check_state(os.fstat(fd))
+        qst, qdisk = os.fstat(fd), os.lstat(path)
+        _check_state(qst)
+        if (qst.st_dev, qst.st_ino) != (qdisk.st_dev, qdisk.st_ino):
+            raise OSError("ledger was replaced while quarantine waited for the lock; retry")
         with os.fdopen(os.dup(fd), "rb") as f:
             data = f.read()
         lines, torn_tail = _split(data)
@@ -293,17 +299,30 @@ def quarantine(path: str, line_no: int, now: "float | None" = None) -> "tuple[in
             rest = rest[:-1]   # the torn tail stays torn: another line's removal must not complete it into a verdict
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() if now is None else now))
         rec = json.dumps({"ts": ts, "line": line_no, "sha256": digest(raw), "raw_b64": base64.b64encode(raw).decode("ascii")}, separators=(",", ":"))
+        qline = rec.encode("ascii") + b"\n"
         qfd = os.open(os.path.join(os.path.dirname(path), "verdicts.quarantine.jsonl"), os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        qsize = os.fstat(qfd).st_size
         try:
-            os.write(qfd, rec.encode("ascii") + b"\n")
+            if os.write(qfd, qline) != len(qline):
+                raise OSError("short write on quarantine journal")
             os.fsync(qfd)
+        except OSError:
+            os.ftruncate(qfd, qsize)
+            raise
         finally:
             os.close(qfd)
         tmp = f"{path}.tmp-{os.getpid()}"
         tfd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
         try:
-            os.write(tfd, rest)
+            if os.write(tfd, rest) != len(rest):
+                raise OSError("short write on replacement ledger")
             os.fsync(tfd)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
         finally:
             os.close(tfd)
         os.replace(tmp, path)

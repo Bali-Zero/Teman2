@@ -11,6 +11,7 @@ import itertools
 import json
 import os
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -149,6 +150,10 @@ def test_tb_a_file_state_that_is_not_a_private_regular_file_is_false(ledger, tmp
     monkeypatch.setattr(gl.os, "geteuid", lambda: os.getuid() + 1)
     assert gl.gate_verdict(ledger, R, H)[0] is False   # another owner
     monkeypatch.undo()
+    real_lstat = os.lstat
+    monkeypatch.setattr(gl.os, "lstat", lambda p: os.stat_result((stat.S_IFIFO | 0o600, *real_lstat(p)[1:])))
+    assert gl.gate_verdict(ledger, R, H)[0] is False   # a readable 0600 FIFO: candidate False, S_ISREG-disabled mutant True
+    monkeypatch.undo()
     os.unlink(ledger)
     os.mkdir(ledger, 0o700)   # 0700: no group/other bit and our owner, so only the regular-file check can refuse it
     assert gl.gate_verdict(ledger, R, H)[0] is False   # a directory
@@ -166,7 +171,7 @@ def test_tb_a_bad_argument_is_false_even_with_a_matching_success(ledger, repo, h
 
 
 def test_the_reader_never_raises_on_junk_bytes(ledger):
-    for junk in (b"\xff\xfe\n", b"\n", b"[]\n", b"null\n", b"{}\n", b'{"v":NaN}\n', b'{"v":1,"v":1}\n', b"\x00" * 10, b"{" * 5000 + b"\n"):
+    for junk in (b"\xff\xfe\n", b"\n", b"[]\n", b"null\n", b"{}\n", b'{"v":NaN}\n', b'{"v":1,"v":1}\n', b"\x00" * 10, b"{" * 5000 + b"\n", b"[" * 2000 + b"]" * 2000 + b"\n"):
         write(ledger, junk)
         assert gl.gate_verdict(ledger, R, H)[0] is False
 
@@ -423,6 +428,48 @@ def test_quarantine_moves_one_bad_line_journalled_and_refuses_a_line_that_valida
     assert gl.gate_verdict(ledger, R, OTHER)[0] is False   # still torn, still unreadable
     write(ledger, good1 + good1[:-1])   # a complete line with no newline is the torn tail, and may go
     assert gl.quarantine(ledger, 2)[0] == 0 and Path(ledger).read_bytes() == good1
+
+
+def test_quarantine_refuses_a_replaced_ledger_and_short_writes(ledger, monkeypatch):
+    good1, good2 = line(entry(verdict="failure")) + b"\n", line(entry(head_sha=OTHER, pr=8)) + b"\n"
+    write(ledger, good1 + b"{torn\n" + good2)
+    qpath = Path(ledger).parent / "verdicts.quarantine.jsonl"
+    real_flock = gl.fcntl.flock
+
+    def swap(fd, op):
+        real_flock(fd, op)
+        if op == gl.fcntl.LOCK_EX:
+            write(ledger + ".new", good1 + b"{torn\n" + good2)
+            os.replace(ledger + ".new", ledger)
+
+    monkeypatch.setattr(gl.fcntl, "flock", swap)
+    with pytest.raises(OSError, match="replaced"):
+        gl.quarantine(ledger, 2, now=NOW)
+    monkeypatch.undo()
+    assert not qpath.exists() and Path(ledger).read_bytes() == good1 + b"{torn\n" + good2
+    real_write = os.write
+    calls = []
+
+    def short_first(fd, b):
+        calls.append(1)
+        return real_write(fd, b[:5]) if len(calls) == 1 else real_write(fd, b)
+
+    monkeypatch.setattr(gl.os, "write", short_first)
+    with pytest.raises(OSError, match="short write"):
+        gl.quarantine(ledger, 2, now=NOW)
+    monkeypatch.undo()
+    assert (not qpath.exists() or qpath.read_bytes() == b"") and Path(ledger).read_bytes() == good1 + b"{torn\n" + good2
+    calls.clear()
+
+    def short_second(fd, b):
+        calls.append(1)
+        return real_write(fd, b[:5]) if len(calls) == 2 else real_write(fd, b)
+
+    monkeypatch.setattr(gl.os, "write", short_second)
+    with pytest.raises(OSError, match="short write"):
+        gl.quarantine(ledger, 2, now=NOW)
+    monkeypatch.undo()
+    assert Path(ledger).read_bytes() == good1 + b"{torn\n" + good2 and not list(Path(ledger).parent.glob("*.tmp-*"))
 
 
 # --- the wrapper's gate-append mode -----------------------------------------------------------------------------------------------

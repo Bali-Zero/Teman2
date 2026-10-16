@@ -54,7 +54,11 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # --- verify and quarantine
     "b25p1-verify-ignores-directory-mode": (GL, "    if dmode & 0o077:", "    if False:", GT),
     "b25p1-quarantine-moves-a-valid-line": (GL, "        if valid:", "        if False:", GT),
-    "b25p1-quarantine-unjournalled": (GL, '            os.write(qfd, rec.encode("ascii") + b"\\n")', "            pass", GT),
+    "b25p1-quarantine-unjournalled": (GL, '            if os.write(qfd, qline) != len(qline):\n                raise OSError("short write on quarantine journal")', "            if False:\n                pass", GT),
+    "b25p1-quarantine-replaced-inode-unchecked": (GL, "        if (qst.st_dev, qst.st_ino) != (qdisk.st_dev, qdisk.st_ino):", "        if False:", GT),
+    "b25p1-quarantine-journal-short-write-unchecked": (GL, "            if os.write(qfd, qline) != len(qline):", "            if os.write(qfd, qline) < 0:", GT),
+    "b25p1-quarantine-short-write-unchecked": (GL, "            if os.write(tfd, rest) != len(rest):", "            if os.write(tfd, rest) < 0:", GT),
+    "b25p1-recursion-error-uncaught": (GL, '    except RecursionError as exc:\n        raise ValueError("deeply nested JSON") from exc', "    except () as exc:\n        pass", GT),
     # --- the tick wrapper's gate-append mode
     "b25p1-wrapper-reads-base": (WR, 'rev-parse --verify --quiet "refs/merger/wrapper^{commit}"', 'rev-parse --verify --quiet "refs/merger/base^{commit}"', GT),
     "b25p1-wrapper-failure-swallowed": (WR, 'append "$@"\n  exit $?', 'append "$@" || true\n  exit 0', GT),
