@@ -4,7 +4,7 @@ l_level: L1
 gate_class: opus
 objective: |
   Batch 1 of the LOWs that independent Opus gates named while passing already-merged LocalCI PRs: test gaps and one
-  residual, closed by ADDING tests and one run-time guard. B28 L1 (the starvation bound is asserted by its exact count),
+  residual, closed by ADDING tests and one run-time guard. B28 L1 (the PR turn right after the starvation-bound replay defers nothing: replay_deferred count == REPLAY_MAX_SKIP),
   B33 S1 L1 and L2 (an empty host_no_verdict chains; every parametrize id names its own case), B30 L2 and L3 (no candidate
   text opens a runner ERROR/BLOCKED reason; host_checks membership is exact, never by prefix), B36 L1 and L2 (a rows file
   that writes MUTANTS through any alias stops the loader at run time; the self-registration is pinned). Each new guard
@@ -14,7 +14,7 @@ constraints:
   - "No existing test is weakened; the MUTANTS dict entries are not edited."
 acceptance:
   - text: "The new tests pass and every lows1 mutant is KILLED; --list is clean."
-    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only lows1-guard-not-called lows1-snapshot-is-live lows1-rebind-unchecked lows1-removed-unseen lows1-changed-unseen lows1-added-unseen lows1-module-table-unwatched lows1-setdefault-dropped lows1-host-checks-by-prefix"
+    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only lows1-guard-not-called lows1-snapshot-is-live lows1-rebind-unchecked lows1-removed-unseen lows1-changed-unseen lows1-added-unseen lows1-defer-on-a-pr-turn lows1-module-table-unwatched lows1-setdefault-dropped lows1-host-checks-by-prefix"
   - text: "A rows file writing MUTANTS through an alias stops the run naming the file; a normal rows file still loads."
     probe: "python -m pytest -q scripts/localci/tests/test_mutant_rows_runtime_guard.py"
 consumer_map:

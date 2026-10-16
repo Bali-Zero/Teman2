@@ -11,5 +11,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "lows1-added-unseen": (MR, "added = sorted(k for k in table if k not in snap)", "added = []", MR_T),
     "lows1-module-table-unwatched": (MR, "[into] if into is MUTANTS else [into, MUTANTS]", "[into]", MR_T),
     "lows1-setdefault-dropped": (MR, 'sys.modules.setdefault("merger_mutants", sys.modules[__name__])', "pass", MR_T),
+    "lows1-defer-on-a-pr-turn": (PY, "if (reason and todo and has_arm_label(todo[0]) and os.environ", "if (todo and has_arm_label(todo[0]) and os.environ", ("scripts/localci/tests/test_pr_first.py",)),
     "lows1-host-checks-by-prefix": (PY, '(v == "ERROR" and host and k in named)', '(v == "ERROR" and host and any(k.startswith(n) for n in named if isinstance(n, str)))', REDECIDE_T),
 }

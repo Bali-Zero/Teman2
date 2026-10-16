@@ -69,6 +69,7 @@ def test_after_the_skip_bound_one_replay_runs_though_a_labelled_pr_waits_and_the
     assert len(kinds(rw, "replay_deferred")) == mg.REPLAY_MAX_SKIP   # the forced turn defers nothing
     assert mg.replay_skips(mg.read_journal(rw.state)) == (0, None)   # the replay put the count back to zero
     assert rw.tick() == 0 and shape(rw)[-1] == (False, 4)   # the PR is decided on the turn after the replay
+    assert len(kinds(rw, "replay_deferred")) == mg.REPLAY_MAX_SKIP   # B28 LOW-1: the PR turn right after the replay is not a replay turn, so it defers nothing
 
 
 def test_one_deferral_short_of_the_skip_bound_still_defers(rw):
@@ -77,7 +78,6 @@ def test_one_deferral_short_of_the_skip_bound_still_defers(rw):
     add_deferrals(rw, mg.REPLAY_MAX_SKIP - 1)   # five
     labelled(rw, 4)
     assert rw.tick() == 0 and shape(rw)[-1] == (False, 4) and kinds(rw, "replay_deferred")[-1]["skipped_n"] == mg.REPLAY_MAX_SKIP
-    assert len(kinds(rw, "replay_deferred")) == mg.REPLAY_MAX_SKIP   # the five plus this turn's: the bound is the count, not a replay having happened
 
 
 def test_after_the_skip_age_one_replay_runs_though_few_were_deferred(rw):
