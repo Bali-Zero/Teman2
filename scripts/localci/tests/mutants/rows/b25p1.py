@@ -53,6 +53,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # --- the tick wrapper's gate-append mode
     "b25p1-wrapper-reads-base": (WR, 'rev-parse --verify --quiet "refs/merger/wrapper^{commit}"', 'rev-parse --verify --quiet "refs/merger/base^{commit}"', GT),
     "b25p1-wrapper-failure-swallowed": (WR, 'append "$@"\n  exit $?', 'append "$@" || true\n  exit 0', GT),
-    "b25p1-wrapper-missing-code-unchecked": (WR, 'if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:scripts/localci/gate_ledger.py" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then',
+    "b25p1-wrapper-missing-code-unchecked": (WR, 'if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:$GA_FILE" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then',
                                              "if false; then", GT),
 }
