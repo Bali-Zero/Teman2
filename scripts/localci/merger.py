@@ -1350,7 +1350,7 @@ def hosted_summary(repo: str, base: str, status: dict, head: str, run_dir: Path,
 ENQUEUE_BASE = "main"
 _LOGIN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}")
 PR_QUERY = ("query($owner: String!, $name: String!, $number: Int!) { repository(owner: $owner, name: $name) { pullRequest(number: $number) {"
-            " id number state title isDraft isCrossRepository baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
+            " id number state title isDraft isCrossRepository author { __typename login } baseRefName headRefOid body isInMergeQueue mergeQueueEntry { id position state }"
             " reviewDecision latestOpinionatedReviews(first: 100, writersOnly: true) { totalCount nodes { state } }"
             " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
             " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } }")
@@ -1384,7 +1384,7 @@ def hosted_side(live) -> str | None:
 
 
 def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
-    """The label half of the arm: ARM_LABEL on the PR, applied last by a user whose role on the repo is admin or maintain."""
+    """The label half of the arm: ARM_LABEL on the PR, applied last by a user whose role on the repo is admin or maintain (B42: or write, on its own PR)."""
     if ARM_LABEL not in {lb.get("name") for lb in (p.get("labels") or {}).get("nodes") or [] if isinstance(lb, dict)}:
         return f"label {ARM_LABEL} absent", None
     actor, labelled_at = None, None
@@ -1397,8 +1397,18 @@ def label_arm(repo: str, p: dict) -> tuple[str | None, str | None]:
     perm = hc.gh_get(f"repos/{repo}/collaborators/{login}/permission")
     role = perm.get("role_name") if isinstance(perm, dict) else None
     if role not in ARM_ROLES:
-        return f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain", login
+        if not own_write_label(p, login, role):
+            return f"{ARM_LABEL} applied by {login}, whose role is {role!r}, not admin or maintain (nor a write-role author's label on its own same-repo PR)", login
     return label_postdates_head(repo, p.get("headRefOid"), labelled_at, p.get("number")), login
+
+
+def own_write_label(p: dict, login: str, role) -> bool:
+    """B42: a write-role author's own label is a merge order on its own PR (parity with GitHub auto-merge, which that author already uses). The
+    author is a User, not a Bot, and its login is the actor's EXACTLY: both come from GitHub in canonical case, so a pair differing only in case
+    is an anomaly and fails closed. The PR is same-repo. The role is the one the caller just read: no further read."""
+    author = p.get("author")
+    return (role == "write" and p.get("isCrossRepository") is False and isinstance(author, dict) and author.get("__typename") == "User"
+            and author.get("login") == login)
 
 
 def label_postdates_head(repo: str, head, labelled_at, number=None) -> str | None:

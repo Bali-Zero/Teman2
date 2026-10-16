@@ -19,7 +19,7 @@ import merger as mg  # noqa: E402
 
 CENSUS_QUERY = ("query($owner: String!, $name: String!, $after: String) { repository(owner: $owner, name: $name) {"
                 " pullRequests(states: OPEN, first: 50, after: $after, orderBy: {field: CREATED_AT, direction: ASC}) {"
-                " pageInfo { hasNextPage endCursor } nodes { number title isDraft headRefOid isInMergeQueue autoMergeRequest { enabledAt }"
+                " pageInfo { hasNextPage endCursor } nodes { number title isDraft isCrossRepository author { __typename login } headRefOid isInMergeQueue autoMergeRequest { enabledAt }"
                 " labels(first: 100) { nodes { name } } timelineItems(itemTypes: [LABELED_EVENT, UNLABELED_EVENT], last: 100) { nodes {"
                 " __typename ... on LabeledEvent { createdAt label { name } actor { __typename login } } ... on UnlabeledEvent { label { name } } } } } } } }")
 
