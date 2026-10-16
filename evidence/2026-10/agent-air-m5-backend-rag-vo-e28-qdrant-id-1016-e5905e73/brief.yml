@@ -1,0 +1,20 @@
+task_id: vo-e28-qdrant-id-1016
+gear: 1
+l_level: L1
+gate_class: opus
+mission_colour: BLUE
+objective: |
+  The PROD dry-run of scripts/fix_visa_oracle_e28_points.py REFUSED (exit 3, nothing written):
+  its E28D point id spliced the E28D prefix onto the tail of the C1 point. The real E28D point
+  id, from the live visa_oracle scroll of 2026-10-16, is the one now in CODE_POINTS. A fix of a
+  fix at depth 1: one id, one test binding every fixer target to the 14 live E28 point ids.
+constraints:
+  - "One id changed; no other behaviour of the fixer changes. No production access from this PR."
+acceptance:
+  - text: "Every fixer target id is one of the 14 live visa_oracle point ids and carries the matching code."
+    probe: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/unit/kb/test_e28_kb_data_follows_the_official_pages.py -p no:cacheprovider"
+consumer_map:
+  - "The operator run of scripts/fix_visa_oracle_e28_points.py on PROD (Pro, env loaded from apps/backend-rag/.env)."
+risks:
+  - "None beyond the id: the fixer still refuses on any shape or anchor mismatch."
+grader: "Orchestrator on-disk check; fix of a fix, depth 1."

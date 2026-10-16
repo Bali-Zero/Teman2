@@ -1,0 +1,69 @@
+== ROUND 1, head af081b6c68, codex-gpt-5.6-sol (dispatched 2026-10-15T12:35:43Z), verbatim ==
+VERDICT: REWORK
+DEFECT scripts/localci/shepherd.py:235 — The `rate_limit` GET bypasses `Rest`/`CallCap`, so 60 permission GETs plus this request produce 61 REST calls.
+DEFECT scripts/localci/shepherd.py:100 — Open-PR listing can execute up to five GraphQL calls, contradicting the ONE-query listing contract.
+DEFECT scripts/localci/shepherd.py:52 — Labels are limited to 30 without `totalCount` or truncation handling, so an arm label beyond the first 30 is falsely classified as absent.
+DEFECT scripts/localci/shepherd.py:187 — A PR in both classes records only its gate action; `would_label` is suppressed even though `label_candidate` is present.
+DEFECT scripts/localci/localci_shepherd_tick.sh:13 — Heartbeat is not guaranteed: a missing, empty, or failing heartbeat library only emits stderr, including on first-run and kill-switch failures.
+DEFECT scripts/localci/localci_shepherd_tick.sh:34 — Cleanup runs under `set -e`; a failed `rm` can abort the EXIT trap before heartbeat emission.
+DEFECT scripts/localci/localci_shepherd_tick.sh:61 — The wrapper creates state and performs clone/fetch work before the Python host guard, so a wrong host still touches disk and network.
+DEFECT scripts/localci/localci_shepherd_tick.sh:81 — `HB_NEW` is not included in EXIT cleanup and can be left behind if replacement fails or execution is interrupted.
+NOTE scripts/localci/shepherd.py:34 — No GitHub write path found; imported merger write functions are never referenced, and all reachable GitHub operations use read queries or GET.
+NOTE scripts/localci/shepherd.py:158 — No additional issue found with NEVER ordering, file-list truncation, `brief_path`, `author_class`, `rollup`, or entity-based `off_limits`.
+NOTE scripts/localci/shepherd.py:71 — Budget boundaries and unread-budget fail-closed behavior are correct; only the uncounted REST request above violates the cap.
+NOTE scripts/localci/shepherd.py:230 — Lease acquisition, held-lease exit, and release through `finally` are correct.
+NOTE infra/launchagents/com.balizero.localci-shepherd.plist:23 — `StartInterval=600`, `RunAtLoad=true`, and absence of `KeepAlive` are correct.
+NOTE apps/organism/organism/organs_registry.yaml:3274 — `expected_hb_seconds=1200` is consistently twice the 600-second interval.
+NOTE infra/home-fork/declared-pairs.json:11 — The declared live/repository wrapper pair and Pro machine assignment are consistent.
+
+== ROUND 1, head af081b6c68, agy-gemini-4-argon (Gemini 4 Argon High; dispatched 2026-10-15T12:35:11Z), verbatim ==
+VERDICT: PASS
+
+### Findings
+
+- **NOTE** `scripts/localci/shepherd.py:200` — `roles_for` skips draft, armed, `codex/*`, and non-`User` PRs, but does not pre-filter PRs that `classify` will immediately reject on NEVER predicates (`baseRefName != "main"`, `isCrossRepository`, `files_truncated`, `off_limits`, `CHANGES_REQUESTED`), which can spend 1 counted REST call per distinct login on a PR that cannot reach `label_candidate` (still bounded by `REST_CAP = 60`).
+- **NOTE** `scripts/localci/localci_shepherd_tick.sh:81` — `HB_NEW` is cleaned up in the `if`/`else` branches (lines 83, 85), but unlike `CODE` and `OUT` (lines 34–35) it is not cleared in the `finish()` `EXIT` trap if a signal interrupts `git show`.
+
+### Area Summary
+
+1. **Classifier (`classify`, `brief_path`, `author_class`, `roles_for`, `rollup`, `budget_mode`, `off_limits`)**: No blockers or defects found (see `NOTE` on `scripts/localci/shepherd.py:200`). Every NEVER predicate (`isDraft` / `baseRefName != "main"`, `isCrossRepository`, truncated `files`, `off_limits`, `CHANGES_REQUESTED`) is checked in `scripts/localci/shepherd.py:161-172` before any `would_*` action in lines 173–188; `off_limits` (lines 80–82) matches the exact entities without substring over-match or under-match; truncation is guarded for open PR pages (`list_open`, line 106), PR files (`brief_path` line 111 and `classify` line 166), and status contexts (`rollup` line 144 and `classify` line 176).
+2. **No write verb (`shepherd.py`, `mg`, `hc`)**: Nothing found. `shepherd.py` only touches read/utility attributes on `mg` (`hc`, `now`, `HOST`, `MergerError`, `is_sha`, `ARM_ROLES`, `ARM_LABEL`, `_LOGIN_RE`, `gh_graphql`, `take_lease`, `drop_lease`, `redact`) and `hc` (`CompareError`, `gh_get`, `DEFAULT_REPO`), issues only GraphQL `query` documents, and is pinned by the AST + bytecode constant check in `scripts/localci/tests/test_shepherd.py:241-265`.
+3. **Budget floors and call cap**: Nothing found. Boundary values in `budget_mode` (`scripts/localci/shepherd.py:71-77`) match `<800` / `graphql<1000` (`skip`), `800..1499` (`observe`, with `roles_for` and `would_*` journaling gated on `mode == "act"` at lines 247 and 254), and `>=1500` (`act`); non-integer/missing `rate_limit` values fail closed with `type(x) is not int` at line 237; `CallCap.charge` (lines 65–68) raises `BudgetCap` before `self.get(path)` on the 61st call.
+4. **Lease handling**: Nothing found. Host mismatch exits at `scripts/localci/shepherd.py:227-228` before touching disk; `mg.take_lease` uses the shepherd's own state dir (`~/.nuzantara-pilots/local-ci/shepherd`, line 37), journals `skipped_lease` when held (lines 231–233), and always releases via `finally: mg.drop_lease(state, fh, lease)` (line 263).
+5. **Plist and wrapper safety**: No blockers or defects found (see `NOTE` on `scripts/localci/localci_shepherd_tick.sh:81`). `infra/launchagents/com.balizero.localci-shepherd.plist` sets `StartInterval` to `600`, `RunAtLoad` to `true`, and omits `KeepAlive`; `scripts/localci/localci_shepherd_tick.sh` enforces `set -euo pipefail` (line 8), kill switch before state creation (lines 20–24), `trap finish EXIT` writing a heartbeat on every exit path (lines 32–42), explicit `SHEPHERD_PYTHON`/`SHEPHERD_NODE` validation (lines 48–55), `GIT_*` scrubbing (lines 56–59), object borrowing via `git clone --bare --shared` without mutating the merger mirror (lines 66–73), and extraction of all files at a single resolved commit `$SHA` (lines 76–83).
+6. **Registry entry and declared pair consistency**: Nothing found. `apps/organism/organism/organs_registry.yaml` (`pro.localci_shepherd`, `expected_hb_seconds: 1200` = 2x `StartInterval` `600`, label `com.balizero.localci-shepherd`, heartbeat path `~/.organism/last_seen/pro.localci_shepherd.json`) and `infra/home-fork/declared-pairs.json` (`~/.nuzantara-cron/localci_shepherd_tick.sh` ↔ `scripts/localci/localci_shepherd_tick.sh` on `["pro"]`) are consistent with the plist and wrapper.
+
+== ROUND 2, head a24504f6b5 (code identical to c202caec6f), codex-gpt-5.6-sol (dispatched 2026-10-15T13:01:45Z), verbatim ==
+VERDICT: PASS
+NOTE scripts/localci/shepherd.py:164 — No classifier defect found: all NEVER predicates precede every would_* action, and file, label, and rollup truncation are handled conservatively.
+NOTE scripts/localci/shepherd.py:80 — No off-limits matching defect found: required basenames, `.env*` basenames, and the exact migration path neither under-match nor improperly substring-match.
+NOTE scripts/localci/shepherd.py:165 — The return-contract docstring still says singular `action`; this is stale documentation only, as no supplied runtime caller or test uses the old field.
+NOTE scripts/localci/shepherd.py:237 — No reachable GitHub write path found: production paths use fixed read-only GraphQL queries and GETs; imported merger write functions are never referenced.
+NOTE scripts/localci/shepherd.py:246 — No budget defect found: rate_limit is call 1, at most 59 role GETs follow, the 61st call is refused, boundaries are exact, and unread budgets abort safely.
+NOTE scripts/localci/shepherd.py:241 — No lease defect found: acquisition precedes network work, contention exits cleanly, and every acquired-lease path releases through finally.
+NOTE scripts/localci/shepherd.py:268 — The dual-action cure is complete: both actions receive separate journal rows, counts retain both classes, and the obsolete actions container is deliberately omitted from each row.
+NOTE scripts/localci/localci_shepherd_tick.sh:33 — The trap cure is complete: cleanup failures cannot suppress heartbeat, HB_NEW is covered, and the EXIT trap preserves the original status.
+NOTE scripts/localci/localci_shepherd_tick.sh:12 — Accepted NOTE: an unavailable or failing heartbeat library falls back to stderr rather than producing a durable heartbeat.
+NOTE scripts/localci/localci_shepherd_tick.sh:77 — Accepted NOTE: clone/fetch occurs before the Python host guard, matching the stated production-wrapper pattern.
+NOTE scripts/localci/tests/test_shepherd.py:282 — No packaging inconsistency found: StartInterval is 600, KeepAlive is absent, RunAtLoad is enabled, the declared pair matches, and expected_hb_seconds 1200 consistently allows two intervals.
+
+== ROUND 2, head a24504f6b5, agy-gemini-4-argon (Gemini 4 Argon High; dispatched 2026-10-15T13:01:45Z), verbatim ==
+VERDICT: PASS
+
+### Round 2 Cures Verification
+- **(a) `rate_limit` counted in `REST_CAP`**: Verified at `scripts/localci/shepherd.py:246-248` and `scripts/localci/tests/test_shepherd.py:432-437`. `Rest` wraps `rate_limit` first (`used=1`), leaving at most 59 collaborator role reads before `BudgetCap` halts `roles_for` on the 61st attempt. No issues found.
+- **(b) `labels(first:30)` truncation handling**: Verified at `scripts/localci/shepherd.py:52`, `scripts/localci/shepherd.py:158-161`, `scripts/localci/shepherd.py:186-190`, and `scripts/localci/shepherd.py:210-211`. When `totalCount > len(nodes)` and `ARM_LABEL` is not in the first 30 nodes, the PR is classified as `labels_truncated`, emits no `would_label`, and costs no role read. No issues found.
+- **(c) Multi-class `actions` list & journal row shape**: Verified at `scripts/localci/shepherd.py:166-199` and `scripts/localci/shepherd.py:264-269`. A PR in both classes records `["would_gate" | "would_gate_manual", "would_label"]`, strips `"actions"` when journaling each event row, preserves `never:*` class counting, and leaves no callers of the old singular `action` key.
+  - `NOTE` `scripts/localci/shepherd.py:165` — Docstring comment still reads `{classes, action, reason, ...}` instead of `actions`.
+- **(d) Wrapper `finish()` trap cleanup & `HB_NEW`**: Verified at `scripts/localci/localci_shepherd_tick.sh:29` and `scripts/localci/localci_shepherd_tick.sh:34-44`. `|| true` is scoped strictly to the three `rm` commands, `$HB_NEW` is removed on exit, `heartbeat` always executes, and the trap exits with the original `$rc`. No issues found.
+
+### Full Area Review
+1. **Classifier (`classify`, `label_names`, `brief_path`, `author_class`, `roles_for`, `rollup`, `budget_mode`, `off_limits`)**: Nothing found. Every NEVER predicate (`fork`, `files_truncated`, `off_limits`, `changes_requested`, plus early non-candidates `draft` and `base_not_main`) is checked at `scripts/localci/shepherd.py:167-178` before any `would_*` action, `off_limits` (`scripts/localci/shepherd.py:44-46, 80-82`) neither over-matches nor under-matches the four entities, and file/rollup/label truncations fail closed.
+2. **No write verb (`shepherd.py`, `mg`, `hc`)**: Nothing found. `shepherd.py` only reaches read/lease/redaction attributes on `mg` and `hc` (`gh_get`, `gh_graphql` with `query` documents only, `take_lease`, `drop_lease`), enforced by AST and bytecode constant inspection at `scripts/localci/tests/test_shepherd.py:228-268`.
+3. **Budget floors and call cap**: Nothing found. Boundary values (`<800` core or `<1000` graphql -> `skip`; `800..1499` core -> `observe`; `>=1500` core and `>=1000` graphql -> `act`), unread/non-int rate limit rejection (`scripts/localci/shepherd.py:250-251`), and the hard 60-GET cap hold across all modes.
+4. **Lease handling**: Nothing found. Host guard precedes state dir creation and lease acquisition (`scripts/localci/shepherd.py:238-241`), contention logs `skipped_lease` and exits cleanly (`scripts/localci/shepherd.py:242-244`), and `mg.drop_lease` is guaranteed in `finally` (`scripts/localci/shepherd.py:275-276`).
+5. **Plist and wrapper safety**: No defects found (`StartInterval` 600, no `KeepAlive`, `RunAtLoad` true, `set -euo pipefail`, kill switch, git environment scrubbing, single-SHA extraction from the `--shared` bare mirror, temp file cleanup).
+   - `NOTE` `scripts/localci/localci_shepherd_tick.sh:12-18` — Missing or empty `$HB_LIB` logs to stderr without writing a heartbeat file (known/accepted).
+   - `NOTE` `scripts/localci/localci_shepherd_tick.sh:69-78` — Mirror clone/fetch runs before the Python `--node` host check at `scripts/localci/shepherd.py:238` (known/accepted, matches merger wrapper).
+6. **Registry entry and declared pair consistency**: No defects found (`expected_hb_seconds: 1200` matches `2 * StartInterval`, paths and labels match across `organs_registry.yaml`, `declared-pairs.json`, and the plist).
+   - `NOTE` `apps/organism/organism/organs_registry.yaml:3283` — Registry `notes` prose says "Lists the open PRs with one GraphQL query" whereas `list_open` paginates up to 5 pages.

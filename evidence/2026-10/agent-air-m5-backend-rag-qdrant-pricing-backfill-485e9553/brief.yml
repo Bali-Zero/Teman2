@@ -1,0 +1,56 @@
+task_id: qdrant-pricing-backfill-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  The live Qdrant collection bali_zero_pricing_hybrid had no point for 66 public catalog rows
+  (A1, B1 VOA and extension, C1 extension, C6-C10, Bridging, D1/D2, E33/E33E/E33F, E30A/E30B,
+  Born KITAS, Dependent KITAP + MERP, tax and company rows), so Zantara's vector retrieval on
+  pricing never saw them. scripts/sync_pricing_collection_prices.py could only update payloads
+  and delete points. Add --create-missing: plan one point per public row without one, built
+  like apps/backend-rag/scripts/prepare_payloads.py built the live points (same 10 payload
+  keys, same text template, id md5("<category>:<name>")), embedded with the backend's own
+  EmbeddingsGenerator on text-embedding-3-small; dry run by default, --apply writes creates
+  only. prepare_payloads.py loses its import-time side effects so the template is reused,
+  not copied.
+acceptance:
+  - text: >-
+      Internal rows are never created; an existing point is never touched (no create on its
+      name or id, no price update applied in create mode); a row with no price is refused and
+      nothing is written; --apply without --create-missing creates nothing; an id that appears
+      between plan and write aborts the write.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py
+  - text: >-
+      A normal missing row is created with the live payload shape, the template text, the md5
+      id and a 1536-dim dense vector; the real catalogue plans one create per priced public row.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py -k "created or real_catalogue"
+  - text: >-
+      The existing sync and purge behaviour is unchanged.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_internal_1014.py scripts/test_sync_pricing_collection_prices.py
+  - text: >-
+      After the merge, from Pro with the merged script: dry run shows creates=N updates=0
+      deletes=0; apply; the separate re-plan shows catalog_rows_without_point=0 and in_sync
+      unchanged plus N.
+    probe: python3 scripts/sync_pricing_collection_prices.py --create-missing (on Pro, creds loaded by a wrapper, never printed)
+assumptions:
+  - text: >-
+      The stored vectors are text-embedding-3-small, the model the backend already uses to
+      embed every query against this collection.
+    status: verified
+    probe: >-
+      2026-10-15, Pro: EmbeddingsGenerator(provider=openai, model=text-embedding-3-small) on
+      point 'Reset Molina' with its original 2025 contact trailer restored gives cosine
+      0.999999 with the stored dense vector (0.98-0.996 on the patched texts of three points).
+  - text: >-
+      Every live point was produced by prepare_payloads.py: id == md5("<category>:<name>").
+    status: verified
+    probe: 2026-10-15, Pro read-only scroll, 67 of 67 points match; vectors are dense 1536 only.
+  - text: >-
+      The new tests fail when the guards are removed.
+    status: verified
+    probe: >-
+      2026-10-15, three mutants of the script (internal+existing guard dropped, create mode
+      falling through to price updates, no-price check removed): 5, 4 and 1 tests red.
+appetite:
+  wall_clock_hours: 6
+  adversarial_rounds: 1

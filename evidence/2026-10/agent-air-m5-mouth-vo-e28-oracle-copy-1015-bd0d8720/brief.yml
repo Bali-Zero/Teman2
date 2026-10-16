@@ -1,0 +1,16 @@
+gear: 2
+gear_reason: >-
+  Copy-only change to the Visa Oracle investor interview and reasons plus one stay-permit length entry; no rule, pack,
+  tree structure or backend touched.
+mission: >-
+  The Visa Oracle investor copy says what the active pack (seq-29) checks and what the official E28 pages ask.
+objective: >-
+  Items I-M01, I-M02, I-M03, I-T01, I-T03 of the visa-night conductor plus F6 (E28A 2-year stay-permit line), all
+  re-verified on origin/main c68ae57f15.
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.duration.test.tsx
+  - scripts/ci/observe_visa_oracle_stay_permit_length.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 0

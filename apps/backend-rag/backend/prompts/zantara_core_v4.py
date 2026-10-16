@@ -336,16 +336,21 @@ Italian:
   User: "Quali sono i requisiti per il KITAS Investor Offshore?"
   → CALL knowledge_graph_search("KITAS Investor Offshore requirements")
   → Tool returns: documents about KITAS Investor (sponsor PT PMA,
-                  minimum capital, BKPM clearance)
-  → Answer: "Per il KITAS Investor Offshore servono: una PT PMA come
-             sponsor, capitale minimo richiesto in OSS, e clearance
-             BKPM. Posso vedere se la tua PT PMA è già registrata?"
+                  own shareholding, director or commissioner role)
+  → Answer: "Per il KITAS Investor Offshore (E28A) servono: una PT PMA
+             come sponsor e una tua quota personale di almeno IDR 10
+             miliardi in quella società. Puoi fare il direttore o
+             commissario; con una quota inferiore e un incarico nel
+             board serve un KITAS di lavoro (Working KITAS). Posso
+             vedere se la tua PT PMA è già registrata?"
 
 English:
   User: "What are the requirements for the Investor KITAS Offshore?"
   → CALL knowledge_graph_search("KITAS Investor Offshore requirements")
-  → Answer: "Investor KITAS Offshore requires: a PT PMA as sponsor,
-             the OSS-registered minimum capital, and BKPM clearance.
+  → Answer: "Investor KITAS Offshore (E28A) requires: a PT PMA as sponsor
+             and your own shareholding of at least IDR 10 billion in that
+             company. You may act as director or commissioner; with less
+             than that and a board post you need a Working KITAS.
              Want me to check if your PT PMA is already registered?"
 
 Indonesian:

@@ -407,6 +407,8 @@ state, fails closed as before. `hosted_compare.json`, the journal's `hosted_comp
 
 ## Merger (phase C, shadow)
 
+The merge predicate for a PR that rewrites a file the BASE judge reads (any file: tests, workflows, `.gitattributes`), its oracle table and the Pro gate-verdict ledger are specified in `docs/specs/localci-sovereign-2026-10-07.md` §2b (B25-prime); that rescue is not in the code yet.
+
 `merger.py` is phase C of `docs/specs/localci-sovereign-2026-10-07.md` in SHADOW mode: it decides what the local gate would
 do with a pull request and journals it. It merges nothing, posts nothing, labels nothing; every GitHub API call is a bare
 GET through `hosted_compare.gh_get`, and the only other traffic is `git fetch`. `merger.py merge` refuses with exit 2
@@ -590,6 +592,8 @@ a conflict needs a tree and no error, a moved base needs a readable `remote_main
      "remote_main": "<same 40 hex>", "base_current": true, "head_unchanged": true, "merge_tree": "<40 hex>", "clean": true, "conflicts": [], "bites": true,
      "armed_env": false, "ok": false, "criterion": {"review_independent": false, "...": "..."}}
 
+B29: `review_not_blocking` is a criterion term (read by `pr_side`, re-read by `phase_f_arming` at the moment of merging): `reviewDecision` is not `CHANGES_REQUESTED` and no write-access reviewer's latest opinionated review is (`writersOnly: true`; a non-writer's review does not block, a dismissed one is not listed); anything unreadable is false. It replaces the one thing the classic protection did for reviews, which the flip deletes (spec B29 V5 lists the rest).
+
 Limits, stated: the runner plans `review.independent` and leaves it QUEUED (blocking) until a review is imported, so
 `overall` is never PASS in shadow today — the per-context columns are the comparison that carries information, and the report below sums them. A `kill -9`
 of a tick leaves its runner child running to the runner's own deadline; the next tick removes the candidate worktree under
@@ -670,7 +674,10 @@ ones (the old order inside each group), and with `LOCALCI_MERGER_PHASE_F=1` sele
 timing are still checked at merge time). A `(pr, head)` whose newest decision, at any base, was BLOCKED with `gate_pending` is not decided
 again at a new base until `gate_ready` says its gate verdict is posted and its pending hosted runs completed after it; a failed read
 defers. Each deferred `(pr, head)` is journalled once as `skipped: gate_pending_deferred`.
+**B30: a transient local no-verdict is decided again at the same base** (spec B30). A non-replay decision is re-decidable only through an ALLOW-LIST (spec D1; `REDECIDE_OVERALL/CTX/HOST_CTX/CHECK` in `merger.py`): overall `BLOCKED` or `ERROR` (an `ERROR` only with the merger's own driver text: plan, no-seal, status or unreadable-status failure), every context the host did not name `OK`, `UNCOVERED` or `QUEUED`, every host-named context `ERROR` or `BLOCKED`, every check `PASS`, `NOT_APPLICABLE`, `BLOCKED` or `QUEUED` (`ERROR` only for a check the row's `host_checks` names: the checks the runner itself pre-empted with a measured host reason, journalled by `decide()` from trusted runner state), and a measured host-disk (`host_disk_below_floor`, `_unmeasured`, `_floor_invalid`; never `host_disk_full`, which the sandbox's own output can forge) or driver no-verdict as the class. Any status not listed (`FAIL`, `INTERRUPTED`, `RUNNING`, `STALE`, a seal mismatch, a TickTimeout, a status added later) is a verdict or the candidate's and is never decided again. It is decided again at the same `(pr, head, base)`: at most `REDECIDE_CAP` (3) transient decisions per key within `REDECIDE_WINDOW_S` (6 h; older ones stop counting, so an outage cannot cap every head for good), `REDECIDE_BACKOFF_S` (600) times the count apart, a `host_disk` one only while the host's free GB is at least the start floor; `EVICT_CAP` applies and the backoff counts from the newest decision or eviction. The new row carries `redecide: {reason, attempt}`; a key past the cap is journalled once as `skipped: redecide_cap`.
 Before the flip, labelled-first shrinks the share of unlabelled PRs in the compared-merge evidence (2026-10-14: 5 of 56 open PRs armed but unlabelled, 23 labelled).
+
+**B28: a waiting labelled PR is decided before a replay** (spec B28). After `triage()`, when the first PR of the order carries the arm label and `LOCALCI_MERGER_PHASE_F` is not `1`, the tick decides it instead of taking a replay turn, and journals `replay_deferred {reason, skipped_n, pr}` when it forfeits one. The replays deferred since the newest replay decision are counted from the journal; at `REPLAY_MAX_SKIP` (6) of them, or when the first is `REPLAY_MAX_SKIP_S` (12 h) old, one replay turn runs anyway, and one that finds nothing to replay journals `skipped replay_none` to reset the count. Unlabelled PRs and the phase F schedule are as before.
 
 ### Report (phase D's instrument)
 
@@ -783,11 +790,23 @@ Capacity (measured 2026-10-07). The runner executes its checks one after another
 single loop and no check starts before the previous one has its receipt — so a tick costs the sum of its checks. With
 phase A's contained contexts on main, ticks took 883 s, 886 s and 1097 s (#7978, #7979, #7943) against a `StartInterval` of
 600 s. launchd never overlaps a job with itself, so the cadence is one PR per tick + 600 s (about 25 minutes), and it grows
-with phase B's service contexts. `StartInterval` stays 600 (a shorter one buys nothing while a tick outlasts it); running
+with phase B's service contexts. `StartInterval` stays 600 as the idle cadence and the recovery path. "A shorter one buys nothing while a tick outlasts it" was wrong, and it was measured so on 2026-10-15: launchd re-arms the interval when the job EXITS, so
+every tick was followed by 600 s of nothing (the wrapper's start line came 601-603 s after the previous `prune` row in 5 of 5 cycles of 10-15; the median gap between two runs is 606-621 s on every day; 4.7-9.1 h a day of the lane were this wait, and a READY refresh tick added a second wait: decision ~4200 s + 600 + refresh ~400 + 600 = 5790 s per decision). The cure is B33 S1 below, not a shorter interval; running
 checks in parallel is phase B's runner work. The heartbeat is written when a tick ends, so two heartbeats are up to
 tick + 600 s apart: the organ's `expected_hb_seconds` is 3600, not 1800. A `running` heartbeat at tick start was not chosen
 — the sentinel's `running` branch has no staleness downgrade (`scripts/nuzantara-sentinel.py`), so a hung tick would read
 healthy for ever.
+
+### B33 S1 — a tick that bore a verdict starts the next at once
+
+`localci_merger_tick.sh` re-executes itself (`exec`, the same process: launchd still sees the one instance it started and never starts a sibling during a chain) when the tick that just ended bore a verdict. `scripts/localci/tick_chain.py`, extracted from `main` at the tick's sha like `prune.py` (absent: no chain), reads only the journal bytes the tick appended (the size of `decisions.jsonl` taken before it) and says `chain` iff the tick's rc is 0, at least one appended row is a sealed `decision` (`error` null, `seal` 64 hex), a `ready_refreshed`, a `ready_refresh_failed` or a `pushed`, and no appended row is `error`, `evicted`, `merge_error`, `push_unlanded`, `push_refused`, `storage_diverged` or a decision with an `error` or a non-empty `host_no_verdict`. Anything else, including a journal it cannot read, a tick that warned (host under the floor, a failed prune), a depth that is not a number, is today's behaviour: exit and wait for `StartInterval`.
+
+- A chained tick is a WHOLE tick: fetch, code at the new sha, start floor re-measured, lease, watchdog, prune, heartbeat (its note ends `depth=N`). Only `MERGER_CHAIN_DEPTH` crosses the exec; no lock does. The lease lives inside `merger.py tick`, so a manual tick that takes it makes the chained one journal `skipped: lease`, which is no verdict.
+- Cap: `MERGER_CHAIN_MAX` (default 12) chained ticks per launchd instance, then the wrapper exits and `StartInterval` resumes.
+- Switches: `LOCALCI_MERGER_CHAIN=0` in the plist environment, or `touch <state>/chain_off` (read before every chain: no reload needed; `rm` to re-enable). `LOCALCI_MERGER_ENABLED=false` keeps its meaning. The wrapper installs no signal handler: `launchctl bootout`/`kickstart -k` kills it as before and never reaches the exec.
+- Said aloud in `~/logs/localci-merger.out.log`: `merger_tick: chain depth=N after <kinds>` or `merger_tick: chain stop: <why>`.
+- `merger.py`, `runner.py`, `prune.py`, the plist, the lease, the gate and every verdict are untouched. Deploy: the wrapper is a declared home-fork pair; replace the live copy with temp file + `mv`, then `cmp -s` against `origin/main`. The predicate needs no deploy.
+- Observation (Bites): consecutive work ticks whose next `merger_tick:` start line comes under 120 s after the previous tick's end, each printing `chain depth=N`, and decisions a day against the 10-15 baseline (10-15).
 
 The merger runs the BASE runner with its OWN coordinator venv, `~/.nuzantara-pilots/local-ci/merger/venv` (the plist's
 `MERGER_PYTHON`): the runner fingerprints the coordinator's `pip freeze` into every receipt, and a shared venv that another job

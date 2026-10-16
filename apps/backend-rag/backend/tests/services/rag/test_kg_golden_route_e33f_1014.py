@@ -36,7 +36,7 @@ PASSPORT_MONTHS_RE = re.compile(r"at least (\d+) months")
 
 PINNED_PATH = [
     "Choose the route: E28A Investor Visa (committed PT PMA) or Second Home Senior (E33E, 5 years; E33F Second Home Senior KITAS, 1 year)",
-    "E28A Investor: commit to a PT PMA in Indonesia as shareholder-director or shareholder-commissioner; the signed rules allow an initial stay of 2 years",
+    "E28A Investor: a PT PMA sponsors you and you hold your own shareholding of at least IDR 10 billion in it (official E28A page); the holder may act as director or commissioner of that company, and with less than that plus a board post a work visa is needed; the signed rules allow an initial stay of 2 years",
     "E33F Second Home Senior KITAS: provide proof of income or allowance of at least USD 3,000/month",
     "E33F: a sponsor (penjamin) is required; the sponsor applies online via evisa.imigrasi.go.id with a passport valid for at least 6 months",
     "E33F: the Limited Stay Permit (KITAS, 1 year) and the Re-entry Permit are issued automatically once the officer admits you at the immigration checkpoint",
@@ -44,7 +44,7 @@ PINNED_PATH = [
     "E33 Second Home (up to 5 years first grant): USD 130,000 deposit or USD 1,000,000 qualifying property route",
 ]
 PINNED_KEY_CONDITIONS = [
-    "E28A Investor Visa requires a committed PT PMA (as shareholder-director or shareholder-commissioner)",
+    "E28A Investor Visa requires a sponsoring PT PMA in which you hold shares worth at least IDR 10 billion; a passive shareholder is admitted, and acting as director or commissioner is allowed but not required",
     "E33F Second Home Senior KITAS: minimum age 55, proof of income or allowance of at least USD 3,000/month",
     "E33 Second Home: USD 130,000 deposit in own name at a state-owned (BUMN) Indonesian bank, or USD 1,000,000 qualifying property",
     "E33F Second Home Senior KITAS: the official page covers staying in Indonesia and activities related to business, meetings or shopping (including checking goods at an office, factory or production site), plus tourism and visiting friends or family; it prohibits overstaying, work not in line with the stay permit, and selling goods or services unless required for that work",

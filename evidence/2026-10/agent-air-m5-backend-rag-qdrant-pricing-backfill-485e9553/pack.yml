@@ -1,0 +1,73 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-15, prompt "Qdrant pricing index - backfill the missing points": ADD-ONLY writes
+  to bali_zero_pricing_hybrid are authorized after a clean dry run with 0 updates and 0
+  deletes; any update, delete or other collection needs a new explicit go.
+mission: >-
+  Give the live pricing collection a point for every public catalog row, so Zantara's vector
+  retrieval on pricing sees the 66 rows it never saw. This PR ships the tool; the ADD-ONLY
+  apply runs from Pro with the merged script.
+lanes:
+  - lane: qdrant-pricing-backfill
+    role: build
+    seat: claude-opus-5-5 (Claude Code session, M5)
+pii_scan: clean
+bites: >-
+  Consumer: Zantara's agentic RAG vector_search on bali_zero_pricing_hybrid (and the MCP
+  search_service_pricing that reads the same backend). Observation: after the merge, the
+  merged script's --create-missing dry run on Pro shows creates=66 updates=0 deletes=0, the
+  apply writes them, and the separate re-plan shows catalog_rows_without_point=0; a semantic
+  query "E33F second home senior price" embedded by the backend client returns the E33F
+  points with their catalog prices.
+receipts:
+  - claim: The 11 new guilt/innocence tests and the 16 existing sync/purge tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py tests/scripts/test_sync_pricing_collection_prices_internal_1014.py scripts/test_sync_pricing_collection_prices.py
+    result: "27 passed in 0.36s"
+    exit: 0
+    ts: "2026-10-15T14:33:32Z"
+    seat: this session
+  - claim: prepare_payloads.py still flattens the catalogue the same way after losing its import-time side effects.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/unit/scripts/test_prepare_payloads_internal_1014.py
+    result: "4 passed in 0.07s"
+    exit: 0
+    ts: "2026-10-15T14:31:00Z"
+    seat: this session
+  - claim: Three mutants of the script are killed (internal+existing guard dropped; create mode falling through to price updates; no-price check removed), and the file is restored byte-identical.
+    cmd: per mutant, a one-site replace then python3 -m pytest -q tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py, then cp back and cmp
+    result: "5 failed / 4 failed / 1 failed; restored"
+    exit: 0
+    ts: "2026-10-15T14:30:30Z"
+    seat: this session
+  - claim: Read-only dry run of this branch's script against the live collection from Pro plans exactly the creates and nothing else.
+    cmd: ssh pro, backend venv, wrapper loading QDRANT_URL/QDRANT_API_KEY from apps/backend-rag/.env (never printed), sync_pricing_collection_prices.py --create-missing
+    result: "SUMMARY updates=0 deletes=0 internal_points=0 refused=0 in_sync=50 catalog_rows_without_point=66 points_without_catalog_row=17 creates=66"
+    exit: 0
+    ts: "2026-10-15T14:32:00Z"
+    seat: this session
+  - claim: The live vectors are text-embedding-3-small through the backend's EmbeddingsGenerator.
+    cmd: ssh pro, embed point 'Reset Molina' text with its 2025 contact trailer restored, cosine with the stored dense vector
+    result: "cos=0.999999"
+    exit: 0
+    ts: "2026-10-15T14:20:00Z"
+    seat: this session
+decisions:
+  - id: D-name-is-display-name
+    text: >-
+      The new points carry the row's display name (row["name"]), not the JSON key that
+      prepare_payloads.py used, because the sync matches on the display name; otherwise the
+      22 rows whose key differs would stay "without point" forever.
+  - id: D-price-shape
+    text: >-
+      The payload price is expected_price(row) and the text's Price line carries that exact
+      string once, so a later price sync can update the point; a create whose price would
+      occur 0 or 2+ times is refused.
+  - id: D-contact-from-catalog
+    text: >-
+      The contact trailer comes from the catalog's metadata.contact (Ari's line), not from the
+      live points, which still carry the bot's inbound number +62 821 3465 159 (canonical only
+      2026-08-31..09-01). Patching those 67 trailers is an UPDATE and is left to Zero's go.
+dissent: []
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
