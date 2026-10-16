@@ -371,19 +371,20 @@ def compress_receipts(run: Path, skip: set, dry: bool, errors: list | None = Non
                         shutil.copyfileobj(fi, g, 1 << 20)
                     after = sink.n
                 else:
-                    with open(src, "rb") as fi, open(part, "wb") as fo:
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+                    with open(src, "rb") as fi, os.fdopen(os.open(part, flags, 0o644), "wb") as fo:
                         with gzip.GzipFile(filename=name, fileobj=fo, mode="wb", mtime=0, compresslevel=3) as g:
                             shutil.copyfileobj(fi, g, 1 << 20)
                         fo.flush()
                         os.fsync(fo.fileno())
                     os.replace(part, gz)
+                    after = gz.lstat().st_size
+                if not dry:
                     dfd = os.open(res, os.O_RDONLY)   # the rename durable before the original goes
                     try:
                         os.fsync(dfd)
                     finally:
                         os.close(dfd)
-                    after = gz.lstat().st_size
-                if not dry:
                     src.unlink()
                 freed += before - after
                 hit = True

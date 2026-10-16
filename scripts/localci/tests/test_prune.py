@@ -1597,6 +1597,49 @@ def test_b26_a_prune_whose_trim_reports_errors_is_not_green_the_organ_reads_fail
     assert mg.main(["prune", "--state-dir", str(state), "--docker", docker]) == 1
     line = journal(state)[-1]
     assert line["failed"] == ["runs"] and line["runs"]["errors"] and line["runs"]["errors"][0].startswith(f"{RES}/x.gz.part: ")
-    clean = run_dir(tmp_path / "s2" / "runs", 2)
     state2, docker2 = world(tmp_path / "s2", [image("a" * 16, 10, "backend-tests")])
-    assert mg.main(["prune", "--state-dir", str(state2), "--docker", docker2]) == 0 and journal(state2)[-1]["failed"] == []
+    clean = run_dir(state2 / "runs", 2)
+    assert clean.exists() and mg.main(["prune", "--state-dir", str(state2), "--docker", docker2]) == 0 and journal(state2)[-1]["failed"] == []
+
+
+def test_b26_u5_an_unremovable_part_symlink_is_never_followed_on_open(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    target = tmp_path / "outside-target.txt"
+    target.write_text("do not overwrite")
+    part = run / RES / "taint-output.json.gz.part"
+    part.symlink_to(target)
+    real_unlink = Path.unlink
+    monkeypatch.setattr(Path, "unlink", lambda self, *a, **k: (_ for _ in ()).throw(OSError(pm.errno.EACCES, "denied")) if self == part else real_unlink(self, *a, **k))
+    out = pm.trim_runs(runs, NOW, dry=False)
+    assert target.read_text() == "do not overwrite"
+    assert (run / RES / "taint-output.json").exists() and not (run / RES / "taint-output.json.gz").exists()
+    assert any(e.startswith(f"{RES}/taint-output.json.gz.part: ") for e in out["errors"])
+    assert any(e.startswith(f"{RES}/taint-output.json: ") for e in out["errors"])
+
+
+def test_b26_u5_recovery_when_gz_already_exists_fsyncs_the_directory_before_unlinking_the_original(tmp_path, monkeypatch):
+    runs = tmp_path / "runs"
+    run = aged(runs, 25)
+    src = run / RES / "taint-output.json"
+    gz = run / RES / "taint-output.json.gz"
+    gz.write_bytes(b"already-renamed")
+    real_fsync = pm.os.fsync
+    dir_ino = (run / RES).stat().st_ino
+    seen = []
+
+    def fsync_fail(fd):
+        if pm.os.fstat(fd).st_ino == dir_ino:
+            seen.append("dir-fsync")
+            raise OSError(pm.errno.EIO, "dir fsync failed")
+        return real_fsync(fd)
+
+    with monkeypatch.context() as m:
+        m.setattr(pm.os, "fsync", fsync_fail)
+        out1 = pm.trim_runs(runs, NOW, dry=False)
+    assert seen == ["dir-fsync"] and src.exists() and out1["errors"] == [f"{RES}/taint-output.json: EIO"]
+    seen.clear()
+    monkeypatch.setattr(pm.os, "fsync", lambda fd: (seen.append("dir-fsync") if pm.os.fstat(fd).st_ino == dir_ino else None) or real_fsync(fd))
+    out2 = pm.trim_runs(runs, NOW, dry=False)
+    assert seen and not src.exists() and gz.read_bytes() == b"already-renamed" and out2["errors"] == []
+

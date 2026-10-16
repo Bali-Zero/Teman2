@@ -23,4 +23,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "bulk-includes-the-verdict": (PRUNE, "bulk = full and bulk_now and f in BULK", 'bulk = full and bulk_now and (f in BULK or f == "taint-output.json")', B26_T),
     "bulk-symlink-followed": (PRUNE, "for root, dirs, files in os.walk(run):", "for root, dirs, files in os.walk(run, followlinks=True):", B26_T),
     "bulk-not-listed": (PRUNE, '                if bulk_hit:\n                    out["trimmed_bulk"].append(run.name)\n', '                if False:\n                    out["trimmed_bulk"].append(run.name)\n', B26_T),
+    "gzip-part-open-follows-symlink": (PRUNE, 'os.fdopen(os.open(part, flags, 0o644), "wb")', 'open(part, "wb")', B26_T),
+    "gzip-recovery-skips-dir-fsync": (PRUNE, "                if not dry:\n                    dfd = os.open(res, os.O_RDONLY)", "                if not dry and not gz.is_file():\n                    dfd = os.open(res, os.O_RDONLY)", B26_T),
 }
