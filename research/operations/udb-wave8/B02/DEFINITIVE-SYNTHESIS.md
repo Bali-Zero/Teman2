@@ -3,11 +3,15 @@ adversarial_review: codex
 review_scope: recorded_evidence_reconciliation_only
 ---
 
-# B02 current source-integration addendum (2026-10-16)
+# B02 definitive synthesis and historical preparation
 
 ## Current package status (2026-10-16)
 
 Both one-shot native observer exercises completed on Pro and Mini. Each verified metadata, policy-off/policy-on behavior, 6 positive and 17 negative permissions, and temporary-role removal. The preparation document and run template remain immutable historical pre-execution evidence. Current focused source suite: 153 passed. Active actor coverage remains UNKNOWN; no repeat execution is authorized. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
+
+## Historical preparer addendum (superseded execution status)
+
+The preserved preparer addendum below ends at the Historical synthesis heading. Its83-test, native-UNGRANTED, no-run and source-header-pending statements describe the earlier preparation phase and are superseded by Current package status above and current RESULT.json:153P, both authorized one-shot exercises completed with role cleanup, and R1 applies to Markdown rather than Python docstrings. Existing technical findings remain open unless explicitly reconciled; permanent adoption remains unauthorized.
 
 The block remains BLOCKED, block_closed: false, with native permission UNGRANTED. The exact prepared three-patch chain was integrated once after baseline hash checks and a successful git apply --check before each application. The final seven-file manifest is exact, including the unchanged reviewed hashes of redis_observer_admission.py, test_redis_observer_admission.py and redis_observer_probe.py.
 
