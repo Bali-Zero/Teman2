@@ -1,0 +1,69 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  No new owner ruling: gate follow-ups of #8629, which implemented Zero's 2026-10-17 ruling
+  ("licenza alcolici: solo golongan A 4 jt, solo B+C 10jt, A+B+C 12jt; il resto rimandiamo a
+  contattarci"). Prices are untouched here.
+mission: >-
+  The mirror's legacy map can no longer hide a row behind a shared icon, the Golongan C band is
+  stated with its legal upper bound, and Zantara's PricingTool finds the alcohol licence rows in
+  Indonesian.
+lanes:
+  - lane: pricing-licences-followup
+    role: build
+    seat: claude-sonnet-5 (subagent, same worktree; codex quota exhausted, kimi quota dead)
+  - lane: pricing-licences-followup
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: pricing-licences-followup-ground-truth
+    role: ground_truth
+    seat: >-
+      Perpres 74/2013 Pasal 3(1) for the Golongan bands (A up to 5%, B above 5% up to 20%, C
+      above 20% up to 55%), as already stated by apps/mouth/src/data/services_data.ts; the
+      prices remain Zero's 2026-10-17 ruling.
+    nb: Perpres 74/2013 Pasal 3 (bands) and owner ruling 2026-10-17 (prices, unchanged)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: PricingService.search_service / PricingTool (Zantara) on nuzantara-rag, and the
+  mouth mirror reader getCompanyServicePrice. Observation: after the deploy, the live pricing
+  search for "izin minuman beralkohol" returns the three Alcohol License rows, and the
+  regenerated mirror's legacy company_services map has only company-* keys.
+receipts:
+  - claim: The follow-up pins and the existing catalogue/sync tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py
+    result: "54 passed in 0.47s"
+    exit: 0
+    ts: "2026-10-16T21:43:55Z"
+    seat: this session
+  - claim: The mirror is in sync with the catalog.
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical."
+    exit: 0
+    ts: "2026-10-16T21:43:55Z"
+    seat: this session
+  - claim: Backend pricing (114), C1-C6/E33 description tests (49) and mouth pricing vitest (16) pass.
+    cmd: backend/tests/services/pricing; tests/scripts/test_c1_c6_price_descriptions.py test_e33_price_descriptions.py; vitest run src/lib/pricing-snapshot.test.ts src/lib/bali-zero-prices.test.ts
+    result: "114 passed; 49 passed; 16 passed"
+    exit: 0
+    ts: "2026-10-16T21:40:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutants killed (duplicate raise removed; C band reverted; keywords neutralised), files restored byte-identical.
+    cmd: cp backup, one-site edit, pytest the follow-up file, cp back + cmp
+    result: "1 / 2 / 2 tests red; restored"
+    exit: 0
+    ts: "2026-10-16T21:40:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-legacy-prefix
+    text: >-
+      The legacy map keeps only company-* icons, the convention its readers rely on; other rows
+      stay reachable through services_by_category. A duplicate company-* icon is an error.
+  - id: D-keywords-not-description
+    text: >-
+      Indonesian search terms go in the existing keywords convention rather than in
+      description_en, so the client-facing description stays English.
+dissent: []
+spend:
+  wall_clock_hours: 0.3
+  adversarial_rounds: 0

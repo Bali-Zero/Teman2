@@ -1,0 +1,34 @@
+task_id: pricing-licences-followup-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Close the three follow-ups the independent gate left on #8629: the mouth mirror's legacy
+  company_services map (keyed by icon_id) silently collapses rows that share an icon, so it
+  keeps only company-* icons and the sync refuses a duplicate; the Golongan C band states its
+  55% upper bound (Perpres 74/2013 Pasal 3); the three alcohol rows carry Indonesian keywords
+  so PricingService.search_service finds them for "izin minuman beralkohol".
+acceptance:
+  - text: >-
+      The legacy map holds only company-* keys, the builder raises on a duplicate company-*
+      icon, the C band reads "above 20% up to 55% alcohol", and an Indonesian query returns
+      the three alcohol rows while the English one still does.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017_followup.py
+  - text: >-
+      Existing catalogue, sync, backend pricing and mouth pricing tests stay green; the mirror
+      is in sync.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py && python3 scripts/sync_frontend_prices.py --check
+assumptions:
+  - text: >-
+      The only readers of the legacy map are getCompanyServicePrice("company-pma") and
+      ("company-virtual") in apps/mouth/src/lib/bali-zero-prices.ts and its test.
+    status: verified
+    probe: implementer grep of apps/mouth, confirmed by #8629's gate (bali-zero-prices.ts:94-95).
+  - text: >-
+      search_service already matches a keywords list (the Second Home retirement rows carry
+      Indonesian keywords), so no new catalog key is introduced.
+    status: verified
+    probe: implementer read of apps/backend-rag/backend/services/pricing (search scans key, name, notes, description_en, legacy_names, keywords).
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
