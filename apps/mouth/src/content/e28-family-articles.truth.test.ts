@@ -61,9 +61,14 @@ interface Rule {
   id: string;
   files: { loc: Loc; file: string }[];
   re: RegExp;
+  /** Removed from the text before matching (a negated sentence is innocent). */
+  scrub?: RegExp;
   guilt: string[];
   innocence: string[];
 }
+
+const hit = (rule: Rule, text: string) =>
+  rule.re.exec(rule.scrub ? text.replace(rule.scrub, " ") : text);
 
 const RULES: Rule[] = [
   {
@@ -105,7 +110,7 @@ const RULES: Rule[] = [
   {
     id: "no tax percentages or 183-day advice",
     files: GUIDES,
-    re: /183[- ]?(day|hari|giorni|jours|дн)|tax resident|residente fiscale|resident pajak|résident fiscal|налоговый резидент|worldwide income|redditi mondiali|penghasilan global|\d+(\.\d+)? ?% ?(tax|pph|income tax|di imposta|d'impôt|налог)|PPh ?\d/i,
+    re: /183[- ]?(day|hari|giorni|jours|дн)|tax resident|residente fiscale|resident pajak|résident fiscal|налоговый резидент|worldwide income|redditi mondiali|penghasilan global|\d+(\.\d+)? ?% ?(tax|pph|income tax|di imposta|d'impôt|налог)|PPh ?\d|withholding|pemotongan pajak|ritenuta (alla fonte|d'acconto)|retenue à la source|удержани[а-яё]+ (налог|у источника)|(dividend|dividen|dividendi|dividendes|дивиденд[а-яё]*)[^.|]{0,40}\d+ ?%/i,
     guilt: [
       "Stay over 183 days and you become a tax resident",
       "Oltre 183 giorni diventi residente fiscale",
@@ -113,6 +118,9 @@ const RULES: Rule[] = [
       "Plus de 183 jours : résident fiscal",
       "Более 183 дней - налоговый резидент",
       "Dividend income is taxed at 20% tax",
+      "Dividend withholding is 10%.",
+      "Il dividendo è soggetto a ritenuta alla fonte del 10%",
+      "Pemotongan pajak dividen 10%",
     ],
     innocence: [
       "Bali Zero's prices are all-inclusive: government fees and Bali Zero service are included.",
@@ -157,7 +165,7 @@ const RULES: Rule[] = [
   {
     id: "no denial of directorship, supervision or signing on E28A",
     files: [...E28A, ...INVESTOR, ...GOLDEN],
-    re: /(cannot|can't|may not|must not|not allowed to|not permitted to) (work|supervise|sign|act|serve)[^.|]{0,60}(director|commissioner|contract)|(non puoi|non possono)[^.|]{0,60}(amministrator|commissari|firmare|supervision)|(tidak dapat|tidak boleh|dilarang)[^.|]{0,40}(menjadi |bertindak sebagai |menandatangani )(direktur|komisaris|kontrak)|(ne pouvez pas|ne peuvent pas)[^.|]{0,60}(directeur|commissaire|signer|superviser)|(нельзя|не можете|не могут)[^.|]{0,60}(директор|комиссар|подписыва|контролиров)|E28A holders? cannot|pemegang E28A tidak dapat|titolari di E28A non possono|titulaires de l'E28A ne peuvent pas|держател[а-яё]+ E28A[^.|]{0,30}не могут/i,
+    re: /(cannot|can't|may not|must not|not allowed to|not permitted to) (work|supervise|sign|act|serve)[^.|]{0,60}(director|commissioner|contract)|(non puoi|non possono)[^.|]{0,60}(amministrator|commissari|firmare|supervision)|(tidak dapat|tidak boleh|dilarang)[^.|]{0,40}(menjadi |bertindak sebagai |menandatangani )(direktur|komisaris|kontrak)|(ne pouvez pas|ne peuvent pas)[^.|]{0,60}(directeur|commissaire|signer|superviser)|(нельзя|не можете|не могут)[^.|]{0,60}(директор|комиссар|подписыва|контролиров)|E28A holders? cannot|pemegang E28A tidak dapat|titolari di E28A non possono|titulaires de l'E28A ne peuvent pas|держател[а-яё]+ E28A[^.|]{0,30}не могут|(prohibited|forbidden|barred|banned) (from )?(acting|serving|working|act|serve)[^.|]{0,40}(director|commissioner)|(vietato|dilarang|interdit|запрещен[а-яё]*)[^.|]{0,40}(agire come |essere |menjadi |bertindak sebagai |d'être |d'agir comme |быть |действовать в качестве )(amministrator|direktur|komisaris|directeur|commissaire|директор|комиссар)/i,
     guilt: [
       "You cannot sign contracts as director on an E28A",
       "E28A holders cannot work.",
@@ -165,11 +173,28 @@ const RULES: Rule[] = [
       "Pemegang E28A tidak dapat bekerja",
       "Vous ne pouvez pas signer comme directeur",
       "Нельзя подписывать договоры как директор",
+      "E28A holders are prohibited from acting as directors.",
+      "I titolari di E28A è vietato essere amministratori",
     ],
     innocence: [
       "The E28A lets you act as a member of the board of directors or the board of commissioners.",
       "Prohibited: staying beyond the stay permit, work that does not match the stay permit.",
       "You may act as director or commissioner of the company you invested in.",
+    ],
+  },
+  {
+    id: "no E28A KITAP guarantee",
+    files: GUIDES,
+    re: /(E28A|Investor KITAS|investor)[^.|]{0,60}(guarantee[sd]?|garantit|garantisce|menjamin|гарантир[а-яё]+)[^.|]{0,40}KITAP|(guarantee[sd]?|garantit|garantisce|menjamin|гарантир[а-яё]+)[^.|]{0,40}(KITAP|permanent residence)/i,
+    guilt: [
+      "E28A guarantees KITAP.",
+      "L'E28A garantisce il KITAP dopo il primo rinnovo",
+      "E28A menjamin KITAP",
+      "L'E28A garantit le KITAP",
+    ],
+    innocence: [
+      "It is not ITAP or KITAP and it does not replace KITAP.",
+      "children or dependent family members of a primary KITAS/KITAP holder",
     ],
   },
   {
@@ -193,16 +218,20 @@ const RULES: Rule[] = [
   {
     id: "no 90-day commitment on E28C",
     files: [...GOLDEN, ...INVESTOR, ...E28A],
-    re: /E28C[^|.]{0,200}(90[- ]?(day|hari|giorni|jours)|90 дн)/i,
+    re: /E28C[^|.]{0,150}(commit\w*|fulfil\w*|invest\w* (must|within)|komitmen|dipenuhi|impegn\w*|realizzat\w*|engage\w*|réalis\w*|обязат\w*|обязу\w*|осуществ\w*)[^|.]{0,80}(\b90|ninety|novanta|sembilan puluh|quatre-vingt-dix|девяносто)[- ]?(day|hari|giorni|jours|дн)/i,
     guilt: [
       "E28C requires a commitment fulfilled within 90 days after entry",
+      "E28C requires an investment commitment within ninety days of entry.",
       "E28C richiede un impegno entro 90 giorni dall'ingresso",
       "E28C memerlukan komitmen dalam 90 hari",
       "E28C exige un engagement dans les 90 jours",
+      "E28C требует обязательство в течение 90 дней после въезда",
     ],
     innocence: [
+      "E28C visas must be used within 90 days of issuance.",
       "| E28C | Proof of ownership of at least USD 350,000 | ... | E28D | within 90 days after entry |",
       "For E28B, E28D and E28F the investment must be fulfilled within 90 days after entry.",
+      "The visa is valid for 90 days from issuance for entry.",
     ],
   },
   {
@@ -254,6 +283,8 @@ const RULES: Rule[] = [
   {
     id: "Golden Visa is an ITAS, not ITAP / permanent residence",
     files: GOLDEN,
+    scrub:
+      /[^.|]*\b(not|isn't|never|non|bukan|tidak|n'est pas|pas|не|без)\b[^.|]*\bITAP\b[^.|]*/gi,
     re: /\(ITAP\)|\bITAP -|ITAP card|carta ITAP|called ITAP|chiamat\w+ (ufficialmente )?ITAP|appelé( officiellement)? ITAP|Golden Visa[^.|]{0,50}\b(grants|offers|provides|gives|is)\s+(a\s+)?permanent residence/i,
     guilt: [
       "Golden Visa (ITAP) grants permanent residence",
@@ -264,6 +295,9 @@ const RULES: Rule[] = [
     innocence: [
       "The Golden Visa is a limited-stay visa (ITAS). It is not ITAP or KITAP and it does not replace KITAP.",
       "Golden Visa - не постоянное проживание",
+      "The Golden Visa is not an ITAP; it is an ITAS.",
+      "The Golden Visa is not permanent residence (ITAP).",
+      "Il Golden Visa non è un ITAP, è un ITAS.",
     ],
   },
   {
@@ -335,6 +369,78 @@ const RULES: Rule[] = [
     ],
   },
   {
+    id: "the E28A threshold is 10 billion, never 10 million",
+    files: [...E28A, ...INVESTOR, ...KITAS_PAGE],
+    re: /(shareholding|saham|investment|investasi|partecipazione|participation|долев|долю|доля|доли|threshold|ambang|soglia|seuil|порог|minimum|minimal|minimo|minimale|минимум|минимальн)[^.|;]{0,60}(?:(?:IDR|Rp)\.? ?)?\b10 ?(M\b|juta|milioni|millions?|млн|million)|(?:IDR|Rp)\.? ?10 ?(M\b|juta|milioni|millions?|млн|million)[^.|;]{0,40}(shareholding|saham|minimum|minimal|minimo|minimale|partecipazione|participation|долев|доля|доли)/i,
+    guilt: [
+      "The E28A shareholding minimum is IDR 10M.",
+      "Kepemilikan saham minimal Rp 10 juta di PT PMA penjamin",
+      "La partecipazione minima è di IDR 10 milioni",
+      "La participation minimale est de 10 millions IDR",
+      "Минимальная доля - IDR 10 млн",
+    ],
+    innocence: [
+      "Own shareholding of at least IDR 10 billion in the sponsoring PT PMA.",
+      "Kepemilikan saham sendiri minimal Rp 10 miliar",
+      "Investor KITAS 2 Years (Extend) | IDR 18,000,000",
+    ],
+  },
+  {
+    id: "no invented E28A extension length",
+    files: [...E28A, ...INVESTOR, ...KITAS_PAGE],
+    re: /renewable annually|renewed annually|(extend(ed)?|extension|renew(ed)?) (e28a |the e28a |your stay |it )?(for|of|by) (another|an additional|a further|one more|\d+) (\d+ )?(years?|months?)|1 year (to reach|\(to reach)|validity: 1 year|(perpanjang\w*|perpanjangan) (e28a )?(selama|untuk|hingga) (\d+|satu|dua|tiga) (tahun|bulan)|validitas: 1 tahun|(prorog\w+|rinnov\w+) (l'e28a )?(per|di) (altri )?\d+ (anni|mesi)|validità: 1 anno|(prolong\w+|renouvel\w+) (l'e28a )?(pour|de) (\d+ )?(ans|mois)( supplémentaires)?|validité : 1 an|(продл[а-яё]+|продление) (e28a )?(еще |ещё )?(на) \d+ (год|лет|месяц)|срок действия: 1 год/i,
+    guilt: [
+      "E28A is renewable annually.",
+      "Extend E28A for another 2 years",
+      "- Validity: 1 year (to reach the 3-year mark)",
+      "Perpanjang E28A selama 2 tahun",
+      "Rinnova l'E28A per altri 2 anni",
+      "Prolongez l'E28A pour 2 ans supplémentaires",
+      "Продлить E28A еще на 2 года",
+    ],
+    innocence: [
+      "Investor KITAS 2 Years (Extend) | IDR 18,000,000",
+      "The sponsor extends the stay online. Imigrasi does not state the length of an extension.",
+      "Bali Zero sells the E28A for 2 years.",
+      "Penjamin memperpanjang izin tinggal secara online. Imigrasi tidak menyebut lama perpanjangan.",
+    ],
+  },
+  {
+    id: "E28D and E28F are for a director or commissioner only",
+    files: [...GOLDEN, ...INVESTOR, ...E28A, ...KITAS_PAGE],
+    re: /E28[DF][^.|]{0,100}(neither|\bnor\b|not (a |the )?(director|commissioner)|non[- ]directors?|any (foreign )?(applicant|investor|national)|bukan (direktur|komisaris)|\bné(?![a-zà-ÿ])|non sono|ni (directeur|commissaire)|ne sont (ni|pas)|ни директор|не являются)/i,
+    guilt: [
+      "E28D admits applicants who are neither directors nor commissioners.",
+      "E28F is open to any foreign investor.",
+      "E28D menerima pelamar yang bukan direktur maupun komisaris",
+      "L'E28D ammette candidati che non sono né amministratori né commissari",
+      "L'E28D admet des candidats qui ne sont ni directeurs ni commissaires",
+      "E28D допускает заявителей, которые не являются ни директорами, ни комиссарами",
+    ],
+    innocence: [
+      "E28D and E28F: you must be appointed as a director or commissioner of the company.",
+      "The foreign company, not you, is the party that commits to the investment.",
+      "Dilarang pada keempat jalur: tinggal melebihi masa berlaku izin.",
+    ],
+  },
+  {
+    id: "E28C carries no company establishment and no post remuneration",
+    files: [...GOLDEN, ...INVESTOR, ...E28A],
+    re: /E28C[^|.]{0,100}(company[- ]establishment|establish(ing)? (a )?compan|salary|salaries|remuneration|pendirian perusahaan|gaji|imbalan atas jabatan|costituzione di società|stipendi|compensi per la carica|création de société|salaires|rémunération|создани[а-яё]+ компани|зарплат|вознагражден)/i,
+    guilt: [
+      "E28C allows company establishment and salary payments.",
+      "E28C memungkinkan pendirian perusahaan dan pembayaran gaji",
+      "L'E28C consente la costituzione di società e il pagamento di stipendi",
+      "L'E28C permet la création de société et le versement de salaires",
+      "E28C разрешает создание компании и выплату зарплат",
+    ],
+    innocence: [
+      "E28C: proof of ownership of the bonds, shares, mutual funds or apartment.",
+      "E28B, E28D and E28F also: carry out company-establishment activities; receive remuneration for the post you hold.",
+      "| E28C | An individual investor in Indonesian government bonds |",
+    ],
+  },
+  {
     id: "no hands-on-work claim hung on the E23",
     files: [...E28A, ...INVESTOR, ...KITAS_PAGE],
     re: /hands-on (operational )?work|lavoro operativo|pekerjaan operasional|travail opérationnel|операционн[а-яё]+ работ/i,
@@ -352,12 +458,12 @@ describe("E28 family truth guard: every forbidden rule catches its guilt and spa
   for (const rule of RULES) {
     rule.guilt.forEach((g, i) =>
       it(`${rule.id}: guilt sample ${i + 1} is caught`, () => {
-        expect(rule.re.test(norm(g))).toBe(true);
+        expect(hit(rule, norm(g)) !== null).toBe(true);
       }),
     );
     rule.innocence.forEach((n, i) =>
       it(`${rule.id}: innocence sample ${i + 1} is left alone`, () => {
-        expect(rule.re.test(norm(n))).toBe(false);
+        expect(hit(rule, norm(n))).toBeNull();
       }),
     );
     it(`${rule.id}: guilt is shown in EN and in another locale`, () => {
@@ -379,7 +485,7 @@ describe("E28 family truth guard: no forbidden claim survives in any article", (
       const name = path.relative(process.cwd(), file);
       it(`${rule.id} :: ${name}`, () => {
         const text = flat(file);
-        const m = rule.re.exec(text);
+        const m = hit(rule, text);
         expect(
           m ? text.slice(Math.max(0, m.index - 60), m.index + 120) : null,
           `${rule.id} still present in ${name}`,
@@ -401,6 +507,7 @@ const E28A_FIGURES = new Set([
   "9000000",
   "15000000", // Dependent KITAS rows
   "10000000000", // IDR 10 billion own shareholding (ruling 1)
+  "2500000000", // the PT PMA's own paid-up threshold, written in full (ruling 1)
 ]);
 const GOLDEN_FIGURES = new Set([
   "1000000",
@@ -423,6 +530,11 @@ describe("E28 family truth guard: no stray price", () => {
     expect(strayFigures("Rp 20.000.000 offshore", E28A_FIGURES)).toEqual([
       "20000000",
     ]);
+  });
+  it("spares the PT PMA's own paid-up threshold written in full", () => {
+    expect(
+      strayFigures("paid-up capital of IDR 2,500,000,000", E28A_FIGURES),
+    ).toEqual([]);
   });
   it("spares the sourced prices", () => {
     expect(
@@ -450,6 +562,93 @@ describe("E28 family truth guard: no stray price", () => {
           GOLDEN_FIGURES,
         ),
       ).toEqual([]);
+    });
+  }
+});
+
+// -----------------------------------------------------------------------------
+// Prices bound to their service: E28A offshore 17M, onshore 19M, extension 18M
+// (Dependent KITAS rows are a different service and stay out of this check)
+// -----------------------------------------------------------------------------
+const PRICE_OF: [RegExp, number][] = [
+  [/offshore/gi, 17_000_000],
+  [/onshore/gi, 19_000_000],
+  [
+    /extension|\(extend\)|perpanjangan|proroga|prolongation|продлени/gi,
+    18_000_000,
+  ],
+];
+const FIGURE =
+  /(\d+(?:[.,]\d+)?)\s?(M\b|juta|millions?|milioni|млн|миллион[а-яё]*)?/gi;
+/** Offshore/onshore/extension figures of 1,000,000 or more that are not the sourced price. */
+function wrongE28aPrices(text: string): string[] {
+  const out: string[] = [];
+  for (const raw of text.split("\n")) {
+    const line = norm(raw);
+    if (!/E28A|Investor KITAS|KITAS Investor|Investor/.test(line)) continue;
+    if (/Dependent/i.test(line)) continue;
+    const figs = [...line.matchAll(FIGURE)]
+      .map((m) => ({
+        at: m.index ?? 0,
+        end: (m.index ?? 0) + m[0].length,
+        v: Number(m[1].replace(",", ".")) * (m[2] ? 1_000_000 : 1),
+      }))
+      .filter((f) => f.v >= 1_000_000 && f.v < 1_000_000_000);
+    for (const [kw, price] of PRICE_OF) {
+      for (const k of line.matchAll(kw)) {
+        const here = k.index ?? 0;
+        const near = figs
+          .map((f) => ({
+            ...f,
+            d:
+              f.at >= here + k[0].length
+                ? f.at - (here + k[0].length)
+                : here - f.end,
+          }))
+          .filter((f) => f.d <= 45);
+        // A line may list the three prices side by side ("17M offshore, 19M onshore"):
+        // the service is wrong only when NO figure in reach is its price.
+        if (near.length && !near.some((f) => f.v === price))
+          out.push(`${k[0]} ${near[0].v}`);
+      }
+    }
+  }
+  return out;
+}
+
+describe("E28 family truth guard: E28A prices stay bound to their service", () => {
+  it("catches a wrong offshore, onshore or extension price, in EN and other locales", () => {
+    expect(wrongE28aPrices("E28A offshore costs IDR 19,000,000.")).toEqual([
+      "offshore 19000000",
+    ]);
+    expect(wrongE28aPrices("E28A offshore costs IDR 27M.")).toEqual([
+      "offshore 27000000",
+    ]);
+    expect(wrongE28aPrices("E28A offshore costs Rp 27 juta.")).toHaveLength(1);
+    expect(
+      wrongE28aPrices("E28A onshore: 17 000 000 IDR, offshore: 17 000 000 IDR"),
+    ).toHaveLength(1);
+    expect(
+      wrongE28aPrices("Investor KITAS (Extend) | IDR 19,000,000"),
+    ).toHaveLength(1);
+  });
+  it("spares the sourced prices and the Dependent KITAS rows", () => {
+    expect(
+      wrongE28aPrices(
+        "E28A: IDR 17,000,000 offshore, IDR 19,000,000 onshore, IDR 18,000,000 for the extension",
+      ),
+    ).toEqual([]);
+    expect(
+      wrongE28aPrices("| Investor KITAS 2 Years (Offshore) | IDR 17.000.000 |"),
+    ).toEqual([]);
+    expect(
+      wrongE28aPrices("| Dependent 1 Year (Offshore) | IDR 11,000,000 |"),
+    ).toEqual([]);
+  });
+  for (const { file } of [...E28A, ...INVESTOR]) {
+    const name = path.relative(process.cwd(), file);
+    it(`E28A prices match their service :: ${name}`, () => {
+      expect(wrongE28aPrices(read(file))).toEqual([]);
     });
   }
 });
@@ -678,14 +877,68 @@ const bodyOf = (file: string) => read(file).replace(FM, "");
 const words = (s: string) =>
   (s.replace(/^import .*?;\n/gm, "").match(/\S+/g) ?? []).length;
 const headings = (s: string) => (s.match(/^## /gm) ?? []).length;
-const USER_FIELD =
-  /^\s*(title|description|excerpt|coverImageAlt|seoTitle|seoDescription|primaryQuestion|answerSnippet|question|answer|alt):\s*"(.*)"\s*$/;
+const USER_KEYS =
+  /^\s*(?:-\s+)?(title|description|excerpt|coverImageAlt|seoTitle|seoDescription|primaryQuestion|answerSnippet|question|answer|alt):\s*(.*)$/;
+/** Every user-visible frontmatter field: the real YAML `- question:` / `answer:` lines, quoted or block scalar. */
+function userFieldsOf(frontmatter: string): string[] {
+  const lines = frontmatter.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = USER_KEYS.exec(lines[i]);
+    if (!m) continue;
+    let v = m[2].trim();
+    if (/^[>|][+-]?$/.test(v)) {
+      const indent = lines[i].indexOf(m[1]);
+      const parts: string[] = [];
+      while (
+        i + 1 < lines.length &&
+        /^\s*$|^\s+/.test(lines[i + 1]) &&
+        (/^\s*$/.test(lines[i + 1]) ||
+          /^\s*/.exec(lines[i + 1])![0].length > indent)
+      ) {
+        parts.push(lines[++i].trim());
+      }
+      v = parts.join(" ");
+    } else {
+      v = v.replace(/^"(.*)"$/, "$1");
+    }
+    out.push(`${m[1]}=${v}`);
+  }
+  return out;
+}
 const userFields = (file: string) =>
-  (read(file).match(FM)?.[1] ?? "")
-    .split("\n")
-    .map((l) => USER_FIELD.exec(l))
-    .filter((m): m is RegExpExecArray => m !== null)
-    .map((m) => `${m[1]}=${m[2]}`);
+  userFieldsOf(read(file).match(FM)?.[1] ?? "");
+
+describe("E28 family truth guard: the frontmatter reader sees the real YAML", () => {
+  it("reads '- question:' lines, 'answer:' lines and block scalars", () => {
+    const fm = [
+      'title: "T"',
+      "faq:",
+      '  - question: "Q one?"',
+      '    answer: "A one."',
+      "  - question: >-",
+      "      Q two",
+      "      wraps?",
+      "    answer: |",
+      "      A two.",
+      "other: x",
+    ].join("\n");
+    expect(userFieldsOf(fm)).toEqual([
+      "title=T",
+      "question=Q one?",
+      "answer=A one.",
+      "question=Q two wraps?",
+      "answer=A two.",
+    ]);
+  });
+  it("catches an English FAQ question left in a twin (guilt) and spares a translated one (innocence)", () => {
+    const en = userFieldsOf('  - question: "Can I work?"');
+    expect(userFieldsOf('  - question: "Can I work?"')).toEqual(en);
+    expect(userFieldsOf('  - question: "Puis-je travailler ?"')).not.toEqual(
+      en,
+    );
+  });
+});
 
 describe("E28 family truth guard: every twin is complete", () => {
   for (const g of [E28A, GOLDEN, INVESTOR]) {
