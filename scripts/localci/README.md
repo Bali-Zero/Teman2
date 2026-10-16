@@ -416,7 +416,7 @@ whatever it is given (phase E is not armed); `merger.py --selftest` runs the tri
 
     python scripts/localci/merger.py tick --node Nuzantara [--repo Bali-Zero/Teman2] [--base main] \
         [--state-dir ~/.nuzantara-pilots/local-ci/merger] [--seed ~/nuzantara] [--python <venv python>] \
-        [--plan-timeout 7500] [--run-timeout 5400] [--tick-timeout 14400]
+        [--plan-timeout 7500] [--run-timeout 7200] [--tick-timeout 16200]
 
 The plan step's budget (`--plan-timeout`, `PLAN_TIMEOUT_S`) stays above the runner's `DEPS_BUILD_TIMEOUT_S` (7200 s): a lock
 file change makes a new deps recipe, built cold inside the plan (e2e-tests on Pro, 2026-10-11: 3552 s, pip download 2728 s).
@@ -793,7 +793,7 @@ phase A's contained contexts on main, ticks took 883 s, 886 s and 1097 s (#7978,
 with phase B's service contexts. `StartInterval` stays 600 as the idle cadence and the recovery path. "A shorter one buys nothing while a tick outlasts it" was wrong, and it was measured so on 2026-10-15: launchd re-arms the interval when the job EXITS, so
 every tick was followed by 600 s of nothing (the wrapper's start line came 601-603 s after the previous `prune` row in 5 of 5 cycles of 10-15; the median gap between two runs is 606-621 s on every day; 4.7-9.1 h a day of the lane were this wait, and a READY refresh tick added a second wait: decision ~4200 s + 600 + refresh ~400 + 600 = 5790 s per decision). The cure is B33 S1 below, not a shorter interval; running
 checks in parallel is phase B's runner work. The heartbeat is written when a tick ends, so two heartbeats are up to
-tick + 600 s apart: the organ's `expected_hb_seconds` is 3600, not 1800. A `running` heartbeat at tick start was not chosen
+tick + 600 s apart: the organ's `expected_hb_seconds` is 6000 (B35: 3 x it must exceed the 16200 s tick watchdog + 600), not 1800. A `running` heartbeat at tick start was not chosen
 — the sentinel's `running` branch has no staleness downgrade (`scripts/nuzantara-sentinel.py`), so a hung tick would read
 healthy for ever.
 
