@@ -1274,6 +1274,19 @@ def _check_row(origin: str, name: object, row: object) -> None:
 _MERGED: dict[str, tuple[str, tuple]] = {}   # rows name -> (file, row) already merged, so a second merge_rows() is a no-op
 
 
+def _check_untouched(origin: str, tables: list, snaps: list, bound: dict) -> None:
+    """B36 gate L1: a rows file only defines ROWS. Whatever alias it reached the table by (T = MUTANTS, `import ... as`, getattr, vars, sys.modules),
+    the dict it wrote is the same object, so the table is compared with the snapshot taken before its exec_module."""
+    if globals()["MUTANTS"] is not bound:
+        raise SystemExit(f"{origin}: rebinds MUTANTS; a rows file only defines ROWS")
+    for table, snap in zip(tables, snaps):
+        removed = sorted(k for k in snap if k not in table)
+        changed = sorted(k for k in snap if k in table and table[k] is not snap[k])
+        added = sorted(k for k in table if k not in snap)
+        if removed or changed or added:
+            raise SystemExit(f"{origin}: wrote MUTANTS directly (removed {removed}, changed {changed}, added {added}); a rows file only defines ROWS")
+
+
 def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
     """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run.
     Runs at import (below) and again from main(): a row already merged from the same file, identical, is skipped."""
@@ -1288,7 +1301,10 @@ def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
             continue
         spec = importlib.util.spec_from_file_location(f"_mutant_rows_{f.stem}", f)
         mod = importlib.util.module_from_spec(spec)
+        bound, tables = MUTANTS, [into] if into is MUTANTS else [into, MUTANTS]
+        snaps = [dict(t) for t in tables]
         spec.loader.exec_module(mod)
+        _check_untouched(f.name, tables, snaps, bound)
         rows = getattr(mod, "ROWS", None)
         if not isinstance(rows, dict):
             raise SystemExit(f"{f.name}: must define ROWS as a dict")
