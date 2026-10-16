@@ -1,40 +1,40 @@
-## Summary
+---
+adversarial_review: codex
+reviewed_source_sha256: "03b6f11a4cc00c3e8eb537e04100a4abb55e3eaed9b54ba14bb272e704883e6d"
+review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
+---
 
-Completes the **DEFINITIVE SYNTHESIS + EXECUTION** deliverables for Universal DB Wave 8 Block `B06` (`D04`–`D10` business-domain paths) in `research/operations/udb-wave8/B06/`:
+# research(udb-wave8): B06 business-domain paths — 21 contract records, hermetic metadata fixtures, receipt-pinned census
 
-- Resolves all consolidated adversarial findings (`X1`–`X13` and `B06-F1`–`B06-F4`) from `.agent-receipts/udb-wave8-dux/ADVERSARY-FINDINGS.md`, `DUX-CONSOLIDATION.md`, and `DUX-TRIAGE-B01-B06.md`.
-- Aligns `domain-operation-instances.json` (`21` deep domain operation instances, `3` per research line `D04`–`D10`) and `b06_domain_paths.py` strictly with `.agent-receipts/udb-wave8-dux/CONTRACT-CONVENTIONS.md` (exact 19 canonical keys in order + `x_`-prefixed extension keys only, `operation_id: "UNASSIGNED_B05"`, verified `src_<16hex>` `consumer_id` linkage, and `status: "PARTIAL"`).
-- Verifies full census parity against `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (`sha256: c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`): `2,608` B06 `domain_hint` rows (`DUX-REQ-B06-01.out`) and `683` B06-prefix rows (`DUX-REQ-B06-03.out`: `527` `NOT_ENRICHED_THIS_PHASE`, `155` `PARTIAL`, `1` `ADAPTED_PARTIAL_VERIFIED`).
-- Ships hermetic `pytest` verification (`test_b06_domain_paths.py`) using stdlib + `pytest` only and synthetic fixtures (`+00-000-0000`, `user@example.invalid`).
+Block **B06** (`D04`–`D10`) of campaign `universal-db-wave8-20261015`. Status `PARTIAL`, `block_closed: false`. Authoritative evidence: [`RESULT.json`](RESULT.json).
 
-## Scope (`research/operations/udb-wave8/B06/`)
+## What ships
 
-- `research/operations/udb-wave8/B06/DEFINITIVE-SYNTHESIS.md`
-- `research/operations/udb-wave8/B06/b06_domain_paths.py`
-- `research/operations/udb-wave8/B06/domain-operation-instances.json`
-- `research/operations/udb-wave8/B06/test_b06_domain_paths.py`
-- `research/operations/udb-wave8/B06/RESULT.json`
-- `research/operations/udb-wave8/B06/PR_BODY.md`
+- `b06_domain_paths.py` — builds the 21 D04–D10 operation instances in the frozen conventions shape with `x_` extensions, verifies pinned receipts, keeps source-taxonomy counters separate from business-inventory labels, and adds an explicit opt-in `--metadata-fixture` CLI that reports the processed and source byte identities separately.
+- `domain-operation-instances.json` — the 21 records, semantically identical to the pre-repair artifact.
+- `test_b06_domain_paths.py` — 18 offline tests over committed files only, no skips (e.g. `test_pinned_csv_source_and_prefix_census_parity`, `test_tampered_receipt_counter_fails_census_compare`, `test_missing_projection_fails_instead_of_skip`, `test_clean_checkout_fixture_cli_labels_both_byte_identities`).
+- `fixtures/` — `consumer-matrix-metadata.csv` (6029-row, 11-field metadata projection; processed sha256 `dfe7c0b1…` deliberately distinct from source `c09e1432…`; no raw census copy), `manifest.json`, and the producer receipts with their commands:
+  - `fixtures/receipts/DUX-REQ-B06-01.out` sha256 `1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb`
+  - `fixtures/receipts/DUX-REQ-B06-03.out` sha256 `e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa`
+- Synthesis documents with a 2026-10-16 addendum; `.secrets.baseline` entries for exact digest findings only.
 
-## Evidence Paths
+## Findings
 
-- `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (`sha256: c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`)
-- `.agent-receipts/udb-wave8-dux/CONTRACT-CONVENTIONS.md` (`sha256: a7feea89fa64000d76c18a52d705dd008b4a6336a6d58af98c2618a13048c559`)
-- `.agent-receipts/udb-wave8-dux/ADVERSARY-FINDINGS.md` (`sha256: 29c57f706bcc0dd8e7f492f3ffe5215598798ed173f452f19aa7a086c8faaf54`)
-- `research/operations/udb-wave8/B06/dux-requests/DUX-REQ-B06-01.out` (`sha256: e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa`)
-- `research/operations/udb-wave8/B06/dux-requests/DUX-REQ-B06-03.out` (`sha256: 1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb`)
+- **Prefix scope (DUX-REQ-B06-03):** 683 rows = 504 `NOT_ENRICHED_THIS_PHASE` + 179 `MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED`, asserted equal to the census recomputed from the committed fixture.
+- **Withdrawn:** the earlier 527/155/1 split, a 2,608-row subset of seven business labels in `domain_hint` (none of the seven labels occurs in the producer counters), and a "parent run 3 passed / 8 failed" claim without receipt. Earlier text also swapped the two receipt hashes; the values above are the pinned ones the tests enforce.
+- **NAGA:** the operation is grounded in `services/naga` source (`test_naga_instance_is_grounded_in_actual_save_session_source`).
 
-## Missing Evidence (Block Remains `block_closed: false`)
+## Explicit missing evidence (`block_closed: false`)
 
-1. Runtime DB role resolution (`ACTOR_IDENTITY_UNRESOLVED` -> live Postgres role) via `B04`.
-2. Canonical `operation_id` assignment for the 21 `UNASSIGNED_B05` records via `B05`.
-3. Restore drill verification for `public.clients` (`FAIL`), `public.conversations` (`CANNOT-VERIFY`), and B06 domain tables omitted from `scripts/restore_drill_verify.py` via `B07`.
-4. Read-only aggregate SQL receipts `DUX-REQ-B06-10`..`12` in `DEFINITIVE-SYNTHESIS.md`.
+1. Runtime role resolution for the 683 prefix rows (B04).
+2. Canonical `operation_id` for the 21 `UNASSIGNED_B05` instances (B05).
+3. Restore-drill measurement for `clients`/`conversations` and B06 tables (B01/B07).
+4. Live aggregates DUX-REQ-B06-10/11/12: not admitted, not run.
 
-## Dux correction
+## Adversarial review
 
-One bounded parent-prepared patch (sha256 `94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5`) re-grounds the NAGA instance `src_b3bccbae2cc91a8c` on `apps/backend-rag/backend/services/naga/persist.py:24-217`; the `research_os_objects` row in the synthesis is superseded by its addendum. Before: Dux run at base 8061c88 before the correction: exit 1, 8 passed / 1 failed (test_consumer_matrix_census_parity_with_dux_receipts), out sha256 60fee2bd40d819e3cf6c7811d207269b135091277ad06be3af10a0ac574924d4; parent run: 3 passed / 8 failed; isolated pre-patch NAGA regression: exit 1, 1 failed / 1 passed / 11 deselected, out sha256 8832db2535d5205b9c7e55b6592b077a6a85f3af75c3eefc3ff9cbb89332174c. After: exit 0, 13 passed, out sha256 f5801870ba3c5ceaddd5b679e3bc49fcaf5484957ab861eb9e4a296e654ee7e6. All earlier failed receipts are retained; no test case was removed. No native probe, no live Postgres; `block_closed` stays false.
+Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `REVIEWED_PARTIAL_WITH_BLOCKERS`; this file's reviewed bytes had SHA256 `03b6f11a4cc00c3e8eb537e04100a4abb55e3eaed9b54ba14bb272e704883e6d`. Its findings (NAGA source, 2,608 vs 683 premise, adopt actual receipts) are applied here. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. This revision was not re-reviewed.
 
-Bites: `research/operations/udb-wave8/B06/b06_domain_paths.py` and `research/operations/udb-wave8/B06/domain-operation-instances.json` consumed by `B05` operation contract catalog merger and `B08` CI contract gate; proved by running `PYTHONPATH=. pytest research/operations/udb-wave8/B06/test_b06_domain_paths.py -q` and `python3 research/operations/udb-wave8/B06/b06_domain_paths.py` returning `"ok": true` across all 21 `D04`–`D10` instances and `683` B06-prefix rows.
+Bites: `research/operations/udb-wave8/B06/test_b06_domain_paths.py` and the `b06_domain_paths.py --metadata-fixture` CLI, both shipped in this PR, consume the adapter, the 21 records and `fixtures/`; at the committed head the suite runs 18 passed, 0 skipped, exit 0 from committed files only (recorded in the evidence pack).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

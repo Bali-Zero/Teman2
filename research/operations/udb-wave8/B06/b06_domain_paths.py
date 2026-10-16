@@ -248,9 +248,42 @@ def summarize_prefix_scope_status(prefix_census: dict[str, Any]) -> dict[str, in
     return dict(by_scope_status.most_common())
 
 
-def verify_pinned_receipt_files(repo_root: Path) -> dict[str, str]:
+METADATA_FIXTURE_MANIFEST_SHA256 = "5861322d678a0012086a8a2617d62da1c910189edc2d7a9c1ffaa517944c4ff9"
+
+
+def load_metadata_fixture(manifest_path: Path) -> dict[str, Any]:
+    """Validate an explicit frozen projection; its bytes are not the raw CSV."""
+    raw = manifest_path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != METADATA_FIXTURE_MANIFEST_SHA256:
+        raise ValueError("Pinned metadata fixture manifest SHA256 mismatch")
+    data = json.loads(raw)
+    if data.get("schema") != "b06-frozen-metadata-projection-v1":
+        raise ValueError("Unsupported metadata fixture schema")
+    if data.get("source_csv_sha256") != CONSUMER_MATRIX_SHA256:
+        raise ValueError("Original source CSV identity mismatch")
+    name = data.get("projection_file", "")
+    if not isinstance(name, str) or Path(name).name != name:
+        raise ValueError("Fixture filename must be local to manifest")
+    csv_path = manifest_path.parent / name
+    actual = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+    if actual != data.get("projection_sha256"):
+        raise ValueError("Metadata projection SHA256 mismatch")
+    return {
+        "csv_path": csv_path,
+        "receipts_dir": manifest_path.parent / "receipts",
+        "projection_sha256": actual,
+        "source_csv_sha256": data["source_csv_sha256"],
+        "input_kind": "FROZEN_METADATA_PROJECTION",
+    }
+
+
+def verify_pinned_receipt_files(
+    repo_root: Path, *, receipts_dir: Path | None = None
+) -> dict[str, str]:
     """Verify the SHA-256 digests of the 4 pinned DUX-REQ-B06-01/03 files on disk."""
-    req_dir = repo_root / DUX_REQ_DIR_REL_PATH
+    req_dir = (
+        receipts_dir if receipts_dir is not None else repo_root / DUX_REQ_DIR_REL_PATH
+    )
     expected = {
         "DUX-REQ-B06-01.cmd.sh": DUX_REQ_B06_01_CMD_SHA256,
         "DUX-REQ-B06-01.out": DUX_REQ_B06_01_SHA256,
@@ -270,12 +303,20 @@ def verify_pinned_receipt_files(repo_root: Path) -> dict[str, str]:
     return observed
 
 
-def load_pinned_census_receipts(repo_root: Path) -> dict[str, Any]:
+def load_pinned_census_receipts(
+    repo_root: Path, *, receipts_dir: Path | None = None
+) -> dict[str, Any]:
     """Verify and parse ``DUX-REQ-B06-01.out`` and ``DUX-REQ-B06-03.out``."""
-    shas = verify_pinned_receipt_files(repo_root)
-    req_dir = repo_root / DUX_REQ_DIR_REL_PATH
-    receipt_01 = json.loads((req_dir / "DUX-REQ-B06-01.out").read_text(encoding="utf-8"))
-    receipt_03 = json.loads((req_dir / "DUX-REQ-B06-03.out").read_text(encoding="utf-8"))
+    shas = verify_pinned_receipt_files(repo_root, receipts_dir=receipts_dir)
+    req_dir = (
+        receipts_dir if receipts_dir is not None else repo_root / DUX_REQ_DIR_REL_PATH
+    )
+    receipt_01 = json.loads(
+        (req_dir / "DUX-REQ-B06-01.out").read_text(encoding="utf-8")
+    )
+    receipt_03 = json.loads(
+        (req_dir / "DUX-REQ-B06-03.out").read_text(encoding="utf-8")
+    )
     return {
         "shas": shas,
         "receipt_01": receipt_01,
@@ -1177,16 +1218,36 @@ def get_domain_operation_instances(
     ]
 
 
-def load_consumer_matrix_index(repo_root: Path) -> dict[str, Any]:
+def load_consumer_matrix_index(
+    repo_root: Path, *, metadata_fixture: Path | None = None
+) -> dict[str, Any]:
     """Compute source and prefix censuses from ``consumer-matrix.csv`` and compare to receipts."""
-    csv_path = repo_root / CONSUMER_MATRIX_REL_PATH
-    pinned = load_pinned_census_receipts(repo_root)
+    fixture = (
+        load_metadata_fixture(metadata_fixture)
+        if metadata_fixture is not None
+        else None
+    )
+    csv_path = (
+        fixture["csv_path"]
+        if fixture is not None
+        else repo_root / CONSUMER_MATRIX_REL_PATH
+    )
+    pinned = load_pinned_census_receipts(
+        repo_root,
+        receipts_dir=fixture["receipts_dir"] if fixture is not None else None,
+    )
+    reference_source = pinned["receipt_01"]
+    if fixture is not None:
+        if reference_source["sha256"] != fixture["source_csv_sha256"]:
+            raise ValueError("Pinned counter receipt source identity mismatch")
+        # Counts stay exact; the processed projection has a separately pinned byte hash.
+        reference_source = dict(reference_source, sha256=fixture["projection_sha256"])
     source_census = compute_source_census(csv_path)
     prefix_census = compute_prefix_census(csv_path)
     comparison_errors = compare_census_to_receipts(
         source_census,
         prefix_census,
-        pinned["receipt_01"],
+        reference_source,
         pinned["receipt_03"],
     )
 
@@ -1202,7 +1263,7 @@ def load_consumer_matrix_index(repo_root: Path) -> dict[str, Any]:
 
     prefix_scope_status_counts = summarize_prefix_scope_status(prefix_census)
 
-    return {
+    result = {
         "csv_sha256": source_census["sha256"],
         "total_rows": source_census["total"],
         "all_consumer_ids": all_consumer_ids,
@@ -1214,10 +1275,32 @@ def load_consumer_matrix_index(repo_root: Path) -> dict[str, Any]:
         "comparison_errors": comparison_errors,
     }
 
+    if fixture is not None:
+        result.update(
+            {
+                "input_kind": fixture["input_kind"],
+                "source_csv_sha256": fixture["source_csv_sha256"],
+                "fixture_manifest_sha256": METADATA_FIXTURE_MANIFEST_SHA256,
+                "raw_source_csv_read": False,
+            }
+        )
+    return result
 
-def verify_all(repo_root: Path) -> dict[str, Any]:
+
+
+def verify_all(
+    repo_root: Path, *, metadata_fixture: Path | None = None
+) -> dict[str, Any]:
     """Run B06 census parity and instance generation checks."""
-    pinned = load_pinned_census_receipts(repo_root)
+    fixture = (
+        load_metadata_fixture(metadata_fixture)
+        if metadata_fixture is not None
+        else None
+    )
+    pinned = load_pinned_census_receipts(
+        repo_root,
+        receipts_dir=fixture["receipts_dir"] if fixture is not None else None,
+    )
     instances = get_domain_operation_instances(repo_root)
 
     by_domain_line: dict[str, int] = {}
@@ -1238,12 +1321,18 @@ def verify_all(repo_root: Path) -> dict[str, Any]:
                 f"Domain line {expected_line} has {by_domain_line.get(expected_line, 0)} instances; expected >= 3."
             )
 
-    csv_path = repo_root / CONSUMER_MATRIX_REL_PATH
+    csv_path = (
+        fixture["csv_path"]
+        if fixture is not None
+        else repo_root / CONSUMER_MATRIX_REL_PATH
+    )
     csv_present = csv_path.exists()
     prefix_scope_status_counts = summarize_prefix_scope_status(pinned["receipt_03"])
 
     if csv_present:
-        matrix_info = load_consumer_matrix_index(repo_root)
+        matrix_info = load_consumer_matrix_index(
+            repo_root, metadata_fixture=metadata_fixture
+        )
         errors.extend(matrix_info["comparison_errors"])
         for idx, inst in enumerate(instances):
             cid = inst["consumer_id"]
@@ -1252,7 +1341,10 @@ def verify_all(repo_root: Path) -> dict[str, Any]:
                     f"instance[{idx}] consumer_id {cid!r} not in consumer-matrix.csv"
                 )
 
-    return {
+    else:
+        errors.append("ADMITTED_CSV_INPUT_UNAVAILABLE")
+
+    result = {
         "ok": len(errors) == 0,
         "csv_present": csv_present,
         "instance_count": len(instances),
@@ -1263,6 +1355,18 @@ def verify_all(repo_root: Path) -> dict[str, Any]:
         "prefix_scope_status_counts": prefix_scope_status_counts,
         "errors": errors,
     }
+
+    if fixture is not None:
+        result.update(
+            {
+                "input_kind": fixture["input_kind"],
+                "source_csv_sha256": fixture["source_csv_sha256"],
+                "processed_csv_sha256": fixture["projection_sha256"],
+                "raw_source_csv_read": False,
+            }
+        )
+    return result
+
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1282,6 +1386,12 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Optional path to write domain-operation-instances.json",
     )
+    parser.add_argument(
+        "--metadata-fixture",
+        type=Path,
+        default=None,
+        help="Explicit SHA-pinned frozen metadata projection; not a native observation",
+    )
     args = parser.parse_args(argv)
 
     if args.emit_json is not None:
@@ -1291,7 +1401,7 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
 
-    summary = verify_all(args.repo_root)
+    summary = verify_all(args.repo_root, metadata_fixture=args.metadata_fixture)
     sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
     return 0 if summary["ok"] else 1
 

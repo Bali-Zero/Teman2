@@ -1,0 +1,23 @@
+{
+ "total_rows_in_prefixes": 683,
+ "prefix|phase_source_path_evidence|phase_source_scope_status|factory_count": {
+  "apps/backend-rag/backend/services/ | EMPTY | NOT_ENRICHED_THIS_PHASE | fc=EMPTY": 356,
+  "apps/backend-rag/backend/app/routers/ | SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 84,
+  "apps/backend-rag/backend/app/routers/ | EMPTY | NOT_ENRICHED_THIS_PHASE | fc=EMPTY": 59,
+  "apps/bali-intel-scraper/ | EMPTY | NOT_ENRICHED_THIS_PHASE | fc=EMPTY": 49,
+  "apps/backend-rag/backend/services/ | SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 48,
+  "packages/cell-core/ | EMPTY | NOT_ENRICHED_THIS_PHASE | fc=EMPTY": 38,
+  "apps/backend-rag/backend/services/ | POOL-FACTORY-SOURCE.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=1": 28,
+  "apps/backend-rag/backend/services/ | POOL-FACTORY-SOURCE.json;SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=1": 10,
+  "packages/research-os-core/ | EMPTY | NOT_ENRICHED_THIS_PHASE | fc=EMPTY": 2,
+  "apps/backend-rag/backend/app/routers/ | POOL-FACTORY-SOURCE.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=1": 1,
+  "apps/backend-rag/backend/app/routers/ | POOL-FACTORY-SOURCE.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=2": 1,
+  "apps/backend-rag/backend/app/routers/ | POOL-FACTORY-SOURCE.json;SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 1,
+  "apps/backend-rag/backend/services/ | POOL-FACTORY-SOURCE.json;SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 1,
+  "apps/backend-rag/backend/services/ | POOL-FACTORY-SOURCE.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 1,
+  "apps/bali-intel-scraper/ | POOL-FACTORY-SOURCE.json;SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=2": 1,
+  "apps/bali-intel-scraper/ | SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 1,
+  "packages/cell-core/ | POOL-FACTORY-SOURCE.json;SOURCE-REEXPORT-JOIN.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=1": 1,
+  "packages/cell-core/ | POOL-FACTORY-SOURCE.json | MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED | fc=0": 1
+ }
+}

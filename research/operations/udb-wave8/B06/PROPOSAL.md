@@ -1,4 +1,21 @@
+---
+adversarial_review: codex
+reviewed_source_sha256: "236f3745e7ddb421be06abd65dd4481356634cac3159775d35758e798e71b6ea"
+review_disposition: HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED
+---
+
 # B06 Business-Domain Paths — Development & Verification Proposal (`D04`–`D10`)
+
+> **Dux addendum (2026-10-16, supersedes every conflicting statement below, including the 2026-10-15 correction).**
+> Authoritative status and evidence: `RESULT.json`. `test_b06_domain_paths.py` runs 18 passed, 0 skipped, offline over committed
+> files only (`fixtures/consumer-matrix-metadata.csv`, `fixtures/manifest.json`, `fixtures/receipts/`). Pinned receipts:
+> `DUX-REQ-B06-01.out` sha256 `1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb` and `DUX-REQ-B06-03.out` sha256 `e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa` (earlier text swapped them). The
+> 683 B06-prefix rows are 504 `NOT_ENRICHED_THIS_PHASE` + 179 `MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED`; the 527/155/1
+> split, the 2,608-row business-label subset of `domain_hint` and a "parent run 3 passed / 8 failed" are withdrawn as
+> unsupported. `dux-requests/` and `.agent-receipts/...` paths below are historical, untracked locations; the shipped copies
+> live in `fixtures/`. Dispositions marked ACCEPTED for X10 (hash discipline), X12 (offline from committed files) and B06-F4
+> (coverage counts) are met only as stated in this addendum. No runtime role, live aggregate or restore measurement is
+> claimed; `block_closed` stays `false`.
 
 - **Campaign**: `universal-db-wave8-20261015`
 - **Block**: `B06` ("Business-domain paths")
@@ -13,12 +30,15 @@
 ## 1. Proposal Scope & Non-Goals
 
 ### 1.1 Scope (Inside B06 Perimeter)
+
 In accordance with `BATTLE.md:10-29` and `ASTRA-ADVICE.md:1-12`, B06 does **not** redesign production business logic or mutate application routers during Wave 8 discovery/verification. Instead, B06 delivers a deterministic **Domain Operation Contract Extractor & Verification Suite** inside `research/operations/udb-wave8/B06/` that:
+
 1. Emits machine-validated, `B05`-compatible operation-instance records for all 7 business-domain research lines (`D04`–`D10`), separating **contract-ready atomic subsystems** from **split-transaction / cross-store unfenced subsystems**.
 2. Joins B06 source-level operation traces against `B03` runtime/scheduler reachability receipts and `B04` native PostgreSQL / Qdrant / Redis / restore-drill catalog proofs without fabricating any unmeasured runtime field (`UNKNOWN` / `BLOCKED` preserved fail-closed).
 3. Provides hermetic, PII-zero verification harnesses and negative tests that prove both the positive contract invariants (e.g., `visa_engine`, `reconcile_service`, `garuda_orders`, `wa_outbox_worker`, `kbli_notebook`, `intake/writer`, `naga_persistence`) and the 7 counterexamples (`CE-B06-01` through `CE-B06-07` in `ANALYSIS.md`).
 
 ### 1.2 Explicit Non-Goals
+
 - No edits to off-limits files (`zantara_core.py`, `fly.toml`, `.env*`, `apps/bali-intel-scraper/backend/db/migrations/env.py`, curated datasets, or WR2 queue JSONs).
 - No speculative promotion of `BLOCKED_DISCOVERY` rows to `VERIFIED` where `B03` runtime principal identity or `B04` native store/restore verification is still `UNKNOWN`, `FAIL`, or `CANNOT-VERIFY`.
 - Zero transcription of client PII, OSINT, or credentials into any contract record, fixture, or receipt.
@@ -55,12 +75,12 @@ During the subsequent authorised synthesis/execution stage, B06 proposes to mate
 
 ## 3. Sibling Block Interfaces (`B03`, `B04`, `B05`, `B07`)
 
-| Sibling Block | Interface Direction | Concrete Handshake |
-| :--- | :--- | :--- |
-| **`B03` (Runtime / Daemons)** | `B03 -> B06` | Supplies verified `principal`, process registration (`router_registration.py`, `main_api.py` schedulers, `launchd` plists such as `com.balizero.post-publish-poller`, `com.matagaruda.invalidation-sweep`, `com.nuzantara.kbli-oss-refresh.weekly`), and active consumer denominator filtering for `D04`–`D10`. |
-| **`B04` (Native Stores & Restore)** | `B04 -> B06` | Supplies PostgreSQL role/grant bindings (`POOL-FACTORY-SOURCE.json` -> `role`), exact sub-check breakdown for `clients` (`VIOLATION: 1`) and `conversations` (`UNMEASURED_CHECK: 1`) in `restore_drill_verify.py`, and read-only Qdrant Cloud / Redis metadata. |
-| **`B05` (Consumer Contracts)** | `B05 <-> B06` | B06 emits operation rows conforming 1:1 to `B05`'s 8 frozen fields + 11 operation instance fields (`BATTLE.md:14-18`). |
-| **`B07` (Reconciliation & Gate)** | `B06 -> B07` | B06 hands off `domain-operation-contracts.json`, the 7 counterexamples (`CE-B06-01`..`07`), and cross-store drift vectors (PG↔Drive, PG↔Qdrant, Pro-PG↔Fly-PG, PG↔MemoryCache) for Wave 8 gate synthesis. |
+| Sibling Block                       | Interface Direction | Concrete Handshake                                                                                                                                                                                                                                                                                              |
+| :---------------------------------- | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`B03` (Runtime / Daemons)**       | `B03 -> B06`        | Supplies verified `principal`, process registration (`router_registration.py`, `main_api.py` schedulers, `launchd` plists such as `com.balizero.post-publish-poller`, `com.matagaruda.invalidation-sweep`, `com.nuzantara.kbli-oss-refresh.weekly`), and active consumer denominator filtering for `D04`–`D10`. |
+| **`B04` (Native Stores & Restore)** | `B04 -> B06`        | Supplies PostgreSQL role/grant bindings (`POOL-FACTORY-SOURCE.json` -> `role`), exact sub-check breakdown for `clients` (`VIOLATION: 1`) and `conversations` (`UNMEASURED_CHECK: 1`) in `restore_drill_verify.py`, and read-only Qdrant Cloud / Redis metadata.                                                 |
+| **`B05` (Consumer Contracts)**      | `B05 <-> B06`       | B06 emits operation rows conforming 1:1 to `B05`'s 8 frozen fields + 11 operation instance fields (`BATTLE.md:14-18`).                                                                                                                                                                                          |
+| **`B07` (Reconciliation & Gate)**   | `B06 -> B07`        | B06 hands off `domain-operation-contracts.json`, the 7 counterexamples (`CE-B06-01`..`07`), and cross-store drift vectors (PG↔Drive, PG↔Qdrant, Pro-PG↔Fly-PG, PG↔MemoryCache) for Wave 8 gate synthesis.                                                                                                       |
 
 ---
 
@@ -69,6 +89,7 @@ During the subsequent authorised synthesis/execution stage, B06 proposes to mate
 Because `run_command` is disabled in this analysis window (`DUX-NOTE-ANALYSIS.md:13-22`), the following read-only, aggregate/hashed computations are requested from the BLUE Dux to pin missing evidence before B06 synthesis:
 
 ### `DUX-REQ-B06-01`: Exact Domain Row & Disposition Breakdown in `consumer-matrix.csv` for `D04`–`D10`
+
 - **id**: `DUX-REQ-B06-01`
 - **Command / Script**:
   ```bash
@@ -92,17 +113,19 @@ Because `run_command` is disabled in this analysis window (`DUX-NOTE-ANALYSIS.md
 - **Why It Matters**: Pins the exact deterministic denominator of `consumer-matrix.csv` rows per `domain_heuristic` (`crm_cases`, `visa_company_tax_property`, `pricing_payments_accounting`, `conversations_channels`, `knowledge_rag`, `document_ingestion`, `editorial`, `research_intelligence`, `agent_workflows`) so B06 synthesis can account for 100% of domain rows without estimation.
 
 ### `DUX-REQ-B06-02`: Sub-Check Disaggregation of `clients` (`FAIL`) and `conversations` (`CANNOT-VERIFY`) from Mini Restore Drill
+
 - **id**: `DUX-REQ-B06-02`
 - **Command / Script**:
   ```bash
   python3 scripts/ci/restore_drill_verify.py --fixture scripts/tests/fixtures/restore_drill/healthy.json --json
   ```
-  *(Plus read-only inspection of the Mini restore drill raw JSON output or re-running the two aggregate `SELECT jsonb_build_object(...)` queries from `scripts/ci/restore_drill_verify.py:207-229` against the isolated Mini restore target database, emitting only boolean/integer check counts.)*
+  _(Plus read-only inspection of the Mini restore drill raw JSON output or re-running the two aggregate `SELECT jsonb_build_object(...)` queries from `scripts/ci/restore_drill_verify.py:207-229` against the isolated Mini restore target database, emitting only boolean/integer check counts.)_
 - **Inputs**: `scripts/ci/restore_drill_verify.py:207-229` and the isolated Mini restore drill database referenced in `.agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:15-74`.
 - **Expected Output Shape**: Aggregate JSON counts only: `{"clients": {"client_type_unknown": <int>, "lead_metadata_not_object": <int>}, "conversations": {"messages_not_json_array": <int_or_error_class>}}`. Zero client rows, zero PII.
 - **Why It Matters**: Resolves Unknown #2 and Unknown #3 in `ANALYSIS.md` by identifying whether `clients` failed on `client_type_unknown` or `lead_metadata_not_object`, and why `_CONVERSATIONS_VIOLATIONS_SQL` returned `UNMEASURED_CHECK: 1` on Mini restore.
 
 ### `DUX-REQ-B06-03`: Pool-Factory Actor & Grant Join for B06 Backend Routers/Services
+
 - **id**: `DUX-REQ-B06-03`
 - **Command / Script**:
   ```bash
@@ -130,3 +153,7 @@ Because `run_command` is disabled in this analysis window (`DUX-NOTE-ANALYSIS.md
 - **Inputs**: `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv`
 - **Expected Output Shape**: Aggregate JSON map of `join_source|join_status -> integer count` across B06 source prefixes.
 - **Why It Matters**: Quantifies the exact number of B06 source files that already have `POOL-FACTORY-SOURCE.json` or `SOURCE-REEXPORT-JOIN.json` bindings vs. `NOT_ENRICHED_THIS_PHASE`, enabling a clean join with `B04` and `B05`.
+
+## Adversarial review
+
+Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED` for this file's bytes with SHA256 `236f3745e7ddb421be06abd65dd4481356634cac3159775d35758e798e71b6ea` at base `8061c88e0c43dd42e735fd012f9ed072df3ef3d6`. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. Edits after the reviewed bytes (corrections, addendum) apply its findings and were not re-reviewed.

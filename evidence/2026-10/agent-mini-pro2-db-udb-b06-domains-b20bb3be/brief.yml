@@ -2,13 +2,14 @@ mandate: universal-db-wave8-20261015-B06
 gear: 3
 colour: BLUE
 intent:
-  Prepare truthful business-domain operation-path evidence for D04-D10; runtime
-  roles, operation ids and restore lineage remain unproved.
+  Prepare truthful business-domain operation-path evidence for D04-D10; runtime roles, operation
+  ids and restore lineage remain unproved.
 scope:
   - research/operations/udb-wave8/B06/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b06-domains-b20bb3be/
+  - .secrets.baseline
 constraints:
   - One PR for B06; original Gemini conversation retained.
-  - No client rows,live mutation,credential creation,application changes,or unadmitted
-    native probe.
+  - No client rows,live mutation,credential creation,application changes,or unadmitted native probe.
   - Fresh independent Opus5.5/xhigh exact-head final gate required; Dux alone releases.
   - S1 cannot start before all8actual block closures.

@@ -1,7 +1,7 @@
 """Hermetic pytest suite for B06 Business-Domain Paths (D04--D10).
 
 Strictly stdlib + pytest only. Zero live database connections, zero network
-calls, and synthetic fixtures only (``+00-000-0000``, ``user@example.invalid``).
+calls, and frozen metadata plus synthetic person fixtures (``+00-000-0000``, ``user@example.invalid``).
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
+FIXTURE_MANIFEST = FIXTURE_DIR / "manifest.json"
 
 
 @pytest.fixture(scope="module")
@@ -35,13 +38,10 @@ def repo_root() -> Path:
 
 @pytest.fixture(scope="module")
 def matrix_index(b06_mod, repo_root: Path) -> dict[str, Any]:
-    """Load consumer-matrix.csv index; skip explicitly ONLY when gitignored CSV is absent."""
-    csv_path = repo_root / b06_mod.CONSUMER_MATRIX_REL_PATH
-    if not csv_path.exists():
-        pytest.skip(
-            f"Gitignored {b06_mod.CONSUMER_MATRIX_REL_PATH} is absent in this checkout"
-        )
-    return b06_mod.load_consumer_matrix_index(repo_root)
+    """Committed metadata projection is mandatory; absence fails rather than skips."""
+    return b06_mod.load_consumer_matrix_index(
+        repo_root, metadata_fixture=FIXTURE_MANIFEST
+    )
 
 
 def _check_convention_shape(
@@ -98,7 +98,9 @@ def _check_convention_shape(
 
     store_id = record.get("store_id")
     if not isinstance(store_id, str) or not b06_mod.STORE_ID_GRAMMAR_RE.match(store_id):
-        errors.append(f"store_id '{store_id}' violates <engine>:<platform>:<instance> grammar.")
+        errors.append(
+            f"store_id '{store_id}' violates <engine>:<platform>:<instance> grammar."
+        )
     if store_id == "unknown:unknown:unknown" and not any(
         u.startswith("STORE_ID_PROPOSED:") for u in unknowns_list
     ):
@@ -114,7 +116,9 @@ def _check_convention_shape(
             f"evidence_timestamp must equal '{b06_mod.STATIC_EVIDENCE_TIMESTAMP}'."
         )
     if "STATIC_SOURCE_ONLY" not in unknowns_list:
-        errors.append("Static repository evidence requires 'STATIC_SOURCE_ONLY' in unknowns.")
+        errors.append(
+            "Static repository evidence requires 'STATIC_SOURCE_ONLY' in unknowns."
+        )
 
     ev_sha = record.get("evidence_sha256")
     if not isinstance(ev_sha, str) or not b06_mod.SHA256_HEX_RE.match(ev_sha):
@@ -133,7 +137,9 @@ def _check_convention_shape(
 
     status = record.get("status")
     if status not in b06_mod.ALLOWED_STATUS_VALUES:
-        errors.append(f"status '{status}' not in {sorted(b06_mod.ALLOWED_STATUS_VALUES)}.")
+        errors.append(
+            f"status '{status}' not in {sorted(b06_mod.ALLOWED_STATUS_VALUES)}."
+        )
 
     for ikey in b06_mod.INSTANCE_11_KEYS:
         fval = record.get(ikey)
@@ -157,13 +163,15 @@ def _check_convention_shape(
             )
 
     if status == "EVIDENCED" and len(unknowns_list) > 0:
-        errors.append("Record cannot claim status='EVIDENCED' when unknowns is non-empty.")
+        errors.append(
+            "Record cannot claim status='EVIDENCED' when unknowns is non-empty."
+        )
 
     return errors
 
 
 # ---------------------------------------------------------------------------
-# 1. Pinned CSV Parity & Matrix-Dependent Tests (skip ONLY if CSV is absent)
+# 1. Explicit frozen projection with unchanged semantic census assertions
 # ---------------------------------------------------------------------------
 
 
@@ -173,7 +181,9 @@ def test_pinned_csv_source_and_prefix_census_parity(
     matrix_index: dict[str, Any],
 ) -> None:
     """Compute both censuses from consumer-matrix.csv and require exact equality with 01.out and 03.out."""
-    pinned = b06_mod.load_pinned_census_receipts(repo_root)
+    pinned = b06_mod.load_pinned_census_receipts(
+        repo_root, receipts_dir=FIXTURE_DIR / "receipts"
+    )
     assert pinned["shas"] == {
         "DUX-REQ-B06-01.cmd.sh": b06_mod.DUX_REQ_B06_01_CMD_SHA256,
         "DUX-REQ-B06-01.out": b06_mod.DUX_REQ_B06_01_SHA256,
@@ -182,9 +192,17 @@ def test_pinned_csv_source_and_prefix_census_parity(
     }
 
     assert matrix_index["comparison_errors"] == []
-    assert matrix_index["source_census"] == pinned["receipt_01"]
+    projected_reference = dict(pinned["receipt_01"], sha256=matrix_index["csv_sha256"])
+    assert matrix_index["source_census"] == projected_reference
     assert matrix_index["prefix_census"] == pinned["receipt_03"]
-    assert matrix_index["csv_sha256"] == b06_mod.CONSUMER_MATRIX_SHA256
+    assert matrix_index["source_csv_sha256"] == b06_mod.CONSUMER_MATRIX_SHA256
+    assert (
+        matrix_index["csv_sha256"]
+        == b06_mod.load_metadata_fixture(FIXTURE_MANIFEST)["projection_sha256"]
+    )
+    assert matrix_index["csv_sha256"] != matrix_index["source_csv_sha256"]
+    assert matrix_index["raw_source_csv_read"] is False
+    assert matrix_index["input_kind"] == "FROZEN_METADATA_PROJECTION"
     assert matrix_index["total_rows"] == 6029
     assert matrix_index["prefix_census"]["total_rows_in_prefixes"] == 683
     assert matrix_index["prefix_scope_status_counts"] == {
@@ -192,7 +210,7 @@ def test_pinned_csv_source_and_prefix_census_parity(
         "MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED": 179,
     }
 
-    summary = b06_mod.verify_all(repo_root)
+    summary = b06_mod.verify_all(repo_root, metadata_fixture=FIXTURE_MANIFEST)
     assert summary["ok"] is True
     assert summary["csv_present"] is True
     assert summary["errors"] == []
@@ -380,7 +398,9 @@ def test_tampered_receipt_counter_fails_census_compare(
     repo_root: Path,
 ) -> None:
     """Guilt test: mutating a counter in a receipt causes compare_census_to_receipts to report a mismatch."""
-    pinned = b06_mod.load_pinned_census_receipts(repo_root)
+    pinned = b06_mod.load_pinned_census_receipts(
+        repo_root, receipts_dir=FIXTURE_DIR / "receipts"
+    )
     r01 = copy.deepcopy(pinned["receipt_01"])
     r03 = copy.deepcopy(pinned["receipt_03"])
 
@@ -476,7 +496,8 @@ def test_naga_instance_is_grounded_in_actual_save_session_source(b06_mod, repo_r
     source = (repo_root / rel).read_bytes()
     tree = ast.parse(source)
     save = next(
-        node for node in tree.body
+        node
+        for node in tree.body
         if isinstance(node, ast.AsyncFunctionDef) and node.name == "save_session"
     )
     sql_tables = {
@@ -486,22 +507,29 @@ def test_naga_instance_is_grounded_in_actual_save_session_source(b06_mod, repo_r
         for table in re.findall(r"INSERT INTO\s+([a-z_]+)", node.value)
     }
     assert sql_tables == {
-        "naga_sessions", "naga_sources", "naga_claims", "naga_claim_evidence"
+        "naga_sessions",
+        "naga_sources",
+        "naga_claims",
+        "naga_claim_evidence",
     }
     assert any(
-        isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
         and node.func.attr == "transaction"
         for node in ast.walk(save)
     )
     assert any(
-        isinstance(node, ast.Return) and isinstance(node.value, ast.Constant)
+        isinstance(node, ast.Return)
+        and isinstance(node.value, ast.Constant)
         and node.value.value is None
-        for handler in ast.walk(save) if isinstance(handler, ast.ExceptHandler)
+        for handler in ast.walk(save)
+        if isinstance(handler, ast.ExceptHandler)
         for node in ast.walk(handler)
     )
 
     record = next(
-        row for row in b06_mod.get_domain_operation_instances(repo_root)
+        row
+        for row in b06_mod.get_domain_operation_instances(repo_root)
         if row["consumer_id"] == "src_b3bccbae2cc91a8c"
     )
     span = f"{save.lineno}-{save.end_lineno}"
@@ -510,8 +538,12 @@ def test_naga_instance_is_grounded_in_actual_save_session_source(b06_mod, repo_r
     assert record["evidence_sha256"] == hashlib.sha256(source).hexdigest()
     assert record["role"]["status"] == "UNKNOWN"
     assert record["status"] == "PARTIAL"
-    assert {"STATIC_SOURCE_ONLY", "ACTOR_IDENTITY_UNRESOLVED",
-            "REPLAY_IDEMPOTENCY_UNPROVED", "CLAIM_EXPIRY_NOT_ERASURE_PROOF"}.issubset(record["unknowns"])
+    assert {
+        "STATIC_SOURCE_ONLY",
+        "ACTOR_IDENTITY_UNRESOLVED",
+        "REPLAY_IDEMPOTENCY_UNPROVED",
+        "CLAIM_EXPIRY_NOT_ERASURE_PROOF",
+    }.issubset(record["unknowns"])
     assert record["effects"]["value"] == [
         "INSERT INTO naga_sessions",
         "INSERT INTO naga_sources; ON CONFLICT (url, session_id) DO NOTHING",
@@ -520,7 +552,10 @@ def test_naga_instance_is_grounded_in_actual_save_session_source(b06_mod, repo_r
     ]
     assert "new session UUID" in record["idempotency"]["value"]
     assert "returns None" in record["failure"]["value"]
-    assert "30 days" in record["retention"]["value"] and "90 days" in record["retention"]["value"]
+    assert (
+        "30 days" in record["retention"]["value"]
+        and "90 days" in record["retention"]["value"]
+    )
     assert "does not prove erasure" in record["retention"]["value"]
     assert "research_os_objects" not in json.dumps(record)
 
@@ -529,3 +564,71 @@ def test_missing_evidence_file_still_fails_closed(b06_mod, tmp_path):
     """Missing source evidence must never receive a fabricated or fallback digest."""
     with pytest.raises(FileNotFoundError):
         b06_mod._compute_ref_file_sha256(tmp_path, "absent_writer.py:1-9")
+
+
+def _copy_metadata_fixture(tmp_path: Path) -> Path:
+    import shutil
+
+    root = tmp_path / "fixture"
+    shutil.copytree(FIXTURE_DIR, root)
+    return root / "manifest.json"
+
+
+def test_projection_byte_tamper_fails_before_census(
+    b06_mod, repo_root: Path, tmp_path: Path
+) -> None:
+    manifest = _copy_metadata_fixture(tmp_path)
+    csv_path = manifest.parent / "consumer-matrix-metadata.csv"
+    csv_path.write_bytes(csv_path.read_bytes() + b" ")
+    with pytest.raises(ValueError, match="Metadata projection SHA256 mismatch"):
+        b06_mod.load_consumer_matrix_index(repo_root, metadata_fixture=manifest)
+
+
+def test_fixture_manifest_source_pin_tamper_is_rejected(
+    b06_mod, tmp_path: Path
+) -> None:
+    manifest = _copy_metadata_fixture(tmp_path)
+    data = json.loads(manifest.read_text())
+    data["source_csv_sha256"] = "0" * 64
+    manifest.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="manifest SHA256 mismatch"):
+        b06_mod.load_metadata_fixture(manifest)
+
+
+def test_missing_projection_fails_instead_of_skip(
+    b06_mod, repo_root: Path, tmp_path: Path
+) -> None:
+    manifest = _copy_metadata_fixture(tmp_path)
+    (manifest.parent / "consumer-matrix-metadata.csv").unlink()
+    with pytest.raises(FileNotFoundError):
+        b06_mod.load_consumer_matrix_index(repo_root, metadata_fixture=manifest)
+
+
+def test_admitted_counter_receipt_byte_tamper_is_rejected(
+    b06_mod, repo_root: Path, tmp_path: Path
+) -> None:
+    manifest = _copy_metadata_fixture(tmp_path)
+    receipt = manifest.parent / "receipts/DUX-REQ-B06-01.out"
+    receipt.write_bytes(receipt.read_bytes() + b" ")
+    with pytest.raises(ValueError, match="Pinned receipt SHA-256 mismatch"):
+        b06_mod.load_consumer_matrix_index(repo_root, metadata_fixture=manifest)
+
+
+def test_clean_checkout_fixture_cli_labels_both_byte_identities(
+    b06_mod, repo_root: Path, capsys
+) -> None:
+    assert (
+        b06_mod.main(
+            ["--repo-root", str(repo_root), "--metadata-fixture", str(FIXTURE_MANIFEST)]
+        )
+        == 0
+    )
+    output = json.loads(capsys.readouterr().out)
+    assert output["ok"] is True
+    assert output["instance_count"] == 21
+    assert output["source_census_total"] == 6029
+    assert output["prefix_census_total"] == 683
+    assert output["source_csv_sha256"] == b06_mod.CONSUMER_MATRIX_SHA256
+    assert output["processed_csv_sha256"] != output["source_csv_sha256"]
+    assert output["raw_source_csv_read"] is False
+    assert output["input_kind"] == "FROZEN_METADATA_PROJECTION"
