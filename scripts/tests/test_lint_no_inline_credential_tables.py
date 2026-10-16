@@ -104,3 +104,54 @@ def test_main_exits_zero_on_innocent_file(tmp_path, monkeypatch):
     monkeypatch.chdir(REPO_ROOT)
     rc = lint.main(["--files", str(innocent)])
     assert rc == 0
+
+
+# ---------------------------------------------------------------------------
+# Bare two-field rows (login, password) — the shape the regex's own comment
+# lists as its second example, and the most natural shape of such a table.
+# Before the fix the regex demanded a field BEFORE the trailing pair, so these
+# were invisible. Expected counts are by-hand from the fixture.
+# ---------------------------------------------------------------------------
+
+
+def _scan_text(tmp_path, text):
+    lint = _load()
+    f = tmp_path / "t.py"
+    f.write_text(text)
+    return lint.scan_file(f)
+
+
+def test_guilt_bare_pair_list_rows_next_to_a_password_comment_are_flagged(tmp_path):
+    rows = "".join(f'    ["u{i}", "pw{i}"],\n' for i in range(1, 7))
+    assert _scan_text(tmp_path, "# oss password pairs\nPAIRS = [\n" + rows + "]\n") == 6
+
+
+def test_guilt_bare_pair_tuple_rows_with_declaring_variable_name_are_flagged(tmp_path):
+    rows = "".join(f'    ("u{i}", "pw{i}"),\n' for i in range(1, 6))
+    assert _scan_text(tmp_path, "PASSWORD_PAIRS = [\n" + rows + "]\n") == 5
+
+
+def test_innocence_bare_pair_below_threshold_is_clean(tmp_path):
+    rows = "".join(f'    ("u{i}", "pw{i}"),\n' for i in range(1, 5))
+    assert _scan_text(tmp_path, "# password pairs\n" + rows) == 0
+
+
+def test_innocence_bare_pair_vocabulary_mentioning_the_keyword_in_its_rows_is_clean(tmp_path):
+    """A (text, category) label table whose ROWS mention the word is not a
+    credential table: the keyword must come from the declaration, not the data."""
+    text = (
+        "CATEGORIES = [\n"
+        '    ("credential revoked", "security"),\n'
+        '    ("payment quota exhausted", "billing"),\n'
+        '    ("secret rotation due", "security"),\n'
+        '    ("disk inode exhausted", "storage"),\n'
+        '    ("service timeout", "availability"),\n'
+        "]\n"
+    )
+    assert _scan_text(tmp_path, text) == 0
+
+
+def test_original_three_field_rows_still_count_a_keyword_that_sits_in_a_row(tmp_path):
+    """The widening must not change the original shape's behaviour."""
+    rows = "".join(f'    ({i}, "oss_user_{i}", "x{i}"),\n' for i in range(1, 6))
+    assert _scan_text(tmp_path, "ROWS = [\n" + rows + "]\n") == 5
