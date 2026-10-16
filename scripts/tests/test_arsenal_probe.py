@@ -3246,3 +3246,313 @@ def test_codex_probe_budget_covers_the_measured_cold_start():
     ap = _load_module()
     assert ap.DEFAULT_TIMEOUTS["codex"] >= 45
     assert ap.DEFAULT_TIMEOUTS["codex-spark"] >= 45
+
+
+# ---------------------------------------------------------------------------
+# Mutation-hardening (lane 4). Each pin below is a classification DECISION:
+# which census row means "busy", which output means "live", which exit code a
+# failure maps to. Guilt fixture + innocence twin; expected values come from the
+# documented contract (module/function docstrings), not from the code.
+# ---------------------------------------------------------------------------
+
+
+def _timeout_with_census(monkeypatch, census, binary="/usr/bin/claude", **kw):
+    _fake_census(monkeypatch, census)
+    return ap.timeout_status(binary, "tail-evidence", 10, **kw)
+
+
+def test_census_row_without_args_still_counts_as_a_sibling(monkeypatch):
+    # guilt: a 3-field row (pid ppid comm, no args column) is a real process
+    assert _timeout_with_census(monkeypatch, "300 1 claude\n")[0] == ap.BUSY
+    # innocence: the same shape for an unrelated binary is not contention
+    assert _timeout_with_census(monkeypatch, "300 1 vim\n")[0] == ap.TIMEOUT
+
+
+def test_census_malformed_short_row_is_skipped_not_fatal(monkeypatch):
+    # guilt: one garbage line must not blind the census to a real sibling
+    census = "garbage 5\n300 1 claude claude -p x\n"
+    assert _timeout_with_census(monkeypatch, census)[0] == ap.BUSY
+
+
+def test_census_non_numeric_pid_fails_toward_timeout_never_busy(monkeypatch):
+    # "fail toward TIMEOUT": an unreadable census must not claim contention
+    assert _timeout_with_census(monkeypatch, "abc 1 claude claude\n")[0] == ap.TIMEOUT
+
+
+def test_census_ps_failure_fails_toward_timeout_even_with_rows(monkeypatch):
+    monkeypatch.setattr(ap.os, "getpid", lambda: 900)
+    monkeypatch.setattr(ap.os, "getppid", lambda: 1)
+    monkeypatch.setattr(
+        ap.subprocess, "run",
+        lambda *a, **k: ap.subprocess.CompletedProcess(a[0], 1, "300 1 claude claude\n", "boom"),
+    )
+    monkeypatch.setattr(ap, "sibling_seat_processes", _REAL_SIBLING_SEAT_PROCESSES)
+    assert ap.timeout_status("/usr/bin/claude", "ev", 10)[0] == ap.TIMEOUT
+
+
+def test_census_ps_is_called_with_captured_text_output(monkeypatch):
+    seen = {}
+
+    def fake_run(argv, **kw):
+        seen.update(kw)
+        return ap.subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(ap.subprocess, "run", fake_run)
+    _REAL_SIBLING_SEAT_PROCESSES("claude", set())
+    assert seen.get("capture_output") is True and seen.get("text") is True
+
+
+def test_census_binary_as_second_argv_token_is_a_sibling(monkeypatch):
+    # guilt: `node /usr/local/bin/claude -p hi` — the seat binary is argv[1]
+    assert _timeout_with_census(monkeypatch, "300 1 node node /usr/local/bin/claude -p hi\n")[0] == ap.BUSY
+    # innocence: the name only appears as a later ARGUMENT of something else
+    assert _timeout_with_census(monkeypatch, "300 1 bash bash run.sh claude\n")[0] == ap.TIMEOUT
+
+
+def test_census_evidence_reports_the_exact_sibling_count(monkeypatch):
+    one = _timeout_with_census(monkeypatch, "300 1 claude claude\n")[1]
+    two = _timeout_with_census(monkeypatch, "300 1 claude claude\n301 1 claude claude\n")[1]
+    assert "1 other claude process(es)" in one
+    assert "2 other claude process(es)" in two
+
+
+def test_census_ignored_subcommand_found_behind_a_launcher_token(monkeypatch):
+    # `node /usr/bin/ollama serve`: the persistent daemon, launcher in front
+    status = _timeout_with_census(
+        monkeypatch, "400 1 node node /usr/bin/ollama serve\n",
+        binary="/opt/homebrew/bin/ollama", ignore_subcommands=("serve",),
+    )[0]
+    assert status == ap.TIMEOUT
+    # innocence: same launcher shape running a real job is contention
+    status = _timeout_with_census(
+        monkeypatch, "400 1 node node /usr/bin/ollama run qwen3.5:9b\n",
+        binary="/opt/homebrew/bin/ollama", ignore_subcommands=("serve",),
+    )[0]
+    assert status == ap.BUSY
+
+
+def test_timeout_status_keeps_real_evidence_and_only_defaults_when_empty():
+    assert ap.timeout_status("/usr/bin/claude", "partial output tail", 7) == (
+        ap.TIMEOUT, "partial output tail", 7)
+    assert ap.timeout_status("/usr/bin/claude", "", 7) == (ap.TIMEOUT, "probe timed out", 7)
+
+
+# --- reply beats the exit: a timeout that carries a live answer is LIVE -----
+
+
+def test_agy_pong_quoting_the_permission_marker_stays_live(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/agy", True))
+    for marker in ("auto-approve all tools", "Add an allow-rule under permissions.allow"):
+        monkeypatch.setattr(
+            ap, "run_probe_cmd", lambda *a, _m=marker, **k: ap.ProbeResult(0, f"PONG ({_m})\n", ""))
+        assert ap.probe_agy(timeout=5)[0] == ap.LIVE
+
+
+def test_codex_spark_timeout_with_a_pong_is_live_without_one_is_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/opt/homebrew/bin/codex", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "PONG\n", "", timed_out=True))
+    assert ap.probe_codex_spark(timeout=5)[0] == ap.LIVE
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True))
+    assert ap.probe_codex_spark(timeout=5)[0] == ap.TIMEOUT
+
+
+def test_qwen_cloud_code_timeout_with_a_pong_is_live_without_one_is_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/bin/qwen", True))
+    monkeypatch.setattr(ap, "load_keychain_token", lambda service, timeout=10: (None, "absent"))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "PONG\n", "", timed_out=True))
+    assert ap.probe_qwen_cloud_code(timeout=5)[0] == ap.LIVE
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True))
+    assert ap.probe_qwen_cloud_code(timeout=5)[0] == ap.TIMEOUT
+
+
+def test_ollama_timeout_after_listing_the_model_is_live_unlisted_is_timeout(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "qwen3.5:9b abc\n", "", timed_out=True))
+    assert ap.probe_ollama(timeout=5)[0] == ap.LIVE
+    monkeypatch.setattr(
+        ap, "run_probe_cmd", lambda *a, **k: ap.ProbeResult(-1, "", "", timed_out=True))
+    assert ap.probe_ollama(timeout=5)[0] == ap.TIMEOUT
+
+
+def test_ollama_default_probe_is_list_only_no_generation(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ap, "resolve_bin", lambda name, extra_paths=None: ("/usr/local/bin/ollama", True))
+    monkeypatch.setattr(
+        ap, "run_probe_cmd",
+        lambda cmd, *a, **k: calls.append(cmd) or ap.ProbeResult(0, "qwen3.5:9b abc\n", ""))
+    assert ap.probe_ollama(5)[0] == ap.LIVE
+    assert len(calls) == 1 and "run" not in calls[0]
+
+
+# --- TP1 positive-proof table ------------------------------------------------
+
+
+def _choice_body(**message):
+    return json.dumps({"choices": [{"message": message}]})
+
+
+@pytest.mark.parametrize("status_code,body", [
+    (500, _choice_body(content="hello")),
+    (200, "not json"),
+    (200, json.dumps({"id": "x"})),
+    (200, json.dumps({"choices": []})),
+    (200, json.dumps({"choices": "hello"})),
+    (200, json.dumps({"choices": [1]})),
+    (200, json.dumps({"choices": [{"message": "hello"}]})),
+    (200, _choice_body(content="")),
+    (200, _choice_body(content="   ", reasoning_content="")),
+    (200, _choice_body(content=None, reasoning_content="  ")),
+])
+def test_tp1_no_positive_proof_is_never_live(status_code, body):
+    assert ap._tp1_has_live_answer(status_code, body) == (False, None)
+
+
+def test_tp1_content_answer_is_live_with_no_note():
+    assert ap._tp1_has_live_answer(200, _choice_body(content="PONG")) == (True, None)
+
+
+def test_tp1_reasoning_only_is_live_unless_truncated():
+    body = _choice_body(content="", reasoning_content="thinking")
+    live, note = ap._tp1_has_live_answer(200, body)
+    assert live is True and "reasoning-only" in note
+    cut = json.dumps({"choices": [{"message": {"content": "", "reasoning_content": "t"},
+                                   "finish_reason": "length"}]})
+    live, note = ap._tp1_has_live_answer(200, cut)
+    assert live is False and "length" in note
+
+
+@pytest.mark.parametrize("payload,expected_note", [
+    ({"choices": []}, False),                    # no echoed model: nothing to compare
+    ({"model": "", "choices": []}, False),       # empty echo: nothing to compare
+    ({"model": "glm-5.2"}, False),               # equal: no note
+    ({"model": "glm-4"}, True),                  # rerouted: note
+])
+def test_tp1_model_mismatch_note_only_when_the_echo_disagrees(payload, expected_note):
+    note = ap._tp1_model_mismatch_note("glm-5.2", json.dumps(payload))
+    assert (note is not None) is expected_note
+    if expected_note:
+        assert "glm-5.2" in note and "glm-4" in note
+
+
+def test_tp1_model_mismatch_note_tolerates_non_dict_and_bad_json():
+    assert ap._tp1_model_mismatch_note("m", "[1, 2]") is None
+    assert ap._tp1_model_mismatch_note("m", "not json") is None
+
+
+def test_probe_tp1_transport_timeout_is_timeout_other_failure_is_unknown(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_tp1_key", lambda: ("test-only-placeholder", "vault", None))
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **k: (None, "", "request timed out after 5s"))
+    assert ap.probe_tp1_model("glm-5.2", timeout=5)[0] == ap.TIMEOUT
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **k: (None, "", "connection reset"))
+    assert ap.probe_tp1_model("glm-5.2", timeout=5)[0] == ap.UNKNOWN_ERR
+
+
+def test_probe_tp1_evidence_carries_the_note_only_when_there_is_one(monkeypatch):
+    monkeypatch.setattr(ap, "resolve_tp1_key", lambda: ("test-only-placeholder", "vault", None))
+    plain = json.dumps({"model": "glm-5.2", "choices": [{"message": {"content": "PONG"}}]})
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **k: (200, plain, plain))
+    status, ev, _ = ap.probe_tp1_model("glm-5.2", timeout=5)
+    assert status == ap.LIVE and "reasoning-only" not in ev
+    body = _tp1_reasoning_only_body("glm-5.2")
+    monkeypatch.setattr(ap, "http_post_json", lambda *a, **k: (200, body, body))
+    status, ev, _ = ap.probe_tp1_model("glm-5.2", timeout=5)
+    assert status == ap.LIVE and "reasoning-only" in ev
+
+
+# --- report counters, heartbeat flag, exit codes -----------------------------
+
+
+def test_run_busy_counter_counts_only_busy_seats(tmp_path, monkeypatch):
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 1))
+    monkeypatch.setitem(ap.PROBE_FUNCS, "codex", lambda timeout: (ap.LIVE, "PONG", 1))
+    monkeypatch.setitem(ap.PROBE_FUNCS, "kimi", lambda timeout: (ap.BUSY, "contended", 1))
+    report = ap.run(seats=["claude", "codex", "kimi"], timeout_mult=1.0, live_gen=False, machine="m5")
+    assert report["summary"]["busy"] == 1
+    assert report["summary"]["live"] == 2
+
+
+def _heartbeat_for(tmp_path, monkeypatch, status, seat_required):
+    monkeypatch.setattr(ap, "REPORT_DIR", tmp_path)
+    monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
+    monkeypatch.setattr(ap, "machine_label", lambda: "testbox")
+    monkeypatch.setitem(ap.REQUIRED_SEATS, "testbox", {"claude"} if seat_required else set())
+    monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (status, "ev", 1))
+    ap.main(["--seats", "claude", "--quiet"])
+    return json.loads((tmp_path / "testbox.arsenal_probe.json").read_text())
+
+
+def test_heartbeat_degraded_when_a_required_seat_strict_fails(tmp_path, monkeypatch):
+    assert _heartbeat_for(tmp_path, monkeypatch, ap.AUTH_DEAD, True)["degraded"] is True
+
+
+def test_heartbeat_not_degraded_for_a_non_required_dead_seat(tmp_path, monkeypatch):
+    assert _heartbeat_for(tmp_path, monkeypatch, ap.AUTH_DEAD, False)["degraded"] is False
+
+
+def test_heartbeat_not_degraded_for_a_required_live_or_transient_seat(tmp_path, monkeypatch):
+    assert _heartbeat_for(tmp_path, monkeypatch, ap.LIVE, True)["degraded"] is False
+    assert _heartbeat_for(tmp_path, monkeypatch, ap.BUSY, True)["degraded"] is False
+
+
+def test_main_report_write_failure_exits_2(tmp_path, monkeypatch):
+    monkeypatch.setattr(ap, "HEARTBEAT_DIR", tmp_path)
+    monkeypatch.setitem(ap.PROBE_FUNCS, "claude", lambda timeout: (ap.LIVE, "PONG", 1))
+    monkeypatch.setattr(ap, "load_last_report", lambda: None)
+
+    def boom(report):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(ap, "write_report", boom)
+    assert ap.main(["--seats", "claude", "--quiet"]) == 2
+
+
+def test_selftest_exit_codes_failure_is_2_clean_is_0(monkeypatch, capsys):
+    monkeypatch.setattr(ap, "_selftest_classifier", lambda: ["canned case X wrong"])
+    assert ap.selftest() == 2
+    assert "SELFTEST FAIL" in capsys.readouterr().out
+    monkeypatch.setattr(ap, "_selftest_classifier", lambda: [])
+    assert ap.selftest() == 0
+    assert "SELFTEST OK" in capsys.readouterr().out
+
+
+# --- credential loader + secret-store audit + subprocess helper ---------------
+
+
+def test_env_master_value_containing_equals_is_not_truncated(tmp_path):
+    p = tmp_path / "env.master"
+    p.write_text("OTHER=1\nexport MY_KEY='abc123==x=='\n")
+    value, note = ap.load_env_master_key("MY_KEY", path=str(p))
+    assert value == "abc123==x==" and note is None
+    assert ap.load_env_master_key("MISSING_KEY", path=str(p))[0] is None
+
+
+def test_secret_store_audit_flags_group_other_readable_holders_only(tmp_path):
+    vault = tmp_path / "vault.env"
+    vault.write_text(f"{ap.TP1_CRED_ENV_VAR}=placeholder-value-1\n")
+    nowhere = str(tmp_path / "absent.json")
+    vault.chmod(0o640)
+    warns = ap.audit_tp1_secret_store_modes(vault_path=str(vault), settings_path=nowhere)
+    assert len(warns) == 1 and "0640" in warns[0] and "placeholder-value-1" not in warns[0]
+    vault.chmod(0o604)
+    assert len(ap.audit_tp1_secret_store_modes(vault_path=str(vault), settings_path=nowhere)) == 1
+    # innocence: owner-only store holding the key is the healthy state
+    vault.chmod(0o600)
+    assert ap.audit_tp1_secret_store_modes(vault_path=str(vault), settings_path=nowhere) == []
+    # innocence: a loose-mode file that holds NO credential must not cry wolf
+    vault.write_text("UNRELATED=1\n")
+    vault.chmod(0o644)
+    assert ap.audit_tp1_secret_store_modes(vault_path=str(vault), settings_path=nowhere) == []
+
+
+def test_run_probe_cmd_timeout_and_missing_binary_return_codes():
+    for via_files in (False, True):
+        r = ap.run_probe_cmd(["/bin/sleep", "5"], timeout=0.3, capture_via_files=via_files)
+        assert r.timed_out is True and r.returncode == -1
+    r = ap.run_probe_cmd(["/nonexistent/arsenal-probe-xyz"], timeout=2)
+    assert r.returncode == -2 and r.stderr == "not found" and r.timed_out is False
