@@ -8,6 +8,32 @@
 # shows), warning (B6: the host under the start floor, or a prune that failed) or disabled (the kill switch: an operator's
 # stop, which the healer and the sentinel treat as exempt, not as a failure).
 set -euo pipefail
+# B25-prime P1: `gate-append <entry-b64> [--supersede]` appends one gate verdict to the Pro ledger (docs/specs/localci-sovereign-2026-10-07.md
+# 2b.2) with the gate_ledger.py of THIS mirror's refs/merger/wrapper, the code the tick runs (superscar #1), read at one sha and never from a
+# working tree. It is not a tick: no kill switch, no lease, no heartbeat, no fetch (the ledger line is the evidence, and a gate must not wait
+# on the network). Any failure is non-zero and the publisher then posts nothing. Over ssh the plist's MERGER_* environment is absent.
+if [ "${1:-}" = "gate-append" ]; then
+  shift
+  GA_STATE="${MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}"
+  GA_PY="${MERGER_PYTHON:-}"
+  for c in /opt/homebrew/bin/python3 /usr/bin/python3; do if [ -z "$GA_PY" ] && [ -x "$c" ]; then GA_PY="$c"; fi; done
+  if [ -z "$GA_PY" ] || [ ! -f "$GA_STATE/repo.git/HEAD" ]; then
+    echo "gate-append: no python or no mirror at $GA_STATE/repo.git (the tick has not run here)" >&2
+    exit 3
+  fi
+  while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_' || true)
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  GA_SHA="$(git -C "$GA_STATE/repo.git" rev-parse --verify --quiet "refs/merger/wrapper^{commit}" \
+    || git -C "$GA_STATE/repo.git" rev-parse --verify "refs/merger/base^{commit}")" || exit 3
+  GA_CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-gate-append.XXXXXX")"
+  trap 'rm -rf "$GA_CODE"' EXIT
+  if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:scripts/localci/gate_ledger.py" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then
+    echo "gate-append: no scripts/localci/gate_ledger.py at ${GA_SHA:0:12} (not merged, or not fetched by a tick yet)" >&2
+    exit 3
+  fi
+  "$GA_PY" -I "$GA_CODE/gate_ledger.py" ${GATE_LEDGER:+--ledger "$GATE_LEDGER"} append "$@"
+  exit $?
+fi
 ORGAN_ID="pro.localci_merger"
 STATE="${MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}"
 # heartbeat.sh too is read from the mirror at the tick's sha, never from a working checkout: each tick refreshes the copy
@@ -102,7 +128,7 @@ if grep -q -- "--code-sha" "$CODE/merger.py"; then CODE_FLAG="--code-sha=$SHA"; 
 # prune runs AFTER it: the decision first, then the gate removes what it wrote and trims the VM when an image went
 HOST_PATH="${MERGER_HOST_PATH:-/System/Volumes/Data}"
 [ -d "$HOST_PATH" ] || HOST_PATH=/
-FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"   # B15: the START floor = Zero's 90 GB + 10 (merger.py HOST_FLOOR_GB + START_MARGIN_GB)
+FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"   # B15: the START floor = Zero's 50 GB (2026-10-16, was 90) + 10 (merger.py HOST_FLOOR_GB + START_MARGIN_GB)
 FREE="$(df -Pk "$HOST_PATH" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ { printf "%d", $4 * 1024 / 1000000000 }' || true)"
 FREE_FLAG=""
 FLOOR_FLAG=""

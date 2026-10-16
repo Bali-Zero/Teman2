@@ -125,6 +125,9 @@ echo "FAKE_GH: unhandled invocation: $*" >&2
 exit 99
 FAKEGH
   chmod +x "$W/bin/gh"
+  # B31: the helper's label read-back; the fake answers "valid" once the fake gh saw an --add-label
+  printf '#!/usr/bin/env bash\ngrep -q -e "--add-label" "$FAKE_GH_LOG" 2>/dev/null\n' > "$W/bin/verify"
+  chmod +x "$W/bin/verify"
 }
 
 # run <verb...> — invokes mq.sh through the fake gh via `env` (a real exec,
@@ -141,6 +144,7 @@ FAKEGH
 run() {
   OUT="$(env MQ_REPO="test-owner/test-repo" MQ_STATE_DIR="$W/state" \
              FAKE_GH_LOG="$LOG" FAKE_GH_STATE="$W/fgh" \
+             SIGNAL_INTENT_VERIFY="$W/bin/verify" SIGNAL_INTENT_BACKOFF_S=0 \
              PATH="$W/bin:$PATH" \
              MQ_WATCH_INTERVAL_S="${MQ_WATCH_INTERVAL_S:-}" \
              bash "$MQSH" "$@" 2>&1)"

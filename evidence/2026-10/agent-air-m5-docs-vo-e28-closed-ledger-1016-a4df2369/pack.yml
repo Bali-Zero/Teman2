@@ -1,0 +1,71 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15
+  E28 close-out prompt - after PRs A, B, C, C2 and D are merged, deployed, promoted and proven live, update SKILL.md,
+  live-state-log.md and PENDING-ARMS.md to mark the E28 family CLOSED; Zero 2026-10-16 - Astra (gpt-6-astra) appointed
+  as independent reviewer/gate while Claude is unavailable.
+mission: >-
+  Record the E28 Investor KITAS family closure in the /visaoracle corner-skill ledger after PR D (#8607,
+  457de4b60bd2c5ced8dfb53e24451d9133e0307c) merged, promoted on Vercel (dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D) and was
+  proven live across all 15 URLs (5 locales) and 6 Pro headless Chromium walks; close E28 row D and the wave-5 E28A
+  Indonesian render row in PENDING-ARMS.md; and append residual audit items (22)-(25) to the E28 BACKLOG row.
+lanes:
+  - lane: vo-e28-closed-ledger-1016
+    role: build
+    seat: agy (Antigravity, M5)
+  - lane: vo-e28-closed-ledger-1016
+    role: review
+    seat: gpt-6-astra (codex exec read-only gate)
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '60 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: All seq-28 and seq-29 ledger and observer test suites pass with the new E28 family CLOSED pins.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py
+    result: "96 passed in 2.19s"
+    exit: 0
+    ts: "2026-10-16T09:45:50Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 57 to 60, the true count of the ledger test file.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py
+    result: "60 passed in 2.27s; seq-29 ledger holds"
+    exit: 0
+    ts: "2026-10-16T09:45:53Z"
+    seat: this session
+  - claim: Three mutants on scripts/ci/observe_visa_ledger_seq29.py (MIN_TESTS=59, MIN_TESTS=61, >= -> >) are all killed, and the file is restored byte-identical.
+    cmd: per mutant, one-site edit then pytest -q tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq29.py, then restore and verify byte-identical
+    result: "MUTATION MIN_TESTS = 59: rc=1; MUTATION MIN_TESTS = 61: rc=1; MUTATION >= -> >: rc=1; restored, 0 diff"
+    exit: 0
+    ts: "2026-10-16T09:46:20Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (overdue count 610 -> 610; total - opened rows 901 -> 899, - closed rows 990 -> 992).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 610 -> head 610 (delta 0)"
+    exit: 0
+    ts: "2026-10-16T09:45:54Z"
+    seat: this session
+  - claim: Every PR D merge, Vercel promotion, 15-URL live curl, 6-walk Pro headless browser check, and Pro iQOO availability blocker recorded in the ledger was measured this session and posted on PR 8607.
+    cmd: "vercel promote dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D --scope team_jX3mEbUemBs0Zy4i8aFYZsjS --yes; curl -sL https://balizero.com/api/health; 15-URL curl check across en/id/it/fr/ru; ssh pro node ~/.tmp/vo-walk/e28-1016/prove-d.mjs; ssh pro adb devices -l + system_profiler SPUSBDataType + ~/.local/bin/iqoo-unlock"
+    result: "/api/health commit 457de4b60bd2c5ced8dfb53e24451d9133e0307c; 15/15 URLs HTTP 200 with localized H1/H2s and 0 forbidden claims (?lang=id E28A 179,334 bytes); Pro Chromium 6/6 status 200 missing=[] bad=[] pageErrors=[]; iQOO blocker NO_USB_PHONE + exit 3; comment pull/8607#issuecomment-6212617160"
+    exit: 0
+    ts: "2026-10-16T09:37:00Z"
+    seat: this session
+decisions:
+  - id: D-close-e28-d-and-wave5-id-render-rows
+    text: >-
+      PR D (#8607, merge 457de4b60bd2c5ced8dfb53e24451d9133e0307c) is promoted on Vercel (dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D)
+      and proven live on balizero.com across all 5 locales, including /visas/e28a-investor-kitas-guide?lang=id
+      rendering in Indonesian (179,334 bytes, Indonesian H1 and 12 H2s); both E28 row D and the wave-5 E28A Indonesian
+      render row close with proof (- opened rows 901 -> 899, - closed rows 990 -> 992).
+  - id: D-append-residual-items-22-to-25-to-e28-backlog
+    text: >-
+      Keep the E28 BACKLOG consolidated in a single row by appending residual audit items (22)-(25) (out-of-scope E33E
+      and marriage/student lines in visa/kitas/page.mdx, literal {#...} heading-id suffixes in visa/kitas/page.mdx,
+      'proven passive income' in second-home-visa-indonesia EN/ID lines 121-122, and the physical iQOO check of
+      ?lang=id once the phone is re-attached to Pro) to the existing E28 BACKLOG row.
+dissent: []
+spend:
+  wall_clock_hours: 0.4
+  adversarial_rounds: 0

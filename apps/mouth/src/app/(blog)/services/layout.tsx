@@ -3,14 +3,14 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Bali Visa Agency 2026 | KITAS, PT PMA, Golden Visa Services",
   description:
-    "Complete visa and business services in Bali. KITAS from IDR 11M, PT PMA setup IDR 25M, Golden Visa, tax compliance. Transparent pricing, 5000+ clients served.",
+    "Complete visa and business services in Bali. KITAS, PT PMA, Golden Visa, tax compliance.",
   alternates: {
     canonical: "https://balizero.com/services",
   },
   openGraph: {
     title: "Bali Zero Services | Visa, PT PMA, Tax & Property",
     description:
-      "Complete visa and business services in Bali. KITAS, PT PMA, Golden Visa, tax compliance. Transparent pricing.",
+      "Complete visa and business services in Bali. KITAS, PT PMA, Golden Visa, tax compliance.",
     url: "https://balizero.com/services",
   },
 };

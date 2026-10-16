@@ -1,0 +1,185 @@
+[
+  {
+    "consumer_id": "runtime_mini_46522da0ef79d3aa7422ca41",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "unknown:unknown:unknown",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T03:02:11+00:00",
+    "evidence_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+    "status": "BLOCKED",
+    "unknowns": [
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:mini:nuzantara-pg-drill/public",
+      "CONVERSATIONS_UNMEASURED_CHECK_CAUSE_UNOBSERVED_ON_BACKUP",
+      "CLIENTS_VIOLATION_SUBCHECK_UNOBSERVED_ON_BACKUP",
+      "MINI_CANDIDATE_INSTALLATION_NOT_ADMITTED",
+      "OWNER_CONSENT_EXHAUSTED_FOR_NEW_REAL_BACKUP_RUN",
+      "DATA_OWNER_RULING_REQUIRED_ON_CLIENTS_VIOLATION"
+    ],
+    "principal": {
+      "value": "launchd://mini/46522da0ef79d3aa7422ca41b5a1650560afb1b1579ff36db0ea38a1f8d9e2e5",
+      "status": "PARTIAL",
+      "evidence_ref": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json"
+    },
+    "role": {
+      "value": {
+        "drill_user_default": "drill",
+        "derived_nologin_roles_via": "scripts/restore_drill/role_scanner.py",
+        "effective_job_role_overrides": "UNOBSERVED"
+      },
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "tenant": {
+      "value": "system_wide_full_backup_restore_drill",
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "authorization": {
+      "value": {
+        "prior_authorization": "APPROVED_ONE_EXISTING_JOB",
+        "real_backup_run_triggered": true,
+        "further_runs": "OWNER_CONSENT_REQUIRED"
+      },
+      "status": "BLOCKED",
+      "evidence_ref": ".agent-receipts/udb-wave8-inputs/STATE.json"
+    },
+    "transaction": {
+      "value": {
+        "restore_stream": "gunzip -c dump | psql dsn -v ON_ERROR_STOP=1",
+        "verifier_queries": "per_query_autocommit_psql_ON_ERROR_STOP_1"
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "effects": {
+      "value": {
+        "reads": "s3://nuzantara-backups/postgres/nuzantara-fly-*.sql.gz",
+        "writes_disposable": "docker container nuzantara-pg-drill (127.0.0.1:15499) + /tmp/nuzantara-restore-drill.*",
+        "sidecar": "~/.organism/last_seen/mini.restore_drill.json"
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "retries": {
+      "value": {
+        "postgres_health_poll_attempts": 60,
+        "watchdog_timeout_seconds": 1800,
+        "organ_recovery_action": "human_only"
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "idempotency": {
+      "value": {
+        "stale_workdir_reap_minutes": 60,
+        "active_workdir_refusal_exit": 75,
+        "container_label_cleanup": "com.nuzantara.restore-drill.run"
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "failure": {
+      "value": {
+        "verifier_exit_codes": {
+          "PASS": 0,
+          "FAIL": 1,
+          "USAGE": 2,
+          "CANNOT-VERIFY": 3
+        },
+        "drill_exit_codes": {
+          "PASS": 0,
+          "CANNOT-VERIFY": 2,
+          "PSQL_RESTORE_ABORT": 3,
+          "GUNZIP_ABORT": 4,
+          "VERIFIER_FAIL": 5,
+          "CONCURRENT_RUN": 75,
+          "WATCHDOG_TIMEOUT": 124
+        }
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "retention": {
+      "value": {
+        "max_dump_age_hours": 72,
+        "scratch_workdir_and_container": "deleted_on_exit_trap"
+      },
+      "status": "EVIDENCED",
+      "evidence_ref": "scripts/restore_drill/run_drill.sh"
+    },
+    "recovery": {
+      "value": {
+        "real_backup_run_started_at": "2026-10-15T03:00:43.925327+00:00",
+        "real_backup_run_terminal_at": "2026-10-15T03:02:11+00:00",
+        "real_backup_elapsed_seconds": 87.658,
+        "verifier_aggregate": "CANNOT-VERIFY",
+        "invariants": [
+          {
+            "relation": "conversations",
+            "status": "CANNOT-VERIFY",
+            "reason_classes": {
+              "UNMEASURED_CHECK": 1
+            }
+          },
+          {
+            "relation": "clients",
+            "status": "FAIL",
+            "reason_classes": {
+              "VIOLATION": 1
+            }
+          },
+          {
+            "relation": "visa_decisions",
+            "status": "PASS",
+            "reason_classes": {}
+          },
+          {
+            "relation": "events_outbox",
+            "status": "PASS",
+            "reason_classes": {}
+          },
+          {
+            "relation": "visa_decision_retention_policies",
+            "status": "PASS",
+            "reason_classes": {}
+          }
+        ],
+        "raw_report_sha256": "1d368c2d16d32a0834bb7d120d75005423227b77239107b1dc1873f8140b5744",
+        "real_backup_restore_success_proved": false
+      },
+      "status": "BLOCKED",
+      "evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json"
+    },
+    "x_evidence_ref": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+    "x_block_id": "B01",
+    "x_verifier_aggregate": "CANNOT-VERIFY",
+    "x_invariant_verdicts": {
+      "conversations": {
+        "status": "CANNOT-VERIFY",
+        "reason_classes": {
+          "UNMEASURED_CHECK": 1
+        }
+      },
+      "clients": {
+        "status": "FAIL",
+        "reason_classes": {
+          "VIOLATION": 1
+        }
+      },
+      "visa_decisions": {
+        "status": "PASS",
+        "reason_classes": {}
+      },
+      "events_outbox": {
+        "status": "PASS",
+        "reason_classes": {}
+      },
+      "visa_decision_retention_policies": {
+        "status": "PASS",
+        "reason_classes": {}
+      }
+    },
+    "x_mini_install_required": true
+  }
+]

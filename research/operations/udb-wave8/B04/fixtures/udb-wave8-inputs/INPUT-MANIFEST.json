@@ -1,0 +1,12 @@
+{
+  "files": {
+    "REPORT.md": "d289fb8660a6bd634cb7785fef3a8c0b47ceefe82463d134c4bbf66dc0563e9a",
+    "STATE.json": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+    "FINAL-BLUE-GATE.json": "b9d284e1dba9e87ad340cbd4076061e7a35a93fdf8bc1c910340e6099d711856",
+    "REAL-RUN-RECEIPT.json": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+    "research-lines.csv": "1b3d1f31df997500975311d3f49cbd3a50346c2fa7d27f45ff808c7203654c10",
+    "consumer-matrix.csv": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+    "ASTRA-ADVICE.md": "72f349f285bc681013b67ad1d25cdad54d3d4478080dc1f5e7e0512dd9e1fdb8"
+  },
+  "scope": "FROZEN_DATED_TECHNICAL_BASELINE_NOT_NEW_LIVE_PROOF"
+}

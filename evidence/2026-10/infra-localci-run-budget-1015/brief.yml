@@ -1,0 +1,22 @@
+task_id: infra-localci-run-budget-1015
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  B35. The merger's run step (--run-timeout 5400 s) is the sum of the checks, and full-matrix runs on Pro now sit
+  close to it: 36 runs of 2026-10-08..15 had elapsed p50 3848 s, p95 4878 s, max 5486 s, and that max was the cap
+  itself (#8523, run rc 124, ctx.visa-oracle-smoke SIGTERMed 88 s in, so the run needed about 5600 s). A run
+  that ends INTERRUPTED is not re-decided after the flip (B30), so a PR with no fault of its own stalls. The run
+  budget becomes the named constant RUN_TIMEOUT_S = 7200 (the need plus about 28%), the tick watchdog is
+  recomputed as plan 7500 + run 7200 + status 900 + 600 margin = 16200, and the organ's expected_hb_seconds
+  moves 5400 to 6000 so that 3 x it stays above the longest legal tick plus 600. The test that pinned
+  tick >= plan + run + 900 + 300 pins the new relation (margin 600) and a floor on the run budget; nine b35-*
+  mutants. A longer budget only turns INTERRUPTED into the PASS or FAIL the check earns; no check, verdict
+  rule or tolerance changes. Ordering was not changed: the checks run one after another, so the sum is the
+  same whatever the order.
+residuals:
+  - The live launchd plist passes no --run-timeout; the default is read from the merger at the tick's sha, so
+    the new budget is in force from the first tick after merge. expected_hb_seconds reaches the healer only
+    after the organism registry is redeployed.
+  - A worst-case tick (cold build 7500 s, then a full run) is now up to 16200 s; the healer window
+    (3 x 6000 = 18000 s) covers it plus 600 s.

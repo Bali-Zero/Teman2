@@ -1,0 +1,183 @@
+{
+  "schema": "b03-scoped-r1-review-v1",
+  "reviewed_at": "2026-10-16T07:08:00Z",
+  "reviewer": "codex",
+  "session_id": "01a14381-7e96-7582-af67-6ae46160d6a4",
+  "scope": "Read-only independent document review, not blanket whole-document validation or operational closure",
+  "r1_source": "scripts/check_adversarial_review.py:161-229",
+  "r1_observed": "FAIL 9/9 missing YAML frontmatter",
+  "files": [
+    {
+      "file": "research/operations/udb-wave8/B03/ANALYSIS.md",
+      "sha256": "9d5371dea7277b4dd8944b00b42c903975d06710008cea6d2d608e05433a4b02",
+      "reviewed_line_ranges": [
+        [
+          1,
+          20
+        ],
+        [
+          78,
+          125
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/PROPOSAL.md",
+      "sha256": "41ed9cd5fa89ce77427765226c876fdc40fced4df329c380ec7e108f0469a66b",
+      "reviewed_line_ranges": [
+        [
+          1,
+          62
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/BATTLE.md",
+      "sha256": "3d065bc7f3a3e4f308817a345eac8da01fae066353c9f392b94c45bf5625cc8e",
+      "reviewed_line_ranges": [
+        [
+          1,
+          30
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/DEFINITIVE-SYNTHESIS.md",
+      "sha256": "0566eccc0b0cdea1ceb46a839e7a5b2897501b956b240cc067297a0141a77e9f",
+      "reviewed_line_ranges": [
+        [
+          1,
+          11
+        ],
+        [
+          47,
+          140
+        ],
+        [
+          156,
+          160
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/DUX-NOTE-ANALYSIS.md",
+      "sha256": "6d5916a780dcf2eec5bd5748be9872a9c2ea572e1baa5f6476b4be38be9186f4",
+      "reviewed_line_ranges": [
+        [
+          1,
+          34
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/DUX-NOTE-CORRECTION.md",
+      "sha256": "dd1f8ba0a33daf3b7d4f13543be9fcd67a59391f033f59f6b83fc40808a35439",
+      "reviewed_line_ranges": [
+        [
+          1,
+          15
+        ],
+        [
+          37,
+          51
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/DUX-NOTE-SYNTHESIS.md",
+      "sha256": "ac208436d422695cd4ceb54a11b3a64e93edaa7835486d6a6d15ae22f8367205",
+      "reviewed_line_ranges": [
+        [
+          1,
+          39
+        ],
+        [
+          47,
+          50
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/PR_BODY.md",
+      "sha256": "2c98de84a30e4b3fd8829d4f60549c86cb26a827cdc20d459db7c73dc5bad63f",
+      "reviewed_line_ranges": [
+        [
+          1,
+          24
+        ]
+      ]
+    },
+    {
+      "file": "research/operations/udb-wave8/B03/dux-requests/DUX-AUTHORED.md",
+      "sha256": "6c8776bab930009ddb8330363cf59afdfccad58cf3025af51958d530c4696f21",
+      "reviewed_line_ranges": [
+        [
+          1,
+          23
+        ]
+      ]
+    }
+  ],
+  "surviving_objections": [
+    {
+      "id": "DOC1",
+      "file": "ANALYSIS.md",
+      "lines": [
+        84,
+        89
+      ],
+      "finding": "Historical source/index prefix-equality and duplicate-join assertions were falsified by later receipts. Treat as retained historical analysis, not current findings."
+    },
+    {
+      "id": "DOC2",
+      "file": "PROPOSAL.md",
+      "lines": [
+        20,
+        48
+      ],
+      "finding": "Historical schema values, blocked_evidence sub-state, joins and premature retirement proposal are superseded by definitive contract and tested adapter. Do not endorse as current."
+    },
+    {
+      "id": "DOC3",
+      "file": "DEFINITIVE-SYNTHESIS.md",
+      "lines": [
+        131,
+        131
+      ],
+      "finding": "Every/114 candidate-index join claim is false for actual emitted census: 98 have a nonempty candidate join and 16 do not; all114 remain unresolved."
+    },
+    {
+      "id": "DOC4",
+      "file": "DEFINITIVE-SYNTHESIS.md",
+      "lines": [
+        121,
+        121
+      ],
+      "finding": "Cited consumer_id src_07703aa402d20fc0 is absent from actual emitted census. Historical illustrative claim is not verified."
+    },
+    {
+      "id": "DOC5",
+      "file": "DEFINITIVE-SYNTHESIS.md",
+      "lines": [
+        64,
+        64
+      ],
+      "finding": "Listed source-disposition category totals are not the unresolved output total; output classifications apply exclusions and duplicate collapse. Authoritative unresolved count is4184."
+    }
+  ],
+  "recommended_attribution": "adversarial_review: codex; add ## Adversarial review with precise scoped ranges, receipt path, surviving objections and frozen-artifact limits. Historical commands/runtime claims are reviewed as recorded instructions, not re-observed native events.",
+  "source_verdict": "No substantive source blocker established; final exact-HEAD gate remains pending R1 factual metadata and immutable-source verification.",
+  "current_evidence": {
+    "pytest": "24 passed in0.78s, independent Pro snapshot without ignored receipts",
+    "original_assertions": 41,
+    "current_assertions": 101,
+    "old_assertions_removed": 0,
+    "leads": 6030,
+    "c09_rows": 6029,
+    "excluded": 1803,
+    "duplicate": 43,
+    "unresolved": 4184,
+    "active_denominator": "UNKNOWN",
+    "block_closed": false
+  }
+}

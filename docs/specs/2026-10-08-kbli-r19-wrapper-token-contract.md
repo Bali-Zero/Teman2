@@ -1004,8 +1004,24 @@ by the painters (`SPEC-W0d-census.md` §2).
 - **An occluded run that its reader cannot see is counted.** A run whose points stay under an
   occluder, once read in the middle of the viewport, gets its own line,
   `occluded '<text>' at <path>, under <occluder>`: under G at rest, under K on an opened surface. It is not counted
-  when the occluder is a scrim of the walk or lies inside another surface the walk opened, which
-  is the surface order working. A run under a fixed badge on a page that cannot scroll is
+  when the occluder is the walk's scrim, or a descendant of it, AND the scrim itself is named by
+  `elementsFromPoint` at that point above the run's own layer (an index below the first element
+  that is the run's own or its ancestor): the scrim already covers the run there, so what its
+  children add is behind it too. This is a hit-test fact. No style of the scrim or of any ancestor
+  decides it, so no list of stacking triggers exists: a flat scrim inside a fixed or fading
+  wrapper whose child rises above the surface is not exempt, because the scrim is under the run.
+  The point is the run's own, p, on every path. For an overlay that reaches the run by a blur or a
+  shadow, `within()` decides only whether it reaches, at the overlay's nearest point; the scrim
+  test still reads the stack at p, where the run is. A scrim absent from the stack at p, or under
+  the run at p, never exempts: that direction fails closed and the occlusion is counted. A bar
+  confined under the run's surface that `within()` still takes to reach it is counted too, an
+  accepted over-count of that older reach rule (`D-reach-bar-confined-under-surface`). A run is
+  also not counted when its occluder lies inside another surface the walk opened that does not
+  hold the run, which is the surface order working (W0d-3b-2b-i''').
+  The walk line names each exempt cause apart: `N of them behind the walk's own scrim` and
+  `N of them under another opened surface`; the walk line is the whole count, no second line
+  repeats it. A run brought to the middle and still occluded keeps its occluder and why it is
+  exempt, if it is (`bring()`). A run under a fixed badge on a page that cannot scroll is
   therefore K, never a clean 0. Text that is not rendered, such as the content of a closed
   `<details>`, is not a run at all: its box is laid out under the section after it, and it
   would read as occluded.
@@ -1244,6 +1260,7 @@ state-rows-unseen: 0
 state-colors-off-contract: 0
 page-grounds-off-contract: 0
 opened-surfaces: 50 ok, 0 failed
+declared-not-judgeable: zantara-pending mobile/system-dark
 opened-outside-wrapper: 0
 opened-grounds-off-contract: 0
 ground-resolver-disagree: 0
@@ -1256,6 +1273,9 @@ opened-text-below-4.5: 0
   `opened-surfaces: 50 ok, 0 failed`, `shared-touched-unpinned: 0` and
   `shared-component-drift: 0`. The others are reported on `origin/main` (§8.4) and gated by
   W2'''.
+- **A declared walk is listed.** `declared-not-judgeable:` follows `opened-surfaces:` while
+  `NOT_JUDGEABLE` holds a variant (W0d-3b-2a); the exit step prints it with the other lines, and W2'''
+  removes it with the exemption.
 - **The assert step proves itself.** CI replays it on a log carrying `: 1` and on an INCOMPLETE
   log; both must exit 1.
 
@@ -1302,7 +1322,8 @@ holds. A dump from before the parts has no list, and its replay prints no S line
 **In CI.**
 
 - `wrapper-census-part (<part>)` runs one job per part, with fail-fast off and a 40-minute
-  timeout each. Each job prints `phase-seconds:` for its part on stderr, never in the verdict.
+  timeout each, except the `full` dispatch, which has 75: it ran 39m06s on #8488's head (a part ran at most
+  20m03s), so 40 left 54 seconds (W0d-3b-2b). Each job prints `phase-seconds:` for its part on stderr, never in the verdict.
 - `wrapper-census-states` keeps its name. It downloads the dumps and replays them. It then asserts
   these five lines exactly:
   - `scenarios-off-manifest: 0`;
@@ -1326,8 +1347,8 @@ dump's replay, and that text is the earlier verdict under its first line.
 - **Every count a missing part feeds reads INCOMPLETE.** Without `rest`, every capture is
   entered as failed, so `reads:`, `defined-above-wrapper:` and `colors-outside-direction-a:`
   carry the INCOMPLETE tail beside `read-but-undefined:` and `page-grounds-off-contract:`.
-  `ground-resolver-disagree:` carries it on a failed capture too, because it also counts the
-  disagreements read at rest. No count fed by a missing scenario prints a bare number.
+  `ground-resolver-disagree:` carries it on a failed capture and on one not read through, because
+  it also counts the disagreements read at rest (W0d-3b-2b). No count fed by a missing scenario prints a bare number.
 - **The parts of one aggregate come from one machine kind.** Never concatenate a part dumped on
   M5 with a part dumped in CI: their fonts differ, and so do their counts (on W0d-3a's head, M5
   read G 438 where CI read 437). In CI, every part comes from the one workflow run.

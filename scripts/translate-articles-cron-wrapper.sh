@@ -331,7 +331,7 @@ EOF
   if [ "$ARM_RC" -eq 0 ]; then
     heartbeat ok "promoted $CHANGED file(s) via $PR_URL (auto-merge armed)$RUN_NOTE"
   else
-    log "WARN: could not arm auto-merge on PR #$PR_NUM — needs manual arm"
+    log "WARN: merge intent failed on PR #$PR_NUM (label and/or arm, rc=$ARM_RC — see SIGNAL_INTENT_FAIL above) — needs: scripts/signal_merge_intent.sh $PR_NUM"
     heartbeat degraded "promoted $CHANGED file(s) via $PR_URL but auto-merge did not arm$RUN_NOTE"
   fi
   log "worktree $WT_PATH left in place pending merge (next run's opportunistic --cleanup will collect it once merged)"

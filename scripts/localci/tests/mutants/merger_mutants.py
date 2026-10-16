@@ -451,16 +451,16 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-verdict-files-lost": (PRUNE, "rel not in VERDICT", "True", (PRUNE_T,)),
     "b6-call-graphs-kept": (PRUNE, "f in BULK)", "False)", (PRUNE_T,)),
     "b6-undated-run-trimmed": (PRUNE, '        if age_h is None or age_h < TREE_PACK_STALE_H:', '        if age_h is not None and age_h < TREE_PACK_STALE_H:', (PRUNE_T,)),
-    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free no run starts
-    "b6-wrapper-floor-99": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-100}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-99}"', B6_WRAP),
+    # B6-3: the tick decides, then prunes and trims the VM; under 60 GB host-free (start floor) no run starts
+    "b6-wrapper-floor-59": (SH, 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-60}"', 'FLOOR_GB="${MERGER_MIN_HOST_FREE_GB:-59}"', B6_WRAP),
     "b6-wrapper-floor-le": (SH, '[ "$FREE" -lt "$FLOOR_GB" ]', '[ "$FREE" -le "$FLOOR_GB" ]', B6_WRAP),
     "b6-wrapper-no-fstrim": (SH, 'prune --state-dir "$STATE" --fstrim', 'prune --state-dir "$STATE"', B6_WRAP),
     "b6-wrapper-prune-failure-silent": (SH, 'if [ "$PRUNE_RC" -ne 0 ]; then', "if false; then", B6_WRAP),
     "b6-wrapper-never-prunes": (SH, """if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then""", "if false; then", B6_WRAP),
     "b6-merger-floor-off": (PY, "if a.host_free_gb is not None and a.host_free_gb < a.min_host_free_gb:", "if False:", B6_FLOOR),
-    "b6-merger-floor-99": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "99.0"), B6_FLOOR),
-    # B15: Pro's host floor of 90 GB, held through the run
-    "floor-start-60": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "60.0"), HF),
+    "b6-merger-floor-59": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "59.0"), B6_FLOOR),
+    # B15: Pro's host floor of 50 GB, held through the run
+    "floor-start-50": (PY, START_DEFAULT, START_DEFAULT.replace("HOST_FLOOR_GB + START_MARGIN_GB", "50.0"), HF),
     "evict-disabled": (PY, "                    if low:\n", "                    if False:\n", HF),
     "evict-spares-containers": (PY, 'subprocess.run([self.docker, "rm", "-f", "-v", *ids], capture_output=True, timeout=120, env=env)', "None", HF),
     "evict-kills-foreign-run": (PY, 'f"label=org.nuzantara.localci.run={run_label(self.run_dir)}"', '"label=org.nuzantara.localci.run"', HF),
@@ -593,10 +593,10 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b6-floor-organ-alive-ok": (FLOOR_SH, 'heartbeat "warning" "skipped: previous run alive', 'heartbeat "ok" "skipped: previous run alive', (FLOOR_T,)),
     "b6-prune-code-sha-unvalidated": (PY, "if a.code_sha and not is_sha(a.code_sha):", "if False:", (PRUNE_T,)),
     # B6-4: pro.disk_floor — ok above 90 GB, warning 60-90, failed under 60
-    "b6-floor-organ-ok-at-90": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
-    "b6-floor-organ-ok-above-91": (FLOOR_SH, "OK_ABOVE_MB=90000 ", "OK_ABOVE_MB=91000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-59": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=59000 ", (FLOOR_T,)),
-    "b6-floor-organ-fail-under-61": (FLOOR_SH, "FAIL_UNDER_MB=60000 ", "FAIL_UNDER_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-ok-at-60": (FLOOR_SH, 'if [ "$FREE_MB" -gt "$OK_ABOVE_MB" ]; then VERDICT="ok"', 'if [ "$FREE_MB" -ge "$OK_ABOVE_MB" ]; then VERDICT="ok"', (FLOOR_T,)),
+    "b6-floor-organ-ok-above-61": (FLOOR_SH, "OK_ABOVE_MB=60000 ", "OK_ABOVE_MB=61000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-49": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=49000 ", (FLOOR_T,)),
+    "b6-floor-organ-fail-under-51": (FLOOR_SH, "FAIL_UNDER_MB=50000 ", "FAIL_UNDER_MB=51000 ", (FLOOR_T,)),
     "b6-floor-organ-failed-as-warning": (FLOOR_SH, '*) heartbeat "error" "failed: $NOTE"', '*) heartbeat "warning" "failed: $NOTE"', (FLOOR_T,)),
     # the tick's journal
     "durations-not-journalled": (PY, '                               "durations": {k: (v or {}).get("duration_s") for k, v in (status.get("checks") or {}).items()},\n',
@@ -1230,6 +1230,8 @@ MUTANTS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b34-trap-out-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$OUT" || true', 'rm -f "$OUT"', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-forgotten": ('scripts/localci/localci_shepherd_tick.sh', '  if [ -n "$HB_NEW" ]; then rm -f "$HB_NEW" || true; fi\n', '', ("scripts/localci/tests/test_shepherd.py",)),
     "b34-trap-hb-new-rm-fails": ('scripts/localci/localci_shepherd_tick.sh', 'rm -f "$HB_NEW" || true', 'rm -f "$HB_NEW"', ("scripts/localci/tests/test_shepherd.py",)),
+    # B31: the label read-back and the pre-flip census
+    # B31 round 3: the predicate census — every conditional of the helper and label_census.py has a mutant (README table)
 }
 
 
@@ -1238,6 +1240,10 @@ def copy_tree(dest: Path) -> None:
         shutil.copytree(ROOT / rel, dest / rel, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
+    for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh"):   # B31: the helper, its probe and its shell table
+        shutil.copy2(ROOT / rel, dest / rel)
+    (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
+    shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
     for rel in (".github/workflows/security.yml", ".github/codeql-config.yml"):   # the CodeQL tests plan against the real workflow and config
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
@@ -1274,6 +1280,19 @@ def _check_row(origin: str, name: object, row: object) -> None:
 _MERGED: dict[str, tuple[str, tuple]] = {}   # rows name -> (file, row) already merged, so a second merge_rows() is a no-op
 
 
+def _check_untouched(origin: str, tables: list, snaps: list, bound: dict) -> None:
+    """B36 gate L1: a rows file only defines ROWS. Whatever alias it reached the table by (T = MUTANTS, `import ... as`, getattr, vars, sys.modules),
+    the dict it wrote is the same object, so the table is compared with the snapshot taken before its exec_module."""
+    if globals()["MUTANTS"] is not bound:
+        raise SystemExit(f"{origin}: rebinds MUTANTS; a rows file only defines ROWS")
+    for table, snap in zip(tables, snaps):
+        removed = sorted(k for k in snap if k not in table)
+        changed = sorted(k for k in snap if k in table and table[k] is not snap[k])
+        added = sorted(k for k in table if k not in snap)
+        if removed or changed or added:
+            raise SystemExit(f"{origin}: wrote MUTANTS directly (removed {removed}, changed {changed}, added {added}); a rows file only defines ROWS")
+
+
 def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
     """Merge every rows/*.py (sorted by filename) into MUTANTS; a duplicate name or a malformed row stops the run.
     Runs at import (below) and again from main(): a row already merged from the same file, identical, is skipped."""
@@ -1288,7 +1307,10 @@ def merge_rows(rows_dir: Path | None = None, into: dict | None = None) -> dict:
             continue
         spec = importlib.util.spec_from_file_location(f"_mutant_rows_{f.stem}", f)
         mod = importlib.util.module_from_spec(spec)
+        bound, tables = MUTANTS, [into] if into is MUTANTS else [into, MUTANTS]
+        snaps = [dict(t) for t in tables]
         spec.loader.exec_module(mod)
+        _check_untouched(f.name, tables, snaps, bound)
         rows = getattr(mod, "ROWS", None)
         if not isinstance(rows, dict):
             raise SystemExit(f"{f.name}: must define ROWS as a dict")

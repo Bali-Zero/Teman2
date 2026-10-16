@@ -20,7 +20,7 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     funnel: "visa",
-    badge: "5,000+ CLIENTS SERVED SINCE 2019",
+    badge: "5,000+ CLIENTS SERVED SINCE 2020",
     titleTop: "Your",
     titleAccent: "business",
     titleBottom: "in Bali. Done right.",

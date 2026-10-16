@@ -27,6 +27,7 @@ import type {
   ProcessTimeline,
   DriveFilesResponse,
   BillingResponse,
+  PaymentProof,
   NotificationsResponse,
   DashboardSummary,
   PortalMatter,
@@ -572,6 +573,17 @@ export class PortalApi {
     const response = await this.client.request<
       PortalApiResponse<{ download_url: string }>
     >(`/api/portal/billing/${invoiceId}/pdf-url`, { method: "GET" });
+    return response.data!;
+  }
+
+  /** Payment proof for one invoice (docs/specs/payment-proof-upload.md §b). */
+  async uploadPaymentProof(invoiceId: number, file: File): Promise<PaymentProof> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await this.client.request<PortalApiResponse<PaymentProof>>(
+      `/api/portal/billing/${invoiceId}/payment-proof`,
+      { method: "POST", body: formData },
+    );
     return response.data!;
   }
 

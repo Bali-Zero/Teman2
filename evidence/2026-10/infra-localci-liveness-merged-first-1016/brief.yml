@@ -1,0 +1,22 @@
+task_id: localci-liveness-merged-first-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B37: a would_enqueue row LocalCI decided PASS on a head that GitHub merged meanwhile counts toward liveness.
+  Measured on Pro's journal (48 h): mergeable_rows 0 and coverage_decided 0/4, three of the four decided merged PRs
+  failing on `open` alone because labelled PRs merge on GitHub in a median 26 min and a LocalCI decision takes 57 min.
+  Spec paragraph B37 first, then merger.py mergeable_row / liveness / the liveness report line only.
+constraints:
+  - "READY, GATE, phase_f_arming and every verdict stay byte-identical; liveness never feeds READY (test)."
+  - "No new GitHub read: the pull report() already holds is the only source; a missing pull fails closed and is said."
+acceptance:
+  - text: "Only `open` false plus a merged pull at the row's head counts; closed-unmerged, other head, missing or non-dict pull, a second false term and a non-dict criterion do not."
+    probe: "python -m pytest -q scripts/localci/tests/test_liveness_merged_first.py scripts/localci/tests/test_liveness.py -p no:cacheprovider"
+  - text: "All 16 b37-* mutants are killed."
+    probe: "python scripts/localci/tests/mutants/merger_mutants.py --only $(python scripts/localci/tests/mutants/merger_mutants.py --list | awk '/b37/{print $1}')"
+consumer_map:
+  - "merger.py report on Pro: ready_cache and the flip checklist read liveness_ok from the liveness block."
+risks:
+  - "A merged-first row proves the decision, not that the merge would have been safe: the FALSE_GREEN comparison of the same head stays the safety evidence."
+grader: "Fresh Opus gate on an immutable archive of the head sha."
