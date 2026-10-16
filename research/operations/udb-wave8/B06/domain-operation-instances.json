@@ -1,0 +1,1742 @@
+[
+  {
+    "consumer_id": "src_a7ceb266c9ec6438",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "a5ad9cb70bbb5e96a02da861561c57c9b9d91e5a281a559aa37fd89d870ce9d5",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.clients",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "MISSING_DB_UNIQUE_NORMALIZED_PHONE_CONSTRAINT",
+      "RESTORE_DRILL_CLIENTS_FAIL"
+    ],
+    "principal": {
+      "value": "service:backend-rag:crm.client_core",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "authorization": {
+      "value": "FastAPI get_current_user + RBAC check at router boundary; SQL lacks RLS",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "transaction": {
+      "value": "asyncpg pool.acquire() explicit conn.transaction() for create/update/soft-delete",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO clients (full_name, email, phone, status, assigned_to, custom_fields, created_by)",
+        "INSERT INTO audit_logs (action, resource_type='client', resource_id, changes)",
+        "Out-of-tx Google Drive folder provisioning (create_client_folder)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "retries": {
+      "value": "None in client_core.py; caller-dependent HTTP retry",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "idempotency": {
+      "value": "Non-atomic SELECT on REGEXP_REPLACE(phone, '[^0-9]', '', 'g') >= 7 digits before INSERT; concurrent requests can duplicate",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "failure": {
+      "value": "Raises ValueError on application-level duplicate email/phone; Drive folder failure leaves client row with drive_folder_id=NULL",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "retention": {
+      "value": "Soft-delete via status='inactive' and deleted_at=NOW() (lines 558-608); no automated purge",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608"
+    },
+    "recovery": {
+      "value": "scripts/restore_drill_verify.py records clients: FAIL due to schema drift",
+      "status": "BLOCKED",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D04",
+    "x_entry_point": "apps/backend-rag/backend/services/crm/client_core.py",
+    "x_source_line_span": "261-346,466-608",
+    "x_evidence_ref": "apps/backend-rag/backend/services/crm/client_core.py:261-608",
+    "x_counterexample_id": "CE-B06-01",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d04.crm.client_core.lifecycle_write"
+  },
+  {
+    "consumer_id": "src_36852546767b6d1b",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "34948b16afaf09e655a3a4dc191c4fddacabaf4ff93095ac9acacc29c452a1c8",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.practices",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "PRACTICE_INVOICE_SIDE_EFFECT_SPLIT_TX",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "http:router:crm_practices",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "authorization": {
+      "value": "Depends(get_current_user) + team_member/admin role check in router",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "transaction": {
+      "value": "create_practice (lines 775-1045) uses single conn.fetchrow; patch_practice (lines 1590-1745) wraps UPDATE + status_transitions in conn.transaction()",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO practices (...) RETURNING id, uuid",
+        "UPDATE practices SET status, payment_status, completion_date, updated_at",
+        "INSERT INTO activity_log / audit_logs on state transition",
+        "Side-effect trigger to invoice_service.trigger_on_sending_invoice when status='sending_invoice'"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "retries": {
+      "value": "None on practice mutation; downstream invoice trigger is fire-and-forget",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "idempotency": {
+      "value": "Non-idempotent POST /api/crm/practices (no client idempotency key); PATCH is state-conditional",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "failure": {
+      "value": "HTTPException(400/404/500); downstream invoice_service failure logs error without rolling back practice status",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "retention": {
+      "value": "Soft-delete via status='cancelled' or deleted_at; retained indefinitely in public.practices",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745"
+    },
+    "recovery": {
+      "value": "Backed by Fly Postgres volume snapshot; public.practices omitted from restore_drill_verify.py 6-table subset",
+      "status": "UNKNOWN",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D04",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/crm_practices.py",
+    "x_source_line_span": "775-1045,1590-1745",
+    "x_evidence_ref": "apps/backend-rag/backend/app/routers/crm_practices.py:775-1745",
+    "x_counterexample_id": "CE-B06-02",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d04.crm.practices.mutate_and_transition"
+  },
+  {
+    "consumer_id": "src_3cfe047e6c2ec7f8",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "122d312260f4c3c8dba0f5c0d61d952bd680101bd2bf4490ace02c935865e24c",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.visa_oracle_sessions",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "VISA_ORACLE_SESSION_PERSISTENCE_SWALLOWED",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "http:router:visa_oracle_evaluate",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "public_funnel:visa_oracle",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "authorization": {
+      "value": "Public/session-scoped funnel endpoint with rate limiting; E33 case actions require authenticated user",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "transaction": {
+      "value": "Single-statement UPSERT into visa_oracle_sessions inside evaluate_path.py:240-285; E33 case router e33_cases.py uses conn.transaction()",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO visa_oracle_sessions (session_id, answers_json, recommendation_json, updated_at) ON CONFLICT (session_id) DO UPDATE",
+        "Companion e33_cases.py writes public.e33_cases and public.e33_documents"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "retries": {
+      "value": "None; best-effort persistence on evaluate_path",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "idempotency": {
+      "value": "Idempotent on session_id via ON CONFLICT (session_id) DO UPDATE",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "failure": {
+      "value": "DB exception caught and logged as warning in evaluate_path.py; returns computed decision tree result with non-durable session",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "retention": {
+      "value": "No automated TTL purge found in evaluate_path.py for visa_oracle_sessions",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285"
+    },
+    "recovery": {
+      "value": "visa_oracle_sessions and e33_cases omitted from scripts/restore_drill_verify.py",
+      "status": "UNKNOWN",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D04",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/visa_oracle_evaluate.py",
+    "x_source_line_span": "137-285",
+    "x_evidence_ref": "apps/backend-rag/backend/services/visa_engine/evaluate_path.py:137-285",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "bug",
+    "x_proposed_operation_slug": "d04.visa_oracle.evaluate_and_persist_session"
+  },
+  {
+    "consumer_id": "src_55053b267fa8ea4a",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "057c343c35ce4f8a4a1f7a2322adbb13dba60ac13ce2ab35696fabcb351a7d96",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.invoices",
+      "NOT_ENRICHED_THIS_PHASE",
+      "INVOICE_EMAIL_DRIVE_DB_SPLIT_COMMIT",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:invoicing.invoice_service",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "authorization": {
+      "value": "Internal service invoked by crm_practices router after RBAC check",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "transaction": {
+      "value": "Unwrapped sequential writes across email_send_log (lines 152-192), Drive upload (lines 229-248), and _update_practice_with_invoice (lines 440-611: practices.documents, invoices UPSERT, activity_log) without conn.transaction()",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "effects": {
+      "value": [
+        "INSERT/UPDATE email_send_log via log_email_attempt and record_email_result (lines 152-192)",
+        "External Google Drive PDF upload via upload_file_to_folder (lines 229-248)",
+        "UPDATE practices SET documents = $1, updated_at = NOW() WHERE id = $2 (lines 490-497)",
+        "INSERT INTO invoices (practice_id, client_id, invoice_number, amount_idr, discount_amount_idr, ...) ON CONFLICT (practice_id) DO UPDATE (lines 531-595)",
+        "INSERT INTO activity_log (entity_type='practice', action='invoice_generated', ...) (lines 598-609)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "retries": {
+      "value": "Manual retry via regenerate_invoice (lines 613-627) re-runs trigger_on_sending_invoice",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "idempotency": {
+      "value": "invoices table uses ON CONFLICT (practice_id) DO UPDATE, but re-triggering re-sends email and uploads a duplicate PDF to Google Drive",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "failure": {
+      "value": "Partial failure between email send, Drive upload, UPDATE practices, and INSERT INTO invoices leaves split state across practices.documents and public.invoices",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "retention": {
+      "value": "Financial records retained indefinitely in public.invoices, public.activity_log, and Google Drive",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628"
+    },
+    "recovery": {
+      "value": "Manual reconciliation via regenerate_invoice; public.invoices omitted from restore_drill_verify.py",
+      "status": "UNKNOWN",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D05",
+    "x_entry_point": "apps/backend-rag/backend/services/invoicing/invoice_service.py",
+    "x_source_line_span": "62-270,440-628",
+    "x_evidence_ref": "apps/backend-rag/backend/services/invoicing/invoice_service.py:62-628",
+    "x_counterexample_id": "CE-B06-02",
+    "x_contract_posture": "bug",
+    "x_proposed_operation_slug": "d05.invoicing.trigger_on_sending_invoice"
+  },
+  {
+    "consumer_id": "src_fe7d40f6ffa95a8b",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "d2745199f8e3b1ff48712939f6c46c499f780e942fd9c21f36f3fc0e0243ebe2",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.garuda_orders",
+      "NOT_ENRICHED_THIS_PHASE",
+      "XENDIT_STATIC_CALLBACK_TOKEN_AUTH",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:payments.xendit",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_garuda_commerce",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "authorization": {
+      "value": "Xendit callback token verification (x-callback-token == XENDIT_WEBHOOK_TOKEN) via constant-time comparison",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "transaction": {
+      "value": "Delegates webhook state transition to garuda_orders/repository.py handle_paid_event inside conn.transaction() with SELECT ... FOR UPDATE",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "effects": {
+      "value": [
+        "Outbound HTTP POST https://api.xendit.co/v2/invoices (create_checkout_session lines 192-233)",
+        "Inbound parse_event (lines 248-318) -> garuda_payment_inbox / UPDATE garuda_orders SET status='PAID', paid_at=NOW()",
+        "INSERT INTO garuda_order_events (order_id, event_type, payload_json)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "retries": {
+      "value": "Xendit webhook delivery retries on non-2xx; outbound httpx calls use 20s timeout without automatic retry",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "idempotency": {
+      "value": "Webhook replay guarded by SELECT ... FOR UPDATE on garuda_orders and terminal state check in handle_paid_event",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "failure": {
+      "value": "Raises PaymentSignatureError on invalid callback token or PaymentProviderError on Xendit HTTP >= 400",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "retention": {
+      "value": "Order and payment event logs retained indefinitely in garuda_orders, garuda_payment_inbox, and garuda_order_events",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380"
+    },
+    "recovery": {
+      "value": "Recoverable by replaying Xendit webhook event or querying Xendit invoice status API",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D05",
+    "x_entry_point": "apps/backend-rag/backend/services/payments/xendit.py",
+    "x_source_line_span": "192-380",
+    "x_evidence_ref": "apps/backend-rag/backend/services/payments/xendit.py:192-380",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d05.payments.xendit_checkout_and_webhook"
+  },
+  {
+    "consumer_id": "src_a3385c4f03c66ace",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "5551998463d1b7f5cd28e37c652de45ccf53def5df7860a37a85230184633657",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.reconciliation_log",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RECONCILE_UNARMED_BANK_TXN_LOCK_AND_DECOMPOSITION_WARNING",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:garuda_ops.adapters_pg",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "authorization": {
+      "value": "Internal ops/accounting service invoked by authenticated admin/accounting endpoints",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "transaction": {
+      "value": "reconcile_service.py confirm_payment wraps all 5 table writes in async with conn.transaction() at line 102 with SELECT ... FROM practices WHERE id = $1 FOR UPDATE (line 105)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "effects": {
+      "value": [
+        "UPDATE practices SET payment_status = $1, paid_amount = $2, updated_at = now() WHERE id = $3 (line 117)",
+        "UPDATE invoices SET paid_date = now(), payment_method = $1, payment_reference = $2, paid_amount_idr = COALESCE(paid_amount_idr, 0) + $3 WHERE id = $4 (line 130)",
+        "UPDATE bank_transactions SET reconciled_status = 'matched', matched_practice_id = $1, matched_invoice_id = $2 WHERE id = $3 (line 147)",
+        "INSERT INTO weekly_cashout (...) RETURNING id (lines 163, 195)",
+        "INSERT INTO reconciliation_log (...) RETURNING id (line 226)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "retries": {
+      "value": "None in reconcile_service.py",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "idempotency": {
+      "value": "Locks practices row FOR UPDATE (line 105), but does not lock bank_transactions or reject already-matched bank_txn_id; duplicate confirm_payment call increments practices.paid_amount and invoices.paid_amount_idr twice and inserts duplicate weekly_cashout and reconciliation_log rows",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "failure": {
+      "value": "Raises ReconcileError on invalid status or missing practice (rolling back conn.transaction()); D4 guard at lines 85-92 logs warning without raising when decomposition_sum != amount_applied_idr",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "retention": {
+      "value": "Indefinite financial audit retention in practices, invoices, bank_transactions, weekly_cashout, and reconciliation_log",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250"
+    },
+    "recovery": {
+      "value": "Transactional rollback protects against partial mid-tx failure; duplicate confirm requires manual ledger reversal",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D05",
+    "x_entry_point": "apps/backend-rag/backend/services/garuda_ops/adapters_pg.py",
+    "x_source_line_span": "51-250",
+    "x_evidence_ref": "apps/backend-rag/backend/services/accounting/reconcile_service.py:51-250",
+    "x_counterexample_id": "CE-B06-03",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d05.accounting.reconcile_and_garuda_ledger"
+  },
+  {
+    "consumer_id": "src_4c49b82438955ab7",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "486bdaf89dcb7a570cea4a5e267f207e1f00926f372d2c6d8351eaabe220b5c1",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.conversations",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "SSE_POST_YIELD_PERSISTENCE_SWALLOWED",
+      "RESTORE_DRILL_CONVERSATIONS_CANNOT_VERIFY"
+    ],
+    "principal": {
+      "value": "http:router:agentic_rag",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_rag_session",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "authorization": {
+      "value": "Authenticated user/session dependency on /stream and /workspace-stream",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "transaction": {
+      "value": "Autocommit single INSERT INTO conversations inside SSE generator post-yield block (lines 515-555, 1480-1525)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "effects": {
+      "value": [
+        "SSE token stream yielded to HTTP client first",
+        "INSERT INTO conversations (user_id, session_id, messages, metadata, created_at)",
+        "Async fire-and-forget memory extraction to memory_facts"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "retries": {
+      "value": "None on conversation persistence after stream completion",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "idempotency": {
+      "value": "Non-idempotent append per stream turn; duplicate retry creates new conversation row if session_id not deduplicated",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "failure": {
+      "value": "Broad try/except Exception logs warning/error and swallows DB write failure AFTER client already received full streamed answer (split-brain chat history)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "retention": {
+      "value": "Retained in public.conversations; subject to user clear/delete endpoints in conversations.py",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555"
+    },
+    "recovery": {
+      "value": "scripts/restore_drill_verify.py records conversations: CANNOT-VERIFY",
+      "status": "BLOCKED",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D06",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/agentic_rag.py",
+    "x_source_line_span": "315-560,1185-1535",
+    "x_evidence_ref": "apps/backend-rag/backend/app/routers/agentic_rag.py:515-555",
+    "x_counterexample_id": "CE-B06-04",
+    "x_contract_posture": "bug",
+    "x_proposed_operation_slug": "d06.rag.stream_conversation_persistence"
+  },
+  {
+    "consumer_id": "src_d88734f39509787b",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "45219d562fda59d3d5d3fd71ea82d01dea13407cace60d56635a5fb6819d8713",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.whatsapp_message_dedup",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "WHATSAPP_WAMID_DEDUP_FAIL_OPEN"
+    ],
+    "principal": {
+      "value": "http:router:whatsapp_chat",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "channel:meta_whatsapp_business",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "authorization": {
+      "value": "Meta webhook HMAC-SHA256 X-Hub-Signature-256 verification on POST /webhook",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "transaction": {
+      "value": "Autocommit single-statement INSERT ... ON CONFLICT for wamid claim (lines 341-374) and wa_outbox enqueue (lines 660-762)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO whatsapp_message_dedup (wamid, phone, created_at) ON CONFLICT (wamid) DO NOTHING RETURNING wamid",
+        "INSERT INTO wa_outbox (idempotency_key, phone, payload_json, status='pending', next_attempt_at)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "retries": {
+      "value": "Meta retries webhook delivery on non-200; internal outbox worker retries outbound sends up to 6 attempts",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "idempotency": {
+      "value": "Idempotent on wamid when Postgres is healthy; FAILS OPEN (returns True) on DB exception at lines 369-374, permitting duplicate LLM execution",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "failure": {
+      "value": "On DB error in _claim_wamid_for_reply, logs warning and returns True (fail-open); if _enqueue_wa_outbox also fails, falls back to direct _send_whatsapp_Interactive",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "retention": {
+      "value": "whatsapp_message_dedup rows pruned after 7 days; wa_outbox retained for delivery audit",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "recovery": {
+      "value": "Outbox pending rows re-claimed on worker restart; in-flight direct fallback sends are not replayable",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374"
+    },
+    "x_domain_line": "D06",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/whatsapp_chat.py",
+    "x_source_line_span": "341-374,660-910",
+    "x_evidence_ref": "apps/backend-rag/backend/app/routers/whatsapp_chat.py:341-374",
+    "x_counterexample_id": "CE-B06-05",
+    "x_contract_posture": "bug",
+    "x_proposed_operation_slug": "d06.whatsapp.claim_wamid_and_enqueue_outbox"
+  },
+  {
+    "consumer_id": "src_54faf2d6d680ab0d",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "4e7fdf5af29ae8fe20209369c33b4e086e00adf76aa5e26066dc0e174991503e",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.wa_outbox",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "worker:backend-rag:integrations.wa_outbox_worker",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "channel:meta_whatsapp_business",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "authorization": {
+      "value": "Internal background daemon loop holding backend Postgres pool",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "transaction": {
+      "value": "Short CTE claim transaction using FOR UPDATE SKIP LOCKED (lines 635-680); external Meta Graph API call outside DB transaction; final status UPDATE in separate connection acquisition",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "effects": {
+      "value": [
+        "UPDATE wa_outbox SET status='claimed', locked_at=NOW(), attempts=attempts+1 WHERE id IN (SELECT id FROM wa_outbox WHERE status IN ('pending','generating') AND next_attempt_at <= NOW() FOR UPDATE SKIP LOCKED)",
+        "Outbound HTTP POST to Meta Graph API /{phone_number_id}/messages",
+        "UPDATE wa_outbox SET status='done' | 'pending' | 'failed', provider_message_id=$2, last_error=$3 (206_wa_meta_inbox.sql:79)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "retries": {
+      "value": "Bounded exponential backoff [5, 30, 120, 600, 1800, 3600] seconds across max_attempts=6 before terminal status='failed'",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "idempotency": {
+      "value": "Enforced at enqueue via UNIQUE(idempotency_key); crash between Meta HTTP 200 and UPDATE status='done' can re-send after stale lock timeout",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "failure": {
+      "value": "Moves exhausted rows to terminal status='failed' with last_error populated; alerts via internal logger",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "retention": {
+      "value": "Done and failed rows retained in public.wa_outbox",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860"
+    },
+    "recovery": {
+      "value": "Stale 'claimed' rows older than lock timeout are re-claimed by worker poll loop",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D06",
+    "x_entry_point": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py",
+    "x_source_line_span": "635-860",
+    "x_evidence_ref": "apps/backend-rag/backend/services/integrations/wa_outbox_worker.py:635-860",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d06.whatsapp.outbox_claim_and_dispatch"
+  },
+  {
+    "consumer_id": "src_c0f6810d71583357",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "unknown:unknown:unknown",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "ac674ffe0b2cfc5d4b5ddfc11cd32cf706e16e27fe00f7bc5d8489803bfc2e3e",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:qdrant:unknown:qdrant-cloud/kbli_2025_final_hybrid",
+      "ACTOR_IDENTITY_UNRESOLVED"
+    ],
+    "principal": {
+      "value": "http:router:kbli_notebook",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "corpus:kbli_2025_public",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "authorization": {
+      "value": "Public/API key read-only endpoints; query sanitization and rate limiting",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "transaction": {
+      "value": "Read-only cross-store fan-out across Postgres public.kbli_documents, public.kg_nodes/kg_edges, and Qdrant kbli_2025_final_hybrid (lines 60-735)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "effects": {
+      "value": [
+        "SELECT FROM kbli_documents WHERE code = $1",
+        "SELECT FROM kg_nodes / kg_edges for KBLI regulatory neighbourhood",
+        "Qdrant hybrid search on kbli_2025_final_hybrid (1536-dim text-embedding-3-small)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "retries": {
+      "value": "Qdrant client internal retry on transient transport errors; Postgres single-query read",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "idempotency": {
+      "value": "Pure read path; idempotent",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "failure": {
+      "value": "Degrades gracefully to PG-only or Qdrant-only results if companion store times out; raises HTTPException(404/503) if primary lookup fails",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "retention": {
+      "value": "Immutable reference corpus until KBLI rebuild migration",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "recovery": {
+      "value": "Rebuilt deterministically from KBLI 2025 source corpus and gold_kbli_2025.json",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735"
+    },
+    "x_domain_line": "D07",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/kbli_notebook.py",
+    "x_source_line_span": "60-735",
+    "x_evidence_ref": "apps/backend-rag/backend/app/routers/kbli_notebook.py:60-735",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d07.kbli.hybrid_notebook_lookup"
+  },
+  {
+    "consumer_id": "src_68fe091af1bf456a",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "1647a67895b31bfc0d32b84cca98ec707afdb4345c4bf953794f88f810f0f4a3",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.kg_nodes",
+      "NOT_ENRICHED_THIS_PHASE",
+      "KG_WATERMARK_COMMIT_SPLIT_FROM_BATCH_UPSERT"
+    ],
+    "principal": {
+      "value": "service:backend-rag:knowledge_graph.incremental_builder",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "corpus:knowledge_graph_global",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "authorization": {
+      "value": "Internal background builder guarded by Redis distributed lock kg:incremental_builder:lock",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "transaction": {
+      "value": "Per-batch conn.transaction() for kg_nodes/kg_edges UPSERTs, followed by separate system_settings watermark update (lines 300-480)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "effects": {
+      "value": [
+        "Redis SET NX EX on kg:incremental_builder:lock",
+        "Qdrant scroll over legal_unified_hybrid / tax_genius_hybrid / visa_inchen_hybrid",
+        "INSERT INTO kg_nodes (...) ON CONFLICT (entity_id) DO UPDATE",
+        "INSERT INTO kg_edges (...) ON CONFLICT (source_id, target_id, relation_type) DO UPDATE",
+        "INSERT INTO system_settings (key, value) ON CONFLICT (key) DO UPDATE (watermark)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "retries": {
+      "value": "Next scheduled incremental builder tick retries from last committed watermark in system_settings",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "idempotency": {
+      "value": "Node/edge writes are idempotent via ON CONFLICT DO UPDATE; watermark lag causes redundant LLM extraction work",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "failure": {
+      "value": "Releases or expires Redis lock; uncommitted batch rolls back while committed batches persist ahead of watermark",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "retention": {
+      "value": "Permanent KG storage in public.kg_nodes (108k+ nodes) and public.kg_edges (242k+ edges)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "recovery": {
+      "value": "Replayable from Qdrant collections by resetting watermark in public.system_settings",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480"
+    },
+    "x_domain_line": "D07",
+    "x_entry_point": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py",
+    "x_source_line_span": "300-480",
+    "x_evidence_ref": "apps/backend-rag/backend/services/knowledge_graph/incremental_builder.py:300-480",
+    "x_counterexample_id": "CE-B06-06",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d07.kg.incremental_builder_upsert"
+  },
+  {
+    "consumer_id": "src_990f416b23c04a69",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "35d2a90bfe0b3413f6848ce0ce20de54c26438ab3d628d64c11330841508adb6",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.kbli_documents",
+      "NOT_ENRICHED_THIS_PHASE"
+    ],
+    "principal": {
+      "value": "service:backend-rag:kbli_catalogue_membership",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "corpus:kbli_2025_public",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "authorization": {
+      "value": "Internal service checking KBLI 5-digit membership across PG and Qdrant; companion kg_auto_expansion writes staging tables only",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "transaction": {
+      "value": "Read-only membership verification across public.kbli_documents and Qdrant kbli_2025_final_hybrid (lines 39-125); companion kg_auto_expansion.py:472-640 writes public.kg_nodes_staging / kg_edges_staging",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "effects": {
+      "value": [
+        "SELECT code FROM kbli_documents WHERE code = ANY($1)",
+        "Qdrant retrieve/scroll check on kbli_2025_final_hybrid",
+        "Companion kg_auto_expansion INSERT INTO kg_nodes_staging / kg_edges_staging (quarantine gate before production kg_nodes)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "retries": {
+      "value": "None; synchronous verification helper",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "idempotency": {
+      "value": "Idempotent read verification and ON CONFLICT DO NOTHING on staging tables",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "failure": {
+      "value": "Returns membership mismatch report when PG kbli_documents and Qdrant kbli_2025_final_hybrid drift",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "retention": {
+      "value": "Reference catalogue in kbli_documents; staging rows retained until reviewed/promoted",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "recovery": {
+      "value": "Re-sync script restores parity from canonical KBLI 2025 dataset",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125"
+    },
+    "x_domain_line": "D07",
+    "x_entry_point": "apps/backend-rag/backend/services/kbli_catalogue_membership.py",
+    "x_source_line_span": "39-125",
+    "x_evidence_ref": "apps/backend-rag/backend/services/kbli_catalogue_membership.py:39-125",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d07.kbli.catalogue_membership_and_kg_staging"
+  },
+  {
+    "consumer_id": "src_fbda17e1dfb27de7",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "fdcd673bbf26e36023646a0fedb6e21ed7030a4293f1482bf4e23dfd4fe91dbe",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.intake_commit_audit",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:intake.writer",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "authorization": {
+      "value": "Operator-approved intake review commit with optimistic version lock",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "transaction": {
+      "value": "Single explicit conn.transaction(isolation='repeatable_read') across clients, documents, document_routing_proposal, intake_commit_audit, and intake_queue (lines 220-325, 660-1135)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "effects": {
+      "value": [
+        "INSERT/UPDATE public.clients (matched or created subject)",
+        "INSERT INTO public.documents (client_id, document_type, file_url, extracted_data)",
+        "UPDATE public.document_routing_proposal SET status='committed'",
+        "INSERT INTO public.intake_commit_audit (intake_id, committed_by, diff_json)",
+        "UPDATE public.intake_queue SET status='committed', version=version+1"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "retries": {
+      "value": "No automatic retry on conflict; operator must reload on optimistic lock version mismatch",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "idempotency": {
+      "value": "Idempotent against double-commit via optimistic version check on intake_queue and unique audit guard",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "failure": {
+      "value": "Full transactional rollback across all 5 tables on any constraint, serialization, or version error",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "retention": {
+      "value": "Permanent compliance audit trail in intake_commit_audit and documents",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135"
+    },
+    "recovery": {
+      "value": "Transactional atomicity prevents partial DB state; backed by Fly Postgres volume",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D08",
+    "x_entry_point": "apps/backend-rag/backend/services/intake/writer.py",
+    "x_source_line_span": "220-325,660-1135",
+    "x_evidence_ref": "apps/backend-rag/backend/services/intake/writer.py:660-1135",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d08.intake.atomic_review_commit"
+  },
+  {
+    "consumer_id": "src_56b35953c85895b6",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "17628753869924a5b3784c445556470d5ce385433e490b0434a8b67b90e4fcf6",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.intake_queue",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "INTAKE_CRM_DELIVERY_OUT_OF_TX_WINDOW",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:intake.crm_delivery",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_single_tenant",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "authorization": {
+      "value": "Internal intake delivery service invoked by intake_review router / worker",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "transaction": {
+      "value": "Phase 1 holds pg_try_advisory_xact_lock inside conn.transaction() (lines 82-240); Phase 2 calls push_IntakeItem_to_crm outside the transaction (lines 245-360) and then writes delivery status",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "effects": {
+      "value": [
+        "SELECT pg_try_advisory_xact_lock(hashtext(intake_id))",
+        "Out-of-tx HTTP/service call push_IntakeItem_to_crm (creates/updates CRM client & documents)",
+        "UPDATE intake_queue status/delivery outcome (terminal failure state 'dead' per 212_intake_unified.sql:57)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "retries": {
+      "value": "Retryable via intake_review retry endpoint when delivery fails before terminal 'dead' state",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "idempotency": {
+      "value": "Advisory lock serializes Phase 1, but if Phase 2 succeeds in CRM and crashes before final UPDATE intake_queue, retry re-pushes to CRM",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "failure": {
+      "value": "Records failure detail if push_IntakeItem_to_crm raises; crash window between Phase 1 and Phase 2 leaves delivery outcome unrecorded",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "retention": {
+      "value": "Retained in public.intake_queue",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360"
+    },
+    "recovery": {
+      "value": "Operator retry via intake_review router after verifying whether CRM client was already created",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D08",
+    "x_entry_point": "apps/backend-rag/backend/services/intake/crm_delivery.py",
+    "x_source_line_span": "82-360",
+    "x_evidence_ref": "apps/backend-rag/backend/services/intake/crm_delivery.py:82-360",
+    "x_counterexample_id": "CE-B06-07",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d08.intake.crm_delivery_resolve_and_push"
+  },
+  {
+    "consumer_id": "src_d3e3b6647a4d9614",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "unknown:unknown:unknown",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "9dc2bf5a5691a979a88c8fa38bcd6fafd6fcab29436d7ad06e073335c11cabf1",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:object:fly:tigris-garuda-artifacts",
+      "NOT_ENRICHED_THIS_PHASE"
+    ],
+    "principal": {
+      "value": "service:backend-rag:garuda_artifacts.tigris_store",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "role": {
+      "value": "s3_iam:tigris_bucket_credentials",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "tenant": {
+      "value": "workspace:balizero_garuda_artifacts",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "authorization": {
+      "value": "AWS S3v4 signed credentials scoped to Tigris bucket",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "transaction": {
+      "value": "Single-object atomic S3 PutObject with IfNoneMatch='*' conditional header (lines 210-355)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "effects": {
+      "value": [
+        "S3 PutObject(Bucket, Key=sha256_addressed_key, Body, IfNoneMatch='*')",
+        "On PreconditionFailed/412, S3 HeadObject verifies existing ETag/content length matches content hash"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "retries": {
+      "value": "boto3 standard retry mode on transient 5xx/network errors; 412 handled deterministically via HeadObject",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "idempotency": {
+      "value": "Strictly idempotent content-addressed write-once store (IfNoneMatch='*' + ETag verification)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "failure": {
+      "value": "Raises ArtifactImmutabilityError if existing key has mismatched ETag/size; raises storage error on S3 outage",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "retention": {
+      "value": "Immutable content-addressed objects retained in Tigris S3 bucket",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "recovery": {
+      "value": "Content-addressed keys allow safe re-put from source bytes without overwrite risk",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355"
+    },
+    "x_domain_line": "D08",
+    "x_entry_point": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py",
+    "x_source_line_span": "210-355",
+    "x_evidence_ref": "apps/backend-rag/backend/services/garuda_artifacts/tigris_store.py:210-355",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d08.artifacts.tigris_write_once_put"
+  },
+  {
+    "consumer_id": "src_0634ad7a081c6d3f",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "2857a156d0802dbde9a3859dc57e0563244d28c470992f5c17bbd4c6f395265f",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.news_items",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "NEWS_PUBLISH_AND_QUEUE_SPLIT_AUTOCOMMIT",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "http:router:news",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "editorial:balizero_news_room",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "authorization": {
+      "value": "API key / editorial JWT guard + Legge 5 approval_state gate",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "transaction": {
+      "value": "Separate autocommit statements on public.news_items and public.post_publish_queue (lines 115-295, 415-555)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "effects": {
+      "value": [
+        "UPDATE public.news_items SET status='published', published_at=NOW(), position=$2",
+        "INSERT INTO public.post_publish_queue (article_id, action, status='pending') ON CONFLICT DO NOTHING"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "retries": {
+      "value": "Poller retries post_publish_queue items up to 3 attempts; router publish endpoint is caller-retried",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "idempotency": {
+      "value": "post_publish_queue uses ON CONFLICT DO NOTHING; news_items UPDATE is state-idempotent",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "failure": {
+      "value": "If process dies after UPDATE news_items before INSERT post_publish_queue, article is marked published in DB without MDX/GitHub sync queued",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "retention": {
+      "value": "Permanent editorial archive in public.news_items",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555"
+    },
+    "recovery": {
+      "value": "Re-enqueue missing post_publish_queue row via editorial repair endpoint",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D09",
+    "x_entry_point": "apps/backend-rag/backend/app/routers/news.py",
+    "x_source_line_span": "115-295,415-555",
+    "x_evidence_ref": "apps/backend-rag/backend/app/routers/news.py:415-555",
+    "x_counterexample_id": "CE-B06-08",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d09.editorial.news_publish_and_enqueue"
+  },
+  {
+    "consumer_id": "src_59070a3d3043fb26",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "33e59ec1178b61bfa0eacfd6e1012671e413fcd35ffed3e3f9077d57853d35fa",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.war_room_drafts",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:canva_renderer_v2._pg",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "editorial:balizero_war_room_wr2",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "authorization": {
+      "value": "Internal WR2 pipeline service; outward Instagram publish gated by explicit human approval_state (Legge 5)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "transaction": {
+      "value": "Per-method connection acquisition in canva_renderer_v2/_pg.py and war_room/repository.py:72-355",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "effects": {
+      "value": [
+        "INSERT/UPDATE public.war_room_drafts (topic, slides_json, render_urls, status)",
+        "INSERT INTO public.war_room_posts (draft_id, platform, external_post_id, published_at)",
+        "Optional notification enqueue into public.wa_outbox for editorial review"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "retries": {
+      "value": "Stage-level retries in WR2 orchestrator",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "idempotency": {
+      "value": "Draft updates keyed by draft_id; published post registration keyed by draft_id + platform",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "failure": {
+      "value": "Marks war_room_drafts.status='failed' with error log on render or publish failure",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "retention": {
+      "value": "Retained in public.war_room_drafts and public.war_room_posts",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355"
+    },
+    "recovery": {
+      "value": "Failed drafts can be re-rendered from stored slides_json in public.war_room_drafts",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D09",
+    "x_entry_point": "apps/backend-rag/backend/services/canva_renderer_v2/_pg.py",
+    "x_source_line_span": "72-355",
+    "x_evidence_ref": "apps/backend-rag/backend/services/war_room/repository.py:72-355",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d09.wr2.draft_render_and_post_registry"
+  },
+  {
+    "consumer_id": "src_737479819e0beeb6",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "532fd280adb3efe6f9fc61fb15670842188af6aa96cbb6c2ad3299f245b0b655",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.post_publish_queue",
+      "NOT_ENRICHED_THIS_PHASE",
+      "POST_PUBLISH_POLLER_GIT_PUSH_CALLBACK_SPLIT",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "daemon:pro:bali-intel-scraper.post_publish_poller",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "role": {
+      "value": "http_api_key:X_API_Key_editorial_poller",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "tenant": {
+      "value": "editorial:balizero_news_room",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "authorization": {
+      "value": "Pro LaunchAgent com.balizero.post-publish-poller authenticating to backend API via X-API-Key",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "transaction": {
+      "value": "Distributed 3-step workflow: HTTP GET /pending -> local git branch + MDX write + git push -> HTTP POST /{id}/done or /{id}/failed (lines 1681-1840)",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "effects": {
+      "value": [
+        "GET /api/intel/post-publish-queue/pending reads public.post_publish_queue (default status='pending')",
+        "Local filesystem write to apps/mouth/src/content/articles/<category>/<slug>.mdx",
+        "git push origin editorial branch + PR creation on GitHub",
+        "POST /api/intel/post-publish-queue/{id}/done updates status='done', attempts=attempts+1"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "retries": {
+      "value": "Polls every 300s via LaunchAgent; retries up to 3 attempts before status='failed'",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "idempotency": {
+      "value": "Non-atomic across git push and /done callback; retry after mid-flight crash encounters existing remote git branch/PR",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "failure": {
+      "value": "Calls POST /api/intel/post-publish-queue/{id}/failed with error message; increments attempts up to 3",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "retention": {
+      "value": "Queue history retained in public.post_publish_queue; MDX files committed in git history",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840"
+    },
+    "recovery": {
+      "value": "Manual git branch cleanup or marking queue item done after verifying PR exists on GitHub",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D09",
+    "x_entry_point": "apps/bali-intel-scraper/scripts/post_publish_poller.py",
+    "x_source_line_span": "1681-1840",
+    "x_evidence_ref": "apps/bali-intel-scraper/scripts/post_publish_poller.py:1681-1840",
+    "x_counterexample_id": "CE-B06-08",
+    "x_contract_posture": "transitional",
+    "x_proposed_operation_slug": "d09.editorial.post_publish_poller_sync"
+  },
+  {
+    "consumer_id": "src_b3bccbae2cc91a8c",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "ba779fde46fd92f360f1ae3e299706b8aa996c394fafa23cbd0702388525f91c",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.naga_sessions",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RESTORE_DRILL_TABLE_OMITTED",
+      "REPLAY_IDEMPOTENCY_UNPROVED",
+      "CLAIM_EXPIRY_NOT_ERASURE_PROOF",
+      "PERSISTENCE_FAILURE_RETURNS_NONE"
+    ],
+    "principal": {
+      "value": "service:backend-rag:naga.persist",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "intelligence:naga_research_os",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "authorization": {
+      "value": "Internal save_session(pool, state); this function performs no authorization check.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "transaction": {
+      "value": "Explicit pool.acquire() and conn.transaction() in apps/backend-rag/backend/services/naga/persist.py:24-217; one transaction covers the four naga_* tables.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO naga_sessions",
+        "INSERT INTO naga_sources; ON CONFLICT (url, session_id) DO NOTHING",
+        "INSERT INTO naga_claims",
+        "INSERT INTO naga_claim_evidence; ON CONFLICT (claim_id, source_id, relation) DO NOTHING"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "retries": {
+      "value": "No retry loop inside save_session; caught failure returns None to the caller.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "idempotency": {
+      "value": "Each call allocates a new session UUID and claim UUIDs; ON CONFLICT DO NOTHING only deduplicates source URLs within a session and claim-evidence links.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "failure": {
+      "value": "The transaction context rolls back on errors; except Exception logs the failure and returns None.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "retention": {
+      "value": "Claim expires_at is set to 30 days for visa/immigration and 90 days otherwise; expiry metadata does not prove erasure.",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217"
+    },
+    "recovery": {
+      "value": "No replay or restore procedure is implemented in save_session; recovery for naga_* tables remains unproved.",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D10",
+    "x_entry_point": "apps/backend-rag/backend/services/naga/persist.py",
+    "x_source_line_span": "24-217",
+    "x_evidence_ref": "apps/backend-rag/backend/services/naga/persist.py:24-217",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d10.naga.save_session"
+  },
+  {
+    "consumer_id": "src_e2cc71af6590d0d0",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "b21c0960c7ad6fab587efa14b1f663238d094df338c046cf95915a53f585b8b4",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.memory_facts",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "VOLATILE_RAM_FALLBACK_WITHOUT_POSTGRES_RESYNC",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:memory.memory_service_postgres",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_user_memory",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "authorization": {
+      "value": "Internal memory service scoped by user_id",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "transaction": {
+      "value": "Per-statement autocommit on public.memory_facts and public.user_stats (lines 82-188, 228-315); volatile RAM fallback when pool is None or raises",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO public.memory_facts (user_id, fact_text, category, confidence, created_at) ON CONFLICT DO NOTHING",
+        "INSERT INTO public.user_stats (user_id, interaction_count, last_active) ON CONFLICT (user_id) DO UPDATE",
+        "Fallback mutation of process-local dict self.in_memory_storage[user_id] on DB failure"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "retries": {
+      "value": "None; falls back immediately to volatile self.in_memory_storage",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "idempotency": {
+      "value": "Postgres path deduplicates via ON CONFLICT DO NOTHING; RAM fallback appends in-memory list with zero write-back on DB recovery",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "failure": {
+      "value": "Swallows Postgres outage into volatile RAM dict, causing silent memory loss on process restart and split-brain reads",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "retention": {
+      "value": "Retained in public.memory_facts; volatile fallback lost on worker restart",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315"
+    },
+    "recovery": {
+      "value": "Volatile RAM writes are unrecoverable after process exit; Postgres rows backed by Fly volume",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D10",
+    "x_entry_point": "apps/backend-rag/backend/services/memory/memory_service_postgres.py",
+    "x_source_line_span": "82-188,228-315",
+    "x_evidence_ref": "apps/backend-rag/backend/services/memory/memory_service_postgres.py:228-315",
+    "x_counterexample_id": "CE-B06-09",
+    "x_contract_posture": "bug",
+    "x_proposed_operation_slug": "d10.memory.user_memory_facts_upsert"
+  },
+  {
+    "consumer_id": "src_d9f387b7f19b73dd",
+    "operation_id": "UNASSIGNED_B05",
+    "store_id": "pg:fly:nuzantara-postgres/public",
+    "source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "evidence_timestamp": "2026-10-15T07:06:22Z",
+    "evidence_sha256": "eed548e49df339d2247d4de716d65ac01bfd5627082b09176aa1f98336825265",
+    "status": "PARTIAL",
+    "unknowns": [
+      "STATIC_SOURCE_ONLY",
+      "OPERATION_ID_PENDING_B05",
+      "STORE_ID_PROPOSED:pg:fly:nuzantara-postgres/public.collective_memories",
+      "ACTOR_IDENTITY_UNRESOLVED",
+      "RESTORE_DRILL_TABLE_OMITTED"
+    ],
+    "principal": {
+      "value": "service:backend-rag:memory.collective_memory_service",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "role": {
+      "value": "UNKNOWN_RUNTIME_DB_ROLE",
+      "status": "UNKNOWN",
+      "evidence_ref": null
+    },
+    "tenant": {
+      "value": "workspace:balizero_collective_memory",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "authorization": {
+      "value": "Internal collective memory service + autonomous cell-core SQLite WAL stores",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "transaction": {
+      "value": "Postgres conn.transaction() for collective_memories + collective_memory_sources (lines 70-265) paired with Qdrant vector upsert; cell-core memory_sqlite.py:30-120 uses SQLite WAL autocommit on local tables stm and episodes",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "effects": {
+      "value": [
+        "INSERT INTO public.collective_memories (content, category, importance, embedding_id) ON CONFLICT DO UPDATE",
+        "INSERT INTO public.collective_memory_sources (memory_id, source_session_id)",
+        "Companion cell-core SQLite WAL writes into local tables stm (TTL-pruned) and episodes (capped at 1000 rows)"
+      ],
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "retries": {
+      "value": "None on PG write; cell-core SQLite busy_timeout handles local lock contention",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "idempotency": {
+      "value": "Idempotent via content similarity/key check on collective_memories; cell-core STM key-value overwrite",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "failure": {
+      "value": "Logs error and skips collective memory promotion if Postgres or Qdrant is unreachable",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "retention": {
+      "value": "Collective memories retained in PG; cell-core SQLite episodes capped at 1000 rows and stm pruned by TTL",
+      "status": "PARTIAL",
+      "evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265"
+    },
+    "recovery": {
+      "value": "PG collective_memories backed by Fly volume; local cell-core SQLite files live on host disk without cross-host replication",
+      "status": "PARTIAL",
+      "evidence_ref": "scripts/restore_drill_verify.py"
+    },
+    "x_domain_line": "D10",
+    "x_entry_point": "apps/backend-rag/backend/services/memory/collective_memory_service.py",
+    "x_source_line_span": "70-265",
+    "x_evidence_ref": "apps/backend-rag/backend/services/memory/collective_memory_service.py:70-265",
+    "x_counterexample_id": "NONE",
+    "x_contract_posture": "intentional",
+    "x_proposed_operation_slug": "d10.memory.collective_and_cell_episodic_store"
+  }
+]

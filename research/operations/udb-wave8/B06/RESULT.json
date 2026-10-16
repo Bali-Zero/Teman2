@@ -1,0 +1,206 @@
+{
+  "block_id": "B06",
+  "campaign_id": "universal-db-wave8-20261015",
+  "dimensions": [
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08",
+    "D09",
+    "D10"
+  ],
+  "status": "PARTIAL",
+  "block_closed": false,
+  "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "head_sha": "SEE_GIT_HEAD: a committed file cannot carry its own commit sha",
+  "proofs": [
+    {
+      "claim": "DUX-REQ-B06-01 producer receipt (counts domain, domain_hint and disposition|contract_coverage_status over the full consumer matrix), committed with its command.",
+      "file": "research/operations/udb-wave8/B06/fixtures/receipts/DUX-REQ-B06-01.out",
+      "sha256": "1551433483cb28444c7729aef228a351edc0a644880ec01d8b77546bb20f5cbb",
+      "command_file_sha256": "2ab0a482d1c8b4d31e82f6588083992e67b8031d447d11d501c36409a9f47fad",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "DUX-REQ-B06-03 producer receipt for the B06 path-prefix scope: 683 rows = 504 NOT_ENRICHED_THIS_PHASE + 179 'MATCHED_SOURCE_PATH_ONLY; ACTOR_IDENTITY_UNRESOLVED' (asserted equal to the census computed from the fixture by test_pinned_csv_source_and_prefix_census_parity).",
+      "file": "research/operations/udb-wave8/B06/fixtures/receipts/DUX-REQ-B06-03.out",
+      "sha256": "e30e1c44d8e6ab797e20dc7722eb27854cc1e04a2feab325db2d0a1f3c9d10aa",
+      "command_file_sha256": "03ac55218419d807d0f2f54f9e133e96600a9de8c2fcb60021ddd9b4795011ec",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Consumer-matrix metadata projection: 6029 rows, 11 metadata fields, unused blocker/activation fields blank, raw paths replaced by a generic prefix plus the existing canonical consumer_id. Processed-byte sha256 is deliberately distinct from the original source sha256 c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118; no raw census copy and no new native observation.",
+      "file": "research/operations/udb-wave8/B06/fixtures/consumer-matrix-metadata.csv",
+      "sha256": "dfe7c0b1967bfb70d732736bf9f808242d269551237318a0491add6a25ff32c7",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Fixture manifest pinning the projection, its original source identity and the four receipt files; used only through the explicit opt-in --metadata-fixture flag.",
+      "file": "research/operations/udb-wave8/B06/fixtures/manifest.json",
+      "sha256": "5861322d678a0012086a8a2617d62da1c910189edc2d7a9c1ffaa517944c4ff9",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Adapter: builds the 21 D04-D10 operation instances in the frozen conventions shape (x_ extensions), verifies pinned receipts, separates source-taxonomy counters from business-inventory labels, and exposes the --metadata-fixture CLI that reports both byte identities.",
+      "file": "research/operations/udb-wave8/B06/b06_domain_paths.py",
+      "sha256": "59f3b7ad6b427110cbdd30f709cf6a4cdddfb6c88f70721c5cef43075a3f2fbe",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "21 operation records, semantically identical to the pre-repair artifact (parent DEFAULT-PARITY-CLI: all 21 records and the full-input default summary unchanged).",
+      "file": "research/operations/udb-wave8/B06/domain-operation-instances.json",
+      "sha256": "857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "18 offline tests over committed files only, no skips: census parity, contract shape and negative cases, tamper/missing-file fail-closed cases, NAGA source grounding, and the clean-checkout fixture CLI.",
+      "file": "research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+      "sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444",
+      "status": "EVIDENCED"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/b06_inventory.py",
+      "sha256": "31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/test_b06_inventory.py",
+      "sha256": "193ba3a711f5e9654aa53fd28519553f769602f0fd9d432bfab44511a60755eb",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/validate_b05_submission.py",
+      "sha256": "46ecde24f2c8a0aea35ce87098c38c904c2fedbde8366baf18ed9abc8ef741aa",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/fixtures/source-inventory.json.gz",
+      "sha256": "c8dfd7ae1d2ae4182fa36aa4cf21e9b6aad40838309d7b77c736af4ec03fb68e",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/fixtures/source-inventory-provenance.json",
+      "sha256": "c57f8a654295a43f2b7500ce57619ca85db8aab0929cc677eff7943fc4e50643",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/B05-VALIDATION.json",
+      "sha256": "d4c8e14249ab08c76445b50123fe3fa30ead992df2fcca23cdfe771793dc7c2b",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/INVENTORY-VERIFICATION.json",
+      "sha256": "291b3f2df9784f8863a73962d115108e1b5638bdb4deff4d536a4d1b4f21e729",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    }
+  ],
+  "missing": [
+    "Runtime database role resolution for the 683 B06-prefix rows: 179 carry ACTOR_IDENTITY_UNRESOLVED and 504 are NOT_ENRICHED_THIS_PHASE (routed to B04).",
+    "Canonical operation_id assignment from the B05 catalog for the 21 instances still marked UNASSIGNED_B05 (routed to B05).",
+    "Restore-drill verification for public.clients (last real run FAIL) and public.conversations (last real run CANNOT-VERIFY) and B06 tables absent from scripts/ci/restore_drill_verify.py (routed to B01/B07).",
+    "Live read-only aggregates DUX-REQ-B06-10/11/12 (duplicate normalized phones, split invoice/payment rows, outbox dead-letter counts): not admitted, not run.",
+    "Withdrawn as unsupported: a 2,608-row subset of seven business-domain labels in domain_hint (none of the seven labels occurs in the producer receipt's domain or domain_hint counters); the 527/155/1 split of the 683 prefix rows; a 'parent run 3 passed / 8 failed' (no receipt exists).",
+    "Business-family membership remains inferred from public paths; 4463 identities lack operation traces.",
+    "Static call targets, runtime effects and failure/retry semantics need further evidence.",
+    "Concrete observer access blocker: zero canonical read-only DSN candidates; no runtime query authorized or attempted."
+  ],
+  "tests": [
+    {
+      "command": "pytest research/operations/udb-wave8/B06/test_b06_domain_paths.py",
+      "result": "History: base 8061c88 before the first correction exit 1, 8 passed / 1 failed (output sha256 60fee2bd40d819e3cf6c7811d207269b135091277ad06be3af10a0ac574924d4); after correction 94e3c2cf: 13 passed at HEAD 01e5e5956d (output sha256 a11b4073e5911ee1245e52d89df127dd54aabe2441e995ac278f8df02da1fd49) but six tests skipped and one errored in a clean checkout because inputs were untracked; after reproduction patch ca70804b: 18 passed, 0 skipped in a parent clean scratch with no ignored inputs (output sha256 1a862494c11f813b65d2b1ac0192060abeabd23834b86c0591b87c4c3fbde443) and 18 passed, 0 skipped, exit 0 in the original worktree at 2026-10-16T01:35Z (output sha256 ac4bb4adba19de4a6867cda4ef18f5daad7f82b4a707cb3fc5e86d2782caadfa). The committed-head run is recorded in the evidence pack.",
+      "evidence_file": "research/operations/udb-wave8/B06/test_b06_domain_paths.py"
+    },
+    {
+      "command": "python research/operations/udb-wave8/B06/b06_domain_paths.py --repo-root . --metadata-fixture research/operations/udb-wave8/B06/fixtures/manifest.json",
+      "result": "Parent clean scratch: exit 0, 21 records, 6029 source rows, 683 prefix rows, processed and source byte identities distinct (stdout sha256 d309f78dd7642ad55d626090664a5feaafee447786de00d8c5f1cb98f1ca6d47).",
+      "evidence_file": "research/operations/udb-wave8/B06/fixtures/manifest.json"
+    },
+    {
+      "command": "See INVENTORY-VERIFICATION.json",
+      "result": "27 passed in worktree; 27 passed in clean copy; CLI exit 0; original 18 tests byte-identical. Initial new anchor test failed for decorators; diagnosed, corrected and regression added.",
+      "evidence_file": "research/operations/udb-wave8/B06/INVENTORY-VERIFICATION.json"
+    }
+  ],
+  "dux_correction": {
+    "executed": true,
+    "entries": [
+      {
+        "patch_sha256": "94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5",
+        "prepared_by": "parent coordinator isolated scratch worktree; applied with pins verified",
+        "files": {
+          "b06_domain_paths.py": {
+            "pre_sha256": "210c7b965e1f1b82bb83ab7121f9276b6d0622d5f8bc53a1307118dd2781aaf0",
+            "post_sha256": "d76a5ebe8482f1cb64f7271e7313a6ca926fd4b9abb366e0b15323b71d5c5daa"
+          },
+          "test_b06_domain_paths.py": {
+            "pre_sha256": "9a633ceaca9b7136dad2cc8472bbea9905974f6d14129e86a590cdf5a9734665",
+            "post_sha256": "c8d4281607f32aaa54b9650fb2991bcacd5e19717989f01d73658c8e31dc5d99"
+          },
+          "domain-operation-instances.json": {
+            "pre_sha256": "504140e1b4c9acb81d88f35cec7f910efb5f32f37054beb23732fb2ec121e13f",
+            "post_sha256": "857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae"
+          }
+        },
+        "tests_after": "13 passed (not reproducible from a clean checkout)"
+      },
+      {
+        "patch_sha256": "ca70804be9f4acfe6605a35984d9997d56465491c64473e1022297a560e807ae",
+        "prepared_by": "parent coordinator isolated clean-checkout reproduction (base 01e5e5956d9eb1efe53e04b9098a84c54830fe35); applied by Dux after sha and apply-check verification",
+        "bytes": 1036795,
+        "paths": 8,
+        "old_assertions": 58,
+        "old_assertions_expanded": "2 byte-identity assertions split into separate processed and source identity assertions; census and negative assertions retained",
+        "new_tests": 5,
+        "secret_digest_findings_proposed": 14,
+        "tests_after": "18 passed, 0 skipped, exit 0"
+      }
+    ],
+    "native_probe_executed": false,
+    "live_pg_probed": false,
+    "runtime_unknowns_retained": true
+  },
+  "inventory_phase": {
+    "status": "PARTIAL",
+    "source_inventory": "fixtures/source-inventory.json.gz",
+    "provenance": "fixtures/source-inventory-provenance.json",
+    "source_rows": 6029,
+    "public_source_rows": 4231,
+    "static_call_anchor_rows": 1566,
+    "untraced_rows": 4463,
+    "operation_signals": 21001,
+    "business_domain_denominators": "UNKNOWN; candidate sets overlap",
+    "b05_validation_file": "B05-VALIDATION.json",
+    "native_probe_executed": false,
+    "b05_original_accepted": 21,
+    "b05_additional_accepted": 21001
+  },
+  "access_blocker": {
+    "observed_at": "2026-10-16T07:39:00Z",
+    "observer": "parent coordinator; not reproduced by B06",
+    "secure_owned_mode_0600_secret_file_present": true,
+    "canonical_nuzantara_readonly_dsn_candidates": 0,
+    "B06_OBSERVER_DSN": "UNSET",
+    "B07_OBSERVER_DSN": "UNSET",
+    "native_query_executed": false
+  },
+  "current_main_source_context": {
+    "current_suite_passed": 38,
+    "legacy_suite_tests_preserved": 18,
+    "previous_27_test_phase_is_historical": true,
+    "source_review_current": "PENDING_NEW_SOURCE_DELTA_REVIEW",
+    "inventory_freeze": "Historical receipt at08:11; current adapter byte identity superseded by source-context fix",
+    "historical_operation_source_version": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+    "historical_inventory_source_version": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
+    "receipt": "integration-20261016/CURRENT-MAIN-SOURCE-CONTEXT.json",
+    "native_queries": 0,
+    "operational_block_closed": false
+  }
+}
