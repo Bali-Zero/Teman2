@@ -2407,6 +2407,18 @@ def skipped_by_own_if(na: list, spec: dict) -> bool:
     return bool(gated) and all("not_applicable" in planned.get(key_of(s["name"]), {}) for s in rest)   # a matrix N/A step carries no `if:` in the plan
 
 
+def judge_rc0_of(status: str, steps: list | None, spec: dict) -> str | None:
+    """B25: the structured answer for a context that ran every step rc=0 with the BASE judge while the candidate rewrites a judge, read from
+    the steps' statuses and the plan's ``judge_modified`` and never from any reason text (the junit's strings are the candidate's). BLOCKED, no
+    FAIL/ERROR/BLOCKED step, at least one PASS: ``judge_rewritten_base_ok`` for ANY file the BASE judge reads that the candidate rewrote (a judge
+    test, a workflow, .gitattributes: the owner's ruling of 2026-10-15). A RED read is ``judge_rewritten`` (steps_verdict), never this. None otherwise."""
+    mod = [str(f) for f in spec.get("judge_modified") or []]
+    sts = [s.get("status") for s in steps or [] if isinstance(s, dict)]
+    if status != "BLOCKED" or not mod or not sts or "PASS" not in sts or any(x not in ("PASS", "NOT_APPLICABLE") for x in sts):
+        return None
+    return "judge_rewritten_base_ok"
+
+
 def steps_verdict(steps: list, spec: dict) -> tuple[str, str]:
     """A context is PASS only when every step it runs returned 0 and every other step is NOT_APPLICABLE with a reason. A red step
     dominates (FAIL > ERROR > BLOCKED); a verdict read with a BASE judge the candidate rewrites is claimed in neither direction:
@@ -3121,6 +3133,7 @@ def cmd_run(a):
                 b = st["binding"]
                 if ident["candidate_sha"] != b["candidate_sha"] or ident["tree_sha"] != b["tree_sha"] or ident["dirty"]:
                     c.update(status="BLOCKED", reason=f"worktree moved: HEAD={ident['candidate_sha'][:12]} tree={ident['tree_sha'][:12]} dirty={ident['dirty']}", at=now())
+                    c.pop("judge_no_verdict", None)
                     c.pop("gate_pending", None)
                     store.save(st)
                     continue
@@ -3128,6 +3141,7 @@ def cmd_run(a):
                 started = now()
                 c.update(status="RUNNING", reason="executing", at=started, pid=os.getpid(), pid_started=proc_start(os.getpid()), started_at=started, attempts=attempt)
                 c.pop("gate_pending", None)   # B12: a flag is this attempt's answer, never an earlier one's
+                c.pop("judge_no_verdict", None)
                 store.save(st)
                 try:
                     res = execute(name, spec, run_dir, plan, a.timeout)
@@ -3152,6 +3166,7 @@ def cmd_run(a):
                 atomic_write(rp, json.dumps(receipt, indent=2, sort_keys=True))
                 c.setdefault("history", []).append({"attempt": attempt, "status": res["status"], "reason": res["reason"], "started_at": started, "ended_at": now(), "pid": os.getpid()})
                 c.update(status=res["status"], reason=res["reason"], at=now(), receipt=str(rp), rc=res.get("rc"), duration_s=res.get("duration_s"), counts=res.get("counts"), log=res.get("log"),
+                         **({"judge_no_verdict": jv} if (jv := judge_rc0_of(res["status"], res.get("steps"), spec)) else {}),
                          steps=res.get("steps"), **({"gate_pending": True} if res.get("gate_pending") is True else {}))
                 c.pop("pid", None)
                 c.pop("pid_started", None)
@@ -3278,6 +3293,8 @@ def evaluate_contexts(view: dict, plan: dict) -> dict:
             out["results"][name]["no_verdict"] = host.group(0)
         elif s == "BLOCKED" and reason.startswith("judge_rewritten: "):   # a red read with a BASE judge the candidate rewrites (B5)
             out["results"][name]["no_verdict"] = "judge_rewritten"
+        elif s == "BLOCKED" and view[chk].get("judge_no_verdict") in ("judge_rewritten_base_ok", "judge_rewritten"):   # B25: the structured flag, never the text
+            out["results"][name]["no_verdict"] = view[chk]["judge_no_verdict"]
         elif s == "BLOCKED" and view[chk].get("gate_pending") is True:   # B12: the structured flag of the context's result, never its text
             out["results"][name]["no_verdict"] = "gate_pending"
         if not ok:

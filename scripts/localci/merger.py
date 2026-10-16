@@ -2073,6 +2073,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                                "hosted_compare": hosted, "run_dir": str(run_dir), "executed_required": loc["executed_required"],
                                "non_executed": loc["non_executed"], "partial": loc["partial"], "host_no_verdict": loc["host_no_verdict"],
                                "host_checks": [] if gate.get("error") else host_checks(status),
+                               **({"no_verdict": nvs} if (nvs := {k: v["no_verdict"] for k, v in results.items() if isinstance(v, dict) and v.get("no_verdict")}) else {}),
                                "elapsed_s": round(time.monotonic() - t0, 1)})
         print(f"merger: #{n} {line['overall']} candidate={cand_sha[:12]} base={base_sha[:12]} hosted(head)={line['hosted_compare'].get('agreement', 'n/a')} "
               f"run_dir={run_dir}")
