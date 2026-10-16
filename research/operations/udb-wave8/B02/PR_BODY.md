@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # B02: prepared Redis observer admission and one-shot execution package
 
 ## Current package status (2026-10-16)
@@ -25,3 +30,7 @@ Bites: the shipping test_redis_observer_native_once.py and test_redis_observer_a
 status: BLOCKED; block_closed: false; native permission: UNGRANTED. Source PASS is neither a whole-head gate nor owner consent nor native closure. Dated authenticated Redis metadata, effective native permissions, native dry-run observations and canonical operation bindings remain missing.
 
 The authenticated owner availability exception removes unavailable Claude as a blocker while preserving independent review and native-consent requirements. The coordinator owns official verification, the externally bound committed head, final gates and the original single PR. Existing R1 metadata and frozen findings are preserved. The three reviewed source files lack adversarial_review/R1 docstring markers; the parent must assess actual applicability or waiver, since adding markers here would change reviewed pins. No commit, baseline change, native invocation, production credential read, native ACL change or deployment was performed by this integration.
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.

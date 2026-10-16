@@ -1,4 +1,11 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # B02 Proposal — Redis Observer Admission & Negative Permission Verification
+
+Current evidence (2026-10-16): both one-shot Pro/Mini temporary observer exercises completed with role cleanup; current focused source suite153P. Active actor coverage and denominator remain UNKNOWN. Earlier analysis/proposals below are historical; no further native run is authorized. block_closed:false. Final package review is independent and pending.
 
 - **Campaign**: `universal-db-wave8-20261015`
 - **Block**: `B02` — Redis observer admission
@@ -168,3 +175,7 @@ A deterministic, dependency-light Python CLI (`scripts/redis_observer_probe.py`)
 - **Inputs**: `~/scripts/redis_liveness_check.py` on Pro (`runtime_6e9b0846bcc0bc34`, `consumer-matrix.csv:4642`).
 - **Expected Output Shape**: SHA256 verification matching `6adec8ac61428ef1a2b1713cb5c21f5785dd03fb6224e0fb5d7226d272485475` and source lines showing how `com.nuzantara.redis-liveness` connects/authenticates to Redis.
 - **Why It Matters**: Closes the `OUTSIDE_TRACKED_CODE_INDEX` gap on Pro's loaded Redis liveness daemon and verifies whether it already uses an observer credential, `REDIS_PASSWORD`, or unauthenticated `PING`.
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.

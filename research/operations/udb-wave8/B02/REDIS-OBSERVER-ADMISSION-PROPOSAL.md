@@ -1,4 +1,11 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # Redis 8.x Observer Admission Proposal (`nuzantara_observer`) — Pro & Mini
+
+Current evidence (2026-10-16): both one-shot Pro/Mini temporary observer exercises completed with role cleanup; current focused source suite153P. Active actor coverage and denominator remain UNKNOWN. Earlier analysis/proposals below are historical; no further native run is authorized. block_closed:false. Final package review is independent and pending.
 
 - **Block**: `B02` (`universal-db-wave8-20261015`)
 - **Target Stores**:
@@ -125,3 +132,7 @@ Executed on the **observer connection** (`role="observer"`), where `validate_obs
   - `ROLE`, `DBSIZE`, `TIME`, `COMMAND COUNT`, `CLIENT ID`, `CLIENT INFO`
   - `INFO server`, `INFO persistence`, `INFO keyspace`, `INFO memory`, `INFO clients`, `INFO stats`, `INFO replication` (filtered through line-level regexes in `ALLOWED_INFO_PATTERNS`).
 - Promotion to `x_observer_state = "ADMITTED_VERIFIED"` occurs in `combine_observer_and_dryrun_evidence` **only** when Plane B succeeds (`OBSERVER_METADATA_ADMITTED`), Plane A succeeds (`DRYRUN_MATRIX_VERIFIED`), and both planes match on `endpoint`, `observer_identity`, `acl_policy_sha256`, and `source_version`.
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.

@@ -1,4 +1,11 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # B02: Redis observer admission
+
+Current evidence (2026-10-16): both one-shot Pro/Mini temporary observer exercises completed with role cleanup; current focused source suite153P. Active actor coverage and denominator remain UNKNOWN. Earlier analysis/proposals below are historical; no further native run is authorized. block_closed:false. Final package review is independent and pending.
 
 ## 1 Mandate
 Campaign universal-db-wave8-20261015; block B02; host Mini; worktree ~/nuzantara/.worktrees/db-udb-b02-redis; base 8061c88e0c43dd42e735fd012f9ed072df3ef3d6. Success: Establish authenticated observer metadata on Pro and Mini, effective identity/privileges, admitted commands and negative permission tests. No keys/values or credential output. Authentication alone is insufficient.
@@ -28,3 +35,7 @@ Use the common deadline, no resets; no repeated rounds. Compact return <=500 wor
 
 ## 7 Evidence and release
 Exactly ONE final PR for B02. Freeze scope and candidate before opening. Release through BLUE Dux and Pro's canonical GitHub route, never a Mini origin push. Failure/blocked results remain open. Four-step successors are gated on actual all8 closure.
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.

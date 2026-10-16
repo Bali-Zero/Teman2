@@ -1,3 +1,8 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # B02 current source-integration addendum (2026-10-16)
 
 ## Current package status (2026-10-16)
@@ -188,3 +193,7 @@ The following body retains the earlier findings and dispositions. Its commands, 
     research/operations/udb-wave8/B02/RESULT.json \
     research/operations/udb-wave8/B02/PR_BODY.md
   ```
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.

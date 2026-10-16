@@ -1,4 +1,11 @@
+---
+adversarial_review: codex
+review_scope: recorded_evidence_reconciliation_only
+---
+
 # B02 Analysis — Redis Observer Admission (Pro & Mini)
+
+Current evidence (2026-10-16): both one-shot Pro/Mini temporary observer exercises completed with role cleanup; current focused source suite153P. Active actor coverage and denominator remain UNKNOWN. Earlier analysis/proposals below are historical; no further native run is authorized. block_closed:false. Final package review is independent and pending.
 
 - **Campaign**: `universal-db-wave8-20261015`
 - **Block**: `B02` — Redis observer admission
@@ -134,3 +141,7 @@ Every B02 observer evidence record and consumer-operation mapping must emit the 
    - Creating or persisting `ACL SETUSER nuzantara_observer ...` on Pro and Mini Redis and storing its secret in Keychain / `~/.nuzantara-redis-observer.env` (`0600`) mutates live service ACL state and requires Dux / operator execution.
 5. **Pro HOME-Fork `~/scripts/redis_liveness_check.py` (`UNKNOWN_HOME_FORK_AUTH`)**:
    - `consumer-matrix.csv:4642` marks this loaded daemon (`com.nuzantara.redis-liveness`) as `OUTSIDE_TRACKED_CODE_INDEX`; its auth mechanism (`REDIS_PASSWORD` vs unauthenticated `PING`) is unverified from tracked files.
+
+## Adversarial review
+
+Scoped coordinator review reconciles the reported result with the recorded independent source/run review and completed one-shot native receipts. This is a partial document reconciliation, not full runtime coverage, operational acceptance or the final committed-head gate. Source fixtures and preparation records retain their historical timing; the current status below supersedes conflicting execution-status claims.
