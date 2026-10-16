@@ -93,7 +93,16 @@ def test_legacy_builder_raises_on_duplicate_company_icon():
 
 
 @pytest.fixture(scope="module")
-def pricing_service():
+def monkeypatch_module():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture(scope="module")
+def pricing_service(monkeypatch_module):
+    # search_service appends the client-facing contact trailer, which imports app settings.
+    monkeypatch_module.setenv("JWT_SECRET_KEY", "x" * 40)
+    monkeypatch_module.setenv("API_KEYS", "test-key-for-pricing-search")
     sys.path.insert(0, str(ROOT / "apps" / "backend-rag"))
     from backend.services.pricing.pricing_service import PricingService
 
@@ -109,7 +118,54 @@ def _found_names(result: dict) -> set[str]:
 
 @pytest.mark.parametrize(
     "query",
-    ["izin minuman beralkohol", "harga izin minuman beralkohol", "alcohol license"],
+    [
+        "izin minuman beralkohol",
+        "harga izin minuman beralkohol",
+        "miras",
+        "minuman keras",
+        "alcohol license",
+    ],
 )
 def test_search_finds_all_three_alcohol_rows(pricing_service, query):
     assert ALCOHOL_NAMES <= _found_names(pricing_service.search_service(query))
+
+
+def _alcohol_hits(result: dict) -> set[str]:
+    return {n for n in _found_names(result) if n and n.startswith("Alcohol License")}
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "izin minuman beralkohol",
+        "harga izin minuman beralkohol",
+        "miras",
+        "minuman keras",
+    ],
+)
+def test_indonesian_alcohol_queries_return_exactly_the_three_rows(
+    pricing_service, query
+):
+    assert _alcohol_hits(pricing_service.search_service(query)) == ALCOHOL_NAMES
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "izin tinggal",
+        "izin kerja",
+        "izin usaha",
+        "izin edar",
+        "izin",
+        "berapa biaya izin usaha restoran?",
+    ],
+)
+def test_generic_permit_queries_do_not_surface_alcohol_rows(pricing_service, query):
+    assert _alcohol_hits(pricing_service.search_service(query)) == set()
+
+
+def test_alcohol_rows_carry_no_generic_izin_keyword():
+    rows = _company_rows()
+    for name in ALCOHOL_NAMES:
+        for kw in rows[name].get("keywords", []):
+            assert not kw.lower().startswith("izin "), (name, kw)
