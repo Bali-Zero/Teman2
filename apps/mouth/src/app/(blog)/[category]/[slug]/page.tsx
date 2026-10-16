@@ -11,6 +11,7 @@ import { resolveContentLocale } from "@/i18n/content-locale";
 import { ContentLangSync } from "@/i18n/ContentLangSync";
 import { generateArticleMetadata } from "@/lib/blog/metadata";
 import { CATEGORY_SEO } from "@/lib/blog/category-seo";
+import { stripImports } from "@/lib/blog/strip-imports";
 import { renderMDXBody } from "@/components/blog/MDXContentRSC";
 import {
   ArticleClient,
@@ -133,16 +134,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   "digital-nomad": "Digital Nomad",
   trends: "Tech",
 };
-
-/**
- * Strip import statements from MDX content
- */
-function stripImports(content: string): string {
-  return content
-    .replace(/^import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, "")
-    .replace(/^import\s*{[\s\S]*?}\s*from\s*['"][^'"]+['"];?\s*$/gm, "")
-    .trim();
-}
 
 /**
  * Article page - Server component that renders the client component
