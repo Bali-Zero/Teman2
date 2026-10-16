@@ -63,7 +63,7 @@ CODE_POINTS: dict[str, str] = {
     "E28A": "762c2f04-031f-5bfc-b86f-1ed8433544a9",
     "E28B": "b5213b2e-aebc-5cc2-bdb1-67ed15d0a5ca",
     "E28C": "1283b444-d5cd-5a67-9259-14d7e2bb8844",
-    "E28D": "a2bc3a9d-e8e1-5ded-a4fa-6054379eff26",
+    "E28D": "a2bc3a9d-d94f-57e4-a817-54d1a4b76884",
     "E28F": "6ecc8c5b-ff30-517c-901c-fc87a896ae68",
 }
 E28G_POINT_ID = "225aed53-6663-5df6-97fe-bfb49d999800"

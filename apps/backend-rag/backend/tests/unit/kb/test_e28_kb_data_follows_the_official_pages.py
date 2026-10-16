@@ -917,3 +917,36 @@ def test_no_surface_claims_e28g_has_no_official_page_because_no_page_was_fetched
     for path in (MIG_PATH, SEED_PATH):
         text = path.read_text()
         assert not re.search(r"no official Imigrasi page|has no official|no official page", text), path.name
+
+
+# The 14 visa_oracle points a live scroll returned for the E28 family and its neighbours (ids and codes
+# only, no text). Source: Qdrant scroll of the visa_oracle collection, 2026-10-16 morning, saved in the
+# session scratchpad as qdrant-e28.txt. The first fixer run on PROD REFUSED because its E28D id was an
+# id spliced from two different points; every fixer target must be one of these exactly.
+LIVE_VISA_ORACLE_POINTS = (
+    ("1283b444-d5cd-5a67-9259-14d7e2bb8844", "E28C"),
+    ("159a4a27-3fef-5fda-8ab0-4d9eef83cf04", "E31H"),
+    ("225aed53-6663-5df6-97fe-bfb49d999800", "E28G"),
+    ("501ee277-9d0b-5721-8d26-c8add0cda6ee", "NB2-ALIH-STATUS"),
+    ("642857ce-7b57-5d7f-8390-672c1c561f3a", "NB2-BRIDGING-VISA"),
+    ("6ecc8c5b-ff30-517c-901c-fc87a896ae68", "E28F"),
+    ("74af29a6-d860-567c-8a10-fa3a772f473e", "E31E"),
+    ("762c2f04-031f-5bfc-b86f-1ed8433544a9", "E28A"),
+    ("876ff05c-3667-55d2-82ea-4dcce5672878", "E33G"),
+    ("8d1a785b-e8e1-5ded-a4fa-6054379eff26", "C1"),
+    ("a2bc3a9d-d94f-57e4-a817-54d1a4b76884", "E28D"),
+    ("b50440ec-a48a-54b5-95b4-2ffe9695dbf5", "NB2-KITAP-CONVERSION"),
+    ("b5213b2e-aebc-5cc2-bdb1-67ed15d0a5ca", "E28B"),
+    ("ff1e428c-7b98-5173-9106-1983b763bc81", "C12"),
+)
+
+
+def test_every_fixer_target_id_is_a_live_point_with_the_matching_code(fx):
+    live = dict(LIVE_VISA_ORACLE_POINTS)
+    assert len(live) == 14
+    targets = {**{pid: code for code, pid in fx.CODE_POINTS.items()},
+               fx.CONCEPT_POINT_ID: fx.CONCEPT_CODE, fx.E28G_POINT_ID: "E28G"}
+    assert len(targets) == 7
+    for pid, code in targets.items():
+        assert pid in live, f"{code}: target id {pid} is not a live visa_oracle point"
+        assert live[pid] == code, f"{code}: id {pid} belongs to {live[pid]}"
