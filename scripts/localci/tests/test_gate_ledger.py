@@ -150,7 +150,7 @@ def test_tb_a_file_state_that_is_not_a_private_regular_file_is_false(ledger, tmp
     assert gl.gate_verdict(ledger, R, H)[0] is False   # another owner
     monkeypatch.undo()
     os.unlink(ledger)
-    os.mkdir(ledger)
+    os.mkdir(ledger, 0o700)   # 0700: no group/other bit and our owner, so only the regular-file check can refuse it
     assert gl.gate_verdict(ledger, R, H)[0] is False   # a directory
     os.rmdir(ledger)
     write(ledger, good[:-1])
@@ -306,6 +306,29 @@ def test_supersede_finishes_what_a_partly_superseded_head_still_owes(ledger):
     assert json.loads(Path(ledger).read_text().splitlines()[-1])["supersedes"] == f1 and gl.gate_verdict(ledger, R, H)[0] is True
 
 
+def test_a_supersede_counts_only_from_a_later_entry_of_the_same_head(ledger):
+    fail = line(entry(verdict="failure", gate_session="f"))
+    fwd = line(entry(gate_session="s0", supersedes=dg(fail)))   # written BEFORE the failure it names
+    write(ledger, fwd + b"\n" + fail + b"\n" + line(entry(gate_session="s2")) + b"\n")
+    assert gl.gate_verdict(ledger, R, H)[0] is False
+    other_head = line(entry(head_sha=OTHER, pr=8, supersedes=dg(fail)))   # a LATER entry, but of another head
+    write(ledger, fail + b"\n" + other_head + b"\n" + line(entry(gate_session="s2")) + b"\n")
+    assert gl.gate_verdict(ledger, R, H)[0] is False
+    write(ledger, fail + b"\n" + line(entry(gate_session="s1", supersedes=dg(fail))) + b"\n" + line(entry(gate_session="s2")) + b"\n")
+    assert gl.gate_verdict(ledger, R, H)[0] is True
+
+
+def test_pr_is_a_positive_int_or_null_and_a_null_pr_reads_like_any_other(ledger):
+    (d,) = gl.append(ledger, b64(client(pr=None)), now=NOW)
+    assert json.loads(Path(ledger).read_text())["pr"] is None and gl.gate_verdict(ledger, R, H)[0] is True
+    assert gl.append(ledger, b64(client(pr=9)), now=NOW + 1) == [d]   # pr is not part of the identity: the same verdict, no new line
+
+
+def test_a_repo_is_matched_exactly_and_case_is_the_callers_to_get_right(ledger):
+    write(ledger, line(entry()) + b"\n")
+    assert gl.gate_verdict(ledger, R, H)[0] is True and gl.gate_verdict(ledger, R.lower(), H)[0] is False
+
+
 def test_supersede_does_not_name_a_failure_of_another_head_or_repo(ledger):
     gl.append(ledger, b64(client(verdict="failure", head_sha=OTHER, pr=8)), now=NOW)
     gl.append(ledger, b64(client(verdict="failure", repo="Bali-Zero/Other")), now=NOW)
@@ -391,6 +414,13 @@ def test_quarantine_moves_one_bad_line_journalled_and_refuses_a_line_that_valida
     (rec,) = [json.loads(x) for x in (Path(ledger).parent / "verdicts.quarantine.jsonl").read_text().splitlines()]
     assert rec["line"] == 2 and base64.b64decode(rec["raw_b64"]) == b"{torn" and rec["sha256"] == dg(b"{torn") and rec["ts"] == "2026-10-14T17:46:40Z"
     assert oct(os.stat(Path(ledger).parent / "verdicts.quarantine.jsonl").st_mode & 0o777) == "0o600" and oct(os.stat(ledger).st_mode & 0o777) == "0o600"
+    torn = b'{"v":1,"ts"'   # removing ANOTHER line must leave a torn tail torn: completing it with a newline could turn it into a verdict
+    valid_tail = line(entry(head_sha=OTHER, pr=8, gate_session="t"))
+    write(ledger, line(entry(verdict="failure")) + b"\n" + b"{junk\n" + valid_tail)
+    assert gl.verify(ledger)[0] == 1 and gl.gate_verdict(ledger, R, OTHER)[0] is False
+    assert gl.quarantine(ledger, 2)[0] == 0
+    assert Path(ledger).read_bytes().endswith(valid_tail) and not Path(ledger).read_bytes().endswith(b"\n")
+    assert gl.gate_verdict(ledger, R, OTHER)[0] is False   # still torn, still unreadable
     write(ledger, good1 + good1[:-1])   # a complete line with no newline is the torn tail, and may go
     assert gl.quarantine(ledger, 2)[0] == 0 and Path(ledger).read_bytes() == good1
 

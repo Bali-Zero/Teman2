@@ -75,7 +75,7 @@ def validate(e) -> "str | None":
     ok = (e["v"] == 1 and _is_int(e["v"])
           and isinstance(e["ts"], str) and TS_RE.fullmatch(e["ts"])
           and isinstance(e["repo"], str) and REPO_RE.fullmatch(e["repo"])
-          and _is_int(e["pr"]) and e["pr"] > 0
+          and (e["pr"] is None or (_is_int(e["pr"]) and e["pr"] > 0))
           and isinstance(e["head_sha"], str) and HEX40.fullmatch(e["head_sha"])
           and e["verdict"] in ("success", "failure") and isinstance(e["verdict"], str)
           and isinstance(e["gate_session"], str) and len(e["gate_session"]) <= 80
@@ -134,6 +134,8 @@ def read_entries(path: str):
         fcntl.flock(fd, fcntl.LOCK_SH)
         with os.fdopen(os.dup(fd), "rb") as f:
             data = f.read()
+    except OSError as exc:
+        raise LedgerFile(f"ledger unreadable: {exc.strerror}")
     finally:
         os.close(fd)
     return _parse(data)
@@ -285,7 +287,10 @@ def quarantine(path: str, line_no: int, now: "float | None" = None) -> "tuple[in
             valid = False
         if valid:
             return 2, f"line {line_no} validates: refusing to move a valid verdict"
-        rest = b"".join(x + b"\n" for i, x in enumerate(lines, 1) if i != line_no)
+        kept = [x for i, x in enumerate(lines, 1) if i != line_no]
+        rest = b"\n".join(kept) + (b"\n" if kept else b"")
+        if torn_tail and line_no != len(lines):
+            rest = rest[:-1]   # the torn tail stays torn: another line's removal must not complete it into a verdict
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() if now is None else now))
         rec = json.dumps({"ts": ts, "line": line_no, "sha256": digest(raw), "raw_b64": base64.b64encode(raw).decode("ascii")}, separators=(",", ":"))
         qfd = os.open(os.path.join(os.path.dirname(path), "verdicts.quarantine.jsonl"), os.O_WRONLY | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)

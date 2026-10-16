@@ -42,7 +42,7 @@ def extracted(text: str) -> set[str]:
 
 
 def test_the_hand_report_extracts_exactly_the_files_the_tick_extracts():
-    tick = extracted(TICK.read_text()) - {"tick_chain.py"}   # B33: the report never chains
+    tick = extracted(TICK.read_text()) - {"tick_chain.py", "gate_ledger.py"}   # B33: the report never chains; B25-prime: gate-append is a writer mode, not a tick
     assert {"merger.py", "hosted_compare.py", "runner.py"} <= tick   # the parse itself still sees the tick's loops
     assert extracted(SCRIPT.read_text()) == tick
 
@@ -114,7 +114,7 @@ def test_the_hand_report_runs_the_mirrors_merger_report_with_the_ticks_files_in_
     state = mirror(tmp_path, {"refs/merger/wrapper": "wrapper code"})
     out = run(state)
     assert out["argv"] == ["report", "--repo", "Bali-Zero/Teman2", "--state-dir", str(state)]
-    assert out["beside"] == sorted(extracted(TICK.read_text()) - {"tick_chain.py"}) and out["marker"] == "wrapper code"
+    assert out["beside"] == sorted(extracted(TICK.read_text()) - {"tick_chain.py", "gate_ledger.py"}) and out["marker"] == "wrapper code"
     assert out["isolated"] == 1   # python -I, as the tick runs it
     env = out["env"]
     # Python's PEP 538 coercion sets LC_CTYPE itself under the C locale env -i leaves; the caller's own value never arrives

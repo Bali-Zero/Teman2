@@ -85,8 +85,8 @@ CLI:
       [--conditions-ref <PENDING-ARMS pointer>] [--supersede "reason"]
       [--gate-session NAME] [--evidence-sha256 HEX64] [--dry-run]
 
-  --pr             the PR number of --sha for the ledger entry; when omitted it is read from GitHub (the one PR whose head is
-                   --sha), and no single answer means exit 1
+  --pr             the PR number of --sha for the ledger entry; optional (a gate usually posts before its PR exists): when
+                   omitted the entry carries pr null, never a guess
   --gate-session   who gated, at most 80 characters (default: gate)
   --evidence-sha256  the sha256 of the evidence pack, when there is one
 
@@ -263,38 +263,58 @@ def resolve_repo() -> str | None:
         return None
 
 
-def derive_pr(repo: str, sha: str) -> int | None:
-    """The one PR whose head is `sha`, or None when GitHub gives no single answer."""
-    try:
-        out = subprocess.run(
-            ["gh", "api", f"repos/{repo}/commits/{sha}/pulls", "--jq", f'.[] | select(.head.sha=="{sha}") | .number'],
-            capture_output=True, text=True, check=True, timeout=30,
-        ).stdout.split()
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-        return None
-    return int(out[0]) if len(out) == 1 and out[0].isdigit() else None
+PREFLIGHT = (   # read-only on Pro: neither probe may run the wrapper, an old wrapper treats ANY argv as a tick
+    'W={w}; M="${{MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}}/repo.git"; '
+    '[ -f "$W" ] || exit 10; grep -q gate-append "$W" || exit 10; '
+    'R=refs/merger/wrapper; git -C "$M" rev-parse --verify --quiet "$R^{{commit}}" >/dev/null || R=refs/merger/base; '
+    'git -C "$M" cat-file -e "$R:scripts/localci/gate_ledger.py" 2>/dev/null || exit 11'
+)
+PREFLIGHT_WHY = {
+    10: "the live wrapper on Pro has no gate-append mode (an old wrapper would run a TICK on this argv): deploy step 1 of "
+        "docs/runbooks/localci-gate-ledger.md (copy the wrapper pair)",
+    11: "the merger mirror on Pro has no scripts/localci/gate_ledger.py at refs/merger/wrapper: deploy step 2 of "
+        "docs/runbooks/localci-gate-ledger.md (forced fetch with the wrapper's refspec)",
+}
+
+
+def _on_pro() -> bool:
+    return os.uname().nodename.split(".")[0].lower() == "nuzantara"
+
+
+def preflight_command() -> list[str]:
+    script = PREFLIGHT.format(w=LEDGER_WRAPPER)
+    if _on_pro():
+        return ["/bin/bash", "-c", script.replace("~", os.path.expanduser("~"))]
+    return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "pro", script]
 
 
 def ledger_command(b64: str, supersede: bool) -> list[str]:
     """The argv that appends: the wrapper locally on Pro, `ssh pro` from anywhere else."""
     tail = ["gate-append", b64] + (["--supersede"] if supersede else [])
-    if os.uname().nodename.split(".")[0].lower() == "nuzantara":
+    if _on_pro():
         return ["/bin/bash", os.path.expanduser(LEDGER_WRAPPER)] + tail
     return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "pro", f"bash {LEDGER_WRAPPER} " + " ".join(tail)]
 
 
 def ledger_append(repo: str, sha: str, pr: int | None, state: str, session: str, evidence: str | None,
                   supersede: bool, dry_run: bool) -> int:
-    """Append the verdict to the Pro ledger. Non-zero means the caller must post NOTHING."""
+    """Append the verdict to the Pro ledger. Non-zero means the caller must post NOTHING. `pr` is recorded as given, null when the
+    gate posts before the PR exists: it is not part of the verification key (repo, head_sha) and is never guessed."""
     if dry_run:
+        print("DRY-RUN: ledger preflight would run:", " ".join(preflight_command()[:6]), "...")
         print("DRY-RUN: ledger append would run:", " ".join(ledger_command("<entry-b64>", supersede and state == "success")))
         return 0
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         print(f"harness_fable_gate: --sha {sha!r} is not a full 40-hex commit sha — the ledger keys on it", file=sys.stderr)
         return 1
-    pr = pr if pr is not None else derive_pr(repo, sha)
-    if pr is None:
-        print(f"harness_fable_gate: no single PR has head {sha} — pass --pr", file=sys.stderr)
+    try:
+        pre = subprocess.run(preflight_command(), capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=30)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        print(f"harness_fable_gate: ledger preflight could not run (Pro unreachable?), nothing is posted: {exc}", file=sys.stderr)
+        return 1
+    if pre.returncode != 0:
+        why = PREFLIGHT_WHY.get(pre.returncode, f"preflight rc={pre.returncode}: {pre.stderr.strip()[:200]}")
+        print(f"harness_fable_gate: the ledger is not deployed on Pro, nothing is posted: {why}", file=sys.stderr)
         return 1
     entry = {"repo": repo, "pr": pr, "head_sha": sha, "verdict": LEDGER_STATE[state], "gate_session": session[:80],
              "evidence_sha256": evidence, "supersedes": None}
@@ -348,7 +368,7 @@ def main(argv: list[str] | None = None, read_statuses=read_existing_statuses, ap
         help="reason for overwriting an existing harness/fable-gate status on --sha "
              "(only when overwriting is the decision — shown on the PR)",
     )
-    parser.add_argument("--pr", type=int, default=None, help="PR number of --sha, for the ledger entry (read from GitHub if omitted)")
+    parser.add_argument("--pr", type=int, default=None, help="PR number of --sha for the ledger entry (null when omitted)")
     parser.add_argument("--gate-session", default="gate", help="who gated, at most 80 characters")
     parser.add_argument("--evidence-sha256", default=None, help="sha256 of the evidence pack, when there is one")
     parser.add_argument("--dry-run", action="store_true")

@@ -27,9 +27,8 @@ if [ "${1:-}" = "gate-append" ]; then
     || git -C "$GA_STATE/repo.git" rev-parse --verify "refs/merger/base^{commit}")" || exit 3
   GA_CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-gate-append.XXXXXX")"
   trap 'rm -rf "$GA_CODE"' EXIT
-  GA_FILE="scripts/localci/gate_ledger.py"   # held in a variable: this is not one of the tick's extractions that hand_report.sh must mirror
-  if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:$GA_FILE" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then
-    echo "gate-append: no $GA_FILE at ${GA_SHA:0:12} (not merged, or not fetched by a tick yet)" >&2
+  if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:scripts/localci/gate_ledger.py" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then
+    echo "gate-append: no scripts/localci/gate_ledger.py at ${GA_SHA:0:12} (not merged, or not fetched by a tick yet)" >&2
     exit 3
   fi
   "$GA_PY" -I "$GA_CODE/gate_ledger.py" ${GATE_LEDGER:+--ledger "$GATE_LEDGER"} append "$@"

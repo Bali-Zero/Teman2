@@ -28,6 +28,11 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "supersede-any-digest": (GL, 'and not any(l["supersedes"] == d for _, l in mine[i + 1:]):\n            return False, f"entry',
                              'and not any(l["supersedes"] is not None for _, l in mine[i + 1:]):\n            return False, f"entry', GT),
     # --- the reader's remaining terms
+    "own-forward-supersede-counts": (GL, 'any(l["supersedes"] == d for _, l in mine[i + 1:]):\n            return False', 'any(l["supersedes"] == d for _, l in mine):\n            return False', GT),
+    "own-other-head-supersede-counts": (GL, 'any(l["supersedes"] == d for _, l in mine[i + 1:]):\n            return False', 'any(l["supersedes"] == d for _, l in entries):\n            return False', GT),
+    "own-not-regular-accepted": (GL, "    if not stat.S_ISREG(st.st_mode):\n        raise LedgerFile(\"ledger is not a regular file\")", "    if False:\n        raise LedgerFile(\"ledger is not a regular file\")", GT),
+    "b25p1-quarantine-completes-the-torn-tail": (GL, "            rest = rest[:-1]", "            pass", GT),
+    "b25p1-pr-must-be-int": (GL, 'and (e["pr"] is None or (_is_int(e["pr"]) and e["pr"] > 0))', 'and (_is_int(e["pr"]) and e["pr"] > 0)', GT),
     "b25p1-torn-tail-accepted": (GL, "        if torn_tail and n == len(lines):", "        if False:", GT),
     # --- the writer
     "b25p1-twin-at-any-position": (GL, "            newest = mine[-1] if mine else None", "            newest = next((x for x in mine if _same(x[1], entry)), mine[-1] if mine else None)", GT),
@@ -53,6 +58,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     # --- the tick wrapper's gate-append mode
     "b25p1-wrapper-reads-base": (WR, 'rev-parse --verify --quiet "refs/merger/wrapper^{commit}"', 'rev-parse --verify --quiet "refs/merger/base^{commit}"', GT),
     "b25p1-wrapper-failure-swallowed": (WR, 'append "$@"\n  exit $?', 'append "$@" || true\n  exit 0', GT),
-    "b25p1-wrapper-missing-code-unchecked": (WR, 'if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:$GA_FILE" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then',
+    "b25p1-wrapper-missing-code-unchecked": (WR, 'if ! git -C "$GA_STATE/repo.git" show "$GA_SHA:scripts/localci/gate_ledger.py" > "$GA_CODE/gate_ledger.py" || [ ! -s "$GA_CODE/gate_ledger.py" ]; then',
                                              "if false; then", GT),
 }

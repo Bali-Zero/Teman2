@@ -387,7 +387,7 @@ PR workflow.
 **Ledger.** On Pro, `~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl`: directory 0700, file 0600, owner = the merger's
 uid; outside the merger state dir, `prune.py`'s scope and every run dir; never in a container argv or env; retention
 forever; added to the M5 `~/Backups` set. One JSON line per verdict, exact key set (unknown keys rejected):
-`v` (1), `ts` (Pro clock, set by the appender), `repo`, `pr` (int), `head_sha` (40 lowercase hex), `verdict` (`success` or
+`v` (1), `ts` (Pro clock, set by the appender), `repo`, `pr` (a positive int, or null when the gate posts before its PR exists; it is not part of the verification key and is never derived by guessing), `head_sha` (40 lowercase hex), `verdict` (`success` or
 `failure`), `gate_session` (str, at most 80), `evidence_sha256` (64 hex or null), `supersedes` (64 hex digest of an earlier
 line, or null), `via` (measured from `SSH_CONNECTION` by the appender, never supplied). A line's digest is the sha256 of its bytes without the newline.
 
@@ -396,7 +396,7 @@ mode (so writer and reader are the code the tick runs; superscar #1), and only t
 travels as ONE base64 argv, never JSON on a shell line; the appender validates it, refuses a ledger whose last byte is
 not `\n`, takes `LOCK_EX`, `O_APPEND|O_CREAT` 0600, one `write()`, `fsync`, and prints the digest; it is idempotent on
 (repo, head, verdict, evidence, supersedes) while the head's NEWEST entry carries them (an older twin behind a later verdict is not one). A failed append exits non-zero and posts nothing, so a GitHub-only success is
-always an anomaly. `--supersede` (a flag of `gate-append`, success verdicts only; with nothing to supersede it is a plain append) makes the appender, under the lock, name the digest of the newest UNSUPERSEDED non-success entry of the head, one append per unsuperseded failure (so `F,F,S` takes two). The caller supplies exactly `repo`, `pr`, `head_sha`, `verdict`, `gate_session`, `evidence_sha256`, `supersedes` (null with `--supersede`); `v`, `ts` and `via` are the appender's, and any other key is rejected. `gate_ledger.py verify` reports the first bad line and the mode; `quarantine --line N` moves one
+always an anomaly. `--supersede` (a flag of `gate-append`, success verdicts only; with nothing to supersede it is a plain append, or a no-op when the newest entry is already a success with the same evidence) makes the appender, under the lock, name the digest of the newest UNSUPERSEDED non-success entry of the head, one append per unsuperseded failure (so `F,F,S` takes two). The caller supplies exactly `repo`, `pr`, `head_sha`, `verdict`, `gate_session`, `evidence_sha256`, `supersedes` (null with `--supersede`); `v`, `ts` and `via` are the appender's, and any other key is rejected. `gate_ledger.py verify` reports the first bad line and the mode; `quarantine --line N` moves one
 bad line to `verdicts.quarantine.jsonl` and journals it, and REFUSES a line that validates (else it is an override). The
 tick journals `gate_ledger_unreadable` once; any session can run both, no human.
 
@@ -404,7 +404,7 @@ tick journals `gate_ledger_unreadable` once; any session can run both, no human.
 
 1. `lstat` missing, not a regular file, a symlink, any group/other mode bit, or owner not `geteuid()`: false.
 2. Under `LOCK_SH` every line must parse and validate, else false for EVERY head. `validate` is the schema alone: a `supersedes` that names no line of the file is valid and supersedes nothing (else `supersede-any-digest` would be equivalent at both sites).
-3. `mine` = entries with `repo` equal and `head_sha` equal (exact 40-hex equality); none: false.
+3. `mine` = entries with `repo` equal and `head_sha` equal (exact 40-hex equality); none: false. `repo` is compared byte for byte (the merger binds `lower()`, so P3 must pass `Bali-Zero/Teman2`).
 4. The newest of `mine` (the last line in file order, never by `ts`) must be exactly `"success"`; every earlier non-success entry of `mine` must be named by the
    `supersedes` of a later entry of `mine`; otherwise false.
 
