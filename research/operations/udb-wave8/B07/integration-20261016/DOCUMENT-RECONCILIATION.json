@@ -1,0 +1,23 @@
+{
+  "phase": "owner-authorized bounded reconciliation",
+  "observed_at": "2026-10-16T07:37:03.993010+00:00",
+  "preimages": {
+    "RESULT.json": "f9073653b611aab08306282a839e65098e5246625089d662fc818b79f19561b4",
+    "PR_BODY.md": "7c65298453fbb777876c294624806610f48097a477e9e23f181ad04ae5d2fa25",
+    "PROPOSAL.md": "ea0c0b4f62e843955f98f22889bc359774272d92260803812f0073484bf34d9a",
+    "DEFINITIVE-SYNTHESIS.md": "9ea3c94de4e04a6700c29526eda0645362ab07aeb782bb03c77e8bad1e8655d0",
+    "ANALYSIS.md": "06b788a36316fc90fcc4e229192900013c1c1bd1161f6564a227b82aa5fab82e",
+    "b07_ledger_boolean_probe.py": "57d16232d1e9e49ecb5931a25e8918d8e700c5889e8cae721e03ee2ce587ad4e"
+  },
+  "postimages": {
+    "RESULT.json": "b5268c0e54b6056c0de3788aeb7aafa2013149bca1c1160667e370e18080ad1a",
+    "PR_BODY.md": "0554a879261baff0dcce849c1465d30b768eee26a821b510ec40d60f0da8d133",
+    "PROPOSAL.md": "e59776f88a90e4eaf09604fb88f5d0b3d2b56e9f59650222ae36385f2f5dafc0",
+    "DEFINITIVE-SYNTHESIS.md": "25fcb9a119fe268ec84b08cdb29a186fed015dbc9b5bc74984f1791fd4363a28",
+    "ANALYSIS.md": "17176868af57263872372f0d2514751a046ecb7f0851e61b8ec82f45bd35d918",
+    "b07_ledger_boolean_probe.py": "9eb0aee4ee5298504b1ddd713e827ae04e991f72a92b65f66d9619327657b2f3"
+  },
+  "source_behavior_changed": false,
+  "native_probe_executed": false,
+  "block_closed": false
+}

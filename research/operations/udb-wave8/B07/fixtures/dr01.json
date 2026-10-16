@@ -1,0 +1,1951 @@
+{
+  "migrations_v2": [
+    {
+      "file": "092_attendance_late_incidents.sql",
+      "full_sha256": "1ff4353f734c7592b876fd88e3b2eb9ff5f03dc222aa19ba82da2280d5cf436b",
+      "forward_sha256": "5069f0308d3e7644049a7098b96611fd2a8df36b87766c32ef1b8e791a326fe4",
+      "has_rollback": false,
+      "has_concurrently": false
+    },
+    {
+      "file": "107_bridge_outbox.sql",
+      "full_sha256": "17e53fe6e9aa56f59d140ac7e7d14c14745a627d15f033cb2940e56b9704e4c5",
+      "forward_sha256": "8ccf9eb4f787837fc3dd3958a8b481bd6593961ac0bc5046e8f32cceb280bea0",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "108_lkpm_receipts.sql",
+      "full_sha256": "62ef2ef1119902d07c6768312faa23b4948b1f7d0011797910ce4bede89d59d4",
+      "forward_sha256": "c303eb20bd4ab62248eb73e1cd061ff77c4388c318a2432185764e1ff5495c2e",
+      "has_rollback": false,
+      "has_concurrently": false
+    },
+    {
+      "file": "109_garuda_curator.sql",
+      "full_sha256": "db4fdaf24fbd74db7f89f4c72e76acc8a021fd0e2bbae4e522914b844d39464f",
+      "forward_sha256": "1865c0289ebbc0ca207c4c45cf3983b127513e2caca0f1ff0ae96aa49998ff03",
+      "has_rollback": false,
+      "has_concurrently": false
+    },
+    {
+      "file": "110_lkpm_allowlist_krisna.sql",
+      "full_sha256": "adce704a33c69ed7d023cdd5e9bbfca9f142f1010de15be861caf3f65b8182e7",
+      "forward_sha256": "8efc458b7edde9167b1f6a830b633792227826f9b0a854ffcefc9f04a9a1883b",
+      "has_rollback": false,
+      "has_concurrently": false
+    },
+    {
+      "file": "114_compliance_alerts.sql",
+      "full_sha256": "8b1e93d6124b880e9e36def40c72c41bad71e6222cd05fe8489026af46b79d03",
+      "forward_sha256": "0063bf007738ed68d77d5dc02affa4d258139cafb3d6f9a31e9c3269943e2c76",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "115_alert_outcomes.sql",
+      "full_sha256": "6f1f64beba71f9ec0cbc44aac3f47d608c91d850cd76f2dd4da0d0859ed784c5",
+      "forward_sha256": "64b5447912c2b7856cc1a71caf2810699d1dab00e99b2c29e0245984c326885c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "116_intel_validator_log.sql",
+      "full_sha256": "0b65d771f5832df63187f3a1ad1301080c7707e5fa9d027aba3c096f2da2a37a",
+      "forward_sha256": "f31310d9eb806d22b195f05a32acb1c0e4c25787fec2abbd78cd7567c322cdd5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "117_llm_cost_events.sql",
+      "full_sha256": "eecdf15bda18f3ffc7423340ba8c322c83f97b7b2b5f9e3803f4668cf7042323",
+      "forward_sha256": "3dfa98cec0e3e91de5d35698e52ec0844e11b1999f51cfb359a808e1eb6815ce",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "118_clients_seo_attribution.sql",
+      "full_sha256": "0f6da42566922e9b1898e5291f596c61e2d1a67ca205a7eca58562188e5dccc7",
+      "forward_sha256": "2823dd24f604cd13cd96a5cd6ce31a9759a795d08b47bdb93b3ed7d600ef7140",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "119_llm_cost_recommendations.sql",
+      "full_sha256": "7b5cafa6b024856d26b061a711909edcf51ef405dc12755a0b1075dbb8e5370e",
+      "forward_sha256": "3dd470f6ce34355b5fb387b44f6d4d871226538191bf093862cbfaa9c2ced043",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "122_lead_intents.sql",
+      "full_sha256": "d958026e0f4b175b7803edb5b57af688a41a3a20f3e66cd67c4a0354e71adc80",
+      "forward_sha256": "2873fa4c8ebf98dad1df799de25e4cc6c4e40e538a0d54c6abd953883dcae076",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "123_email_subscriptions.sql",
+      "full_sha256": "9fd18455bb18af904b8ebcc0f9da04397ef98c1d20c5e794c2484430daaf9e9d",
+      "forward_sha256": "f2be741832c88e15575bf30284ca014156674bf6be5f937aacfccf459c5dc9b5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "124_visa_checks.sql",
+      "full_sha256": "ec11a60df899775b9393b4794f1f855026a5a827810b5d166afc59a64e4d819e",
+      "forward_sha256": "28fe7055a5d8c3baac4a2cc0069ffbe7e10fe8bfe81aad39ab5d2eed692f758a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "125_invoices_unique_practice.sql",
+      "full_sha256": "ad2029b06d48347f5a42b5917b6bb596abf4e392106bdf59b25740624999934f",
+      "forward_sha256": "11044a262f842838d205788818a32cb9f210d13cf58dbab46c9a26c8aa3ab6a4",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "126_email_send_log.sql",
+      "full_sha256": "a0d71b8db585aaeb551e39cd5dbac8feb763ce463ab5e14fc82f587bf544f0da",
+      "forward_sha256": "7171afb0085db9abb4963c6cd12c601b718de7387029f4e3781094053de90557",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "127_war_room_canva_url.sql",
+      "full_sha256": "9a493d1f70c814bc15bcd21e613bf0fb8881505526e07761dab1d6602cff066b",
+      "forward_sha256": "ffffd9df567a8871359549c9fd726efa6c95e1dcca90f60c737307b98e28974b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "128_m13_feedback.sql",
+      "full_sha256": "905f301c8a54fa9bc402f687d1e5857c93531d37bf773b7bcf492a03e6fd4a37",
+      "forward_sha256": "0626874002a535661fd9f0d3413736e27d8d37b6e0548ce4d49057d07cea5efa",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "129_crm_guardian.sql",
+      "full_sha256": "986b06960ac58aba9b7efe518e6763fe4a29456deff8b891e34ca5ebc9e0a5c6",
+      "forward_sha256": "f421c03667005f14816b6d200bdb481be05c8b591a0c933e7f51e3998d1aca6f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "130_crm_guardian_summary_queue.sql",
+      "full_sha256": "eff5e1a26842b21376e1683fcdf37c563f703ef61386d77cf7722ebb727cb5a8",
+      "forward_sha256": "34a468e3076f4d6b8b19bfeebe2852cb963cd1cc9fd3f7b2ec765cedef082c43",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "132_legacy_lkpm_reports.sql",
+      "full_sha256": "8b64366ce4bdf3b9dfc99b1900da487a82b3b4b0c2619dfeb301b6871b8a6498",
+      "forward_sha256": "7749836f2267773e9dc19e447f2b75d5520155924af0c83bc7f23421f002ac6a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "133_legacy_system_settings.sql",
+      "full_sha256": "0f52f6e58c76386944e0d241a9a47e01737d9c9e07afae81bdc9f72ea11d8bc0",
+      "forward_sha256": "7ad83b4181f602c6bb940d227f3abe0840db83147586ca1fb19f4f5c3f3295c8",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "134_legacy_notification_log.sql",
+      "full_sha256": "d53695f35c5da11d6026091f80d4e9e581d52c3b25d084ec8034419fa6d1fa45",
+      "forward_sha256": "660607eb4d4b43857e977fd0bf7e27af044a3802e438d91f9aeeb372fcd59b6b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "135_legacy_notification_prefs.sql",
+      "full_sha256": "9be1b0efe62f053ac534e2405d934e6a3971af6d5288c9eef3c4c6434a8b3f78",
+      "forward_sha256": "7762dca92bff2ae31f9536445a0974f0f72c906504b1ed2928787d472fc07973",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "136_clients_drive_columns_and_defaults.sql",
+      "full_sha256": "46e3ac2f7670d5a3bc2eb181ce866fa23104951e7635d1cc6e706c890a17639e",
+      "forward_sha256": "ffcf59bd19604eca1d8129f109dc6252b90bc1ccfa38d9c95f1aae3bf6f89fe7",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "137_team_members_legacy_columns_and_defaults.sql",
+      "full_sha256": "d466d88a2c08bc6440e1f429bb63c7d9e4c75b64708409146f19d6c83c045770",
+      "forward_sha256": "625c5822fdaf00794a5ed3fc979fca0eac9af9e7cda01b0496e1d122b870f0d6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "138_wr2_status_notify.sql",
+      "full_sha256": "dae736f15b24dd6d0196e7f013b6a861f7741c63bc51b7bbc4121b6f3774a2cd",
+      "forward_sha256": "4ad47258995abe7a8a11afad3bdf2eecf482e4875987068dbb7ab8709cbf16d3",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "139_intel_radar_findings.sql",
+      "full_sha256": "74cea713b72a9636d3cf1ff3f54165a3e0cbc4cb67b828241aa85452e5921168",
+      "forward_sha256": "0d2295d35e07b871f8a9adafce856aaf48ebdacd017951cd89f43350e818cb1a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "140_drop_crm_guardian_events_no_update_delete_rules.sql",
+      "full_sha256": "00b045d05dee759d836d37946ee478e6631b12f4c9e2c948031c6b4be6fe4385",
+      "forward_sha256": "4aacd1ec1b9345572db6f759ed88c3e8c827e1a3d4ef55bfca934b1a1b4450c5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "142_legacy_user_profiles.sql",
+      "full_sha256": "345460d61ec5ebd8e08d64696fe2f0a2b8c6d3457e6825347cea439bc65bd656",
+      "forward_sha256": "6841e61000963c250a375cc79a343956d5b122b31d57091ead46fa3986455673",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "143_legacy_conversations.sql",
+      "full_sha256": "0795afe0de4ddcb77ea1391c7abbd0b330841772a0936210082bfb68d42934cc",
+      "forward_sha256": "cadc312e2840d20260b61ef8ab225d41ccb900cbea833021db399a7ea90d3164",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "144_events_outbox.sql",
+      "full_sha256": "4c4b9af61c0f5345604e9d1c2fe9da66baf5c3424a6419763b1326c901180180",
+      "forward_sha256": "5c94e1ef4be0573964bcbfa6efcc01bad8471654db58f2714b6065042dcf35e6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "145_inbound_webhooks.sql",
+      "full_sha256": "e094dbf871c55b79cdb12f67f110794ca2288b5638e4b65dfc5180fbfa658953",
+      "forward_sha256": "27ac84f5ee08e186c5792398ce2dc0233c523ce34a4e8a0af91a7a3e26415514",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "146_eventbus_triggers_use_outbox.sql",
+      "full_sha256": "67efaf11a1007986a4e239540b3467526ab35acd04aeb845a323d56428048819",
+      "forward_sha256": "7baa5c426b08a275709bc0d1e89401cfc72edd5b044c6331dc38c062dfcc6804",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "147_federation_alert_proposals.sql",
+      "full_sha256": "ad55667ee06bf077b4f7024da781c1ec259dd5096fb752a528ac22d41839b80d",
+      "forward_sha256": "d97f23c3ea2468fa430fb7823dbc551198a66d280a107e59c4041379fb9ecc1f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "148_practice_types_bridging_visa.sql",
+      "full_sha256": "13fb2ae9fbb813cf5457633f405a12377be292da66840a27efbb8ca63b618a72",
+      "forward_sha256": "b849d1c6b041090aaf54de64cac4b1698a9026d4e3eaeebff25cdea7d2124878",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "149_client_segments.sql",
+      "full_sha256": "21f2134060a3c0e499c466a5690e2cf2beb99539a65aca0dafbbd9218c3a5400",
+      "forward_sha256": "9735324abe22945b4305db779e200a93526317857103dae9df0c2a7c45bbff31",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "150_renewal_alert_outcomes.sql",
+      "full_sha256": "125315e929ee2c7764e597f75af579bf2eb3a9718a4ebe8082a5544522b7db8b",
+      "forward_sha256": "856a3d4f8be9cc36690969e579f1b7276abf808870ffb46e21350e6273d1112f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "151_observed_shell_events.sql",
+      "full_sha256": "e590a0ef0330e1ad8cfb5a3c413d4ae755dfed17236342c8d3e2862e85d14be5",
+      "forward_sha256": "5bd8d37ce2e2e069b293e328ae18b1f543a4a94e64e171985cdcba04b1b2851f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "152_measurer_event_trigger.sql",
+      "full_sha256": "a6c7501cd370149c06189c3f512f38c9634a507b508ba551e1558ed5dfd4d736",
+      "forward_sha256": "ecd3ba1aafda3a13d71c85ca40d061f2ec84b6b0fb91951a3bdce09c159760e9",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "153_crm_welcome_runs.sql",
+      "full_sha256": "2fa2847bf7227a3d288581cd3438908a2f36f7ed1e67acbb304400fa6bad017f",
+      "forward_sha256": "a8ac3679b44994cf3d7705f001f9450f41841dd0cc05df5ff58715fe3cd3118d",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "154_asset_provenance.sql",
+      "full_sha256": "62e437d7de7c60300330d01ea4d2ff7957fc4b309016d229a3bd8051635eb01e",
+      "forward_sha256": "2e9cca0780c3ee215ee5dae500e37233b4a129c4b5a52efcdd11a91943c089a1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "155_asset_provenance_trigger.sql",
+      "full_sha256": "058b5a66a6d79c271aa5905c4678ec5b62c63daa241b8dcca07a8d79f60821a3",
+      "forward_sha256": "39138322a294afb7a4d3f509da4cf4d16a1d66e7a7614903752dad750e894129",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "156_mata_garuda_tag_intel_finding.sql",
+      "full_sha256": "4b9c637d387a7150a70f748c5a0261132ed9473fd756ae1b677b92100cf032ec",
+      "forward_sha256": "a9a8e14e2d035ca74af2331b979c9d7e75bb8abc884631dac90d58a51a1ecaa6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "157_practice_types_2026_pricing_delta.sql",
+      "full_sha256": "4caafd4a22cb66c915425e11d5f07401960310678a90717948b39a61b14d2d43",
+      "forward_sha256": "b27e408c69e9375f12eef2551988520f27fe204a70a64132da2fc41cdf6fb781",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "158_practices_discount_columns.sql",
+      "full_sha256": "1a1c1931d2a5e48dcb813c8cb8df2adff6b0a8adf63fa556a8ff28eb0119d13a",
+      "forward_sha256": "4fe79857b028c06c0ad4f2b3c3fefa30b60680240db14664634ee2905ec98e50",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "161_wr2_supervisor_heartbeat.sql",
+      "full_sha256": "838b34f2633699200c3169530bc5e2d94235dfad6c9b387a2de78eb9feeea671",
+      "forward_sha256": "2ddaa387281d066f9a821d7d5104c9169da1ed52d40c1ab6ada2d492bf51ae35",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "162_war_room_fact_check.sql",
+      "full_sha256": "49d23f550da218cd242275ba00b05df3d3293dbd73d45b58c3f1911e2071e428",
+      "forward_sha256": "2a8911d350de7b39b7fa9bab811c1ba6e43975e870b5f916f94f53e91bfd11b6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "163_war_room_status_fact_stages.sql",
+      "full_sha256": "61b008be2b965a2645a3a610cb88b445e47c5104f8935775f048199f31c2b353",
+      "forward_sha256": "9dfa73e720ddbb850f6a5e77d343a29c0a7abba2760d25c6cb8ccb788b94cdd9",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "164_wr2_status_change_outbox.sql",
+      "full_sha256": "790442b483f10b1ace7b4f8f7b50cc80477c8cc8cdceb1f25425728a11bb8d4f",
+      "forward_sha256": "73e3296e6cee4c0bf5b83a480a00447c7ac901513827b536ced264864d1a2c4c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "165_reconcile_schema_migrations_duplicates.sql",
+      "full_sha256": "158ae027ee046684a6bd0ee70dd7ec7e54904b9540e3e3b4f1bd33e76aec8763",
+      "forward_sha256": "bcbfa68ce0f0079869ee375def33e4a0052dc707240c2793e61f566ba39592ea",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "166_reconcile_client_email_duplicates.sql",
+      "full_sha256": "12770a0c8b162399b79a8c038e0a6d169e63037ad6d7010806a6af8c6dc1f50e",
+      "forward_sha256": "07a5facc976669986130206f45514d279a289fef5d1083ae847857608124039c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "167_crm_kg_nodes_edges.sql",
+      "full_sha256": "08eb0c65afc7efb94a239cf4e1f4bb4530a52bf3737f043df74939bca4815b53",
+      "forward_sha256": "5da9702d9d1c5ba8fdd5d879ffa5e25ac8579120fe418e37e83b749d606d5611",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "168_intel_lake_schema.sql",
+      "full_sha256": "9559a1d1d04b34084296ebd4345348303aae40aabcfd283af5f6ac32ef7e92d4",
+      "forward_sha256": "863e84b4b291750b0092b6fb582133c25680e4a7be6cf983da4e8bda89bbd8db",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "169_crm_workspace_ai_snapshots.sql",
+      "full_sha256": "71b892531ff5893816f097e411556cf13d81fdf7cde185971b584824643801ef",
+      "forward_sha256": "287088f1f4185ed724ba19638975845620dc30ee96bfc972fca71cf0492e6669",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "170_wr2_draft_lease.sql",
+      "full_sha256": "67f2ba8d8fae2af3f8e1637de3a8f79b56294d6d81f4753f8e0146021af4f6d4",
+      "forward_sha256": "57132ca293abe777872641d9c889304742b85af1c855dd69969235e16d07d83f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "171_intel_item_nb_pushes.sql",
+      "full_sha256": "59d3a1b306869618f35fd6c00b6d34ffa8118b2105db368e978ada71d8712695",
+      "forward_sha256": "c90cbca45f8c78a04892b147c3e38ecd4aa99deec39bad9e153ec9cb25604256",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "172_cell_skills_scar_support.sql",
+      "full_sha256": "208bf0c25fab307bce46bdc35579402c40c489bae49dea6fa6ba754f2f013c87",
+      "forward_sha256": "a6c0609007186a74fdd3bd47a8d051b4dc64458f3955f66ea6d65901e9b3bff0",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "173_wa_mirror_team_sessions.sql",
+      "full_sha256": "30470b51772943201d796fe3f895cb85961af83daa013701474b1e1a87baba7b",
+      "forward_sha256": "d582a210052398724b3f0d1fc6e4466f72a199a48bf423d37749b8d39a428ce1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "174_intel_lake_jsonb_double_encoding_repair.sql",
+      "full_sha256": "b306b2eb29a7639ac382a13b317cb86dcb2d37980f9023ee9e5fe1d675ba457a",
+      "forward_sha256": "37a72e18662cca3737f45f9792adf5999a73b630333c4243daec13e59c4016fe",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "175_wa_mirror_session_active_index.sql",
+      "full_sha256": "5e0032611b5a90bcb9e53d6de20cfbddbacf89bda0691bdff00470ba52e93710",
+      "forward_sha256": "46cc7d22107160b8e8ff6f7d6ce5137c23fb1cc6b1516e65efd29c4d56f72d66",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "176_analytics_jsonb_double_encoding_repair.sql",
+      "full_sha256": "67f33bae87351139f147070b3b34c705d786a63b35e7d1afa608f5377d525ad5",
+      "forward_sha256": "c5cb37326888071d161aa4bc73e104701b2b899bdcc1583429cd1f7c4ffc3afc",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "177_wa_mirror_message_capture_columns.sql",
+      "full_sha256": "8a86160eae8df531af033930c6f59207087935e8db6b9aa0544ff759b3e146eb",
+      "forward_sha256": "274be690a716eb17a414fab3b9e4eb6f63725c0509e28793aadcafe5bb8555d2",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "178_dream_room_state.sql",
+      "full_sha256": "0b3aad97445eafe31c5ed3f512a85022da75641da4380197cb34c91d2f9cc50e",
+      "forward_sha256": "2c91552ae4faa188df62f5faad71b87b9e387bf0bfeaa826e433a575f440b224",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "179_newsletter_confirmation_token_unique.sql",
+      "full_sha256": "7d640fab9e3b6f82fc35c25f210924357ab19fc618ecedd0999891d2b394a84e",
+      "forward_sha256": "01f41f75c58c993e3b06c64fd12e5fd26c48be2f9b9e92e0afeecab25204ef1b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "180_crm_guardian_phase1_enable.sql",
+      "full_sha256": "a10f2e2b66c09ede24df97d9a7beff3db962f9ab98ec48c2e7f7fc7546cf27ec",
+      "forward_sha256": "08f8d87e69052a7d78651b247c79b41f0b9c1eec19d8901c59f1a36d275e9a5f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "181_crm_guardian_file_content_cache.sql",
+      "full_sha256": "e387224330cfc5a3fcb0bca9ede5281a070bea3eb02be6631f084021ae81da16",
+      "forward_sha256": "b41177566941b5fd3af406aef4051ebd24912cc126cf2e5e381f915ddffecb20",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "182_companies_tax_dept_folder.sql",
+      "full_sha256": "874d5fb9e3fb207b67f446ce225036ff1961aac99ef9b5294ee3ab0a72e1c03f",
+      "forward_sha256": "6f4d4ee84499cb44f70d7befb80261a9368769695fedffe6541edde191e2ad50",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "183_wr3_eventbus_channels.sql",
+      "full_sha256": "a55b346db262c7fb3db48a1e645588f25c3b05c5e2d0da853d3a1ec746476755",
+      "forward_sha256": "05b9496ee485ae3797d7810cacabc79fdeb4edd75bfef1f6e8cb26b5ba22da4c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "184_reconcile_182_tracking_divergence.sql",
+      "full_sha256": "46608278bf888f6d69ff2401f7149caa16b1011ccc4bbb6b8a81ab4d9adf0cba",
+      "forward_sha256": "18817a71fe212a0d37fa066368b94a19bbcedce7ad7036b2722ca9ea4271b853",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "185_wa_mirror_v2_lid_session_history_ocr.sql",
+      "full_sha256": "dcfecdb5aa2e49d498d1c8409fa95730608a9a2b96f3d2fa14732aa46505e6c8",
+      "forward_sha256": "f9d6e2cd9d4c783283163823f231e9868cceb46572fa08f15847a5bfb78b8738",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "186_wr2_published_channel.sql",
+      "full_sha256": "ea743cce867034bfd0600ed64903d6265891ea3caff231d1f52b3d88f25afa5c",
+      "forward_sha256": "96e82aceebdf2b2932a62002bd5ee8b25b6424f78ac92b69d76e6cddb6ff7db9",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "187_probe_sandbox_isolation.sql",
+      "full_sha256": "e2f8d3fc2e3b2a7dba043fea1c4111e00a735d90e4862f52ff3efe483d2aa5a9",
+      "forward_sha256": "0735681ecf8ff3e4340eb57d47602c9588b550e32d71ea32aa063a1fd9707d2a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "188_wa_mirror_attention_priority.sql",
+      "full_sha256": "e4411bfcab9a7abaaa926acdde8d2d1a9c250ff851c3d1a8d80839c0931eae25",
+      "forward_sha256": "955595f0ce9a35b0e04e69c9cc56b2b452a7b6fe490219aabb9026819b908520",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "189_clients_strategic_recap.sql",
+      "full_sha256": "23433f2c9619c98fae4cf2cbcd47c3c1fbe53eefab4927fc1f642b27a08a2c1a",
+      "forward_sha256": "92ad831be8250d21d4799d7f4b855bdac2c13d8f41a25c3fe90351c7b00655f1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "192_bridge_outbox_jsonb_double_encoding_repair.sql",
+      "full_sha256": "df865b0734d7e98c8ea421bb93bfddbd74c68a0a984eb797adbc8029fc045bfb",
+      "forward_sha256": "05f88babdf3389dbe0ea4911b8ac03038536ab02e38f886e77d0c923dadd9509",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "193_wa_dashboard_v1.sql",
+      "full_sha256": "2595a2c61c7b7c283fd11cf64095403bacb7f763d9894219e6bbeb1f7042e20e",
+      "forward_sha256": "ac80396ab781861ad2a0f666d38f4cfa0093dd4e26899ee66f91677c056b56fa",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "194_reconcile_107_bridge_outbox_tracking.sql",
+      "full_sha256": "13d6e0a8d23d81a449733ccd8dc13cd98828f7d3c077c9500b9892061e02a7af",
+      "forward_sha256": "f751fc3a1a3b9f660f4cb5bc4b1dda55d33c23c3dff1bba0b7239b362fcbf024",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "195_organism_incident_ledger.sql",
+      "full_sha256": "4f721a7196df873a758fd89dd0f81998cfbe1fa3aa938629756cd15a90bba981",
+      "forward_sha256": "6c20d1ab686ed662f924cd2c260c2242c0b64a6b2239c855e537c150f9791d26",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "196_cell_skills_add_source.sql",
+      "full_sha256": "51dc9d2b79fa2794e6da4aab457df5a8fda324887c2326c5b8dc946d4d2ed975",
+      "forward_sha256": "da6f26da0e7187bfc8f4292343dbada9000245c6e5e00504863563d6b5b9bb39",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "197_wr2_carousel_runs.sql",
+      "full_sha256": "ca3bb877424c93abe0be31f09df49cae659eaa5bacdba22950d52e556630dc94",
+      "forward_sha256": "14665f32d38bc13d9188a8bcfc3498b2a3128ec62086b8a977f6c4cb76ed5aa0",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "198_wr2_publish_attempts.sql",
+      "full_sha256": "6b07fcba1afe70824e680f9aa482c9533d85ce6ba1c3c74851d4e0d1ba1ae186",
+      "forward_sha256": "1a340734ba0ae9b3263ebaa2b268698bd3762896f9c495f594662adef3cb59a1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "199_wr2_carousel_events_outbox.sql",
+      "full_sha256": "6c05b17faa4d2b388e107810861e3da7b546b2bb779f5cea2ec40b8f896ae170",
+      "forward_sha256": "38d8e64acc736e88d0899aabd8eb690c2fd3ca93b314ec9bb218269e85be9d43",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "200_wa_copilot_infrastructure.sql",
+      "full_sha256": "e32d488b2c6c5a9c799159fd83be4979d3d6928181f845db0d1b62ea48658845",
+      "forward_sha256": "176ebdf7d33969eb55b237219e98f294e6657d279ff7613b9d155383575c3a4a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "201_wa_copilot_identity_audit.sql",
+      "full_sha256": "030a4bf8165b3a32a942300b5cf015b03c25bf883ebfdaa79e07f09ab566a1f4",
+      "forward_sha256": "7bb5920d1c1dc269047cb857ef9bd7cba17d4ff60507a17838dcc5c09aa68111",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "202_crm_guardian_drive_metadata_snapshot.sql",
+      "full_sha256": "d82af677e90b44a60855d24e2f2264325c8d8139f0924fb4058affaabff01b7d",
+      "forward_sha256": "dc588a07b9d9838c3d83dc0c37e01276e63bd3af6eeaa4023300699be8c4484c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "203_wr2_orchestrator_metrics.sql",
+      "full_sha256": "f28774b6832611817fe1296ce9c4109a9c19f41b9e0c6cc33676dfc046d29086",
+      "forward_sha256": "c03eef768ecf88b425fe00eb6ee2f5fd2e48ca641094f5973321b706fb27a6bd",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "204_cockpit_audit_log.sql",
+      "full_sha256": "8bac7168c56f6922c0dad57eca46f201772c9ac470f427173a3665c59b50bf14",
+      "forward_sha256": "64a8a0dca89e8305d609b70f6f52c58fdff42cfb083400256029bf90cb06ece8",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "205_cockpit_intents.sql",
+      "full_sha256": "2782d0a855a8547b23299dd026c29e79e402af550490d90cceb8e68ea544f02c",
+      "forward_sha256": "77a63c2d4f0f0dc9343db92e0c410dbf27c4d1ca0461b6cba9f7891d7d97273c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "206_wa_meta_inbox.sql",
+      "full_sha256": "e5a8aa4974396c9adb682789f52fb708c0dbac4f2b5569dc8f924fc42c821f0d",
+      "forward_sha256": "e9bf0ae2fd9675eb4c359a0500e40f8d89b4133339f4ead28cab8e9069b8ab2b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "207_team_admin_runtime_grants.sql",
+      "full_sha256": "280a7abc2e1209f7dee167a8fac837f9f033a4e90238f67c83760d84ff88b9c5",
+      "forward_sha256": "d0ffd812e76f1d00acf2227a393e4404c22529d86019b2fe85d9fab2f63bab9f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "208_analytics_runtime_grants.sql",
+      "full_sha256": "bb8169d366f74a12b32edc33e1a9828293ca14411729f1c5b12fe0da318c61a2",
+      "forward_sha256": "473d7a8735a0fdfda0de571671d16000e2f48fdff0a5cedfb3b2936c0f003438",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "209_memory_work_sessions_runtime_grants.sql",
+      "full_sha256": "8bbeccf8726582f4ca2f06db0f9a063cc863c3c05f270f736d3d790452d5a1e9",
+      "forward_sha256": "2ee581fda868a6667abfc4b3cffd6183ba6d206776f8679045f892bcd4e76fbd",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "210_conversations_sequence_runtime_grants.sql",
+      "full_sha256": "d1d3cbae30e440f7c9ab88c3ecf54632c3a0849ed055316ef7b4076b0a2c022b",
+      "forward_sha256": "7a034dbbf69c08cb7a490d63dc124a2f0820254e4aa0532bd5653ffabe24a98f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "211_olympus_residual_runtime_grants.sql",
+      "full_sha256": "085cd4910bc15c1a2d9583a172ffc4ee11d41801f483c3e3809bbb55a612df2e",
+      "forward_sha256": "c69e7eb792590109e723084b9031f76c64306efd99b9d80cc7f0358f1d1ea5e4",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "212_intake_unified.sql",
+      "full_sha256": "df605a8fff7dc32e725240edea939d5ed2cde6cc4f03f106cc48aaae1dc4faa0",
+      "forward_sha256": "b097478950d348fce346c32d1e6790195bae9ee94bb2070a11107704ee0d63a3",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "213_clients_birth_date_kitas.sql",
+      "full_sha256": "d5a1da63fe9d195231057538687a03f20917f0900ed36310b08421c64f56dedf",
+      "forward_sha256": "faa95ef25ad46dc3ccde2e690615c1cb4c2ed372aaed5dab4037b35bf28d5951",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "214_intake_review_lease.sql",
+      "full_sha256": "b23379b2efbd8a4bf13d27b74a0dc9d1df0852ffd25892420c4480cb2a9a53b5",
+      "forward_sha256": "251330006dccaed227d23ae9f91af7b8039487e05ba17fcadefa453f2dd520f8",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "215_frontend_metrics_log.sql",
+      "full_sha256": "5b252ff77ad0094782a8a0872a01d2f7f420f24d26110fe2b4c731621ef063ee",
+      "forward_sha256": "ac58177dc78acd97820d6b3425b6270727444b97c1335fd1afed1d77cd5102f1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "216_wr2_topic_type_log.sql",
+      "full_sha256": "dfe58db7024e97eb829c9239a8dd58c39bd50cbe40814b4bfe499f1861fe5162",
+      "forward_sha256": "492cb82d4a0c0603c61ea8e350afb4d3bb99b809756320072f28b46f427f2c02",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "217_intake_commit_audit.sql",
+      "full_sha256": "5522a284fbf7fb958c4b088a2ce591dccc2d5f72b44c26124bdd2a565d7daef9",
+      "forward_sha256": "a8fa83c611793ea6d3f0e9f00f28a610a264e9029099c635712999cdd36adf4f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "218_intake_received_by.sql",
+      "full_sha256": "f20cc57afd02085bd150442952837affad5602157628881bc12c625222a069b9",
+      "forward_sha256": "b39e5f7bd532c582f559460e987d17cc9793304bba6265cc3b08b8ce0254293f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "219_intake_gate_doc_counts.sql",
+      "full_sha256": "f2e01500a3b372c1c82a69f7ea4cf95128e4f9c32b22695f22d6aa6cf7d517e7",
+      "forward_sha256": "91e0353546c3de9f7e8f4de92adb865463dbd1b571f81633a0299cab1b89bd37",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "220_practice_types_dissolving_rptka_custom.sql",
+      "full_sha256": "088965d9516446cbac274fdba38e7e501209af0db0632b29e1a34464ca3833cd",
+      "forward_sha256": "495fbb889ee09463b3a031d774965db817648f173e80c0228e8d8c0915293785",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "221_practice_types_b1_voa.sql",
+      "full_sha256": "1ddda57a5e7ad501b5dbbcc2e1a4b33f4658f6470583924af22829c85be69ad0",
+      "forward_sha256": "373dfb28f9035769a9a550c770e85f38fb9a843cb5080c97c4314c5a6b7ec074",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "222_war_room_drive_url.sql",
+      "full_sha256": "11345ffab38f1dc6ec0b6e62f81245809fc05095f91de391253a55cb44ee0446",
+      "forward_sha256": "ba066104275aa3717f61acf84a702588b571f3893518e4b3b2a846577f1e58f2",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "223_clients_lead_metadata.sql",
+      "full_sha256": "fad2520014e4d74cfc74c333e0d40b0fe8fce7c773620569fd90434f2e6a1a20",
+      "forward_sha256": "e5cf7ffe5f3a21b765b9f6786c341477630ec73b928f48d128875f32d840f390",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "224_intake_flow_v2.sql",
+      "full_sha256": "7574af44f7e561f08e93a9428382f916996d5794f630f437653be7517600defe",
+      "forward_sha256": "97a2460701c3f399adcbdd101ce3f7e594c49903ac52e0db899bd3f4f1f6cb4b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "225_intake_queue_sender_phone.sql",
+      "full_sha256": "389a31f274332e8edbfd5332d58bf87efb26c67222359ecf72b155a745b99977",
+      "forward_sha256": "a2c470731c39a239912fb5a99a8ff5e38fc0ca662cf52f847822e982a3ed237f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "226_routing_proposal_superseded.sql",
+      "full_sha256": "f91f58f55872b27e2311746f4cfc96d38250ce3cf710535180f659557e4675a3",
+      "forward_sha256": "0b79249d7d824beff8961d202e151635f08617380cdf08cdc875a0df48a74675",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "227_intake_queue_source_path.sql",
+      "full_sha256": "43188b4fe850c6ed5f924911e2c7dd9c033c014fa65b303ab351e17f6cdf75ad",
+      "forward_sha256": "0c3cbf1a72fbe0b6bb066acc7cbba53eb2a79130f09f4e69fa7c78cf5215dc6f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "228_war_room_html_render_attempts.sql",
+      "full_sha256": "2a7786ed5351f5de647fcac4901125b2a8bf683aeb874f3c81b54187ead3b56f",
+      "forward_sha256": "c01c311a900ea1e9ff51e3271f526159688de76f1df7554935b4218d9815bb73",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "229_team_avatars_align_roster.sql",
+      "full_sha256": "c572562956b8c49bf27a71d742cfdef7e6dab7913b2923af068f77b75b8db540",
+      "forward_sha256": "cf2c849fa5329e59a633f5476d70bb4c6bab9a67dab2b6ce1e0f9ecc065a18d9",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "230_kg_proposals.sql",
+      "full_sha256": "8b0c1c1056cbdfc36e677a778ff614aeee7d8ae6a7adf3daf70a08fe612160ac",
+      "forward_sha256": "48227662eaa379735d12af8e53b34e893aa258c02979102a3a8dcd1125177c62",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "231_autologout_idempotency_guard.sql",
+      "full_sha256": "0adfff028ae6eb0a07192c307abd7b04ec8854e8c82d9777d775000376f87bdc",
+      "forward_sha256": "c47eb1eec5241bd2c23306f984506d3d0e87f4b90784044e97daacaf8fc27fb4",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "232_intake_category_taxonomy_cleanup.sql",
+      "full_sha256": "af66d1dfe2c88de4b345f70340e025c46141cfc2fb6b4e82b15a21c36c4fc6db",
+      "forward_sha256": "79ac45b9b5148fb4ee1da01617f47787f869d602fbcbfa7a8b9b39497f7d408c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "233_olympus_safety_envelope_rules.sql",
+      "full_sha256": "4f5bdde27043cfec18e7f4281dae80e90f2274034bc1b40779b78bc651756a0b",
+      "forward_sha256": "5b7f3e1db8cc082a89a9c24be37cc63a98b0fd9080ddb84227df3cd4c6417381",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "234_crm_wa_case_intelligence.sql",
+      "full_sha256": "b26103e67a00be417fb67a3f80acd3c2a2955ce3b9f745345e0588427de350ba",
+      "forward_sha256": "5e42b1fa337efa3da483fee015f682981d0d4aa898c1c882b7ee0143ab6adb25",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "235_routing_proposal_quarantine_autorouted.sql",
+      "full_sha256": "c604af84d4726040e86364a1810e462fbd85cc743a850d02494ca9b4341b1837",
+      "forward_sha256": "3081f9953762c29b9767e69e56fac274c6bcf31f65a19805c77f9c42ee8f9767",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "236_portal_documents_purpose_softdelete.sql",
+      "full_sha256": "49f56a7f9b8fa56b79853b6b7eaf9404e4558924adfcd2cc437864e409b38e0d",
+      "forward_sha256": "d89dbd5fabfc0985e95cdc950147a7331d613331eea737a8c3750673470a47a3",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "237_magic_link_tokens.sql",
+      "full_sha256": "a9cf3ae80b1ee8ecf8270c056fbf577a6f2263a051512916aba7faeb2973a982",
+      "forward_sha256": "72d11e4eed4a522f1f4f853a6e6983229504b77e4c6cb42fe90da893cfedd9ca",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "238_accounting_asya.sql",
+      "full_sha256": "7baafe05bc8b216587a0121b16564a3930adeac3a2396cb1c21799af77b8be9f",
+      "forward_sha256": "0abad528451cfcc9e299c6f0777e652cd79763f011bb4dd63256e59a4eaeb698",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "239_cashout_worksheet_type.sql",
+      "full_sha256": "b2386808195d714a9b20ee00c59be0afda656db27e8ddc9d44046e33e4682a42",
+      "forward_sha256": "7f46b3db1bc013f5643bb63d5d09a5173dfa885caff97e35116e6c4afdb9fc48",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "240_intake_queue_source_context.sql",
+      "full_sha256": "53ce7315d47522d4f3161e2aa23c5e87775e0697a177bb90e0482c79504fc97c",
+      "forward_sha256": "630e555445e6764e14d3c1614293b52ef3d52676b880d4cc3f5f3801d09a0bf5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "241_wa_lid_phone_resolution_group_senders.sql",
+      "full_sha256": "20980a8b5827a5aebb1bb58a805033c42148de0635519b197ef2749d857b5016",
+      "forward_sha256": "69f586f0e772fc3f7fb400a2c1536a1341bb2038683ca991d89fa355a1800c48",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "242_conversation_messages_metadata_object_backfill.sql",
+      "full_sha256": "c45ca9d1659ea50341b2218f31dbf69d920c0f8878ae911f62ef32350f79ee38",
+      "forward_sha256": "832d1ff39cb1aac7a84443d38655e080a96b000a42a9977f4653d5abf87aaaeb",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "243_jsonb_string_scalar_organism_wide_backfill.sql",
+      "full_sha256": "9359396422c4965ea341e5a2138cfcf4a4b5e758caf71b2930fc818490d6d6dd",
+      "forward_sha256": "b309ecbe542ae448b1d53d429fe65493b64abba2252a2160bb4fc8774f398d7a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "244_compliance_alerts_runtime_grants.sql",
+      "full_sha256": "888fd8e01da89773ac3cd529061b19c1dd1d4b27d083be611613307624a44f6c",
+      "forward_sha256": "b8aa00c26433edced757df55a72f343c1966808d5149e53918a91647939e569a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "245_war_room_drafts_parked_status.sql",
+      "full_sha256": "5d35bd0e01d69b4e3605671e99d1973f658c6bd633b1a866f5ab34ecbe984eec",
+      "forward_sha256": "b98d4b268be8d5e1b75fa3ca07cc4d92ef9d8ee0032042dfa432657b4d043266",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "246_clients_wa_intake_autocreate.sql",
+      "full_sha256": "65dc8a2cdadcefc1874d3fed3a34a42a5c0c0ccaf2300eb427c37f8cbfe3ea34",
+      "forward_sha256": "b13f60e03d167011cbc4741f9962605cef3408ea319c0dfe015f80a3bfa7ce80",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "247_kg_staging_status_integrity.sql",
+      "full_sha256": "35a5cd9d2aae07accda21f8e862000fb85ee7e09f83ded4a35587ec06e00fe1f",
+      "forward_sha256": "cd137f425e7f57d06ad86d0e1bfa981fb9ee360479dba4abf87ca0dfcc9d9beb",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "248_clients_npwp_strongid.sql",
+      "full_sha256": "6b69ab11517677501fe060106034860a739318b52fc1d5c14db4963a5c2b5584",
+      "forward_sha256": "0a99519077a6a9e3d946dd1d6d6ac1ae4ca2054d9fd29b60a13cfb8e49e70954",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "250_visa_engine_core.sql",
+      "full_sha256": "ff5bd8645f02dc4feabb075ac50b8d3463353c6abacf93565ade3b138cf3c7b5",
+      "forward_sha256": "6e1abba2517d44fe7bc08a5b2791d8fe473fa1ce923019d7d7c726c67178e899",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "251_visa_activation_writer.sql",
+      "full_sha256": "f37eda01c5b4eca0267d1607438949c90f56ae8ea936d6cc676d792119f37762",
+      "forward_sha256": "7e69cbeb0e06ebc1fdab45e3c760a5e656d7cc81a0fb20d9dd122131bf1a00dc",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "252_visa_engine_write_substrate.sql",
+      "full_sha256": "4ee7b5215b7ee5605f13f7a2c96415b2b158bec8ab2f6642a16e09ec47a1c66e",
+      "forward_sha256": "5dbfe5d3dbe4c4d84588f28bd905a7b3ba039aafc1ffc348358b288f74f2ec78",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "253_visa_activation_writer_hardening.sql",
+      "full_sha256": "bd2dc68fce5edb33f71d07939796534a2146c4a308982499fb90497b98e7ab07",
+      "forward_sha256": "0ede5900dd8bf4e93a1799dcb0c0d7987864916fe08f0da4355583d7578083ab",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "254_visa_activation_system_period_infinity_guard.sql",
+      "full_sha256": "4b1316f16bc04407620bad6b6abbec0857d0ce47e00d4570c9dd61569be7139a",
+      "forward_sha256": "43cc8df94b695c944d16ad56da633ab15225a8e96275ef3fb73e2f1edf606484",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "255_visa_shadow_evidence.sql",
+      "full_sha256": "0dea419ffc9dee51d5b5d7f8c1a85ac83a11525fe8603202c766b557f18cc36b",
+      "forward_sha256": "c36443f3c7de4be44b79f7a47c5a3a7079e02ff156308a5787e6b6bbabd45475",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "256_visa_traffic_source.sql",
+      "full_sha256": "587453f92475853026155bbf06ce742ed37333b048c1959e7f7bc6133535b86b",
+      "forward_sha256": "1030f6fc6e7d809b0291683b198d6b20ac6fc355f784445a38c8dda8d3061041",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "257_visa_request_category_extension.sql",
+      "full_sha256": "5dc2b0fb809c191f9c4edbf85f2a348236a0c95fcb939d0aed054540eb3acffd",
+      "forward_sha256": "c511e0175852b23f7ea7b15375c89542b811b487ae1b4913da9755d0427b84ac",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "258_alert_outcomes_acknowledged.sql",
+      "full_sha256": "ab16dc3f77da20ef1a8be3e3eddfa39b0e60db054a52b42a421cacd252319a3e",
+      "forward_sha256": "5f943aa4f07efdf8e96cbb790e3c463232fb068dd6cad862c4b58fb3ccf2b9c6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "259_e33_case_lifecycle.sql",
+      "full_sha256": "e161fc9bf325c7e359b4c51bfe464f219d0d1d93b370fb90ddc42c42efb0508c",
+      "forward_sha256": "93dcdd17d9e3955307d8a01a84dccf9f78a3cb75616db15a85d684c2b39a1ce3",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "260_wa_outbox_manners.sql",
+      "full_sha256": "433fc4abd12020728532cbaa1150fcb356de9fb3f404902352ac1df076b3d423",
+      "forward_sha256": "f59712f2a5d027748ccc9f0e6bdf6897ced3cf618fa9e5103f0671e92606cada",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "261_garuda_voa_checks.sql",
+      "full_sha256": "923f3ba54ad44da8da6840450296c6c2d7b965df3efee45045ac3b9597334b37",
+      "forward_sha256": "00d12278163e0e15322abc27d90e7560e99f4c8d91f2fabdb1743c70db0efcef",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "262_visa_evaluate_idempotency.sql",
+      "full_sha256": "dfbbac9cf155dd668b98548db2282f7c98163ea828ff8210dd6b7c38dd3c0f31",
+      "forward_sha256": "a5faecc2c60e000e9ca6e977723e7a5a28b11580833ba9adea3ca2a6d126e011",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "263_visa_evaluate_response_hmac.sql",
+      "full_sha256": "6b10fbc30c39264de1e8de32efb5e2d496e53716a0237b6c56bf7cb02d172199",
+      "forward_sha256": "4b5a5bba460695e90df4f683ab5978dd92ef8461d662dabd7c6583905c92f26e",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "264_visa_decision_retention_policy.sql",
+      "full_sha256": "18ae368b3cfae6162104510ae399484a04eb9cd169873cee7e4324d95da94be5",
+      "forward_sha256": "5eb6d45e35023061858864dbfde640102e149d7e3c92467b4206b4883499f71e",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "265_visa_decision_trace_integrity.sql",
+      "full_sha256": "65f35b46a03cbfac02f47a5ecb654fc6885703d4517e324352ccabcf3de15a7d",
+      "forward_sha256": "5f41d161a7164882900ab0f8daf436300ddb79f114d5a141fd3a9aeed554bcf0",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "266_visa_retention_evidence.sql",
+      "full_sha256": "f1474d5bcb3a3311dd0d8745284169ebc96be2555fcf9c6283b09b66b75a6ff6",
+      "forward_sha256": "c7e6224a90eaefdf1b5dc72e7c680b6973bb85408d1137328cfc006ac3c983cf",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "267_visa_replace_activation_set.sql",
+      "full_sha256": "48511a39186d41458d2fc5b0681665d8d3ff3ba8f8ed00fb8bf43eac85f2ee2f",
+      "forward_sha256": "68e32622f2d5d5d72066d1683321f8a2c519a59c6471e732ee9411b4c306211f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "268_visa_retention_binding_security_definer.sql",
+      "full_sha256": "68f1db1f020a74e12b0952189196df20b67c5481b0d1b2bb88e4aa5dbdd9883e",
+      "forward_sha256": "2f3957c2bcf5d1da492a30aa09c177496a6f042cb2592de33d75c2ddb0bf95e6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "269_kbli_archive_versioning.sql",
+      "full_sha256": "d120825aef97e95b3c548bfc0e7fcab5d1d9f6d9fac373d316db9523bedccb49",
+      "forward_sha256": "bb7c45247d958e152c8c6ceeb0a309f23e2468a49955645c3a0568dff0049f96",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "270_wa_broker_jobs.sql",
+      "full_sha256": "146d120fdcb78070bb59c3c0109012ba66eecc0383758975270b301693d023f2",
+      "forward_sha256": "d2e0aa2ff16d409d19662271665f17155f18960bdaae5da9b86938a3f797f4ac",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "271_wa_broker_gauge_half_open_at.sql",
+      "full_sha256": "a9c4fbfec610913e36d0c5f63dca9c3667f9c6a7718ceea87732d941d374ea5b",
+      "forward_sha256": "093e7c8f54895ffdf5ba6798f2c18315d43b8aa8f2cfcaa1f1d701a222e68dcc",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "272_wa_broker_package_text.sql",
+      "full_sha256": "894da1b00625de9eaf58ce19b8244951c0d303b9510587cabcbca5eadba75dda",
+      "forward_sha256": "5717f9ded4b58f6e474dff7da873086d2bb0453cacb5d130bc22aae2d6a793e8",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "273_wa_broker_completion_digest.sql",
+      "full_sha256": "536e2f0492aaf663d0f0debb1ccbd0586d4b498ee86da275787697da1d6f63a6",
+      "forward_sha256": "4442cfff5eaa11384c121557d1a10ccbbc2004b2a63d1f880e149bc056a8fca3",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "274_wa_broker_completed_at_check.sql",
+      "full_sha256": "de04109376dc9e706ce46344ead2573270b12bf769b6470ac789bea0f7fd0945",
+      "forward_sha256": "43c80e639d94702b8217c82a895d0b3f3d02800496306abb8279d9951b9a830d",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "275_war_room_vision_circuit_breaker.sql",
+      "full_sha256": "3ea469f9d1da7f9f55ecf6874cc37173c9375a371379b28c6357f3215ac61a3c",
+      "forward_sha256": "eab2d43012ec2354a32d29c27a5d8079fcdaf8d3c56bbbda30b9291e93adc596",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "276_garuda_voa_archive_comments.sql",
+      "full_sha256": "bf749a2549cf12f42ef7c7d2c30d0afab3fab41e629c3b286509647c2d58bd4c",
+      "forward_sha256": "4a327ab21d44e081e9dcc3ea4bb04447f097879eb80bc8dca7ef250de672dba5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "277_correct_ari_email_typo.sql",
+      "full_sha256": "0eb582ee65c6c78bf13b8790394d285de56a88394176c5775036732823883ce5",
+      "forward_sha256": "4e6a64413061f7b54e9cb24dbdcf0d102d0b3980bb1917ebf11c7fc6131627ed",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "278_reassign_orphaned_clients_setup_team.sql",
+      "full_sha256": "41c4f6b91ec098c9fd885d5fcaa87aebc5a255506033d9d9e3ed0ab0628a98ed",
+      "forward_sha256": "7e92b488409ee8d888ec768d74639b1a63327736cb77eab58c3d68b8a2f1e583",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "279_research_os_contract_core.sql",
+      "full_sha256": "f58500d2793336d6adff1faa9ace21a336699e15c759c96663ecb3a675cdb1c0",
+      "forward_sha256": "c1e7ab4ca749cc33a70312552f67b6aa47b539163ebbeb9feddfa56b6dcda6fa",
+      "has_rollback": true,
+      "has_concurrently": true
+    },
+    {
+      "file": "280_research_os_objects_truncate_guard.sql",
+      "full_sha256": "afbaf25f63dc492184b6e70c1c9003202eda689f57af3981afea38622396815b",
+      "forward_sha256": "266c18d5e012a5af164b4bbeb2e7996d2c4392fa6305704db6e6b6b5d8e2c8b1",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "281_garuda_voa_retention.sql",
+      "full_sha256": "7d0601bf1ce69ae60c09204a28468c32dc81947a9c7f9cf7ae8b37dba4b8b0a9",
+      "forward_sha256": "2d37929c732260969c5bfddc980676bc73c211dde35d4adb030f288048dba368",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "283_wa_reply_claims.sql",
+      "full_sha256": "f8bcc9f1fd742b34dd48a7656e39ec426a1e0ef808b557380d274a9663fb57ba",
+      "forward_sha256": "3f016f599a3fe15aa57b3d94da4300d39bd4a62fbc0b192e22da6543aa54878d",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "284_garuda_orders.sql",
+      "full_sha256": "d4438d4cca052e691f60292e045f0da2f1152c2c82d5e314e9ce474020822d34",
+      "forward_sha256": "480bf370567b8fe12740063205b54969babfcb52c891e0bc345601af079b117b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "285_garuda_magic_link.sql",
+      "full_sha256": "7da73077d84466be805b3d1abd15c82a5de358eac51755682feeff3a11c0968a",
+      "forward_sha256": "48d387bce1b0eb7b21e55c8a1f9f1216e3504b264864a4a1345d1f87c0f01afe",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "286_garuda_voa_check_results.sql",
+      "full_sha256": "1108369901927ffa14d41c0bf6aaaea8761430710b78eea0a81b8e8a01f34c9b",
+      "forward_sha256": "dcb3231641047b6099617f9479805d5bcf30a2527f6611ba4ed7ce7bb1a6b5c5",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "287_garuda_practices.sql",
+      "full_sha256": "448e160a62278309d1b9d1db6deb41d64f9bc6928cc945c764ef49c3c334407a",
+      "forward_sha256": "b9833456579c6541ffe7c41b28ffc36985f9af1111e5f172b82a942ae309dd3a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "288_practices_source_idempotency_key.sql",
+      "full_sha256": "69ca2c329c5fa5e7a25e707d63fc781d12d7fab7d6f2e3eb7101c8b1d679938b",
+      "forward_sha256": "c3d030e69c5345d837e69ebffdff8dfb1da3be811a87424ac9306344107a2483",
+      "has_rollback": true,
+      "has_concurrently": true
+    },
+    {
+      "file": "289_visa_retention_binders_scope_to_visa_decision.sql",
+      "full_sha256": "e0cb760d029b74411063d87f8468f926998f59e61ff42d4e38c422ad3252ab57",
+      "forward_sha256": "b4b2977dc60b777fa00b279e20b4dddc8d750a7e555ba1cb7f201cf16cf3bd8a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "290_wa_outbox_generation_fall_off_reason.sql",
+      "full_sha256": "be241cd7631f980d69e94a990519d5d1dea98af9c9daf1de9f20fe5b3107c17e",
+      "forward_sha256": "fa9fae9b1f44efca835058705968a5e5e89be694a63913b6bfe7479563cb7250",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "291_wa_outbox_fall_off_reason_unbuildable_sub_reasons.sql",
+      "full_sha256": "51be63e10914393ec98b6c9b97252a441825f4e077ec6c164325cc1a4137facd",
+      "forward_sha256": "7e2edeb19839267724a447588bb0b8db0758b84108f799de0d5bcadcd4eaf1b9",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "296_wa_broker_jobs_live_only_unique.sql",
+      "full_sha256": "7f95644516cc82def98a5466639ad5208faadfccf9a76326f98d5d0d71e90191",
+      "forward_sha256": "ac02634059345bc1881e35cfc7cce52599b628a8c8ca4027d411c12ba8684863",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "297_wa_outbox_fall_off_reason_finalize_sub_reasons.sql",
+      "full_sha256": "8e3cd1f5fefff4801494ad28f4f84b9173ae4f3486981329d23dea249306d5db",
+      "forward_sha256": "a8cbe41de945cf68d119098ef6890d4cb8492d4fcbc895b0b031de4ee3361c5b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "298_garuda_payment_inbox_quarantine_reason.sql",
+      "full_sha256": "bead4d6c1a6b36a0e271713efc9a342d12d4a61c636990a5e2f6062fdc351061",
+      "forward_sha256": "4005c1c19c8e59bf890b79829f786c64ed9437792048eea1d9bab455dd5782ff",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "299_schema_versions_provenance.sql",
+      "full_sha256": "cddc231bc9d95fb3a3c85ab24e0f04f43421b93dbb57f8d5ce5e9e0df7cc432a",
+      "forward_sha256": "86450789a3e83804fd33b5258045d8586339c9d49411914a65d4fc2dad083cca",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "300_garuda_voa_retention_owner_transfer.sql",
+      "full_sha256": "de2d37f4519f4d56c87ed138a24d1906c0da0c16f914cd9dc6c22206a47ce370",
+      "forward_sha256": "47f48d3c267bf031f74b605f7d6a4490f337706663fbde970d7690f18efb8c41",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "301_garuda_magic_link_binding_owner.sql",
+      "full_sha256": "aaad6698f5124553beff7cfbaf68ce95b0263bda4f97bfdd94f5aa39b6ec7bf4",
+      "forward_sha256": "9fb1bbe28a0599f0dfbe779e2a7ce19691b73004288d0ca1cf0c0c1f343ca389",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "302_practice_types_voa_price_790.sql",
+      "full_sha256": "adbb115d0bd2114eba0fee3c83f81ec9d8a1ad05938c4efa5a3a837014957d60",
+      "forward_sha256": "35796dc2717b5e56ad11a6cf80fd017479f981f592704ca35784c4495f5cb3d6",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "303_practice_types_voa_price_750.sql",
+      "full_sha256": "4250f8cdcd382af1ad7e3855dfda7b0014d890716c7c538324c9592e0cfbef38",
+      "forward_sha256": "d87045984608ded9d62901807eee6ed10447c669a62edb914fbb0a1d6e2a6e77",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "304_garuda_documents.sql",
+      "full_sha256": "71993d076ee75c0c314dc5ea241afe615e00166c4705b5c05ef6c8607cc721c5",
+      "forward_sha256": "e0ec23e0e8a7a03b02857c5bf225cc77b54e9b47ba1d3210656cbbabfd690b8b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "305_garuda_practices_assignment.sql",
+      "full_sha256": "87d09a0dd1c3df8b338f3e7f1aa2d10c2df1c713f42a6c5104eca82968d5bd73",
+      "forward_sha256": "f07f4fcf32818b14d3ecb00017aedeea7e636f1745aa9b74e1367e748d80b888",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "306_autonomous_lab_consul_leases.sql",
+      "full_sha256": "f2f95ffff2cdbe6b9d00c291dad7fd2fb264f0f2c1565a321823686de5a14f7d",
+      "forward_sha256": "baed59d2bbe3ed862f3918d71daa187926c42828d657df183caa77e70641bfdd",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "307_consul_native_broker.sql",
+      "full_sha256": "c59ffcaf3cc1d717ee19a0b7b277c9970cce6e3db93ea1b6d15c697d3df87f56",
+      "forward_sha256": "d109cc5114165ad0df05a703f4e2b5bc725f2d549b0c04a2acf071a45e025e4e",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "308_clients_phone_core_expression_indexes.sql",
+      "full_sha256": "165cd5c82d7cdd504fad8e71b8462d4d4282d7da2ed87a31a6b2ed549dc44ff5",
+      "forward_sha256": "7054a5a7800dcd2c14420457a93fa63bb75fa3129917686deb3775db395b7c69",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "309_client_obligations.sql",
+      "full_sha256": "190b40c6f8aa17c3269b319b5931014d385004ce928063419099a1555dfa976c",
+      "forward_sha256": "8ca3238aaed8784587b33b6e2af041e7beef0ed2b347fef80072ccabd75a2d02",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "310_practice_status_log.sql",
+      "full_sha256": "21d2d6950f7a2a49b9475b6a9816bfe87c3f015ea9b1322eb82cfb9c4ef0f656",
+      "forward_sha256": "027f7ea032f07865fab9760fc8fbbe8e954a0c3888427414967cd67f2b1d236a",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "311_practice_types_open_inquiry.sql",
+      "full_sha256": "ece8004da074092424b6bf47684f6f45ff8fb127690757279a402f2559ba53ae",
+      "forward_sha256": "35b7c01a85c7a1a030a58cede145624031e7dd953e9e174dec1c9a690dc5b73f",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "312_research_os_naga_claims.sql",
+      "full_sha256": "bb16b58020d367156888d7cfdf16a73e438407c5356742c80dbfc2d858a08c84",
+      "forward_sha256": "cba1601e8908e052378c92331b90493aacaa4ae7eba95d9f8f50b08ef6b94e54",
+      "has_rollback": true,
+      "has_concurrently": true
+    },
+    {
+      "file": "313_garuda_practice_artifacts.sql",
+      "full_sha256": "9802c11e109901898c68fc0daf62da72bea04e1188ae728ccef9e155954f507d",
+      "forward_sha256": "0be9b95249e38786b1222a0c11cfb2d56081b8d0f9174e375b16265dabbf465b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "314_wa_outbox_evidence.sql",
+      "full_sha256": "6b5d3d8bb99d8d37d8ccbd97414264df6fb888a4731bb015ac9458c93ee8db9f",
+      "forward_sha256": "45b7c153e928dd104a1c3ba29e191d61e26e7ff5f83c59ac115a5eaba850b464",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "315_wa_outbox_fall_off_reason_support_judge_absent.sql",
+      "full_sha256": "1d6800228c45c5fbaa0a5da8b98c30120d71bf7ca997311bea941d0f0cd6ada0",
+      "forward_sha256": "8aeac18d1cf9f546192acae97d3af01aea168d361fdbd6c8c9f5c9a92f076538",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "317_visa_oracle_sessions_retention_30d.sql",
+      "full_sha256": "b78d5a7d4576106ab5a03353c6045b12b5ab899fa728f260617a239088c13bf8",
+      "forward_sha256": "e356bfd99702a4287fe23660fd7c64f20e6036e31c710b505def6f7d3431dc18",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "318_wa_outbox_inbound_binding_and_terminal_reasons.sql",
+      "full_sha256": "0e40c8487d1dccb4d9d81390f63a8ef1c066c0c08931ca73b6b94f91f4fa4806",
+      "forward_sha256": "4fba156a010ae17202051f4dcb52602f2bf45120bab643d0331542c1d77d985c",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "320_garuda_journal_admits_op_f08.sql",
+      "full_sha256": "afd7498b7ffb258f1187cb9a62b9a1bae32677158feb596c4566a02aa78a2e08",
+      "forward_sha256": "ce10d941cd58d51b6a12ac54a8f1b5f445e38861b6fc693a0378509cae10d743",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "321_portal_reply_and_email.sql",
+      "full_sha256": "aa2a94028410cef2b7fff85edef9adfb40857bdfd5a054a8efbc1eea95ae38be",
+      "forward_sha256": "e9dd1e313bb9c41c1cbcb08b9365bcac4d54fd8317fe32809fdde49d749f5a43",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "322_wa_outbox_served_by.sql",
+      "full_sha256": "0a5e53b51bfc4c3ebb174b06cc5fb3ba5379020c99d8f0820f96f3f6487806e5",
+      "forward_sha256": "3018281a2c90440c691308a26ac2c3d4ecb66b6f550b79ee1918545ce5fec56b",
+      "has_rollback": true,
+      "has_concurrently": false
+    },
+    {
+      "file": "323_visa_oracle_team_testing.sql",
+      "full_sha256": "f73278af9de4a0f9f0e506ca06dd9de7869d6ad7a25232d7599a25b09d20de10",
+      "forward_sha256": "17755e99ed384ef91dca6ff2591eb086d3f46c2cb6468a70db4abd66015c5066",
+      "has_rollback": true,
+      "has_concurrently": false
+    }
+  ],
+  "py_migrations": [
+    {
+      "file": "__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "_lock_guard.py",
+      "sha256": "d3d7ed339ff0d2a101c223f928ef772808688a9109cc9bb4b8e7dd95c5ad4a13"
+    },
+    {
+      "file": "apply_migration_007.py",
+      "sha256": "e03faf94d27cfb2205e506265c22ad23ebf59d9aa721cade8b516cbd9ab974ac"
+    },
+    {
+      "file": "apply_migration_010.py",
+      "sha256": "1374228cc061e36799ae14aa920eeeed2c0891c4b44dbf951ff3b5071c09854a"
+    },
+    {
+      "file": "apply_migration_012.py",
+      "sha256": "c48202cddfefaa3c9b3fd0b7abe258a03bd009f848971c3630bdf06b28505951"
+    },
+    {
+      "file": "apply_migration_013.py",
+      "sha256": "22f63461d5bb03f639fc05d7bfada0d2313de02fca87bed83acb7c401b9606fb"
+    },
+    {
+      "file": "apply_migration_014.py",
+      "sha256": "132ffdf9dd6740d6e6d3d6cf174b25989443efbb425701cd4c8f923169e2fc9b"
+    },
+    {
+      "file": "apply_migration_015.py",
+      "sha256": "7d4f241596ecd6016f4acd706ec6b3deaefadcb5742d35aa40a803c319913116"
+    },
+    {
+      "file": "apply_migration_028.py",
+      "sha256": "36b34ca73754edc761eca96ead1e8bd61581db6849bc0366f12677432ef112ea"
+    },
+    {
+      "file": "apply_migration_029.py",
+      "sha256": "dae0f3c83d2fb9096d59c2572900f22b0f96376e8719db3d46a424526bcaef7d"
+    },
+    {
+      "file": "apply_migration_031.py",
+      "sha256": "8096048f0d645d48b934b761c4a5cf0b407325bfd6543f67963039390190ad9b"
+    },
+    {
+      "file": "apply_migration_032.py",
+      "sha256": "6fa83575b30b5b90683e61e788c121e28fa9455aa03e73c73a36f47687e6a10d"
+    },
+    {
+      "file": "apply_migration_034.py",
+      "sha256": "44b7a652935b94bd498debc8e46c4e1fd0f13a8f55d478138c144f6e02cc6e8d"
+    },
+    {
+      "file": "apply_migration_035.py",
+      "sha256": "efec121cd45eb5c92100693117942e24ee8aa635da4686a00f55f0ab8734b4e6"
+    },
+    {
+      "file": "apply_migration_041.py",
+      "sha256": "cd38cd7d970fdf50dcb046c64a4aeaef350b04f9d5dfa0cba4e9d8a2377c7693"
+    },
+    {
+      "file": "apply_migration_052.py",
+      "sha256": "adcddd98568a20da94dba3728c6d91080fc13e80c67f1ebecbf29f870caeb0cd"
+    },
+    {
+      "file": "apply_migration_107.py",
+      "sha256": "c7cd3670929dd8857c4d1eb87c1d52300f9aaf8b357e572e0869ac97029a6319"
+    },
+    {
+      "file": "apply_migration_109.py",
+      "sha256": "d37c725e8df7b1c1c0b17c62267e2c351a1dbce1e24b365a76088b7459ef698c"
+    },
+    {
+      "file": "apply_migration_119.py",
+      "sha256": "6aff60aa5f0843d210d0ff50613a9b831311173010665fe4bb80c46ff123ff69"
+    },
+    {
+      "file": "apply_migration_120.py",
+      "sha256": "b060c2d487e74657a255e8c366cc3e15e7e4e987157b3b9ba2d8d05645c67de5"
+    },
+    {
+      "file": "apply_migration_121.py",
+      "sha256": "0c397e76c96fceefe4d50acb4949183643e3108b0ccf910f08e5416c30790553"
+    },
+    {
+      "file": "apply_migration_122.py",
+      "sha256": "506548c491ed6f7d515f11f5670e744bd4abc54fee100a8a09eae4ee071e3419"
+    },
+    {
+      "file": "apply_migration_127.py",
+      "sha256": "10a2b0cbd652793192e6c612b7383307b45074fdcf5abbb695d7f14cb9b64b9c"
+    },
+    {
+      "file": "migration_001.py",
+      "sha256": "9dcd4a388ec4f90d5d503fd494a9d69b9c2deafc03cbf87a99ddc99a9293b0e7"
+    },
+    {
+      "file": "migration_007.py",
+      "sha256": "8aafd036af2a86d409696ecf546097f64447146c28c92e33458c71ca00d1db2d"
+    },
+    {
+      "file": "migration_010.py",
+      "sha256": "c43e6720b5bf6961e3d86925c071c78e971e6838cc0a1f34b29342e09254f8a5"
+    },
+    {
+      "file": "migration_012.py",
+      "sha256": "da10c03a94cdc34f7ea3373efe8add18f98c4db4bf15e44e59d64e61ccf36961"
+    },
+    {
+      "file": "migration_013.py",
+      "sha256": "87c2e8cc93ebbf633661770d554d2d849188b6d42b412860dacf7a0c9b215a04"
+    },
+    {
+      "file": "migration_014.py",
+      "sha256": "f615ed3a20dd878a876cf311521ef45d9012af16c042bb5ada8e68f479314a61"
+    },
+    {
+      "file": "migration_015.py",
+      "sha256": "eba3caf3f8d839fc221213ffac95b8af27f19e840c6a9deebc549d1f6e37061b"
+    },
+    {
+      "file": "migration_016.py",
+      "sha256": "878944126bf88e2d5ef41f4e9d6790de4f05d48bafada25ad38d5d03761ae645"
+    },
+    {
+      "file": "migration_018.py",
+      "sha256": "43256b5382c34ce33713cd7fc3224530457d637c84f22f67a5ab037ab807293c"
+    },
+    {
+      "file": "migration_019.py",
+      "sha256": "6950fe2f03969de6fb0a1195cb07c26a7e5d8159ef685939af38f82cc9b0ec20"
+    },
+    {
+      "file": "migration_020.py",
+      "sha256": "8895a66e2d2a5ad61c3ce4af991cc057e52a31b1d4e8024337282a49b41ab30d"
+    },
+    {
+      "file": "migration_021a_baseline.py",
+      "sha256": "eebc1d2ce4da841bf9595e74e4a2a2af00fca392fa319b008bcce11e0db7e623"
+    },
+    {
+      "file": "migration_021b_add_bm25_sparse_vectors.py",
+      "sha256": "5a2664556bfc4cd4b8c43a2cf134c71c11db97e7f4b42afaaf93967fddfe2ef8"
+    },
+    {
+      "file": "migration_022.py",
+      "sha256": "e7de6737031cfc33a2e6ce94f40aff6e74bcd7de7de45a55d37891890244c47e"
+    },
+    {
+      "file": "migration_025.py",
+      "sha256": "e3977539a36c8b5c9260f09ef1bd931cff2b631291bf8ffa85ff9555aaf688aa"
+    },
+    {
+      "file": "migration_026.py",
+      "sha256": "52981c0e6f8b2fad133cfd4e0260889ad3c7b0d9d80841c7804d2a9b94fe0a16"
+    },
+    {
+      "file": "migration_027_team_memory_facts.py",
+      "sha256": "1284e2d542f022c16300804642d273b1cf634a276144b394a886de97ffc4409b"
+    },
+    {
+      "file": "migration_028_knowledge_graph_schema.py",
+      "sha256": "d68ce9c10bf2d4d1483c49dbc5f2f432d8b02a08b7c7a3b9444820e203e3346f"
+    },
+    {
+      "file": "migration_029_kg_source_chunks.py",
+      "sha256": "51688645fc2d16c7d167f10f8c403baaac3855bb8da0e9d2406a61854205c6fa"
+    },
+    {
+      "file": "migration_030_zoho_email.py",
+      "sha256": "1afeda4a907b78e14036efcfebf3f42a65f36872cb67ba2c9a185caf5157109a"
+    },
+    {
+      "file": "migration_031_client_portal.py",
+      "sha256": "b88afd008f3ffed8feb7db8fa650e1ebc36d695a101a639fe17513fb6d10cb20"
+    },
+    {
+      "file": "migration_031b_hybrid_collections.py",
+      "sha256": "1b7829be08336e529ddfc9612cd4402aa870c15205afb13c2667212983515418"
+    },
+    {
+      "file": "migration_032_drop_legacy_kg_tables.py",
+      "sha256": "e1767dded73f2ff109cf061a668625034426c61f0a44a7d3dfcf7630fb31e494"
+    },
+    {
+      "file": "migration_033_newsletter.py",
+      "sha256": "ba1e859f8c62d5312255db71640e74f972eba278aa34451bf4e21589e50d3067"
+    },
+    {
+      "file": "migration_034_google_drive_tokens.py",
+      "sha256": "f25385ca65353bc5d88d00faca6c44c3c4514dff358128401899b112532758ea"
+    },
+    {
+      "file": "migration_035_kbli_blueprints.py",
+      "sha256": "5d4d2660da2fc0cd0b91da3c23d5f88197b1bceebc9c3df11dc5ab0b91d2eba1"
+    },
+    {
+      "file": "migration_036_team_departments.py",
+      "sha256": "e1a4fb12f667771d817ad32f8a0179bf93b0309c5d06176c87b9ef2d4ea8798c"
+    },
+    {
+      "file": "migration_037_folder_access_rules.py",
+      "sha256": "ae8cc2e482ba9f950c67bf24f02a9f6f24a27441852b1984357cd3086fa0df02"
+    },
+    {
+      "file": "migration_038_news_items.py",
+      "sha256": "020944d8cac49376351ff9884a1a0a9b82d877756e22e85deb87982730d3b67a"
+    },
+    {
+      "file": "migration_040_email_activity_log.py",
+      "sha256": "2262cdee68a260574acc18a75738c9ec55dbbe0d0f8560785484ebc8165aff9f"
+    },
+    {
+      "file": "migration_041_clients_missing_columns.py",
+      "sha256": "8806082e0c5e86fd8eb51a5a36dede6006eace3e6a5923b293a20ed521d81cc2"
+    },
+    {
+      "file": "migration_041b_team_activity_logging.py",
+      "sha256": "2ff2f1bdcc646143f23fa0113346d6cf6c9ed027e9190a83f5ac5ab3ef632294"
+    },
+    {
+      "file": "migration_042_passport_enrichment.py",
+      "sha256": "bc3018a8a60e475f335b4b5f111b1598d6da4bde70d42992ec9a949a5b3cbc68"
+    },
+    {
+      "file": "migration_043_fix_visa_types_from_qdrant.py",
+      "sha256": "a7b714469086cca67a2e1a9f03100fe0784753078d6772d87a82329ebc7ea656"
+    },
+    {
+      "file": "migration_043b_knowledge_activity_log.py",
+      "sha256": "b2dc30cd0d3ba94150afe5662731e1e5c853991fbcee6d413361162d1a029355"
+    },
+    {
+      "file": "migration_044_seed_practice_types.py",
+      "sha256": "b8191d2c148c0c2446fe044562c737eee3fe39eb6b626f055c3bb4beaa696bbd"
+    },
+    {
+      "file": "migration_050_client_memory_sync.py",
+      "sha256": "986fe58972b0674205cecb78fb49bb3c1c518c13e9997bd2af191deb10781ab1"
+    },
+    {
+      "file": "migration_051_client_messaging_link.py",
+      "sha256": "1e78d452e96d41e93f0dd4708c53055bc97fb345d175495484b3b397ff12ba5b"
+    },
+    {
+      "file": "migration_052_openclaw_message_logs.py",
+      "sha256": "a750bb427de5aabf7967023ed6ac9e1607cb830fa2f5512769fe75edee4350df"
+    },
+    {
+      "file": "migration_055_kg_performance_indexes.py",
+      "sha256": "f3b4e408dd9b389cc68b102a1c6ee2fa0001d17a15b19d8187d04d3d0a936f60"
+    },
+    {
+      "file": "migration_060_x_monitored_tweets.py",
+      "sha256": "8fadd87b6a5bf7dd7cb6a2cbdfb7328d7358081fffa1d7f2fbf9f901fafedca1"
+    },
+    {
+      "file": "migration_063_lkpm_reports.py",
+      "sha256": "d4cbbaa151198ff9cdac417f8a497b4fb3382a90d744bcf75c5a0d9bebf7aa49"
+    },
+    {
+      "file": "migration_064_kg_reverse_traversal_index.py",
+      "sha256": "d91c42bc197ac5c56075c7ab59a402633de7e37f2c68c17d40ff5ade95415c9b"
+    },
+    {
+      "file": "migration_065_cell_organism_tables.py",
+      "sha256": "15c801570ded8066563d52bf13c8e93a88baf8626f527f94b61a145b0ef6a02e"
+    },
+    {
+      "file": "migration_066_populate_practice_types_from_pricing.py",
+      "sha256": "5bc357df11c47a78022814f9b5dcb2ce29c600500667cf93770bde2b89767cd0"
+    },
+    {
+      "file": "migration_067_clients_soft_delete_indexes.py",
+      "sha256": "4f3b15e05601d07074fb08882d996dc10be0adfa6061b3ea37008308978e6777"
+    },
+    {
+      "file": "migration_068_hr_payroll.py",
+      "sha256": "c955b1da28617e4525ac86e68249cdb9a440b2fddeff2ebf8ebb944263ac2141"
+    },
+    {
+      "file": "migration_069_audit_logs.py",
+      "sha256": "3bfe1a753b622a3b94022d028abd822928d4d2d60519bcf050314439c892acb3"
+    },
+    {
+      "file": "migration_069b_hr_bonus_rates_alignment.py",
+      "sha256": "3b658f1b5a8538efe90642ff8e0e0e2889ddef03585375862b522b3baa84b2d2"
+    },
+    {
+      "file": "migration_070_conversation_history.py",
+      "sha256": "78dc47f3ea000d6404dd1df881b32125f1a1537050dfa839270dce229c8ad6f4"
+    },
+    {
+      "file": "migration_070b_legal_ingest_jobs.py",
+      "sha256": "b6dc1b24949de505885a5b2c2434fb1b70b81a24cbf846c7501b708984b5d69d"
+    },
+    {
+      "file": "migration_071_notification_alerts.py",
+      "sha256": "45999531138859ca5871d05e5e64113120676f9e3f7ebfb8f5753dae2e185336"
+    },
+    {
+      "file": "migration_072_welcome_email_queue.py",
+      "sha256": "24d5d4d3423ac147c6d5ef187a50e8b48e01b06c04ce4a8b909b7036f92d5dca"
+    },
+    {
+      "file": "migration_073_visa_lifecycle.py",
+      "sha256": "fd6bec0a0ae97d4ae993ce627dd06a0e92b9db0e9b2a244aaff948a16e3f63b6"
+    },
+    {
+      "file": "migration_074_content_hash.py",
+      "sha256": "acdac0f4fdd271e2535d6d0caee962dba62963ebfa56ca9b2ba1189f2e5407f9"
+    },
+    {
+      "file": "migration_075_practice_status_notify.py",
+      "sha256": "cf4ccaf09a3713c03a27ccf28695713c16279bb133e785447cbd3e24a229edf4"
+    },
+    {
+      "file": "migration_076_event_bus_triggers.py",
+      "sha256": "0433a4e42ca6421d5ba829997cc73309490ed66e60942adbe704ef2866b396d8"
+    },
+    {
+      "file": "migration_076b_hr_leave_balances_seed.py",
+      "sha256": "8f4a1889c59d2376cdfcafc4ff0df3cc63465e7b70c9099b658b3b652763be97"
+    },
+    {
+      "file": "migration_077_kg_staging_tables.py",
+      "sha256": "6d90f09c2fb80fdc0a6bb16424342dcebeab2ebe379a7216e168ae7dab35d44c"
+    },
+    {
+      "file": "migration_077b_post_publish_queue.py",
+      "sha256": "bda7ee2f104300931c8e5e2505fc819c19a460f20d8860c81d3b78427a5c0589"
+    },
+    {
+      "file": "migration_078_ppq_step_tracking.py",
+      "sha256": "12707622c3158b20232c9d96d801efa390a5f680dbc2a2717f39f678bbd4089b"
+    },
+    {
+      "file": "migration_079_naga_tables.py",
+      "sha256": "281ffcc99ac49c979a5e7a2c731baad8513ea3f3f0a9f7e2ede5e0bb2500c231"
+    },
+    {
+      "file": "migration_080a_visa_oracle_sessions.py",
+      "sha256": "ca561de72227dc205e071e8d6860efbfc543f17a9f1f5041ba423c9d002b14ba"
+    },
+    {
+      "file": "migration_080b_renewal_dedup.py",
+      "sha256": "c5b5b83e8cae6f575c7399faf0a64156e89f1168503c8d330ffe20553f207b3b"
+    },
+    {
+      "file": "migration_080c_hr_team_cleanup.py",
+      "sha256": "500db750cf11249b10002613bcc455594cf633782d148f4f5c3eac481cdc894e"
+    },
+    {
+      "file": "migration_081_naga_claim_quality.py",
+      "sha256": "e493fa071253990d73f9c225c3dd852ffd055b67d1c90d73558be8c1c9c9dea1"
+    },
+    {
+      "file": "migration_081b_prime_nexus_geo.py",
+      "sha256": "d89bc90eb0619e5e13677dfa791f608d2d738a79a8f7dbcfad43b2ead3156b44"
+    },
+    {
+      "file": "migration_084a_nlm_verification_log.py",
+      "sha256": "f35c0244417665c3b8f171e3495faf0d362cfe8ba8bf0832f6f8d6974ad8f3ed"
+    },
+    {
+      "file": "migration_084b_client_perf_indexes.py",
+      "sha256": "33d2df7e501e39d74fab5f1d850bd517d3dfc83a24a2bfe9554f707b79276032"
+    },
+    {
+      "file": "migration_085a_prime_proposals.py",
+      "sha256": "016aae4852c98aaf3688c97e31b480e5c1b887299e3d159699b2b8fd8c2c2331"
+    },
+    {
+      "file": "migration_085b_check_no_empty_strings.py",
+      "sha256": "85183b0f0dc3e28c5956049090df9963977de2e934709b5ad537666569fe65f2"
+    },
+    {
+      "file": "migration_086_channel_dlq.py",
+      "sha256": "b764ba982f87aaf198dcd008fcef4dcee66ffe73137095c063a8da6d4bf7a477"
+    },
+    {
+      "file": "migration_087_normalize_practice_states.py",
+      "sha256": "48482f29d9d7e171081f4c81e9ee0619a0fe6619f51fcb7c4cc04c1951f6c943"
+    },
+    {
+      "file": "migration_088_kg_gin_indexes.py",
+      "sha256": "4b70b162c9825fcb37ea88718e6dcf6b7ef5ec0fca8062bc469ca6e903594908"
+    },
+    {
+      "file": "migration_089_api_key_records.py",
+      "sha256": "2363d306ae8c282d5e6ba11394d9dff68a3b6cbdfa059c1cd870dda3320e2a71"
+    },
+    {
+      "file": "migration_090_security_audit_log.py",
+      "sha256": "2c6e4cf9cef8857d9e31b64e39c453a6e4d64caeff201c560e113dec9b1ed063"
+    },
+    {
+      "file": "migration_091_client_consent_log.py",
+      "sha256": "8f7d093336e1d720ae8f4d8eb56e58dfc015a62724269f23bcf2eb42e42617d2"
+    },
+    {
+      "file": "migration_092a_attendance_late_incidents.py",
+      "sha256": "364673cc47c89f83e905d21c2af77c5a4c82f7f8283e67a800a69803cd4f40ca"
+    },
+    {
+      "file": "migration_092b_coastline_distance.py",
+      "sha256": "fd41aa08285d7908c2c62f14740155df565f3eb847270e5f81d2cd5c6f093f83"
+    },
+    {
+      "file": "migration_093_lkpm_assigns_and_oss_creds.py",
+      "sha256": "a1fc583a2f0406caaea176611dd0689cd96e039416f9f0ebe1aa487f6d3e694f"
+    },
+    {
+      "file": "migration_094_conversation_threads.py",
+      "sha256": "61f7b374771a1b11eb1776e7adc2c31bf1acac30f49651980badc86b06871ff2"
+    },
+    {
+      "file": "migration_095_backfill_threads.py",
+      "sha256": "9f3d20f6fdb97553cfaaa1e0cb63770ab8b2bfbd24537a2a1db437c72965f937"
+    },
+    {
+      "file": "migration_096_kg_communities.py",
+      "sha256": "188f3025bd81702918a647e8692d7cbdd144d12bf6fcd41718995170a7ed7c4c"
+    },
+    {
+      "file": "migration_097_entity_mentions.py",
+      "sha256": "99a86b704f3cfbeff26b5063577d8c6ddbbe873f97025bd65771e69d21745373"
+    },
+    {
+      "file": "migration_098a_owner_weekly_cashout.py",
+      "sha256": "6c2fb47b432247fb04b8cfb82bee9a8a07475dcb09d224b7c76dbe0f7d58f83d"
+    },
+    {
+      "file": "migration_098b_guardian_decisions.py",
+      "sha256": "1173354af3b9f68c24bc805bb4cb94def169b3716b7c8250db6d3fd85e49321d"
+    },
+    {
+      "file": "migration_099_hr_bonus_historical.py",
+      "sha256": "2b495ac0a3a3cf75a117e2b939a9a9972dc1b7306a00635d89f88a68965a329c"
+    },
+    {
+      "file": "migration_100a_lkpm_company_id.py",
+      "sha256": "6bdca4a67628a5a3cb8efc7f614994f63998d93dea987aff49516af2b5a8888b"
+    },
+    {
+      "file": "migration_100b_widen_gender_column.py",
+      "sha256": "05314585cf66bdb0828355b7ff409398edc702ad0609745a3dd31bd1fa53d532"
+    },
+    {
+      "file": "migration_100c_olympus_tables.py",
+      "sha256": "41385b4f380411f62beb3b82c009ec655850f0dfc9d965f891cae88a8b393665"
+    },
+    {
+      "file": "migration_101_critical_indexes.py",
+      "sha256": "5df6657627b585e752166d3d8141b21a40e15fbd3e68dce128d0030155d8acdc"
+    },
+    {
+      "file": "migration_102_materialized_views.py",
+      "sha256": "a69813fde0cedb62fffe03e7017bed59521beaa16b41ab2a6d0ddcdbb19ddcd0"
+    },
+    {
+      "file": "migration_103_pg_tuning.py",
+      "sha256": "87b60f168c9465b3965358e74364d00bb9545096b50f7ee30cfdf34b1042474d"
+    },
+    {
+      "file": "migration_104_olympus_v3_columns.py",
+      "sha256": "338cdd1d142510e57d01bd978201faf757a932affd18fb1751e5ee37c17e786a"
+    },
+    {
+      "file": "migration_105_covering_indexes.py",
+      "sha256": "67ad209bf8eec4cc31a3417e27c8b285ae7a6de22a344474aae6739a3064f53a"
+    },
+    {
+      "file": "migration_106_news_dedup_constraint.py",
+      "sha256": "27d0a5f444f8bf2f3f4b8bd1870630556917b6966899d201d705e0953591479f"
+    },
+    {
+      "file": "migration_107_bridge_outbox.py",
+      "sha256": "2ce6c123801bc0ce17bba63fa40f27160742e1bd7e5f9a7674035c05cba1a00d"
+    },
+    {
+      "file": "migration_108_kg_proposals.py",
+      "sha256": "b856e5c9371c887b9eeb3bb8993acb25fa16576945fba9fa7ed41fd10fae599e"
+    },
+    {
+      "file": "migration_109_funnel_sessions.py",
+      "sha256": "dc180f4cccfd3937f761171e31d388e6e6de00520f8753527878aa9b83b7a745"
+    },
+    {
+      "file": "migration_110_notification_prefs.py",
+      "sha256": "68b3efa87a8f4e366a40f7bd2c0f603f00af8f81ade6ce35416ba317f3e3d23b"
+    },
+    {
+      "file": "migration_111_notification_log.py",
+      "sha256": "7bc3c2b35d5aba6a58026c3e2b2aac390f3594a02151df7443c2cd43ca898e4d"
+    },
+    {
+      "file": "migration_112_war_room_tables.py",
+      "sha256": "faf3e4af95c009558c75d7e065918748a9342991d8476a1f002dd1f81ee7d5d6"
+    },
+    {
+      "file": "migration_113_intel_dossiers.py",
+      "sha256": "2ec8164f1ad5869936dbc61d00a959f9ef5784c244ac00305bc1c63f8e7f4038"
+    },
+    {
+      "file": "migration_114_cognitive_layer.py",
+      "sha256": "081d9c08ce2ab26bfe3dc53daa2fe41864cbdc1cef862504089624afb81edeb2"
+    },
+    {
+      "file": "migration_114a_pii_violations.py",
+      "sha256": "2f5f77b9dbf3a79d029bf4b11d77acdb784b28646c0670e31db9673d70ef0c08"
+    },
+    {
+      "file": "migration_118_clients_referrer_url.py",
+      "sha256": "23748dc910cc04d17d52132898e8baa1025bf15744928d469053d2585d145956"
+    },
+    {
+      "file": "migration_119_partners.py",
+      "sha256": "6e79776218164fefd5d7d566eeb71fe8865fc93f55997deb93356efa0f06e310"
+    },
+    {
+      "file": "migration_120_partner_email_outbox.py",
+      "sha256": "34fb3c3b81b19152b3aadeb61a3b33565b65f8c0edd981774f04612335199a47"
+    },
+    {
+      "file": "migration_121_practices_family_member.py",
+      "sha256": "308637da4b8122cadeab6d62d5192aab65a72157307d9f79ddad76172e39d832"
+    },
+    {
+      "file": "migration_122_practice_types_visa_d1_5yr.py",
+      "sha256": "c92fc85d180dc37674adc422872365fee6f3ad513a04ef26550bd638a37d4c6e"
+    },
+    {
+      "file": "migration_123_practice_types_voa.py",
+      "sha256": "d671c1b1ea0c0dcf6a669642947e131c8a94225ba4c1e75372eb85ffcf185dc9"
+    },
+    {
+      "file": "migration_124_autonomous_lab_runtime.py",
+      "sha256": "86d50df87443ac291cff13d61bb3a8db6af2f6fab6a134452c03e9ad2d570e60"
+    },
+    {
+      "file": "migration_125_fix_visa_family_descendant_hygiene.py",
+      "sha256": "51ea02c9a7a6dbba73f9a991d38dface186c2ffb801ab619bf36b99672159a04"
+    },
+    {
+      "file": "migration_126_fix_e28d_investor_visa.py",
+      "sha256": "45404f84cbfa16ae678ff3b05613c7cf84598ff8300a0d7951f5b841ddf31777"
+    },
+    {
+      "file": "migration_127_practice_types_pt_pma_25m.py",
+      "sha256": "171b874021657c7fff93f1298f73d54c771e257a4d93ddac7465ec6ee081479b"
+    }
+  ]
+}

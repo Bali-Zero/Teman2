@@ -1,0 +1,14 @@
+{
+  "block": "B07",
+  "observed_at": "2026-10-16T09:10:45.720943+00:00",
+  "state": "PREPARED_FOR_REVIEW_NOT_OPERATIONALLY_CLOSED",
+  "tests_previously_passed": 16,
+  "source_sha256": "68a290df5975491a0a3326ccbf2ae212a620ec0452e757c418ee3e842ba261fb",
+  "source_file": "b07_lineage_adapter.py",
+  "document_gate": "INCOMPLETE_SCOPED_R1_HISTORY_ONLY",
+  "final_commit_gate": "PENDING_INDEPENDENT",
+  "native_probe_executed": false,
+  "block_closed": false,
+  "original_deadline_elapsed": true,
+  "note": "Current focused source suite: 16 passed. The document reconciliation withdraws unsupported legacy examples and keeps 16 concrete operation entries distinct from active-consumer coverage. The parent observed no admitted readonly observer DSN; no native DB query was performed. Source effects, identities, recovery and the active denominator remain unresolved. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted."
+}
