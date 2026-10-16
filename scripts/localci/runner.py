@@ -2414,7 +2414,7 @@ def judge_rc0_of(status: str, steps: list | None, spec: dict) -> str | None:
     test, a workflow, .gitattributes: the owner's ruling of 2026-10-15). A RED read is ``judge_rewritten`` (steps_verdict), never this. None otherwise."""
     mod = [str(f) for f in spec.get("judge_modified") or []]
     sts = [s.get("status") for s in steps or [] if isinstance(s, dict)]
-    if status != "BLOCKED" or not mod or not sts or "PASS" not in sts or any(x not in ("PASS", "NOT_APPLICABLE") for x in sts):
+    if status != "BLOCKED" or not mod or not sts or not isinstance(steps, list) or len(sts) != len(steps) or "PASS" not in sts or any(x not in ("PASS", "NOT_APPLICABLE") for x in sts):
         return None
     return "judge_rewritten_base_ok"
 

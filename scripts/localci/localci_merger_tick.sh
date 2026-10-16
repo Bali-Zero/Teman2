@@ -110,7 +110,7 @@ CODE="$(mktemp -d "${TMPDIR:-/tmp}/localci-merger.XXXXXX")"
 for f in merger.py hosted_compare.py; do
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f"
 done
-for f in prune.py runner.py contexts_matrix.yaml tick_chain.py; do   # B6's prune, its df probe and the BASE matrix whose stand-ins it keeps; B33's chain predicate (absent: no chain)
+for f in prune.py runner.py contexts_matrix.yaml tick_chain.py gate_ledger.py; do   # B6's prune, its df probe and the BASE matrix whose stand-ins it keeps; B33's chain predicate (absent: no chain); B25-prime ledger reader
   git -C "$STATE/repo.git" show "$SHA:scripts/localci/$f" > "$CODE/$f" 2>/dev/null || rm -f "$CODE/$f"
 done
 HB_NEW="$(mktemp "$STATE/.heartbeat.sh.XXXXXX")"   # one temp file per run: a hand run beside launchd never shares it
@@ -124,6 +124,8 @@ fi
 # failed fetch) must still tick, never die on argparse
 CODE_FLAG=""
 if grep -q -- "--code-sha" "$CODE/merger.py"; then CODE_FLAG="--code-sha=$SHA"; fi
+LEDGER_FLAG=""
+if grep -q -- "--gate-ledger" "$CODE/merger.py"; then LEDGER_FLAG="--gate-ledger=${MERGER_GATE_LEDGER:-${GATE_LEDGER:-$HOME/.nuzantara-pilots/local-ci-gate/verdicts.jsonl}}"; fi
 # B6: the host's free GB is read BEFORE the tick, which never starts a run under the floor (it journals the skip), and the
 # prune runs AFTER it: the decision first, then the gate removes what it wrote and trims the VM when an image went
 HOST_PATH="${MERGER_HOST_PATH:-/System/Volumes/Data}"
@@ -143,7 +145,7 @@ if [ -n "$WARN" ] && [ -z "$FREE_FLAG" ]; then
   echo "merger_tick: $WARN (not journalled: no reading, or a merger.py that cannot journal the skip)" >&2
 else
   "$PY" -I "$CODE/merger.py" tick --node "$NODE" --state-dir "$STATE" --python "$PY" ${CODE_FLAG:+"$CODE_FLAG"} \
-    ${FREE_FLAG:+"$FREE_FLAG"} ${FLOOR_FLAG:+"$FLOOR_FLAG"} || TICK_RC=$?
+    ${LEDGER_FLAG:+"$LEDGER_FLAG"} ${FREE_FLAG:+"$FREE_FLAG"} ${FLOOR_FLAG:+"$FLOOR_FLAG"} || TICK_RC=$?
 fi
 if [ -f "$CODE/prune.py" ] && grep -q -- '"prune"' "$CODE/merger.py"; then
   PRUNE_RC=0

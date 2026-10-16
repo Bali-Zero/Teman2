@@ -204,6 +204,8 @@ def test_tr_judge_rc0_of_product():
                         mismatches.append(f"{status}|{step_sts}|{len(mod)}|{'forged' if reason == FORGED else 'plain'}: got={got!r} want={want!r}")
     assert total == 2628
     assert not mismatches, f"{len(mismatches)}/{total} TR judge_rc0_of mismatches:\n" + "\n".join(mismatches[:25])
+    assert runner.judge_rc0_of("BLOCKED", [{"name": "s0", "status": "PASS"}, "bad"], {"judge_modified": [TJ]}) is None
+    assert runner.judge_rc0_of("BLOCKED", ({"name": "s0", "status": "PASS"},), {"judge_modified": [TJ]}) is None
 
 
 EVAL_STATUSES = ("PASS", "NOT_APPLICABLE", "FAIL", "ERROR", "BLOCKED", "STALE", "INTERRUPTED")
@@ -284,9 +286,11 @@ def test_tc_runner_to_merger_chain_product():
                 flag == "judge_rewritten_base_ok",
                 res.get("no_verdict") == "judge_rewritten_base_ok",
                 res["verdict"] == "OK",
+                loc["judge_rewritten_base_ok"] == (["Gate"] if want_base_ok else []),
+                loc["judge_gate_only"] is want_base_ok,
                 loc["why"]["executed_contexts_ok"] is None,
             )
-            want = (want_base_ok, want_base_ok, want_ok, want_ok)
+            want = (want_base_ok, want_base_ok, want_ok, True, True, green_steps)
             if got != want:
                 mismatches.append(f"{mname}|{'+'.join(kinds)}: got={got!r} want={want!r} (status={status!r}, flag={flag!r}, res={res!r})")
     assert total == 168
