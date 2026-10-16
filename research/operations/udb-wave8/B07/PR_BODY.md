@@ -27,7 +27,7 @@ Block **B07** (`D02`, `D11`, `D13`) of campaign `universal-db-wave8-20261015`. S
   - `dr05-pro.txt`: a counts-only DR-B07-05 Pro projection at `2026-10-15T08:55:09Z`, symlink target redacted;
   - `consumer-ids.csv`: the 6029 `consumer_id` values projected from the campaign consumer matrix (sha256 `c09e1432…`).
 - Synthesis documents with reconciled active claims and explicitly withdrawn historical findings. `PROPOSAL.md` drops the refuted `CE-09`/`IN-03` claims and marks deferred DR-B07-02..04 NOT ADMITTED.
-- The `.secrets.baseline` entries for the fixture digests: 606 digest findings, sha256 values of migration files and fixtures; no credential values.
+- Historical source-package baseline admission recorded 606 digest findings. The current curated package is covered by a separate exact per-entry admission and independent verification; no credential values are admitted.
 
 ## Contract values (embedded; the source is an external campaign control file)
 

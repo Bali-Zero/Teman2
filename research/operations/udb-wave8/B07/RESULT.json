@@ -150,12 +150,12 @@
         "bytes": 253131,
         "paths": 7,
         "applied_at": "2026-10-15T17:09:02Z",
-        "secret_digest_findings": 606,
-        "secret_baseline_proposal_sha256": "45052c41baf1626888d6e8e491af24ea7266a2114fe674c1f5bae5b8805dd425",
         "old_assertions_unchanged": 82,
         "default_output_parity": "16 records identical to the pre-patch output",
         "tests_after": "14 passed, exit 0",
-        "historical_count_correction": "545 was stale; candidate baseline contains 606 B07 digest findings."
+        "historical_count_correction": "545 was stale in the earlier source package;606 was its corrected historical count. Current whole-package admission is established separately against exact bytes, including metadata.",
+        "historical_secret_digest_findings": 606,
+        "historical_secret_baseline_proposal_sha256": "45052c41baf1626888d6e8e491af24ea7266a2114fe674c1f5bae5b8805dd425"
       },
       {
         "change": "G6 observer pin (spec written before the correction, after the synthetic counterexample receipt sha256 4a8eb2f381430ad8cdab44980f33fd3a59132055fc9fd10260e59642acd56393)",

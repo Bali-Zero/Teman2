@@ -122,108 +122,15 @@ To resolve `UNK-B07-01` through `UNK-B07-05` with live proof (while preserving t
 
 ### `DR-B07-02` — Live Dual-Ledger Reconciliation & Provenance Aggregate (`_schema_versions` vs `schema_migrations`)
 
-**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
-
-- **ID**: `DR-B07-02`
-- **Command** (run via read-only DB connection to `nuzantara-postgres`):
-  ```sql
-  SELECT json_build_object(
-    'schema_versions_count', (SELECT count(*) FROM public._schema_versions),
-    'schema_migrations_count', (SELECT count(*) FROM public.schema_migrations),
-    'provenance_populated_count', (SELECT count(*) FROM public._schema_versions WHERE applied_as IS NOT NULL AND applied_via IS NOT NULL AND runner_version IS NOT NULL),
-    'applied_via_breakdown', (SELECT json_object_agg(coalesce(applied_via, 'NULL'), cnt) FROM (SELECT applied_via, count(*) AS cnt FROM public._schema_versions GROUP BY applied_via) s),
-    'in_versions_not_migrations', (SELECT coalesce(json_agg(v.migration_number ORDER BY v.migration_number), '[]'::json) FROM public._schema_versions v LEFT JOIN public.schema_migrations m ON v.migration_number = m.migration_number WHERE m.migration_number IS NULL),
-    'in_migrations_not_versions', (SELECT coalesce(json_agg(m.migration_number ORDER BY m.migration_number), '[]'::json) FROM public.schema_migrations m LEFT JOIN public._schema_versions v ON m.migration_number = v.migration_number WHERE v.migration_number IS NULL),
-    'checksum_mismatch_between_ledgers', (SELECT coalesce(json_agg(v.migration_number ORDER BY v.migration_number), '[]'::json) FROM public._schema_versions v JOIN public.schema_migrations m ON v.migration_number = m.migration_number WHERE coalesce(v.checksum, '') <> coalesce(m.checksum, '')),
-    'ledger_rows', (SELECT json_agg(row_to_json(t) ORDER BY t.migration_number) FROM (SELECT v.migration_number, v.version_name, m.migration_name, v.checksum AS v_checksum, m.checksum AS m_checksum, v.status AS v_status, m.status AS m_status, v.applied_by, v.applied_as, v.applied_via, v.runner_version FROM public._schema_versions v FULL OUTER JOIN public.schema_migrations m ON v.migration_number = m.migration_number) t)
-  );
-  ```
-- **Inputs**: `public._schema_versions`, `public.schema_migrations` in `nuzantara-postgres`.
-- **Expected Output Shape**: Single JSON object containing aggregate counts, symmetric differences, and the non-PII ledger join.
-- **Why It Matters**: Resolves `UNK-B07-01` and `UNK-B07-02` by proving the exact live state of both migration ledgers and joining live checksums against `DR-B07-01`.
+Withdrawn after independent review. No query body or execution request is retained. Schema, authorization and privacy assumptions were not admitted; any native reconciliation needs a separately validated read-only specification.
 
 ### `DR-B07-03` — Live `pg_proc` (`SECURITY DEFINER`), `pg_trigger`, and `pg_event_trigger` Catalog Inventory (`D02`)
 
-**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
-
-- **ID**: `DR-B07-03`
-- **Command** (run via read-only DB connection to `nuzantara-postgres`):
-  ```sql
-  SELECT json_build_object(
-    'security_definer_functions', (
-      SELECT coalesce(json_agg(row_to_json(f) ORDER BY f.schema_name, f.proname), '[]'::json)
-      FROM (
-        SELECT n.nspname AS schema_name, p.proname, pg_get_function_identity_arguments(p.oid) AS args,
-               r.rolname AS owner_role, p.prosecdef AS security_definer,
-               encode(sha256(convert_to(pg_get_functiondef(p.oid), 'UTF8')), 'hex') AS def_sha256
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-        JOIN pg_roles r ON r.oid = p.proowner
-        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-          AND (p.prosecdef = true OR p.proname LIKE '%purge%' OR p.proname LIKE '%audit%' OR p.proname LIKE '%guard%')
-      ) f
-    ),
-    'user_triggers', (
-      SELECT coalesce(json_agg(row_to_json(t) ORDER BY t.table_schema, t.table_name, t.tgname), '[]'::json)
-      FROM (
-        SELECT ns.nspname AS table_schema, c.relname AS table_name, tg.tgname, tg.tgenabled,
-               p.proname AS function_name, encode(sha256(convert_to(pg_get_triggerdef(tg.oid), 'UTF8')), 'hex') AS triggerdef_sha256
-        FROM pg_trigger tg
-        JOIN pg_class c ON c.oid = tg.tgrelid
-        JOIN pg_namespace ns ON ns.oid = c.relnamespace
-        JOIN pg_proc p ON p.oid = tg.tgfoid
-        WHERE NOT tg.tgisinternal AND ns.nspname NOT IN ('pg_catalog', 'information_schema')
-      ) t
-    ),
-    'event_triggers', (
-      SELECT coalesce(json_agg(row_to_json(e) ORDER BY e.evtname), '[]'::json)
-      FROM (SELECT evtname, evtevent, evtenabled, evtfoid::regproc::text AS function_name FROM pg_event_trigger) e
-    )
-  );
-  ```
-- **Inputs**: `pg_proc`, `pg_trigger`, `pg_event_trigger`, `pg_class`, `pg_namespace`, `pg_roles`.
-- **Expected Output Shape**: Single JSON object with function signatures, owner roles, trigger attachments, and SHA-256 hashes of definitions.
-- **Why It Matters**: Resolves `UNK-B07-03` by binding installed DB-internal functions and triggers (`D02`) to repo migration DDL by SHA-256.
+Withdrawn after independent review. No query body or execution request is retained. Schema, authorization and privacy assumptions were not admitted; any native reconciliation needs a separately validated read-only specification.
 
 ### `DR-B07-04` — Live Olympus Partition & Action Outcome Aggregate (`D02`)
 
-**NOT ADMITTED — historical deferred request. Do not execute this request; it supplies no current native evidence.**
-
-- **ID**: `DR-B07-04`
-- **Command** (run via read-only DB connection to `nuzantara-postgres`):
-  ```sql
-  SELECT json_build_object(
-    'heartbeat_partitions', (
-      SELECT coalesce(json_agg(row_to_json(p) ORDER BY p.partition_name), '[]'::json)
-      FROM (
-        SELECT c.relname AS partition_name, pg_get_expr(c.relpartbound, c.oid) AS bound_expr,
-               c.reltuples::bigint AS approx_rows
-        FROM pg_inherits i
-        JOIN pg_class c ON c.oid = i.inhrelid
-        JOIN pg_class parent ON parent.oid = i.inhparent
-        WHERE parent.relname = 'olympus_heartbeats'
-      ) p
-    ),
-    'actions_by_rhythm_outcome', (
-      SELECT coalesce(json_agg(row_to_json(a) ORDER BY a.rhythm, a.action_type, a.outcome), '[]'::json)
-      FROM (
-        SELECT rhythm, action_type, outcome, count(*) AS cnt, max(executed_at) AS last_executed_at
-        FROM public.olympus_actions
-        GROUP BY rhythm, action_type, outcome
-      ) a
-    ),
-    'rules_summary', (
-      SELECT coalesce(json_agg(row_to_json(r) ORDER BY r.rule_name), '[]'::json)
-      FROM (
-        SELECT rule_name, category, source, confidence, times_applied, last_applied_at
-        FROM public.olympus_rules
-      ) r
-    )
-  );
-  ```
-- **Inputs**: `pg_inherits`, `pg_class`, `public.olympus_actions`, `public.olympus_rules`.
-- **Expected Output Shape**: Single JSON object with partition bounds/row estimates (`olympus_heartbeats_*`), action outcome counts, and active Olympus rules.
-- **Why It Matters**: Resolves `UNK-B07-04` by verifying whether `ensure_next_partition` (`CE-08`) left rows in `olympus_heartbeats_default` and whether dual-process pulses (`CE-07`) caused duplicate/failed actions.
+Withdrawn after independent review. No query body or execution request is retained. Schema, authorization and privacy assumptions were not admitted; any native reconciliation needs a separately validated read-only specification.
 
 ### `DR-B07-05` — Host Scheduler & Retention Worker Registration Check (`D11`)
 
