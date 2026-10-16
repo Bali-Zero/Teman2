@@ -1,0 +1,35 @@
+task_id: udb-s3-20261017
+gear: 3
+l_level: L3
+gate_class: codex
+mission: universal-db-wave8-20261015
+mission_colour: BLUE_WITH_EXPLICIT_OWNER_NAMED_SEAT_EXCEPTION
+status: PREPARED_ONLY
+objective: |
+  Prepare the three admitted S3 increments: serialize cooperative conversation
+  persistence, harden the migration runner, and reproduce B05 historical
+  contracts from versioned inputs without confusing static observations with
+  active runtime coverage.
+scope:
+  - Conversation repository and cache log safety, with consumer tests.
+  - Existing migration manager and CLI, with real PostgreSQL atomicity tests.
+  - B05 historical fixture wiring and separate current-source observations.
+acceptance:
+  - text: "Concurrent cooperative first writes and appends preserve one stable conversation and all messages."
+    probe: "Pro disposable PostgreSQL: 170 targeted tests passed, zero failed or skipped."
+  - text: "Migration locking, dependency forwarding and SQL-plus-ledger rollback are atomic."
+    probe: "The same 170-test PostgreSQL receipt includes CLI, manager and dependency tests."
+  - text: "Historical B05 validation works without Git history or ignored receipts and rejects tampered or absent inputs."
+    probe: "Pro B05 suite: 40 passed, zero failed or skipped; clean committed CLI exits zero."
+  - text: "Current-source observation never claims current operation contracts or an active denominator."
+    probe: "Committed current-mode CLI: UNASSESSED contracts; active denominator UNKNOWN."
+review:
+  cross_family: "Gemini Argon high requested; effective model unobserved; result SHA256 3331dd48f1a7e1bba9d2c5d5c93c547c750141cd5b77d71df6c8fe0ea471ff75."
+  independent_final: "Astra 6 xhigh owner-appointed exception; S3 final r1 PASS SHA256 2bf3ec88719111795ca6fa59a60ffe4dcc6de4e5fbc515d2b08f690658ae1892."
+  c_annotation_addendum: "PASS SHA256 dc6050501f10a2a4993bc3bef29b5d73ef27757e68579f99bfc321bf38ecc9e7."
+  current_metadata_change: "Documentation-only references; final S4 independent verification pending."
+production_admission: |
+  Not admitted. Conversation deployment requires writer compatibility, quiescence,
+  drain, mixed-version recovery and consumer proof. Migration execution requires
+  its own per-migration admission. No client-row repair or repeated one-shot
+  restore/observer exercise is authorized. All eight operational blocks remain open.
