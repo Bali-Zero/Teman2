@@ -1,0 +1,16 @@
+mandate: universal-db-wave8-20261015-B04
+gear: 3
+colour: BLUE
+intent:
+  Ship the independently reviewed B04 store catalog, hermetic bindings and bounded artifact publication;
+  runtime unknowns remain explicit.
+scope:
+  - research/operations/udb-wave8/B04/
+  - evidence/2026-10/agent-mini-pro2-db-udb-b04-stores-2ae43009/
+  - .secrets.baseline
+constraints:
+  - Exactly one original PR allocation for B04.
+  - Authenticated owner exception replaces unavailable named Claude seats with available independent seats;
+    no colour switch.
+  - No client rows, credentials, unadmitted native actions, weakened assertions or invented closure.
+  - S1 remains gated on all eight actual block closures unless the owner approves the separate stage proposal.

@@ -1,0 +1,12 @@
+{
+  "status": "COLLECTION_METADATA_OBSERVED",
+  "collections": [
+    "89ce6e199fd05c3301546dd4d16d742a6d8c3e19b9727b6218131850082c3822",
+    "9b3006ccbd028dd90443b74afbbb0d774df7e0f09eb562fc98cd0fcc10f94067"
+  ],
+  "collection_count": 2,
+  "raw_collection_names_exported": false,
+  "points_or_payloads_requested": false,
+  "model_binding_proved": false,
+  "access_principal": "UNOBSERVED"
+}

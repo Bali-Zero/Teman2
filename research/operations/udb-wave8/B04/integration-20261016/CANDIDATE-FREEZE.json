@@ -1,0 +1,290 @@
+{
+  "scope": "FROZEN_PREPARER_CANDIDATE_PENDING_INDEPENDENT_ACCEPTANCE",
+  "recorded_at": "2026-10-16T06:20:58.469160+00:00",
+  "campaign_id": "universal-db-wave8-20261015",
+  "block_id": "B04",
+  "worktree": "/Users/nuzantara/nuzantara/.worktrees/db-udb-b04-stores",
+  "base_head": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
+  "candidate_commit": "PENDING_PARENT_BINDING",
+  "candidate_root": "research/operations/udb-wave8/B04",
+  "manifest_excludes": [
+    "CANDIDATE-FREEZE.json",
+    "__pycache__"
+  ],
+  "files": {
+    "ANALYSIS.md": {
+      "sha256": "7ae2fffe4abb847bf26c29bb7a99748f4698fcb441f99aeae9f5d8724152af8c",
+      "bytes": 30469
+    },
+    "BATTLE.md": {
+      "sha256": "d42d39a061748c8b23aa52884a90d0c5c188a99c8bce8ae81a16d1b3016c2111",
+      "bytes": 5592
+    },
+    "DEFECTS.md": {
+      "sha256": "1f9f539ad73d3c6c51d42d6432789e2d486c1f1b25d130625906550a04527414",
+      "bytes": 14128
+    },
+    "DEFINITIVE-SYNTHESIS.md": {
+      "sha256": "cd1c3c779174e91cfcd195aa0ba68ddc135840d41f90ca322e626bd81216f82e",
+      "bytes": 18776
+    },
+    "DUX-NOTE-ANALYSIS.md": {
+      "sha256": "2186e20bd07b90a4836ecf55a04ed59844f957e1cd03d4c73a8865efbeeca6ba",
+      "bytes": 2634
+    },
+    "DUX-NOTE-CORRECTION.md": {
+      "sha256": "a1981d26a6ec4f65d3d3e123b850dd26b0e3a832fac9bedd35855cfc729a97a3",
+      "bytes": 2292
+    },
+    "DUX-NOTE-SYNTHESIS.md": {
+      "sha256": "edc650ca0dbafaffd049f0aac681e1c18f307dcc7ef3aed32d2afec85d8d9750",
+      "bytes": 4767
+    },
+    "ISOLATED-REGENERATION-RECEIPT.json": {
+      "sha256": "ef415d8bb0c369091e3554c6ddadda9b6fb78acd3b618e37c8efbbd65cd6c1ed",
+      "bytes": 1484
+    },
+    "PROPOSAL.md": {
+      "sha256": "2f3eec5b06425868b027fff99f0ce3dcdef7d927f0d1157a0924fce92b0c6795",
+      "bytes": 20132
+    },
+    "PR_BODY.md": {
+      "sha256": "3e271fcd5f925acff450667ffd5a57a573d6fd55cbefb666ac483356ca31ce62",
+      "bytes": 3084
+    },
+    "R1-DOCUMENT-REVIEW.json": {
+      "sha256": "5d2f30412c2e679cac2a81afba5f8b8d9305bc92b4e392b6124452d40bb1385f",
+      "bytes": 5470
+    },
+    "RESULT.json": {
+      "sha256": "d037eb7df292e6a140e67336d0871a3d2f375145e9b9d70402d2829e4b096afa",
+      "bytes": 11791
+    },
+    "RUN-ANALYSIS.attempt2-commands-denied": {
+      "sha256": "0a4a560f253b2ae7a4f93d2d0dd2fd2745193bff4c3b29d262c22d5bea503de0",
+      "bytes": 16
+    },
+    "RUN-ANALYSIS.permission-denied": {
+      "sha256": "a3588a6597322f02f93f53f9415b9150c73280cdcdd072823f17e467f051db6a",
+      "bytes": 17
+    },
+    "RUN-ANALYSIS.started": {
+      "sha256": "51d2cb102102d58a3a17c9da5e721fdb11e1b628ec92d7bc7e8d7874374d29f5",
+      "bytes": 18
+    },
+    "RUN-CORRECTION.started": {
+      "sha256": "7ee985b62bae4333839926db747f9c84d266c41b20b9c25ccbf24d401956dcc4",
+      "bytes": 18
+    },
+    "RUN-SYNTHESIS.started": {
+      "sha256": "94d35d0eb1d07b01ad008c3ccddc02d6d60d2939492037593a33efc483f51cf9",
+      "bytes": 16
+    },
+    "SESSION.attempt2-commands-denied.json": {
+      "sha256": "afddfd5ee1ed6405d75b33e3ad6bd39afa691a734df93a75a0cf75ca3af0c394",
+      "bytes": 597
+    },
+    "SESSION.json": {
+      "sha256": "fa92d9f9695eef66b73259815d2870c09a70ad112e9e1cbe120348f0857d9976",
+      "bytes": 930
+    },
+    "SESSION.permission-denied.json": {
+      "sha256": "5eba47eab2567b56806bf225e5ea6497fed8f1760d20e51ebd399998b19b8ea7",
+      "bytes": 598
+    },
+    "dux-requests/DUX-AUTHORED.md": {
+      "sha256": "108d7e71f04a9d2ef4d4ab0d1a45c1b20928538dd2ea90bff54f4456bafd591e",
+      "bytes": 2445
+    },
+    "dux-requests/DUX-B04-01.cmd.sh": {
+      "sha256": "ae8da5563615c649b77d5f45e672ab7b97928e7efe39bd42bf2bab0ab1013d1f",
+      "bytes": 1123
+    },
+    "dux-requests/DUX-B04-01.dux-corrected.cmd.sh": {
+      "sha256": "c0009fe32b8191d50050650205b599df1087e0b9e3925cea29d3939b49c4bc02",
+      "bytes": 1169
+    },
+    "dux-requests/DUX-B04-01.out": {
+      "sha256": "3953ec0227d05ff2910a75c801fc783e0b14d080839d9719b094f6dbf0b4f416",
+      "bytes": 9713
+    },
+    "dux-requests/DUX-B04-02.cmd.sh": {
+      "sha256": "5f0dae715d945cb4c13ab884f43cf1f8708e60f5c892e18fcc13197df76f0194",
+      "bytes": 566
+    },
+    "dux-requests/DUX-B04-02.out": {
+      "sha256": "70a1df7d0d32fe107409b9a39c4336e4ddfbf565f646f320e26207b587255ffe",
+      "bytes": 90736
+    },
+    "dux-requests/DUX-B04-04.cmd.sh": {
+      "sha256": "309735e4e849c0a3c29abd7a26f3648b31f97a20d0b7b7d4b35e0e606ab7f7e2",
+      "bytes": 882
+    },
+    "dux-requests/DUX-B04-04.out": {
+      "sha256": "51942bce561ab95f0e7c7f08952d5d64ef83c75e5b6d52f447268a6d2982295c",
+      "bytes": 46
+    },
+    "dux-requests/DUX-B04-06.cmd.sh": {
+      "sha256": "51c93e23861f98ed8a56594285d1c1ca92e4f99ae9f2f6e7c449cf0e60df9b3c",
+      "bytes": 638
+    },
+    "dux-requests/DUX-B04-06.out": {
+      "sha256": "1e5a841b0748898fca0202121ca5c011a9c33401ada4f62639b0ece5f7e55df4",
+      "bytes": 1342
+    },
+    "dux-requests/RECEIPTS.json": {
+      "sha256": "c6af6b55f7c0049be5973e26fb584302257030f84433a01ce784f2807395e429",
+      "bytes": 4322
+    },
+    "fixtures/PROVENANCE.json": {
+      "sha256": "5f9a6b1109c257673eb749e9ebc99a9cd3b78ec092fb02831a4d40b83dda7795",
+      "bytes": 11714
+    },
+    "fixtures/udb-wave8-inputs/ASTRA-ADVICE.md": {
+      "sha256": "72f349f285bc681013b67ad1d25cdad54d3d4478080dc1f5e7e0512dd9e1fdb8",
+      "bytes": 1266
+    },
+    "fixtures/udb-wave8-inputs/FINAL-BLUE-GATE.json": {
+      "sha256": "b9d284e1dba9e87ad340cbd4076061e7a35a93fdf8bc1c910340e6099d711856",
+      "bytes": 12139
+    },
+    "fixtures/udb-wave8-inputs/INPUT-MANIFEST.json": {
+      "sha256": "e8a35c2404520884f58c7d2801e647c743b86cf69707591f1a1c828bab97722e",
+      "bytes": 729
+    },
+    "fixtures/udb-wave8-inputs/REAL-RUN-RECEIPT.json": {
+      "sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "bytes": 2427
+    },
+    "fixtures/udb-wave8-inputs/REPORT.md": {
+      "sha256": "d289fb8660a6bd634cb7785fef3a8c0b47ceefe82463d134c4bbf66dc0563e9a",
+      "bytes": 10595
+    },
+    "fixtures/udb-wave8-inputs/STATE.json": {
+      "sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "bytes": 4152
+    },
+    "fixtures/udb-wave8-inputs/consumer-matrix.projection.csv": {
+      "sha256": "f6df47eb7106fbfeebb83b49d5a99a13f636a1f1500154233a2ae8346abf38cf",
+      "bytes": 692523
+    },
+    "fixtures/udb-wave8-inputs/research-lines.csv": {
+      "sha256": "1b3d1f31df997500975311d3f49cbd3a50346c2fa7d27f45ff808c7203654c10",
+      "bytes": 20732
+    },
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json": {
+      "sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "bytes": 2614
+    },
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.projection.json": {
+      "sha256": "7cff05fbd7a4421d7c839ecba7f23cb4ec0bc17c6390d46fc9410a67a26bdde8",
+      "bytes": 197
+    },
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/QDRANT-METADATA.json": {
+      "sha256": "af100a6d86c337947cb3cb8fd90fff0e329807b1d0fa0cebc70c2482811555c2",
+      "bytes": 391
+    },
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-MINI-METADATA.json": {
+      "sha256": "6ad6b9b9d4839906061610fa54392880d08699efd66162a7f30e58ff79087e30",
+      "bytes": 414
+    },
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-PRO-METADATA.json": {
+      "sha256": "e77cefd1e69ccff94db34292cfecc73e87e1888ad433e3bd0dffb2ff58b3cda0",
+      "bytes": 413
+    },
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json": {
+      "sha256": "3dae9f5e3635cdf06e92742ec468329f704d3a6f56f6897cb12f37fb4c218f88",
+      "bytes": 3559
+    },
+    "integration-20261016/CURRENT-REGENERATION.json": {
+      "sha256": "c59ce101c871fb883b6747a4ca77aa39db87a4d0951062f0e0db17cfdf619228",
+      "bytes": 856
+    },
+    "integration-20261016/CURRENT-SOURCE-TESTS.json": {
+      "sha256": "f31354d45616633298bf3d1f99da0017d3a20508746e86b9667f9be571a5a0ff",
+      "bytes": 1069
+    },
+    "integration-20261016/PATCH-INTAKE.json": {
+      "sha256": "fc09df2371cc7edf787623f2e13f93984131bf4408b68265de8aeeb006573443",
+      "bytes": 14207
+    },
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json": {
+      "sha256": "9cf8c5b0a118efcd65e85674fabb8d8d2f2d7f81ce57c81ee36b0f695da3a0a5",
+      "bytes": 4743
+    },
+    "integration-20261016/SECRET-FINDING-DIAGNOSIS.json": {
+      "sha256": "1bbdb76034f1f834e3dfef07c512b75752836d1464515168a562cde386efae7b",
+      "bytes": 840
+    },
+    "store-bindings.csv": {
+      "sha256": "712e98d987c4c1c38533e2bbbbd3f93366735d031219b107113a2971e6e29582",
+      "bytes": 1615095
+    },
+    "store-catalog.json": {
+      "sha256": "2b9c7d6492e8689dadc924e868f5f3548d48622db2561bae03cbacd4648c89e4",
+      "bytes": 25291
+    },
+    "store_catalog.py": {
+      "sha256": "53f2776b124c7e23a03a58a57d2fc2a68f591901be480e68625e10ab5324721a",
+      "bytes": 86698
+    },
+    "tests/test_store_catalog.py": {
+      "sha256": "d59a95b3a3f4a9b7dacb8445a095b9c9cd71b1175813e947f52619ae071429ee",
+      "bytes": 32666
+    }
+  },
+  "changed_preexisting_files": [
+    "store_catalog.py",
+    "RESULT.json",
+    "PR_BODY.md",
+    "DEFINITIVE-SYNTHESIS.md",
+    "tests/test_store_catalog.py"
+  ],
+  "new_files_before_this_manifest": [
+    "fixtures/PROVENANCE.json",
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/LIVE-DB-METADATA.projection.json",
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/QDRANT-METADATA.json",
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-MINI-METADATA.json",
+    "fixtures/udb-wave8-inputs-dux/prior/completion-20261015-0831/REDIS-PRO-METADATA.json",
+    "fixtures/udb-wave8-inputs/ASTRA-ADVICE.md",
+    "fixtures/udb-wave8-inputs/FINAL-BLUE-GATE.json",
+    "fixtures/udb-wave8-inputs/INPUT-MANIFEST.json",
+    "fixtures/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+    "fixtures/udb-wave8-inputs/REPORT.md",
+    "fixtures/udb-wave8-inputs/STATE.json",
+    "fixtures/udb-wave8-inputs/consumer-matrix.projection.csv",
+    "fixtures/udb-wave8-inputs/research-lines.csv",
+    "integration-20261016/CURRENT-CLEAN-CHECKOUT.json",
+    "integration-20261016/CURRENT-REGENERATION.json",
+    "integration-20261016/CURRENT-SOURCE-TESTS.json",
+    "integration-20261016/PATCH-INTAKE.json",
+    "integration-20261016/PREPARED-VERIFICATION-SUMMARY.json",
+    "integration-20261016/SECRET-FINDING-DIAGNOSIS.json",
+    "store-bindings.csv",
+    "store-catalog.json"
+  ],
+  "removed_preexisting_files": [],
+  "hermetic_patch": {
+    "sha256": "fc15febdd457b3dc70e49de324bdc560f94b811af417698e486c37f0addc5db9",
+    "bytes": 814273,
+    "paths": 16,
+    "added_lines": 7641,
+    "removed_lines": 36
+  },
+  "followup_scope": {
+    "reconciled_docs": 3,
+    "generated_artifacts": 2,
+    "execution_and_intake_receipts": 6,
+    "source_or_test_changes_beyond_prepared_patch": false
+  },
+  "current_verification": {
+    "with_receipts": "14 passed in 1.33s; 0 skipped",
+    "without_receipts": "14 passed in 0.99s; 0 skipped",
+    "cli": "exit 0 in both modes; artifact parity",
+    "original_assertions": "8 tests and 106 assertion ASTs unchanged",
+    "native_probes_run": false
+  },
+  "independent_acceptance": "PENDING_PARENT",
+  "block_closed": false
+}
