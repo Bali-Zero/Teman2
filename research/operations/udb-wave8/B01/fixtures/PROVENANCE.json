@@ -1,0 +1,120 @@
+{
+  "schema": "b01-fixtures-provenance/1",
+  "purpose": "Make b01_recovery_adapter.py and its test reproducible from committed files when the gitignored .agent-receipts/ directory is absent. Frozen metadata copied or projected from the pinned inputs; they are not new native observations.",
+  "resolution_rule": "The adapter reads .agent-receipts/... when udb-wave8-inputs/INPUT-MANIFEST.json is present (unchanged behaviour); otherwise it reads these fixtures. Byte-identical copies are checked against the SOURCE sha256; the projection is checked against its OUTPUT sha256 only and is never reported as the source bytes.",
+  "pii_secret_scan": {
+    "patterns": [
+      "/Users/",
+      "/home/",
+      "email",
+      "phone_plus_or_grouped",
+      "ipv4",
+      "secret_keywords"
+    ],
+    "hits_per_fixture": {
+      "REAL-RUN-RECEIPT.json": {
+        "/Users/": 0,
+        "/home/": 0,
+        "email": 0,
+        "phone_plus_or_grouped": 0,
+        "ipv4": 0,
+        "secret_keywords": 0
+      },
+      "STATE.json": {
+        "/Users/": 0,
+        "/home/": 0,
+        "email": 0,
+        "phone_plus_or_grouped": 0,
+        "ipv4": 0,
+        "secret_keywords": 0
+      },
+      "LEAD-DELTA.json": {
+        "/Users/": 0,
+        "/home/": 0,
+        "email": 0,
+        "phone_plus_or_grouped": 0,
+        "ipv4": 0,
+        "secret_keywords": 0
+      },
+      "consumer-matrix.projection.csv": {
+        "/Users/": 0,
+        "/home/": 0,
+        "email": 0,
+        "phone_plus_or_grouped": 0,
+        "ipv4": 0,
+        "secret_keywords": 0
+      }
+    }
+  },
+  "fixtures": {
+    "REAL-RUN-RECEIPT.json": {
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "identity": "BYTE_IDENTICAL_COPY",
+      "source_rel": ".agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json",
+      "source_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "output_sha256": "9851ae0521ada6d52b2391f906543300ab6111cd9e3a11ca42797a86ed248d0d",
+      "bytes": 2427,
+      "rows": null,
+      "projection": null
+    },
+    "STATE.json": {
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "identity": "BYTE_IDENTICAL_COPY",
+      "source_rel": ".agent-receipts/udb-wave8-inputs/STATE.json",
+      "source_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "output_sha256": "caaebbbac9703bf5ebd5f7624b8a2dd6759a2e508703f311cecffebf1c0967d4",
+      "bytes": 4152,
+      "rows": null,
+      "projection": null
+    },
+    "LEAD-DELTA.json": {
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "identity": "BYTE_IDENTICAL_COPY",
+      "source_rel": ".agent-receipts/udb-wave8-inputs-dux/prior/completion-20261015-0831/LEAD-DELTA.json",
+      "source_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "output_sha256": "91e6bac9c91181a2b3aa3f6cd1dc6585671c18ce90cb887444229a1a17a084e7",
+      "bytes": 2614,
+      "rows": null,
+      "projection": null
+    },
+    "consumer-matrix.projection.csv": {
+      "kind": "FROZEN_METADATA_TEST_FIXTURES_NOT_NEW_NATIVE_OBSERVATIONS",
+      "identity": "PROJECTION_NOT_SOURCE_BYTES",
+      "source_rel": ".agent-receipts/udb-wave8-inputs/consumer-matrix.csv",
+      "source_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+      "output_sha256": "d743bfb90c0ece5c40288bac0bb041c1842db8cf1088255b38f8462061b6d70f",
+      "bytes": 172159,
+      "rows": {
+        "source_data_rows": 6029,
+        "output_data_rows": 6029
+      },
+      "projection": {
+        "output_columns": [
+          "consumer_id",
+          "entry_point",
+          "store",
+          "disposition",
+          "evidence"
+        ],
+        "all_rows": [
+          "consumer_id"
+        ],
+        "selected_rows": {
+          "columns": [
+            "entry_point",
+            "store",
+            "disposition",
+            "evidence"
+          ],
+          "selector": "consumer_id in LEAD-DELTA.json historical_source_references_retained",
+          "selected_row_count": 5
+        },
+        "blank_cell_meaning": "NOT_PROJECTED (the source cell is not asserted empty)",
+        "row_order": "source order",
+        "encoding": "utf-8",
+        "line_terminator": "LF",
+        "consumed_by": "b01_recovery_adapter.load_valid_consumer_ids: consumer_id membership for every row; entry_point/store/disposition/evidence only for the historical_source_references_retained rows"
+      }
+    }
+  }
+}

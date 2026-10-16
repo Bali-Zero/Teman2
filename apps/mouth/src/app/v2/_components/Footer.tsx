@@ -19,7 +19,7 @@ const SERVICES = [
   { label: "Company Setup", href: "/services/company" },
   { label: "Tax & Compliance", href: "/services/tax" },
   { label: "Property DD", href: "/services/property" },
-  { label: "Golden Visa", href: "/services/visa" },
+  { label: "Golden Visa", href: "/visas/golden-visa-indonesia-complete-guide" },
 ];
 
 const NEWS = [

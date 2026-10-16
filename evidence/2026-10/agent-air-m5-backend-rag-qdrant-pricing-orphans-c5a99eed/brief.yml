@@ -1,0 +1,55 @@
+task_id: qdrant-pricing-orphans-1016
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  After the 2026-10-15 backfill (#8568) the live Qdrant collection bali_zero_pricing_hybrid
+  holds a point for every public catalog row, plus 17 stale 2025 points whose name matches no
+  row of the canonical 2026 catalog: renamed rows (e.g. 'Dependent KITAP MERP' vs catalog
+  'Dependent KITAP + MERP', 'C7A&B Music/Art' vs 'C7A,B,C — Music/Art'), merged or split rows
+  carrying a different price ('Cancel (RPTKA, IMTA, Wajib Lapor)' 3.5M vs 'Cancel RPTKA' 1M +
+  'Cancel Wajib Lapor' 1M), and services the 2026 catalog does not price at all (standalone
+  MERP, SLHS, Halal, alcohol licence, PIRT, ACC rows). They surface next to the real rows in
+  Zantara's pricing retrieval with prices that are not official. scripts/sync_pricing_collection_prices.py
+  can only report them. Add --delete-orphans: delete-only, a point is an orphan iff its payload
+  name is no public or internal catalog row name (key only when the row has no name), and
+  --apply refuses unless --expect-orphans N equals the count the reviewed dry run printed.
+acceptance:
+  - text: >-
+      A point of a public row (drifted price or no price), of an internal row, or of a name
+      duplicated in the catalog is never deleted; --apply without --expect-orphans, or with a
+      different count, deletes nothing; a point with no name and a catalog with no rows are
+      refused; --delete-orphans with --create-missing, --purge-internal or --only is refused;
+      --apply without --delete-orphans deletes nothing.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py
+  - text: >-
+      The dry run lists each orphan as DELETE id=<id> '<name>'; the apply deletes exactly those
+      ids in one call and nothing else; the real catalogue protects every one of its rows.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_delete_orphans_1016.py -k "dry_run or exactly or real_catalogue"
+  - text: >-
+      The existing sync, purge and create behaviour is unchanged.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_sync_pricing_collection_prices_internal_1014.py tests/scripts/test_sync_pricing_collection_prices_create_missing_1015.py scripts/test_sync_pricing_collection_prices.py
+  - text: >-
+      After the merge, from Pro with the merged script and a fresh full backup: dry run shows
+      deletes=17 updates=0 creates=0 and the 17 names mapped in the PR body; apply with
+      --expect-orphans 17; the separate re-plan shows points_without_catalog_row=0 and
+      in_sync unchanged.
+    probe: python3 scripts/sync_pricing_collection_prices.py --delete-orphans (on Pro, creds loaded by a wrapper, never printed)
+assumptions:
+  - text: >-
+      Each of the 17 orphans either duplicates a 2026 catalog row that has its own point since
+      #8568, or carries a price the 2026 catalog (the pricing SSOT, 2025 file deprecated) does
+      not hold.
+    status: verified
+    probe: >-
+      2026-10-16, M5: the 17 payloads from the 2026-10-15 backup matched by name pattern against
+      origin/main's catalog; mapping table in the PR body.
+  - text: >-
+      The new tests fail when the guards are removed.
+    status: verified
+    probe: >-
+      2026-10-16, three mutants (catalog_names public-only; no expect-count check; no --only
+      refusal): 5, 1 and 1 tests red; script restored byte-identical.
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1

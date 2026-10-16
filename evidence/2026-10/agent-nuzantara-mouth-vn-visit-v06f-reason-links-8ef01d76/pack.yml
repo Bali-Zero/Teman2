@@ -1,0 +1,45 @@
+gear: 2
+brief_ref: evidence/brief.yml
+plan_ref: >-
+  visa-night family "visit" item V06F, built on origin/main 3d94f56a4c; disjoint from engine-adapter.ts and tree/flow/i18n.ts.
+mission: >-
+  OutcomeSheet renders https URLs inside reason messages as anchors; only https, trailing punctuation outside, React nodes only.
+lanes:
+  - lane: v06f-reason-links
+    role: build
+    seat: claude-sonnet-5-5 implementer, worktree mouth-vn-visit-v06f-reason-links.
+  - lane: v06f-ground-truth
+    role: ground_truth
+    seat: >-
+      claude-sonnet-5-5. The linked URL is the one already shipped in engine-adapter.ts BVK_NATIONALITY_ONLY (V06, canonical_url
+      of source record 808d691c, Permen Imipas 10/2026); this PR renders it and changes no copy, rule or pack.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/engine-adapter.ts
+    query_hash: "6bf0f486e1d964eb7748fb3fca656b6ac00474ede180c506f25ce1667df81f65" # pragma: allowlist secret
+    note: query_hash = sha256 of engine-adapter.ts at merge-base 3d94f56a4c (unchanged by this PR).
+pii_scan: clean
+bites: >-
+  Consumer: the public Visa Oracle result page (ReasonList in OutcomeSheet.tsx) and the OutcomeSheet.reason-links tests on
+  every PR. Observation, after the mouth deploy is promoted on balizero.com/visa-oracle: a BVK-country tourism outcome
+  shows the official visa-free list as a clickable link (EN and ID).
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
+  paid_api: none
+  note: One implementer session plus one red-team round by codex gpt-5.6-sol (subscription CLI); no paid per-token API.
+results:
+  - claim: "The whole visa-oracle mouth suite."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)'
+    result: "Test Files 62 passed (62); Tests 1697 passed (1697)"
+    ts: "2026-10-15T11:04:30Z"
+  - claim: "Mutation: replace linkifyReasonText(text) with text in ReasonList."
+    cmd: cd apps/mouth && npx vitest run 'src/app/(visa-oracle)/visa-oracle/_components/OutcomeSheet.reason-links'
+    result: "3 failed | 2 passed (5); reverted"
+    ts: "2026-10-15T11:03:00Z"
+decisions:
+  - id: D-reason-list
+    decision: "Linkify in ReasonList (every reason list); no-path-doors.test.tsx matches the span textContent because the message is now split across nodes."
+dissent:
+  - seat: "codex gpt-5.6-sol, rollout /Users/nuzantara/.codex/sessions/2026/10/15/rollout-2026-10-15T18-56-44-01a13f35-0fab-70d1-b2a4-66ab75118311.jsonl (red team, read-only)"
+    objection: "No functional defect; only a Prettier format warning on the new test (fixed before commit)."
+    status: CONFIRMED
+    disposition: "Prettier applied in 8c6b0bde6f; no cure commit needed."

@@ -9,6 +9,18 @@ import asyncpg
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# text[]/text columns some entries fill beyond the base seven (see migration_128 for E28*).
+OPTIONAL_COLUMNS = (
+    "processing_time_normal",
+    "restrictions",
+    "allowed_activities",
+    "benefits",
+    "process_steps",
+    "tips",
+    "renewable",
+    "cost_extension",
+)
+
 VISA_TYPES = [
     {
         "code": "A1",
@@ -976,9 +988,45 @@ VISA_TYPES = [
         "code": "E28A",
         "name": "Investor Visa",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
-        "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore)",
-        "requirements": [],
+        "duration": "2 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
+        "cost_visa": "IDR 17.000.000 (Offshore) / 19.000.000 (Onshore), all-inclusive",
+        "cost_extension": "IDR 18.000.000, all-inclusive",
+        "processing_time_normal": "7-10 working days",
+        "requirements": [
+            "Sponsor required (the investment company)",
+            "Visa application letter",
+            "Passport valid at least 6 months before expiry",
+            "Bank statement of the last 3 months in the foreigner's or sponsor's name, minimum USD 2,000 or equivalent",
+            "Recent colour passport photo (within the last year)",
+            "Curriculum vitae (CV)",
+            "Itinerary",
+            "Proof of the applicant's own shareholding of at least Rp10.000.000.000 in the sponsoring company, registered with the Ministry of Investment/BKPM",
+            "If the shareholding is lower and the applicant holds a director or commissioner position, a work visa for that position must be applied for instead",
+            "Ministry of Law decree approving the company's establishment",
+            "Company current account statements for the last 2 months (a company set up less than 2 months ago may file them at the immigration office within 90 days after the ITAS is issued)",
+        ],
+        "restrictions": [
+            "No overstay allowed",
+            "Work must match permit type",
+            "No sales of goods/services except as required for work",
+        ],
+        "allowed_activities": [
+            "Invest and carry out business- and investment-related activities, including company establishment",
+            "Serve as director or commissioner of the company in which the foreigner has invested",
+            "Supervise the production of goods or services at the company (office, factory or similar site)",
+            "Bring family to live in Indonesia",
+            "Exit and re-enter Indonesia while the Re-entry Permit is valid",
+            "Education through the Residence Permit Rangkap Kegiatan mechanism",
+            "Tourism and visiting friends or family",
+        ],
+        "process_steps": [
+            "Bali Zero checks the documents and files the visa application on evisa.imigrasi.go.id together with the sponsor; the government fee is paid by Bali Zero and is included in the price",
+            "Immigration verifies the payment, builds the profile and verifies the application",
+            "Approval and issuance of the visa",
+            "The visa is valid for 90 days from issuance: enter Indonesia within that window or a new visa must be applied for",
+            "The ITAS and the Re-entry Permit are issued automatically when the immigration officer admits the foreigner at the checkpoint",
+        ],
         "description": "",
         "metadata": {
             "source": "zantara_curated_2026",
@@ -988,11 +1036,37 @@ VISA_TYPES = [
     },
     {
         "code": "E28B",
-        "name": "Investor Visa Company Establishment Golden Visa",
+        "name": "E28B - Investor Golden Visa (Company Establishment)",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
+        "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
-        "requirements": [],
+        "requirements": [
+            "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+            "Rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin, minimal US$2.000 atau setara",
+            "Pasfoto berwarna terbaru (setahun terakhir)",
+            "Daftar riwayat hidup (CV)",
+            "Rincian perjalanan (itinerary)",
+            "Tidak membutuhkan penjamin/sponsor",
+            "Bukti kepemilikan saham pada perusahaan di luar Indonesia yang tercantum dalam laporan audit keuangan perusahaan induk dari kantor akuntan publik berstandar internasional",
+            "Bukti nilai omzet/penjualan di perusahaan luar negeri dalam laporan keuangan yang telah diaudit menurut standar internasional",
+            "Pernyataan komitmen mendirikan perusahaan di Indonesia dengan modal ditempatkan (saham) atau nilai investasi paling sedikit US$2.500.000 (masa tinggal 5 tahun) atau US$5.000.000 (masa tinggal 10 tahun), dipenuhi dalam 90 hari sejak tanggal masuk ke Indonesia",
+        ],
+        "restrictions": [
+            "Tinggal di wilayah Indonesia melebihi masa berlaku izin tinggal",
+            "Melakukan pekerjaan yang tidak sesuai dengan jenis izin tinggal",
+            "Melakukan kegiatan yang tidak sesuai dengan uraian kegiatan dan hak yang diberikan, kecuali telah mengajukan perubahan atau pengajuan rangkap jenis kegiatan",
+        ],
+        "allowed_activities": [
+            "Berinvestasi dan melakukan aktivitas yang berhubungan dengan bisnis, investasi, dan pendirian perusahaan",
+            "Menjabat sebagai anggota direksi atau anggota dewan komisaris pada perusahaan tempat investasi ditanamkan",
+            "Mengawasi proses produksi barang atau jasa di perusahaan yang didirikan (kantor, pabrik, atau tempat sejenis)",
+            "Membawa keluarga untuk tinggal di Indonesia",
+            "Keluar-masuk Indonesia selama Izin Masuk Kembali masih berlaku",
+            "Mengikuti pendidikan melalui mekanisme Rangkap Kegiatan Izin Tinggal",
+            "Melakukan aktivitas wisata, pembelian barang, serta mengunjungi teman atau keluarga",
+            "Menerima imbalan atau fasilitas atas investasi yang ditanamkan",
+        ],
         "description": "",
         "metadata": {
             "source": "zantara_curated_2026",
@@ -1002,11 +1076,33 @@ VISA_TYPES = [
     },
     {
         "code": "E28C",
-        "name": "Investor Visa Capital Market Golden Visa",
+        "name": "E28C - Investor Golden Visa (Capital Market)",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
+        "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
-        "requirements": [],
+        "requirements": [
+            "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+            "Rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin, minimal US$2.000 atau setara",
+            "Pasfoto berwarna terbaru (setahun terakhir)",
+            "Daftar riwayat hidup (CV)",
+            "Rincian perjalanan (itinerary)",
+            "Tidak membutuhkan penjamin/sponsor",
+            "Bukti kepemilikan obligasi pemerintah Indonesia, saham pada perusahaan terbuka di Indonesia, atau reksadana paling sedikit US$350.000 (masa tinggal 5 tahun)",
+            "Masa tinggal 10 tahun: bukti kepemilikan obligasi pemerintah Indonesia, saham pada perusahaan terbuka di Indonesia, atau reksadana paling sedikit US$700.000; atau bukti kepemilikan rumah susun/apartemen senilai paling sedikit US$1.000.000",
+        ],
+        "restrictions": [
+            "Tinggal di wilayah Indonesia melebihi masa berlaku izin tinggal",
+            "Melakukan pekerjaan yang tidak sesuai dengan jenis izin tinggal",
+            "Melakukan kegiatan yang tidak sesuai dengan uraian kegiatan dan hak yang diberikan, kecuali telah mengajukan perubahan atau pengajuan rangkap jenis kegiatan",
+        ],
+        "allowed_activities": [
+            "Berinvestasi dan melakukan aktivitas yang berhubungan dengan bisnis dan investasi",
+            "Membawa keluarga untuk tinggal di Indonesia",
+            "Keluar-masuk Indonesia selama Izin Masuk Kembali masih berlaku",
+            "Melakukan aktivitas wisata, pembelian barang, serta mengunjungi teman atau keluarga",
+            "Menerima imbalan atau fasilitas atas investasi yang ditanamkan",
+        ],
         "description": "Official title: Investor Visa Capital Market Golden Visa",
         "metadata": {
             "source": "zantara_curated_2026",
@@ -1018,9 +1114,32 @@ VISA_TYPES = [
         "code": "E28D",
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
+        "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
-        "requirements": [],
+        "requirements": [
+            "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+            "Rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin, minimal US$2.000 atau setara",
+            "Pasfoto berwarna terbaru (setahun terakhir)",
+            "Daftar riwayat hidup (CV)",
+            "Rincian perjalanan (itinerary)",
+            "Tidak membutuhkan penjamin/sponsor",
+            "Pernyataan komitmen bahwa perusahaan asing (induk) akan menanamkan investasi paling sedikit US$25.000.000 (masa tinggal 5 tahun) atau US$50.000.000 (masa tinggal 10 tahun), dipenuhi dalam 90 hari sejak tanggal masuk ke Indonesia",
+        ],
+        "restrictions": [
+            "Tinggal di wilayah Indonesia melebihi masa berlaku izin tinggal",
+            "Melakukan pekerjaan yang tidak sesuai dengan jenis izin tinggal",
+            "Melakukan kegiatan yang tidak sesuai dengan uraian kegiatan dan hak yang diberikan, kecuali telah mengajukan perubahan atau pengajuan rangkap jenis kegiatan",
+        ],
+        "allowed_activities": [
+            "Menjabat sebagai anggota direksi atau anggota dewan komisaris pada perusahaan cabang/anak perusahaan yang didirikan di Indonesia",
+            "Berinvestasi dan melakukan aktivitas yang berhubungan dengan bisnis, investasi, dan pendirian perusahaan, termasuk pembahasan, negosiasi, dan/atau penandatanganan perjanjian bisnis",
+            "Mengawasi proses produksi barang atau jasa di perusahaan yang didirikan (kantor, pabrik, atau tempat sejenis)",
+            "Membawa keluarga untuk tinggal di Indonesia",
+            "Keluar-masuk Indonesia selama Izin Masuk Kembali masih berlaku",
+            "Melakukan aktivitas wisata, pembelian barang, serta mengunjungi teman atau keluarga",
+            "Menerima imbalan atau fasilitas atas investasi yang ditanamkan",
+        ],
         "description": "Official title: Investor Visa Pendirian Cabang atau Anak Perusahaan Golden Visa",
         "metadata": {
             "source": "zantara_curated_2026",
@@ -1046,9 +1165,32 @@ VISA_TYPES = [
         "code": "E28F",
         "name": "Investor Visa Pendirian Cabang atau Anak Perusahaan di Indonesian New Capital (IKN)",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
+        "duration": "5 or 10 years",
+        "benefits": ["Legal stay in Indonesia", "Multiple entry/exit"],
         "cost_visa": "Contact for Quote",
-        "requirements": [],
+        "requirements": [
+            "Paspor kebangsaan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis",
+            "Rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin, minimal US$2.000 atau setara",
+            "Pasfoto berwarna terbaru (setahun terakhir)",
+            "Daftar riwayat hidup (CV)",
+            "Rincian perjalanan (itinerary)",
+            "Tidak membutuhkan penjamin/sponsor",
+            "Pernyataan komitmen bahwa perusahaan asing (induk) akan menanamkan investasi paling sedikit US$5.000.000 (masa tinggal 5 tahun) atau US$10.000.000 (masa tinggal 10 tahun), dipenuhi dalam 90 hari sejak tanggal masuk ke Indonesia",
+        ],
+        "restrictions": [
+            "Tinggal di wilayah Indonesia melebihi masa berlaku izin tinggal",
+            "Melakukan pekerjaan yang tidak sesuai dengan jenis izin tinggal",
+            "Melakukan kegiatan yang tidak sesuai dengan uraian kegiatan dan hak yang diberikan, kecuali telah mengajukan perubahan atau pengajuan rangkap jenis kegiatan",
+        ],
+        "allowed_activities": [
+            "Menjabat sebagai anggota direksi atau anggota dewan komisaris pada perusahaan cabang/anak perusahaan yang didirikan di Ibu Kota Nusantara",
+            "Berinvestasi dan melakukan aktivitas yang berhubungan dengan bisnis, investasi, dan pendirian perusahaan, termasuk pembahasan, negosiasi, dan/atau penandatanganan perjanjian bisnis",
+            "Mengawasi proses produksi barang atau jasa di perusahaan yang didirikan (kantor, pabrik, atau tempat sejenis)",
+            "Membawa keluarga untuk tinggal di Indonesia",
+            "Keluar-masuk Indonesia selama Izin Masuk Kembali masih berlaku",
+            "Melakukan aktivitas wisata, pembelian barang, serta mengunjungi teman atau keluarga",
+            "Menerima imbalan atau fasilitas atas investasi yang ditanamkan",
+        ],
         "description": "Official title: Investor Visa Pendirian Cabang atau Anak Perusahaan di Indonesian New Capital (IKN)",
         "metadata": {
             "source": "zantara_curated_2026",
@@ -1058,16 +1200,31 @@ VISA_TYPES = [
     },
     {
         "code": "E28G",
-        "name": "Investor Visa Parent Company Representative",
+        "name": "E28G - Not a current visa (see E28A, E28B or E28C)",
         "category": "KITAS/Limited Stay",
-        "duration": "See details",
-        "cost_visa": "Contact for Quote",
-        "requirements": [],
-        "description": "Official title: Investor Visa Parent Company Representative",
+        "duration": "Not applicable",
+        "cost_visa": "Not applicable",
+        "requirements": [
+            "E28G is not a current visa (Bali Zero ruling 2026-10-15): see E28A, E28B or E28C. For a long-stay investor visa see E28A (investor KITAS), E28B (Golden Visa, company establishment) or E28C (Golden Visa, capital market)",
+        ],
+        "restrictions": [],
+        "allowed_activities": [],
+        "benefits": [],
+        "process_steps": [],
+        "tips": [],
+        "renewable": False,
+        "description": "E28G is not a current visa (Bali Zero ruling 2026-10-15). See E28A, E28B or E28C.",
         "metadata": {
             "source": "zantara_curated_2026",
             "is_agency_product": False,
-            "name_id": "Visa Investor Perwakilan Perusahaan Induk",
+            "name_id": "Bukan visa yang berlaku (lihat E28A, E28B atau E28C)",
+            "retired": True,
+            "retired_reason": "not a current visa (Bali Zero ruling 2026-10-15; not in the signed rulepack)",
+            "replaced_by": [
+                "E28A",
+                "E28B",
+                "E28C",
+            ],
         },
     },
     {
@@ -1657,6 +1814,13 @@ async def seed_visa_types():
                     visa["requirements"],
                     json.dumps(visa["metadata"]),
                 )
+            # Optional columns, written only when the entry carries them (the E28 family does,
+            # so a seed re-run reproduces migration_128 instead of reverting it).
+            for col in OPTIONAL_COLUMNS:
+                if col in visa:
+                    await conn.execute(
+                        f"UPDATE visa_types SET {col}=$2 WHERE code=$1", visa["code"], visa[col]
+                    )
         logger.info("Done.")
     finally:
         await conn.close()

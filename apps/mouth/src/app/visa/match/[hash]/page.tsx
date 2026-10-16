@@ -211,7 +211,8 @@ export default function VisaMatchResultPage({
                 color: "var(--color-text-muted)",
               }}
             >
-              Bali Zero fee. Government fees billed at cost.
+              All-inclusive price: government fees and Bali Zero service
+              included.
             </div>
           </>
         ) : (

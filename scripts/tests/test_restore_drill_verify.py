@@ -451,6 +451,96 @@ def test_mutually_exclusive_source_flags_are_enforced():
         raise AssertionError("expected argparse to reject a call with neither --dsn nor --fixture")
 
 
+# ---------------------------------------------------------------------------
+# Wave 8 B01: schema guard for clients.lead_metadata, DDL-free dual-type
+# conversations SQL, strict clients invariant, and the four adversary
+# guilt/innocence cases (offline + synthetic PG17).
+# ---------------------------------------------------------------------------
+
+
+def test_clients_missing_lead_metadata_skips_violations_query_and_names_missing_column(monkeypatch):
+    """When `clients` lacks `lead_metadata`, `fetch_live` must gate off
+    `_CLIENTS_VIOLATIONS_SQL` (never issuing the 3rd query that references
+    `lead_metadata`), and `evaluate` must report both the missing required
+    column (`lead_metadata`) and the unmeasured checks, scoring
+    `CANNOT-VERIFY` per conservative precedence."""
+    clients_inv = rdv._INVARIANT_BY_RELATION["clients"]
+    assert "lead_metadata" in clients_inv.required_columns
+
+    healthy_by_rel = {r["relation"]: r for r in _healthy_relations()}
+    clients_cols_without_lead = [
+        c for c in healthy_by_rel["clients"]["columns"] if c != "lead_metadata"
+    ]
+
+    executed_sql: list[str] = []
+
+    def fake_run_psql(dsn: str, sql: str, psql_bin: str, timeout: int) -> tuple[int, str, str]:
+        executed_sql.append(sql)
+        for rel, fx in healthy_by_rel.items():
+            if f"table_name='{rel}'" in sql:
+                cols = clients_cols_without_lead if rel == "clients" else fx["columns"]
+                return 0, json.dumps(cols), ""
+            if f"FROM {rel};" in sql:
+                return 0, str(fx["row_count"]), ""
+        if "FROM conversations" in sql:
+            return 0, json.dumps(healthy_by_rel["conversations"]["violations"]), ""
+        if "FROM clients" in sql:
+            raise AssertionError("_CLIENTS_VIOLATIONS_SQL must not run when lead_metadata is missing")
+        if "FROM visa_decisions" in sql:
+            return 0, json.dumps(healthy_by_rel["visa_decisions"]["violations"]), ""
+        if "FROM events_outbox" in sql:
+            return 0, json.dumps(healthy_by_rel["events_outbox"]["violations"]), ""
+        if "FROM visa_decision_retention_policies" in sql:
+            return 0, json.dumps(healthy_by_rel["visa_decision_retention_policies"]["violations"]), ""
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+    monkeypatch.setattr(rdv, "_run_psql", fake_run_psql)
+    measurements = rdv.fetch_live("postgresql://synthetic/test")
+    result = rdv.evaluate(measurements)
+    assert result["aggregate"] == "CANNOT-VERIFY"
+    clients_verdict = next(v for v in result["invariants"] if v["relation"] == "clients")
+    assert clients_verdict["status"] == "CANNOT-VERIFY"
+    assert any(
+        "missing required column(s): lead_metadata" in r for r in clients_verdict["reasons"]
+    )
+    assert any("lead_metadata_not_object" in r for r in clients_verdict["reasons"])
+
+
+def test_fail_plus_unmeasured_check_gives_cannot_verify_aggregate():
+    """Adversary Guilt Case 4 / B01-F2: when `clients` is `FAIL` (e.g.
+    string-scalar `lead_metadata` violation) and `conversations` has an
+    unmeasured check (`CANNOT-VERIFY`), the aggregate verdict MUST be
+    `CANNOT-VERIFY` (exit 3), never `FAIL` (exit 1)."""
+    relations = _healthy_relations()
+    for r in relations:
+        if r["relation"] == "clients":
+            r["violations"]["lead_metadata_not_object"] = 1
+        elif r["relation"] == "conversations":
+            r["violations"] = {}
+    result = rdv.evaluate(relations)
+    by_rel = {v["relation"]: v for v in result["invariants"]}
+    assert by_rel["clients"]["status"] == "FAIL"
+    assert by_rel["conversations"]["status"] == "CANNOT-VERIFY"
+    assert result["aggregate"] == "CANNOT-VERIFY"
+
+
+def test_conversations_and_clients_sql_invariants():
+    """Verify `_CONVERSATIONS_VIOLATIONS_SQL` is DDL-free, supports dual
+    types via `pg_input_is_valid(messages::text, 'jsonb')`, and preserves
+    NULL semantics (`messages IS NOT NULL`, B01-F4); and verify
+    `_CLIENTS_VIOLATIONS_SQL` is not relaxed (B01-F3)."""
+    conv_sql = rdv._CONVERSATIONS_VIOLATIONS_SQL
+    assert "CREATE " not in conv_sql.upper()
+    assert "pg_temp" not in conv_sql
+    assert "messages IS NOT NULL" in conv_sql
+    assert "pg_input_is_valid(messages::text, 'jsonb')" in conv_sql
+    assert "jsonb_typeof((messages::text)::jsonb) <> 'array'" in conv_sql
+
+    clients_sql = rdv._CLIENTS_VIOLATIONS_SQL
+    assert "client_type NOT IN ('individual','company')" in clients_sql
+    assert "lead_metadata IS NOT NULL AND jsonb_typeof(lead_metadata) <> 'object'" in clients_sql
+
+
 if __name__ == "__main__":
     # Delegate to real pytest (not a hand-rolled loop) so fixture-dependent
     # tests (capsys) run correctly even outside a `pytest` invocation --

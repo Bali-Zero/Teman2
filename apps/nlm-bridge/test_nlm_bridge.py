@@ -107,6 +107,8 @@ def fresh_main(monkeypatch):
     if "main" in sys.modules:
         del sys.modules["main"]
     import main  # noqa: WPS433 — module reload is the point
+    monkeypatch.setattr(main, "_HAS_NLM_LIB", False)
+    monkeypatch.setattr(main, "_nlm_client", None)
     main._rate_window.clear()
     main._request_count = 0
     return main
@@ -120,6 +122,7 @@ class TestRateLimiter:
         # 9 requests in burst — under the 10-req limit
         for _ in range(9):
             fresh_main._check_rate_limit("10.0.0.1")
+        assert len(fresh_main._rate_window["10.0.0.1"]) == 9
 
     def test_rejects_at_limit(self, fresh_main) -> None:
         from fastapi import HTTPException
@@ -135,6 +138,8 @@ class TestRateLimiter:
             fresh_main._check_rate_limit("10.0.0.3")
         # Different IP — should still be allowed
         fresh_main._check_rate_limit("10.0.0.4")
+        assert len(fresh_main._rate_window["10.0.0.3"]) == 10
+        assert len(fresh_main._rate_window["10.0.0.4"]) == 1
 
     def test_old_entries_pruned(self, fresh_main, monkeypatch) -> None:
         # Backdate 10 timestamps to 2 minutes ago — outside the 60s window
@@ -155,7 +160,7 @@ class TestHmacVerifyMiddleware:
     def test_skips_when_secret_unset(self, fresh_main, monkeypatch) -> None:
         monkeypatch.setenv("NLM_BRIDGE_SECRET", "")
         # Should NOT raise even with no signature header
-        fresh_main._verify_hmac(b"any-body", None)
+        assert fresh_main._verify_hmac(b"any-body", None) is None
 
     def test_rejects_missing_signature_when_secret_set(
         self, fresh_main, monkeypatch,
@@ -180,7 +185,7 @@ class TestHmacVerifyMiddleware:
         body = b'{"notebook_id":"nb-1","question":"q"}'
         sig = sign_request(body, "live-secret")
         # Should NOT raise
-        fresh_main._verify_hmac(body, sig)
+        assert fresh_main._verify_hmac(body, sig) is None
 
 
 class TestHealthEndpoint:
@@ -208,3 +213,72 @@ class TestHealthEndpoint:
             assert "request_count" in body
             assert isinstance(body["uptime"], (int, float))
             assert body["uptime"] >= 0
+
+
+class TestCurrentLibraryContract:
+    def test_initialization_preserves_profile_host_and_revision(self, fresh_main, monkeypatch):
+        import asyncio
+        from types import SimpleNamespace
+
+        tokens = SimpleNamespace(cookies={"synthetic": "test"}, csrf_token="", session_id="",
+                                 build_label="", base_host="notebooklm.google.com", revision="r1")
+        seen = {}
+
+        def load(*, profile_name):
+            seen["profile"] = profile_name
+            return tokens
+
+        def client(**kwargs):
+            seen["client"] = kwargs
+            return SimpleNamespace(close=lambda: None)
+
+        monkeypatch.setenv("NLM_PROFILE", "research")
+        monkeypatch.setattr(fresh_main, "_HAS_NLM_LIB", True)
+        monkeypatch.setattr(fresh_main, "load_cached_tokens", load, raising=False)
+        monkeypatch.setattr(fresh_main, "NotebookLMClient", client, raising=False)
+
+        async def exercise():
+            async with fresh_main.lifespan(fresh_main.app):
+                assert (await fresh_main.health()).status == "healthy"
+
+        asyncio.run(exercise())
+        assert seen["profile"] == "research"
+        assert seen["client"]["profile_name"] == "research"
+        assert seen["client"]["base_host"] == tokens.base_host
+        assert seen["client"]["auth_revision"] == "r1"
+
+    def test_failed_initialization_is_degraded_and_does_not_log_credentials(
+        self, fresh_main, monkeypatch, caplog,
+    ):
+        import asyncio
+
+        def broken(**kwargs):
+            raise RuntimeError("synthetic-private-value")
+
+        monkeypatch.setattr(fresh_main, "_HAS_NLM_LIB", True)
+        monkeypatch.setattr(fresh_main, "load_cached_tokens", broken, raising=False)
+
+        async def exercise():
+            async with fresh_main.lifespan(fresh_main.app):
+                assert (await fresh_main.health()).status == "degraded"
+
+        asyncio.run(exercise())
+        assert "synthetic-private-value" not in caplog.text
+
+    def test_upgraded_library_accepts_bridge_arguments(self):
+        import inspect
+
+        library = pytest.importorskip("notebooklm_tools")
+        from notebooklm_tools.core.auth import load_cached_tokens
+
+        loaded = inspect.signature(load_cached_tokens).bind(profile_name="default")
+        assert loaded.arguments["profile_name"] == "default"
+        bound = inspect.signature(library.NotebookLMClient).bind(
+            cookies={}, csrf_token="", session_id="", build_label="",
+            base_host="", profile_name="default", auth_revision=None,
+        )
+        assert bound.arguments["profile_name"] == "default"
+        queried = inspect.signature(library.NotebookLMClient.query).bind(
+            None, "synthetic-notebook", "synthetic-question", None, None, 60,
+        )
+        assert queried.arguments["timeout"] == 60

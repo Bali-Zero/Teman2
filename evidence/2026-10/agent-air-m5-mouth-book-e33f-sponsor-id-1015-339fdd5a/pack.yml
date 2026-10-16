@@ -1,0 +1,62 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-15 ('1 ok'): on the Indonesian /book page the E33F sponsor sentence reads exactly 'Diperlukan
+  penjamin; Bali Zero dapat menjadi penjamin Anda.'; EN stays exactly 'A sponsor (penjamin) is required; Bali Zero
+  can act as one.'. iQOO walk 2026-10-15: the sentence appeared twice on the card (feature item and clamped tagline)
+  and stayed English on the ID locale.
+mission: >-
+  The E33F card says the sponsor sentence once, and in Indonesian on the ID locale.
+lanes:
+  - lane: book-e33f-sponsor-id
+    role: build
+    seat: claude-sonnet-5
+pii_scan: clean
+pii_scan_note: "Code-only lane: component data, tests and an e2e spec on public catalogue strings. No client data."
+bites: >-
+  Consumer: the /book page (BookPage.tsx ServicesSection maps SERVICES through localizeServiceHighlight into
+  ServicePricingCard). Observation before merge: python3 scripts/ci/observe_book_sponsor_line_1014.py runs the
+  lane's vitest file and exits 0 only on a full pass. Observation after deploy: a mouth merge is staged until
+  vercel promote, then on balizero.com/book/services the Visa tab E33F card shows the sentence once as its first
+  item, and in Indonesian after switching the language to Bahasa Indonesia (the e2e assertion, run on Pro).
+results:
+  - claim: "Lane vitest on Pro in a sparse worktree: the whole src/components/book directory."
+    cmd: "ssh pro: cd apps/mouth && npx vitest run src/components/book"
+    result: "Test Files 3 passed (3); Tests 18 passed (18)"
+    exit: 0
+    ts: "2026-10-15T17:51:00Z"
+    seat: claude-sonnet-5
+  - claim: "Typecheck of the mouth app on Pro (sparse worktree with data/kbli-filiera)."
+    cmd: "ssh pro: cd apps/mouth && npx tsc --noEmit -p ."
+    result: "no output"
+    exit: 0
+    ts: "2026-10-15T17:53:00Z"
+    seat: claude-sonnet-5
+  - claim: "Catalogue-decision pins still hold (exact call-string unchanged)."
+    cmd: "apps/backend-rag/.venv/bin/python -m pytest tests/scripts/test_catalogue_decisions_1014.py -p no:cacheprovider -q"
+    result: "17 passed"
+    exit: 0
+    ts: "2026-10-15T17:52:00Z"
+    seat: claude-sonnet-5
+  - claim: "Catalogue observer green."
+    cmd: "python3 scripts/ci/observe_catalogue_decisions_1014.py"
+    result: "17 passed; catalogue decisions of 2026-10-14 hold"
+    exit: 0
+    ts: "2026-10-15T17:52:00Z"
+    seat: claude-sonnet-5
+  - claim: "Sponsor-line observer green with the new guilt and innocence tests."
+    cmd: "python3 scripts/ci/observe_book_sponsor_line_1014.py"
+    result: "Tests 9 passed (9); exit 0"
+    exit: 0
+    ts: "2026-10-15T17:55:00Z"
+    seat: claude-sonnet-5
+  - claim: "The e2e ID-locale check was written but NOT run (Playwright never on M5; Pro run belongs to the post-deploy observation)."
+    cmd: "none"
+    result: "not run"
+    exit: 0
+    ts: "2026-10-15T17:55:00Z"
+    seat: claude-sonnet-5
+dissent: []
+spend:
+  adversarial_rounds: 0
+  wall_clock_hours: 1

@@ -30,7 +30,7 @@ def test_rejects_anything_but_a_full_pass(line):
 
 
 @pytest.mark.parametrize(
-    "line", ["39 passed in 0.02s", "===== 40 passed in 1.20s =====", "39 passed in 0.50s (0:00:00)"]
+    "line", ["54 passed in 0.02s", "===== 55 passed in 1.20s =====", "54 passed in 0.50s (0:00:00)"]
 )
 def test_accepts_full_pass_at_or_above_floor(line):
     assert summary_ok(line) is True

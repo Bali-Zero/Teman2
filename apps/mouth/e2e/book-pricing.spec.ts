@@ -197,3 +197,29 @@ test("book E33F card shows the sponsor sentence visibly at 320px and 1280px", as
     );
   }
 });
+
+test("book E33F card says the sponsor sentence once, in Indonesian on the ID locale", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/book/services");
+  await page
+    .getByRole("button", { name: "Switch language to Bahasa Indonesia" })
+    .click();
+  const cards = page.getByTestId("book-service-cards");
+  await cards.scrollIntoViewIfNeeded();
+  const card = cards.locator(":scope > *").filter({
+    has: page.getByRole("heading", {
+      name: "E33F Second Home Senior (1 Year, Offshore)",
+    }),
+  });
+  await expect(card.getByRole("listitem").first()).toContainText(
+    "Diperlukan penjamin; Bali Zero dapat menjadi penjamin Anda.",
+  );
+  await expect(card).not.toContainText("A sponsor (penjamin)");
+  expect(
+    (await card.innerText()).split(
+      "Diperlukan penjamin; Bali Zero dapat menjadi penjamin Anda.",
+    ).length - 1,
+  ).toBe(1);
+});

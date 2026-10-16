@@ -1,0 +1,41 @@
+task_id: infra-localci-chain-ticks-1015
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI B33 S1. launchd re-arms StartInterval when the merger wrapper exits, so
+  every tick is followed by 600 s of nothing (measured 601-603 s in 5 of 5 cycles
+  on 2026-10-15; 4.7-9.1 h a day of the lane), and a READY refresh tick adds a
+  second wait (5790 s per decision at the 10-15 mix). Rule: a tick that bore a
+  verdict (rc 0; an appended sealed decision with no error, a ready_refreshed or
+  ready_refresh_failed row, or a pushed row; no appended error, evicted,
+  merge_error, push_unlanded, push_refused or storage_diverged row) makes the
+  wrapper exec itself at once, as a WHOLE tick, at most 12 times per launchd
+  instance; LOCALCI_MERGER_CHAIN=0 and <state>/chain_off stop it; any doubt is
+  today's behaviour. The predicate is scripts/localci/tick_chain.py, extracted
+  from main at the tick's sha. merger.py and runner.py are byte-identical.
+acceptance:
+  - text: >-
+      Each verdict kind chains; each non-verdict (idle, error row, evicted,
+      merge_error, rc != 0, unreadable or shrunk journal, warned tick, absent
+      predicate, both kill switches, garbage depth) does not; the cap stops at 12
+      and the counter resets on a launchd start; the chained wrapper is the same
+      process, re-fetches code and re-reads the host floor each time, and a lease
+      held by a parallel tick ends the chain.
+    probe: python3 -m pytest -q scripts/localci/tests/test_tick_chain.py
+  - text: >-
+      merger.py and runner.py are untouched.
+    probe: git diff --stat origin/main -- scripts/localci/merger.py scripts/localci/runner.py
+assumptions:
+  - text: >-
+      Every b33-* mutant is killed.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '$1 ~ /^b33-/ {print $1}')
+residual:
+  - text: >-
+      The wrapper is a home-fork pair on Pro: merging does not deploy it. Until
+      cp + mv + cmp is done the old wrapper runs and nothing chains.
+  - text: >-
+      The throughput gain is bounded by the mix: 5790 -> ~4620 s per decision at
+      the 10-15 mix. It does not reach the 46 PRs/day demand without the later
+      B33 steps and host contention (O1).
