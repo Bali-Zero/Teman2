@@ -4,7 +4,8 @@ gear_reason: >-
   audit matrix document. No engine rule pack, no data, no runtime change.
 mission: >-
   The /visaoracle ledger records the three merged E28 close-out PRs (#8572, #8573, #8574) with their measured live
-  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix.
+  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix. C2 carries the production
+  addendum: #8578 merged, PROD A committed, PROD B not run, fix PR #8584 armed.
 objective: >-
   live-state-log.md carries a dated 2026-10-15 E28 entry as newest, SKILL.md leads its LIVE STATE with one index line,
   PENDING-ARMS.md carries four opened rows, the seq-29 ledger test pins them, and the observer floor equals the file's
