@@ -264,10 +264,11 @@ def resolve_repo() -> str | None:
 
 
 PREFLIGHT = (   # read-only on Pro: neither probe may run the wrapper, an old wrapper treats ANY argv as a tick
+    # sshd runs argv through the remote login shell (zsh on Pro), where $R:s is a modifier.
     'W={w}; M="${{MERGER_STATE_DIR:-$HOME/.nuzantara-pilots/local-ci/merger}}/repo.git"; '
     '[ -f "$W" ] || exit 10; grep -q gate-append "$W" || exit 10; '
-    'R=refs/merger/wrapper; git -C "$M" rev-parse --verify --quiet "$R^{{commit}}" >/dev/null || R=refs/merger/base; '
-    'git -C "$M" cat-file -e "$R:scripts/localci/gate_ledger.py" 2>/dev/null || exit 11'
+    'R=refs/merger/wrapper; git -C "$M" rev-parse --verify --quiet "${{R}}^{{commit}}" >/dev/null || R=refs/merger/base; '
+    'git -C "$M" cat-file -e "${{R}}:scripts/localci/gate_ledger.py" 2>/dev/null || exit 11'
 )
 PREFLIGHT_WHY = {
     10: "the live wrapper on Pro has no gate-append mode (an old wrapper would run a TICK on this argv): deploy step 1 of "

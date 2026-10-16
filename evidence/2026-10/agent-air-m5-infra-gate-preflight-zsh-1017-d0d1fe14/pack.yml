@@ -1,0 +1,57 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  No owner ruling needed: a defect cure in the gate publisher shipped by #8605. Found by the
+  session shipping #8629 (Zero's 2026-10-17 catalogue decisions), whose gate verdict the
+  publisher refused to post from M5; that verdict was posted from Pro, where the publisher
+  runs /bin/bash -c.
+mission: >-
+  Every gate session can publish its verdict from any fleet machine again, through the
+  ledger-first path #8605 introduced.
+lanes:
+  - lane: gate-preflight-zsh
+    role: build
+    seat: codex gpt-5.6-terra (scripts/seat_build.sh, worktree-scoped, no commit)
+  - lane: gate-preflight-zsh
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+pii_scan: clean
+bites: >-
+  Consumer: every gate session running scripts/harness_fable_gate.py off Pro (M5, Mini).
+  Observation: after the merge, the publisher taken from origin/main and run on M5 prints
+  "ledger entry ... appended" and "published harness/fable-gate", and the Pro ledger tail
+  shows that head.
+receipts:
+  - claim: The new bash/zsh tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_harness_fable_gate_preflight_zsh_1017.py
+    result: "3 passed in 2.26s"
+    exit: 0
+    ts: "2026-10-16T21:05:00Z"
+    seat: this session
+  - claim: The existing publisher and verdict-reader tests pass.
+    cmd: python3 -m pytest -p no:cacheprovider -q scripts/tests/test_harness_fable_gate.py scripts/tests/test_harness_gate_read.py
+    result: "91 passed in 2.43s"
+    exit: 0
+    ts: "2026-10-16T21:05:00Z"
+    seat: this session
+  - claim: Restoring the unbraced "$R:scripts/..." makes the zsh case red; the file is restored byte-identical.
+    cmd: cp backup, one-site replace, pytest the new file, cp back + cmp
+    result: "1 failed, 2 passed; restored"
+    exit: 0
+    ts: "2026-10-16T21:06:00Z"
+    seat: this session
+  - claim: "The defect is live: the publisher run from origin/main on M5 refused #8629's verdict, the same publisher on Pro posted it."
+    cmd: python3 harness_fable_gate.py (origin/main blob 6bb564a0b2) --verdict PASS-WITH-CONDITIONS --sha 0b2bf6849b... on M5, then on Pro
+    result: "M5: the merger mirror on Pro has no scripts/localci/gate_ledger.py ...; Pro: ledger entry caf90a8d0ec4 appended, published"
+    exit: 0
+    ts: "2026-10-16T20:52:24Z"
+    seat: this session
+decisions:
+  - id: D-brace-not-bash-c
+    text: >-
+      Brace the parameters instead of wrapping the remote command in bash -c: the smallest
+      change, keeps the script readable, and the test runs it under both shells.
+dissent: []
+spend:
+  wall_clock_hours: 0.3
+  adversarial_rounds: 0
