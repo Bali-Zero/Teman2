@@ -28,165 +28,77 @@ review_disposition: HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED
 
 ---
 
-## 1. Development Proposal
+## 1. Candidate Development and Evidence Boundary
 
-All proposed code changes stay strictly inside the `B01` recovery verification perimeter (`scripts/ci/restore_drill_verify.py`, `scripts/restore_drill/run_drill.sh`, `scripts/tests/test_restore_drill_verify.py`, and test fixtures) and obey **"Do not repair client rows"** (`BATTLE.md:4,13`) and **Builder Contract 4 (PII output boundary)**.
+The candidate makes the `conversations` check DDL-free on PostgreSQL 17 and tests
+text and JSONB inputs, non-array guilt cases and preserved NULL behavior. It adds
+`lead_metadata` to the required-column guard while preserving both strict
+`clients` predicates. It changes neither client rows nor the stock drill's
+invariant policy.
 
-### 1.1 Change 1 — Make `_CONVERSATIONS_VIOLATIONS_SQL` Pure-SQL, DDL-Free, and Dual-Type (`JSONB` + `TEXT`)
+The unit suite, adapter checks and disposable synthetic PostgreSQL evidence test
+the implementation. They cannot establish installed bytes, restored schema,
+real-backup health or permission to run. See `RESULT.json` for actual command
+receipts and their scope; the prior real-backup receipt covers five relations and
+has aggregate `CANNOT-VERIFY`, with `clients: FAIL`.
 
-- **Target:** `scripts/ci/restore_drill_verify.py:207-219`
-- **Problem:** `_CONVERSATIONS_VIOLATIONS_SQL` currently defines `CREATE OR REPLACE FUNCTION pg_temp.try_jsonb_array(t text)` and calls `pg_temp.try_jsonb_array(messages)`. On real production backups where `conversations.messages` is `JSONB`, PostgreSQL 17 fails with `ERROR: function pg_temp.try_jsonb_array(jsonb) does not exist (SQLSTATE 42883)`, causing `conversations` to score `CANNOT-VERIFY` (`UNMEASURED_CHECK: 1`). Additionally, `CREATE FUNCTION pg_temp...` is DDL and fails on read-only connections (`REPORT.md:40-41`).
-- **Proposed Fix:** Replace `_CONVERSATIONS_VIOLATIONS_SQL` with a single `SELECT` statement using PostgreSQL 17's polymorphic `to_jsonb(anyelement)`, `pg_typeof(any)`, and built-in `pg_input_is_valid(text, text)` (introduced in PostgreSQL 16, standard in `postgres:17-alpine` / `nuzantara/pg-drill:17-postgis` and Fly PG 17):
-  ```sql
-  SELECT json_build_object(
-      'messages_not_json_array',
-      (
-          SELECT count(*)
-          FROM conversations
-          WHERE CASE
-              WHEN messages IS NULL THEN true
-              WHEN pg_typeof(messages) = 'jsonb'::regtype THEN jsonb_typeof(to_jsonb(messages)) <> 'array'
-              WHEN pg_input_is_valid(messages::text, 'jsonb') THEN jsonb_typeof(messages::text::jsonb) <> 'array'
-              ELSE true
-          END
-      )
-  )::text;
-  ```
-- **Why this works across all environments:**
-  1. **Production / Real Backup (`messages JSONB`):** `pg_typeof(messages) = 'jsonb'::regtype` evaluates to `true`; `to_jsonb(messages)` returns the `jsonb` value directly without text re-parsing; `jsonb_typeof(...) <> 'array'` counts any non-array JSONB value.
-  2. **Synthetic CI / Migration 143 (`messages TEXT`):** `pg_typeof(messages) = 'jsonb'::regtype` evaluates to `false`; `pg_input_is_valid(messages::text, 'jsonb')` safely tests whether the text is valid JSONB without raising an exception; if valid, `jsonb_typeof(messages::text::jsonb) <> 'array'` checks the type; if malformed JSON text, the `ELSE true` branch counts the row as a violation without crashing the query.
-  3. **Read-Only Connections (`nuzantara_readonly`):** Zero `CREATE FUNCTION` DDL; runs cleanly in `default_transaction_read_only = on`.
+Check-level observation belongs to the separately admitted operator's private-report
+boundary. This proposal does not authorize new counters in the stock run log,
+raw report export, a production aggregate query, or a change to `run_drill.sh`.
 
-### 1.2 Change 2 — Preserve Sanitized `_VIOLATIONS_SQL` Failure Diagnostics in `fetch_live` and `_evaluate_one`
+## 2. Current Owner Consent and One-Run Admission
 
-- **Target:** `scripts/ci/restore_drill_verify.py:345-354, 404-418, 456-475`
-- **Problem:** When `_run_psql(dsn, _VIOLATIONS_SQL[table])` fails (`rc != 0` or `JSONDecodeError`), `fetch_live` silently discards `rc` and `stderr`, leaving `measurement["violations"] = {}` and masking the SQL error as `check '<name>' could not be measured (missing from result)`.
-- **Proposed Fix:**
-  - In `fetch_live` (`lines 345-354`), when `rc != 0` or `out` is empty or `json.loads` fails, record a sanitized error summary in `measurement["violations_error"]` (extracting only `rc` and the SQLSTATE / first `ERROR:` line with any literal values redacted, never row contents).
-  - In `_evaluate_one` (`lines 404-418`), if `measurement.get("violations_error")` is present while a check is missing from `violations`, include the sanitized error context in the `CANNOT-VERIFY` reason string (keeping `_classify_reason` mapping to `UNMEASURED_CHECK` so existing reason-class consumers remain compatible).
+Owner continuation of 2026-10-16 grants boolean-only diagnostics, independently
+gated installation with reviewed pins, and exactly one isolated restore of an
+existing backup. No fresh consent request is needed for that scope. The frozen
+prior-run receipt contains no consent fields and does not identify a backup file
+or establish an exhausted authorization flag.
 
-### 1.3 Change 3 — Calibrate `clients` Verification (`_CLIENTS_VIOLATIONS_SQL` & `required_columns`) Without Repairing Client Rows
+The BLUE Dux must complete this sequence:
 
-- **Target:** `scripts/ci/restore_drill_verify.py:109-125, 221-229`
-- **Schema Guard (retain Wave 7 improvement):** Keep `"lead_metadata"` in `clients.required_columns` (`["id", "full_name", "status", "client_type", "lead_metadata", "created_at", "updated_at"]`) and update `scripts/tests/test_restore_drill_verify.py` / `scripts/tests/fixtures/restore_drill/healthy.json` to match.
-- **Invariant Calibration (governed by `DUX-REQUEST-1` aggregate diagnostic output, zero row mutations):**
-  - **If `DUX-REQUEST-1` shows `lead_metadata_not_object > 0`:**
-    - As established in `ANALYSIS.md` §1.4, `clients.lead_metadata` was omitted from Migration 243 (`243_jsonb_string_scalar_organism_wide_backfill.sql:402-420`) and has no `CHECK` constraint (`223_clients_lead_metadata.sql:10-11`).
-    - Update `lead_metadata_not_object` in `_CLIENTS_VIOLATIONS_SQL` so it accepts the documented pre-existing production JSONB representations without modifying `clients` rows:
-      - JSON `'null'::jsonb` (`jsonb_typeof(lead_metadata) = 'null'`, semantically equivalent to SQL `NULL`), and/or
-      - Double-encoded JSON object strings (`jsonb_typeof(lead_metadata) = 'string'` where `pg_input_is_valid(lead_metadata #>> '{}', 'jsonb')` and `jsonb_typeof((lead_metadata #>> '{}')::jsonb) = 'object'`), while still flagging any non-object scalar/array corruption.
-  - **If `DUX-REQUEST-1` shows `client_type_unknown > 0`:**
-    - As established in `ANALYSIS.md` §1.4, `clients.client_type` has no database `CHECK` constraint (`restore_drill_verify.py:109-110`) and `ClientValidator` (`client_core.py:67`) permits arbitrary strings up to `VARCHAR(50)`.
-    - Update `client_type_unknown` in `_CLIENTS_VIOLATIONS_SQL` to normalize case/whitespace (`lower(btrim(client_type))`) and allow the exact legacy non-PII enum token set verified in production by `DUX-REQUEST-1` (or non-empty bounded `btrim(client_type) <> ''` if legacy CRM rows use freeform type tags), while still failing on `NULL` or empty/corrupted values.
-  - **If both subchecks are non-zero (ruled out for `REAL-RUN-RECEIPT.json` because `VIOLATION: 1`, not `2`, but guarded):** apply both predicate updates.
+1. Integrate the documentary and operator-safety corrections within the existing
+   B01 correction budget. Reconcile old/new source hashes; regenerate the complete
+   candidate and run-package manifests.
+2. Obtain the fresh independent exact-head BLUE gate and admission for the exact
+   operational package. Neither the earlier blocked gate nor a source-only review
+   signs changed bytes.
+3. Release the single original B01 PR through required checks, then install and
+   verify only the admitted wrapper/payload/verifier/role-scanner/Dockerfile pins.
+4. Check resources, any lock and the canonical container immediately before use.
+   Unknown Docker state, a present lock/container or a pin mismatch refuses the
+   launch. A durable exclusive reservation allows only one invocation; a second
+   invocation must make no SSH or launch request.
+5. Run the existing-backup job through the durable detached operator within the
+   original deadline, including its watchdog and owned-resource cleanup. Export
+   only safe statuses/check names and source digests.
 
-### 1.4 Change 4 — Emit Sanitized Check-Level Summary in `scripts/restore_drill/run_drill.sh`
+No new backup, second restore, client-row repair, production client query, raw
+log export or weaker invariant is authorized. A scheduled run is not a substitute
+for the specifically admitted one-shot proof.
 
-- **Target:** `scripts/restore_drill/run_drill.sh:250-264`
-- **Problem:** `run_drill.sh` deletes `$WORK_DIR/verify.json` and `$WORK_DIR/verify.err` in `cleanup()` (`line 69`) and logs only `Restore drill verdict=$aggregate backup=$latest bytes=$dump_bytes` (`line 258`). When `aggregate != "PASS"`, operators and receipts cannot see which check key failed inside a relation without re-running a 98-second S3 download + restore.
-- **Proposed Fix:** Before `cleanup()` runs, use `jq -c` on `$WORK_DIR/verify.json` to log a single compact, strictly non-PII diagnostic line to `$HOME/logs/mini-restore_drill/run.log` containing only non-`PASS` relation names, `status`, `missing_columns`, and `violations` check-key integer counts (never row data).
+## 3. Acceptance and Dependency Boundary
 
-### 1.5 Change 5 — Synthetic PG & Unit Test Coverage
+Require a fresh real-backup receipt with all five strict relation invariants
+passing, actual installed pins and observed owned-resource cleanup before marking
+B01 closed. A synthetic all-pass case or merged PR does not satisfy that test.
+If `clients` still fails, record it as failure and stop this run path without a
+repeat or data repair.
 
-- **Target:** `scripts/tests/test_restore_drill_verify.py` and `scripts/tests/fixtures/restore_drill/healthy.json`
-- **Proposed Tests:**
-  1. Update `healthy.json` and column-list assertions for `clients.required_columns` including `"lead_metadata"`.
-  2. Add unit tests for `fetch_live` / `_evaluate_one` when `_VIOLATIONS_SQL` returns `rc != 0` (verifying `UNMEASURED_CHECK` classification + sanitized `violations_error` surfacing).
-  3. Add SQL/fixture regression tests covering both `conversations.messages` as `JSONB` (production type) and `conversations.messages` as `TEXT` (Migration 143 synthetic type), plus the calibrated `clients` check predicate.
+The historical Option 2A idea of S2 remediation before B01 closure is not adopted:
+the original S1 gate requires B01 closed before S2 starts. Any stage amendment
+requires an actual owner decision; none is assumed here.
 
----
+## 4. Disposition of Historical DUX Requests
 
-## 2. Admission & Consent Plan for the Next Real-Backup Run
+`DUX-REQUEST-1` (production aggregate attribution) remains not admitted. Its
+integer-count query and live-schema assertions are not part of this execution plan.
+The authorized alternative is the admitted restore's boolean-only check
+classification, without client rows, counts or raw query errors.
 
-1. **Why a Real-Backup Run Cannot Be Executed Now:**
-   - The Wave 7 one-run authorization (`APPROVED_ONE_EXISTING_JOB`) was a single-use consent consumed by the `2026-04-19T14:43:29Z` run (`REAL-RUN-RECEIPT.json:14-16`: `"consent_scope": "One execution of the existing restore/recovery job on Mini"`, `"consent_exhausted": true`).
-   - Per `DUX-NOTE-ANALYSIS.md:18` and `BATTLE.md:12`, no new real-backup run may be triggered without explicit new owner consent.
-2. **Pre-Run Admission Gate (Must All Be Green Before Requesting/Running Real-Backup Drill):**
-   - **Step A (Diagnostic Attribution):** BLUE Dux executes `DUX-REQUEST-1` (read-only aggregate-only query on `nuzantara_readonly`, zero PII) to confirm the exact `clients` subcheck (`client_type_unknown` vs `lead_metadata_not_object`) and `conversations.messages` `udt_name`.
-   - **Step B (Implementation & Unit Tests in `EXECUTION` stage):** Apply Changes 1–5 in `~/nuzantara/.worktrees/db-udb-b01-recovery` and pass `pytest -q scripts/tests/test_restore_drill_verify.py`.
-   - **Step C (Synthetic PG Parity Proof in `EXECUTION` stage):** Run `restore_drill_verify.py` against a disposable synthetic PostgreSQL 17 instance testing **both** `conversations.messages` as `JSONB` and as `TEXT`, plus the real-world `clients` aggregate shapes from Step A, proving `12/12 PASS`.
-   - **Step D (Owner Consent / Scheduled Cadence):** Present the `12/12 PASS` synthetic proof to Zero to authorize one verification run of `~/scripts/mini-restore-drill.sh` on Mini (or allow the next scheduled Sunday `05:30` WITA launchd run after merge to `main`), and capture the non-PII receipt into `~/.organism/last_seen/mini.restore_drill.json`.
-
----
-
-## DUX-REQUESTS
-
-To move from `ANALYSIS` to `EXECUTION` with zero guesswork on the `clients` `VIOLATION: 1` subcheck attribution, the BLUE Dux (`claude-opus-5-5` `xhigh` on `pro`) is requested to run the following **read-only, aggregate-only, zero-PII** diagnostic query against `nuzantara_readonly` (or against a local read-only schema check) and provide the output in the `EXECUTION` dispatch note:
-
-### `DUX-REQUEST-1` — Read-Only Aggregate Attribution for `clients` and `conversations` (Zero PII)
-
-```sql
-SELECT json_build_object(
-    'conversations_messages_udt', (
-        SELECT udt_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'conversations'
-          AND column_name = 'messages'
-    ),
-    'conversations_non_array_count', (
-        SELECT count(*)
-        FROM public.conversations
-        WHERE CASE
-            WHEN messages IS NULL THEN true
-            WHEN pg_typeof(messages) = 'jsonb'::regtype THEN jsonb_typeof(to_jsonb(messages)) <> 'array'
-            WHEN pg_input_is_valid(messages::text, 'jsonb') THEN jsonb_typeof(messages::text::jsonb) <> 'array'
-            ELSE true
-        END
-    ),
-    'clients_type_unknown_exact_count', (
-        SELECT count(*)
-        FROM public.clients
-        WHERE client_type NOT IN ('individual', 'company')
-    ),
-    'clients_type_unknown_normalized_count', (
-        SELECT count(*)
-        FROM public.clients
-        WHERE client_type IS NULL
-           OR lower(btrim(client_type)) NOT IN ('individual', 'company')
-    ),
-    'clients_type_null_or_blank_count', (
-        SELECT count(*)
-        FROM public.clients
-        WHERE client_type IS NULL
-           OR btrim(client_type) = ''
-    ),
-    'clients_type_distinct_count', (
-        SELECT count(DISTINCT lower(btrim(client_type)))
-        FROM public.clients
-    ),
-    'clients_lead_metadata_not_object_count', (
-        SELECT count(*)
-        FROM public.clients
-        WHERE lead_metadata IS NOT NULL
-          AND jsonb_typeof(lead_metadata) <> 'object'
-    ),
-    'clients_lead_metadata_typeof_dist', (
-        SELECT COALESCE(json_object_agg(t, c), '{}'::json)
-        FROM (
-            SELECT COALESCE(jsonb_typeof(lead_metadata), 'sql_null') AS t,
-                   count(*) AS c
-            FROM public.clients
-            GROUP BY 1
-        ) s
-    ),
-    'clients_lead_metadata_string_valid_object_count', (
-        SELECT count(*)
-        FROM public.clients
-        WHERE lead_metadata IS NOT NULL
-          AND jsonb_typeof(lead_metadata) = 'string'
-          AND pg_input_is_valid(lead_metadata #>> '{}', 'jsonb')
-          AND jsonb_typeof((lead_metadata #>> '{}')::jsonb) = 'object'
-    )
-)::text;
-```
-
-- **Why this query is strictly PII-safe:** Every field in the output JSON is either a PostgreSQL catalog type name (`udt_name`), a `jsonb_typeof` category (`object`, `string`, `array`, `null`, `boolean`, `number`, `sql_null`), or an integer `count(*)`. No row IDs, no client names, no emails, no phone numbers, and no free-text column values can ever be emitted.
-
-### `DUX-REQUEST-2` — Stage Gate Authorization for `EXECUTION`
-
-- Upon providing the `DUX-REQUEST-1` aggregate JSON, authorize `B01` to enter `EXECUTION` to apply Changes 1–5 in `~/nuzantara/.worktrees/db-udb-b01-recovery` and run `pytest -q scripts/tests/test_restore_drill_verify.py`.
+`DUX-REQUEST-2` was a historical request about entering execution, not a native
+permission or an exemption from the current exact-head gate. Old proposed changes
+to client semantics and new stock-log counters remain rejected.
 
 ## Adversarial review
 
-Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED` for this file's bytes with SHA256 `7c1bfb03d900c686ddb9c9f820ebdc23fa0eb868155fbd9a495f64b47c0e7fc9` at base `8061c88e0c43dd42e735fd012f9ed072df3ef3d6`. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. Edits after the reviewed bytes (addendum) apply its findings and were not re-reviewed.
+Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED` for this file's bytes with SHA256 `7c1bfb03d900c686ddb9c9f820ebdc23fa0eb868155fbd9a495f64b47c0e7fc9` at base `8061c88e0c43dd42e735fd012f9ed072df3ef3d6`. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. The reconciled body is prepared after those reviewed bytes and still requires the fresh independent exact-head BLUE gate.
