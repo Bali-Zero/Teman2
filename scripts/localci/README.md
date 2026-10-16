@@ -996,6 +996,8 @@ silence is a `warning`, recovery `launchctl kickstart`. Arming (operator of Pro,
 
 Before step 1 the report must also read `liveness_ok: true` (B24): READY proves the merger is safe, `liveness_ok` that it would merge — at least 10 mergeable `would_enqueue` rows in the last 48 h and at least 80 % of the GitHub-merged PRs it decided carrying one at their merged head. Phase F arming does not require it.
 
+B37: a `would_enqueue` row whose only false term (outside `label_privileged`, `not_in_queue`, `first_enqueue`) is `open` also counts when the `pulls/{n}` read the report already holds shows GitHub merged that very head — LocalCI lost the race to GitHub's queue, which the flip removes. A closed-unmerged PR, another head, a missing pull or a second false term never count. The liveness line prints `mergeable_rows=N (merged_first=M)` and adds `unread_pull=K` when rows were left out for lack of a pull. READY and every verdict are untouched.
+
 Step 1 recomputes `report.json`, which nothing regenerates on a schedule (since F2 the tick judges READY in memory and writes
 no report). `hand_report.sh` runs the merger's own `merger.py report` the way the tick runs it: the code read from the mirror's
 ref (`refs/merger/wrapper`, else `refs/merger/base`, resolved once), the same files extracted beside it — the report's
