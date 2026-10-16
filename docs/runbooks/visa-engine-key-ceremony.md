@@ -348,6 +348,46 @@ PASS: https://github.com/Bali-Zero/Teman2/pull/8433#issuecomment-6144652983
 Ceremony gotcha: the activation script reads `PACK` relative to `apps/backend-rag`, so a copy of the
 bundle extracted with `git show` is passed by a path relative to that directory.
 
+## Signing + activation note (2026-10-16, seq-30)
+
+`rulepack-prod-030.signed.json` folds the six scheduled items of the E28 family close-out and the
+E30/visit-family queue on top of signed seq-29 (`fold_pack_seq30.py`, `--check` reproducible):
+`created_at` `2026-10-16T12:00:00Z`, `created_by` `agent.air-m5.backend-rag.vo-seq30-e28-1016`,
+`rule_pack_id` `2e113982-c3ec-59f4-bfe5-88ec87f298a2`, `payload_sha256`
+`972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413`, chained to signed seq-29
+(`previous_payload_sha256` `3f3b45ed1aaeadc72ec9dd2a5e33519ded3a0ec1da8408fade150a0ae39b9295`),
+sequence 29 to 30, version `2026.10.16`, `rollback_of_payload_sha256` null. Products 38, rules 117
+to 118.
+
+What the pack contains:
+
+1. `SEQ29-A2` (E28A pricing): `E28A` `pricing_key` set to `kitas_permits` / `Investor KITAS (Offshore)`
+   (IDR 17,000,000) and `duration_options` `[365 -> Investor KITAS (Offshore), 730 -> Investor KITAS 2 Years (Offshore)]`
+   (IDR 17,000,000 / 19,000,000).
+2. `SEQ29-D1` (E28D/E28F director/commissioner requirement): `el.e28d.branch-or-subsidiary` and
+   `el.e28f.ikn-subsidiary` require `investment.proposed_role in [SHAREHOLDER_DIRECTOR, SHAREHOLDER_COMMISSIONER]`
+   (Permenkumham 22/2023 Pasal 39(2)(a), 41(2)(a)).
+3. `S02` (A1 onshore conversion exclusion): new rule `hf.a1-onshore-conversion-excluded` (`A1_NOT_CONVERTIBLE`)
+   excludes `A1` when `process.wants_onshore_conversion == true` (UU 6/2011 Pasal 166(3)(a), PP 31/2013 Pasal 166(3)(a)).
+4. `SEQ29-E30-02` (E30A/E30B duration options): `E30A` gains 365/730-day `duration_options` (IDR 9,000,000 /
+   11,500,000) and `E30B` gains 365/730/1460-day `duration_options` (IDR 9,000,000 / 11,500,000 / 15,000,000).
+5. `SEQ29-S1` (E28 portal source receipts): the six official E28A–E28F Imigrasi portal records move to the
+   verified 2026-10-15 snapshots (`research/visa/2026-10-15-e28-pages/receipts.json`, `verified_by:
+claude-opus-5-5-20261015`), with `content_sha256` set to the saved `*.txt` sha256.
+6. `SEQ29-N1` (E28C/E28D/E28F titles): `E28C.names.id`, `E28D.names.id`, and `E28F.names.{id,en}` match the
+   current headings on `imigrasi.go.id`.
+
+Signed offline on M5: `kid: prod-2026-07-1`, `signed_at` `2026-10-16T12:24:48.389183Z`, `sign_pack`
+signed and self-verified, `rule_pack_id` `2e113982-c3ec-59f4-bfe5-88ec87f298a2`, `payload_sha256`
+`972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413`, public key
+`gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA`. Pre-Prettier file sha256 prefix `b845fbefa5782a1e`,
+post-Prettier file sha256 prefix `31c611994ea43a9d`; JCS `payload_sha256` unchanged. The bundle lands
+in the same PR as the source, with `scripts/ci/observe_visa_seq30_signed.py` replacing
+`scripts/ci/observe_visa_seq29_signed.py`.
+
+**Activation: PENDING.** Runs from Pro right after merge via the two-login ceremony on the PG primary;
+the `activation_id` and timestamp are recorded in the follow-up closing ledger PR.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.

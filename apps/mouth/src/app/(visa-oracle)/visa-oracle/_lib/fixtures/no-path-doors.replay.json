@@ -1,11 +1,11 @@
 {
   "generator": "apps/mouth/scripts/visa-oracle/replay-no-path-doors.py",
   "pack": {
-    "file": "rulepack-prod-029.signed.json",
-    "sequence": 29,
-    "version": "2026.10.12"
+    "file": "rulepack-prod-030.signed.json",
+    "sequence": 30,
+    "version": "2026.10.16"
   },
-  "as_of": "2026-10-13 08:56:32.221637+00:00",
+  "as_of": "2026-10-16 12:00:00+00:00",
   "age_55_birth_date": "1971-09-01",
   "walk_corpus_fingerprint": "05928bb6491e93334aa3fea7550e818ef637de254dc49d2ddf5a29f8030cddf0",
   "walks": [

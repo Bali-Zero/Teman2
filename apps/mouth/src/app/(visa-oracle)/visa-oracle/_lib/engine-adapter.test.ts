@@ -455,6 +455,7 @@ describe("Visa Oracle authoritative outcome adapter", () => {
   it("writes the three seq-29 exclusion sentences in both languages, each naming its product and its figure", () => {
     const copy = SUPPORT_REASON_COPY;
     for (const [code, product] of [
+      ["A1_NOT_CONVERTIBLE", "(A1)"],
       ["E31D_REQ_SPONSOR_INDONESIAN", "(E31D)"],
       ["E31J_REQ_UNDER_18", "(E31J)"],
       ["E31J_REQ_UNMARRIED", "(E31J)"],

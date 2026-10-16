@@ -190,6 +190,7 @@ def _with_key(product: VisaProductVersion, item_key: str) -> VisaProductVersion:
 
     raw = product.model_dump(mode="json", by_alias=True)
     raw["pricing_key"] = {"category": _CATEGORY, "item_key": item_key}
+    raw.pop("duration_options", None)
     return VisaProductVersion.model_validate(raw)
 
 
@@ -225,8 +226,7 @@ class TestTheCatalogueRowsAreWhatTheVisitorIsQuoted:
     def test_every_family_row_resolves_available_through_the_real_service(
         self, item_key: str, amount: int, signed: _SignedPack
     ) -> None:
-        """Even the 2- and 4-year rows, which no pack key reaches yet: a product re-aimed at the
-        row is resolved by the real ``PricingService`` and must come back AVAILABLE in IDR."""
+        """Every E30 catalogue row is resolved by the real ``PricingService`` in IDR."""
 
         product = _with_key(signed.products["E30B"], item_key)
         resolution = _resolve(product, get_pricing_service(), signed.signed_at)
@@ -241,11 +241,13 @@ class TestTheCatalogueRowsAreWhatTheVisitorIsQuoted:
 
 class TestE30AAndE30BAreQuotedTheirOneYearRow:
     @pytest.mark.parametrize("code", sorted(_PRICED))
-    def test_the_key_is_the_one_year_row_and_there_are_no_duration_options(
+    def test_the_key_is_the_one_year_row_and_duration_options_match_the_catalogue(
         self, code: str, signed: _SignedPack
     ) -> None:
         assert signed.products[code].pricing_key == _PRICED[code]
-        assert not signed.products[code].duration_options
+        expected_days = (365, 730) if code == "E30A" else (365, 730, 1460)
+        assert tuple(o.days for o in signed.products[code].duration_options) == expected_days
+        assert signed.products[code].duration_options[0].pricing_key == _PRICED[code]
 
     @pytest.mark.parametrize("code", sorted(_PRICED))
     def test_a_one_year_stay_is_available_at_the_pinned_amount_through_the_real_service(
@@ -287,17 +289,9 @@ class TestE30AAndE30BAreQuotedTheirOneYearRow:
             assert resolution.amount == _ONE_YEAR_IDR, stay_days
 
 
-class TestTheLongerStaysAreAKnownGapPinnedAsStrictXfail:
-    """The catalogue prices a 2- and a 4-year permit; the pack cannot reach those rows yet."""
+class TestTheLongerStaysAreQuotedTheirOwnDurationRow:
+    """SEQ29-E30-02 closed in seq-30: 2- and 4-year stays resolve to their own duration_options row."""
 
-    @pytest.mark.xfail(
-        raises=AssertionError,  # a setup error, an exception or a wrong row is a RED, not an XFAIL
-        strict=True,
-        reason=(
-            "SEQ29-E30-02: E30A/E30B carry no duration_options, so a stay over a year is quoted "
-            "the 1-year row. The pack that adds the options flips this to XPASS; remove the mark."
-        ),
-    )
     @pytest.mark.parametrize(
         ("code", "stay_days", "amount"),
         [
@@ -313,25 +307,6 @@ class TestTheLongerStaysAreAKnownGapPinnedAsStrictXfail:
             signed.products[code], get_pricing_service(), signed.signed_at, stay_days
         )
         assert (resolution.status, resolution.amount) == ("AVAILABLE", amount)
-
-
-class TestTodaysLongerStayQuoteIsPinnedExplicitly:
-    """The CURRENT behaviour, asserted, so the gap cannot move silently in any direction: an
-    exception, CONTACT_REQUIRED, a different amount or a different row are all red here. When the
-    pack that adds ``duration_options`` lands, THIS class goes red too -- that is the review the
-    pin forces; delete it together with the xfail above (SEQ29-E30-02)."""
-
-    @pytest.mark.parametrize(("code", "stay_days"), [("E30A", 730), ("E30B", 730), ("E30B", 1460)])
-    def test_a_stay_over_a_year_is_still_quoted_the_one_year_row(
-        self, code: str, stay_days: int, signed: _SignedPack
-    ) -> None:
-        catalog = get_pricing_service()
-        one_year = _resolve(signed.products[code], catalog, signed.signed_at, _ONE_YEAR_STAY_DAYS)
-        longer = _resolve(signed.products[code], catalog, signed.signed_at, stay_days)
-        assert (longer.status, longer.reason_code) == ("AVAILABLE", "PRICE_AVAILABLE")
-        assert longer.amount == _ONE_YEAR_IDR
-        assert one_year.row_sha256 is not None
-        assert longer.row_sha256 == one_year.row_sha256  # the very same 1-year row
 
 
 class TestTheOtherE30VisasStayUnpriced:
