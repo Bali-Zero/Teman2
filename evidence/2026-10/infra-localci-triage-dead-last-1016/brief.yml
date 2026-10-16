@@ -1,0 +1,24 @@
+task_id: infra-localci-triage-dead-last-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: >-
+  B38: triage() in the LocalCI merger decides dead keys last and never skips them. Measured on Pro's journal over 48 h
+  (2026-10-16): 26 would_enqueue rows, 0 mergeable, because the one-run-at-a-time lane (a decision takes about 57 min)
+  spent its hours on keys that cannot yield a mergeable row whatever the local verdict: CHANGES_REQUESTED PRs (8068,
+  8070), heads whose required hosted context had completed red before the run started (20 of 20 hosted-red rows),
+  heads whose newest same-head decision was FAIL with hosted agreeing, and gear >= 2 heads with no gate verdict (the 19
+  mut-* PRs). A key is dead when (a) B29's review_block says changes requested, (b) a required hosted context completed
+  failure, timed_out, startup_failure or error (never cancelled, never pending), (c) the journal's newest decision at the
+  head is a FAIL whose hosted comparison agreed, or (d) the PR's last decision was gate_pending and the head carries no
+  harness/fable-gate status. The sort key becomes (not labelled, dead, attempted, last ts, created_at, number): labelled-first
+  stays first (B28), dead-last inside each group, order inside a class unchanged. A read that fails means not dead. Cost:
+  one batched GraphQL reviews query per tick and at most DEAD_READ_CAP = 5 keys of REST reads, stopping at the first alive
+  key. Consumer: the merger tick on Pro (journal row skipped dead_last and the tick log line merger: B38). No verdict, GATE
+  term, phase_f_arming, B19 retry order, B20 refresh tick or B28 starvation bound changes. The gear-2 verdict is not asserted
+  here; a fresh Opus gate reads the diff.
+residuals:
+  - Only the head of the order is exact when the REST tiers stop at the first alive key or at the cap; the tail keeps B23's order for the keys not read.
+  - (d) is a heuristic for "needs a gate verdict": the PR's last decision at any head was gate_pending; a never-gated PR with no prior decision is not classed by (d), but its hosted Harness floor red is caught by (b).
+  - (c) judges the same head at any base; a red that main since cured (a main-wide failure) keeps the key dead until the head is re-decided, which only reorders it.
+  - The reviews query reads the first 100 open PRs; a PR past them is not dead.
