@@ -178,7 +178,7 @@ async def test_concurrent_runner_skipped_when_lock_unavailable(
 
     result = await mgr.apply_all_pending()
 
-    assert result == {"applied": [], "skipped": [], "failed": []}
+    assert result == {"applied": [], "skipped": [], "failed": [], "refused": {"code": "lock_busy"}}
     assert sentinel["called"] is False
     # We must NOT have tried to release a lock we never acquired
     assert lock_conn.execute.await_count == 0

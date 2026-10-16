@@ -6,6 +6,7 @@ Centralized migration management system
 import asyncio
 import logging
 import ssl
+from collections.abc import Awaitable, Callable
 from functools import partial
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -427,12 +428,12 @@ class MigrationManager:
         logger.info("✅ Rolled back migration: %s", migration_name)
         return True
 
-    async def discover_migrations(self) -> list[BaseMigration]:
+    async def discover_migrations(self) -> list[dict]:
         """
         Discover all migration files in migrations directory.
 
         Returns:
-            List of BaseMigration instances (not yet initialized with SQL files)
+            Migration metadata dictionaries consumed by the apply methods.
         """
         # SWITCH TO V2 DIRECTORY
         migrations_dir = Path(__file__).parent / "migrations_v2"
@@ -498,18 +499,24 @@ class MigrationManager:
     # the lock until it terminates.
     _APPLY_ALL_LOCK_ID = 73491
 
-    async def apply_all_pending(self, dry_run: bool = False) -> dict:
-        """
-        Apply all pending migrations in order.
+    async def _run_under_apply_lock(
+        self,
+        body: Callable[[], Awaitable[dict]],
+        *,
+        busy_result: dict,
+    ) -> dict:
+        """Run `body` while holding the process-wide migration advisory lock.
 
-        Args:
-            dry_run: If True, only show what would be applied without executing
+        The ONE serialisation primitive for every path that applies SQL:
+        `apply_all_pending` and `apply_single` both go through here, so a
+        single-migration invocation can never interleave with an `apply-all`
+        running from another process (the Fly `release_command`, CI, or a
+        second operator shell).
 
-        Returns:
-            Dictionary with:
-            - applied: List of applied migration numbers
-            - skipped: List of skipped migration numbers
-            - failed: List of failed migration numbers with errors
+        `busy_result` is returned, untouched, when another session already
+        holds the lock. Each caller supplies a refusal result. The three
+        historical list keys remain, with an additive refusal code so a
+        blocked run cannot be mistaken for successful schema readiness.
         """
         if not self.pool:
             await self.connect()
@@ -538,10 +545,10 @@ class MigrationManager:
 
             if not locked:
                 logger.warning("Another migration process is running, skipping")
-                return {"applied": [], "skipped": [], "failed": []}
+                return busy_result
 
             try:
-                return await self._apply_all_pending_locked(dry_run)
+                return await body()
             finally:
                 # Same session — guaranteed to actually release. We swallow
                 # release errors because the connection is about to be
@@ -558,6 +565,36 @@ class MigrationManager:
                         "termination to free the lock",
                         exc,
                     )
+
+    async def apply_all_pending(self, dry_run: bool = False) -> dict:
+        """
+        Apply all pending migrations in order.
+
+        Args:
+            dry_run: If True, only show what would be applied without executing
+
+        Returns:
+            Dictionary with:
+            - applied: List of applied migration numbers
+            - skipped: List of skipped migration numbers
+            - failed: List of failed migration numbers with errors
+            - refused: ONLY when another session holds the advisory lock:
+              `{"code": "lock_busy"}`. Additive (Kimi round 3, F1): before
+              this key existed a lock-busy run was indistinguishable from
+              "nothing pending", so the Fly release_command exited 0 with
+              pending migrations unapplied. Consumers that read the three
+              list keys are unaffected; a consumer comparing the whole dict
+              by equality must include the new key.
+        """
+        return await self._run_under_apply_lock(
+            partial(self._apply_all_pending_locked, dry_run),
+            busy_result={
+                "applied": [],
+                "skipped": [],
+                "failed": [],
+                "refused": {"code": "lock_busy"},
+            },
+        )
 
     async def _apply_all_pending_locked(self, dry_run: bool = False) -> dict:
         """Internal: apply pending migrations while holding advisory lock."""
@@ -657,6 +694,124 @@ class MigrationManager:
                 failed.append({"number": migration_number, "error": str(e)})
 
         return {"applied": applied, "skipped": [], "failed": failed}
+
+    # Result shape of `apply_single` / `_apply_single_locked`. `applied`,
+    # `skipped` and `failed` mirror `apply_all_pending` so the CLI reports both
+    # through one formatter; the three extra keys exist because a single
+    # requested number can be REFUSED without anything failing, and a refusal
+    # must travel as data (numbers only), never as exception text that a CLI
+    # would then have to print.
+    @staticmethod
+    def _single_result() -> dict:
+        return {
+            "applied": [],
+            "skipped": [],
+            "failed": [],
+            "refused": None,
+            "would_apply": [],
+            "file": None,
+        }
+
+    async def apply_single(self, migration_number: int, dry_run: bool = False) -> dict:
+        """Apply exactly ONE migration by number, under the same advisory lock.
+
+        Goes through the identical `discover_migrations` → `BaseMigration` →
+        `apply_migration` path as `apply_all_pending`, so the rollback marker
+        split, the full-file checksum, both-ledger bookkeeping and the
+        lock-timeout retry all apply unchanged. What differs is the guard set,
+        evaluated in this order:
+
+          1. already recorded in `_schema_versions` → `skipped` (idempotent;
+             includes a ledger row whose file is no longer on disk);
+          2. no file with that number on disk → `refused: unknown_number`;
+          3. any LOWER-numbered migration still pending → `refused:
+             earlier_pending` listing them. Files apply in number order and a
+             later file may depend on an earlier one, so a single apply never
+             jumps the queue — run `apply-all`, or apply the earlier numbers
+             first, explicitly;
+          4. `dry_run` → `would_apply` and nothing is executed;
+          5. otherwise apply, recording `applied` or `failed` exactly as
+             `apply_all_pending` would.
+
+        Duplicate numbers on disk raise `MigrationError` from
+        `discover_migrations` before anything runs (same as `apply-all`).
+
+        Returns the `_single_result` shape; `refused["code"]` is one of
+        `unknown_number`, `earlier_pending`, `lock_busy`.
+        """
+        busy = self._single_result()
+        busy["refused"] = {"code": "lock_busy", "number": migration_number}
+        return await self._run_under_apply_lock(
+            partial(self._apply_single_locked, migration_number, dry_run),
+            busy_result=busy,
+        )
+
+    async def _apply_single_locked(self, migration_number: int, dry_run: bool) -> dict:
+        """Internal: apply one migration while holding the advisory lock."""
+        result = self._single_result()
+        discovered = await self.discover_migrations()
+        by_number = {m["number"]: m for m in discovered}
+        applied_numbers = {m["migration_number"] for m in await self.get_applied_migrations()}
+
+        info = by_number.get(migration_number)
+        result["file"] = info["file"] if info else None
+
+        if migration_number in applied_numbers:
+            logger.info("Migration %s already applied; nothing to do", migration_number)
+            result["skipped"].append(migration_number)
+            return result
+
+        if info is None:
+            known = sorted(by_number)
+            result["refused"] = {
+                "code": "unknown_number",
+                "number": migration_number,
+                "known_count": len(known),
+                "known_min": known[0] if known else None,
+                "known_max": known[-1] if known else None,
+            }
+            return result
+
+        earlier_pending = sorted(
+            n for n in by_number if n < migration_number and n not in applied_numbers
+        )
+        if earlier_pending:
+            result["refused"] = {
+                "code": "earlier_pending",
+                "number": migration_number,
+                "earlier_pending": earlier_pending,
+            }
+            return result
+
+        if dry_run:
+            result["would_apply"].append(migration_number)
+            return result
+
+        try:
+            # Constructed INSIDE the try, unlike the apply-all loop: a file
+            # above 111 without a rollback marker raises ValueError from the
+            # constructor, and for a single requested number that is this
+            # number's failure to report, not a crash of the whole command.
+            migration = BaseMigration(
+                migration_number=migration_number,
+                sql_file=info["file"],
+                description=f"Migration {migration_number}",
+                rollback_sql=info.get("rollback_sql"),
+                dependencies=info.get("dependencies"),
+            )
+            success = await self.apply_migration(migration)
+        except Exception as e:
+            logger.error("Failed to apply migration %s: %s", migration_number, e)
+            result["failed"].append({"number": migration_number, "error": str(e)})
+            return result
+
+        if success:
+            result["applied"].append(migration_number)
+        else:
+            result["failed"].append(
+                {"number": migration_number, "error": "Migration returned False"}
+            )
+        return result
 
     async def get_status(self) -> dict:
         """
