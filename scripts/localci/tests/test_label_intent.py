@@ -247,8 +247,3 @@ def test_the_domain_is_not_small():
     """A guard on the oracle's reach: the unconstrained configuration alone is thousands of (script of results) pairs."""
     assert sum(1 for _ in explore(li.Cfg(4, 100, 1, "present"), 0)) >= 10_000
 
-
-def test_a_command_that_outlives_its_timeout_is_rc_124_not_a_hang(monkeypatch):
-    monkeypatch.setattr(li, "CMD_TIMEOUT", 1)
-    rc, out = li._run(["sleep", "5"])
-    assert rc == 124 and "timed out" in out

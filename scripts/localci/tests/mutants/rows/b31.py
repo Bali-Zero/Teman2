@@ -40,6 +40,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b31-poller-skipped-conjunct-dropped": ("apps/bali-intel-scraper/scripts/post_publish_poller.py", 'if result.returncode == 0 and "arm=skipped" in result.stdout:', 'if result.returncode == 0:', ("scripts/localci/tests/test_label_census.py",)),
     "b31-poller-exit-2-alert-dropped": ("apps/bali-intel-scraper/scripts/post_publish_poller.py", "if result.returncode == 2:   # B31", "if result.returncode == 99:   # B31", ("scripts/localci/tests/test_label_census.py",)),
     "b31-w-benign-arm-clean-substring": ("scripts/localci/label_intent.py", '"already enabled", "clean status")', '"already enabled", "clean")', ("scripts/localci/tests/test_label_intent.py",)),
-    "b31-w-cmd-timeout-dropped": ("scripts/localci/label_intent.py", "env=env, timeout=CMD_TIMEOUT)", "env=env)", ("scripts/localci/tests/test_label_intent.py",)),
+    "b31-w-cmd-timeout-dropped": ("scripts/localci/label_intent.py", "env=env, timeout=CMD_TIMEOUT)", "env=env)", ("scripts/localci/tests/test_label_census.py",)),
 }
 ROWS.update(_pc.auto_mutants(ROOT))

@@ -1,0 +1,172 @@
+# Gear-3 evidence pack — LocalCI B31'' (the merge label is never silently missing): signal_merge_intent.sh as one pure Python plan() plus an ast predicate census.
+# Written 2026-10-16 by Claude Sonnet 5.5 (impl-b31r, M5). Every receipt is a command run in this session. Verbatim seat verdicts: council-verbatim.txt.
+gear: 3
+brief_ref: evidence/brief.yml
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  The titolare third seat kimi-code/k3 and tp1-qwen3.8-max were reported dead by the lead (kimi QUOTA_DEAD, tp1 MODEL_ERR) and agy (Gemini 4 Argon High) was named
+  the reserve. arsenal_probe --seats kimi,tp1-qwen3.8-max at 2026-10-16T02:13:50Z read tp1-qwen3.8-max MODEL_ERR (HTTP 403) and kimi LIVE (the QUOTA_DEAD of
+  2026-10-15 had cleared); the council nevertheless ran codex-gpt-5.6-sol (-m gpt-5.6-sol) beside agy as instructed. Neither seat built or edited anything here.
+ruling: >-
+  LocalCI-SOVEREIGN spec B31'' (docs/specs/localci-sovereign-2026-10-07.md, D1-D5): spec first, all decision logic in pure Python (plan()), bash is exec python3,
+  an exhaustive oracle, a Python-only predicate census with a denylist; .github/workflows/localci-tests.yml untouched (path extension is a gear-3 follow-up, D5).
+mission: >-
+  After the phase F flip a PR without the valid localci:merge-shadow-ok label never merges, so a label that is silently missing strands it. The helper reads the label
+  back, writes only when it is not valid, and fails loud (exit 2) when it cannot show it valid.
+lanes:
+  - lane: label-build
+    role: build
+    seat: Claude Sonnet 5.5 (helper, plan(), census, tests, mutants, cure rounds; the builder is NOT a grader here)
+  - lane: label-gate-1
+    role: review
+    seat: fresh Opus 5.5 gates gate-b31 .. gate-b31pp (rounds 1-5; gate-b31pp BLOCKED 3dc628ff30 with C1-C4, cured here)
+  - lane: label-review-codex
+    role: review
+    seat: codex-gpt-5.6-sol (-m gpt-5.6-sol, read-only, prompt-only, env -i scrubbed, 1 round on d5369e3771)
+  - lane: label-review-agy
+    role: review
+    seat: agy-gemini-4-argon (Gemini 4 Argon High, --sandbox, prompt-only, same prompt, 1 round on d5369e3771)
+seat_diversity: >-
+  Builder: Anthropic (Claude Sonnet 5.5). Gates: Anthropic (fresh Opus 5.5, outside the contribution chain). Council: OpenAI (codex-gpt-5.6-sol) and Google (agy-gemini-4-argon); no reviewer built anything.
+pii_scan: clean
+pii_scan_note: >-
+  Code, tests and synthetic fixtures. The helper handles a repo name, a PR number and a label name; no client data is read or printed.
+what_changed: |
+  scripts/signal_merge_intent.sh (exec python3), scripts/localci/label_intent.py (pure plan(), the world), label_census.py (verify/census), predicate_census.py (+ .jsonl),
+  the oracle and shell tests, the b31 mutant rows, the poller test, the spec section and README. Cure round 1: a verify killed by a signal or that cannot start is an
+  UNKNOWN read (exit 2, no write); a failed label beats a failed arm (exit 2, as spec L1); invalid UTF-8 is decoded with errors=replace; arm_is_benign needs "clean status";
+  every command has a 60 s timeout (rc 124); the census rejects loop else, try finally/else, literal indexing, bitwise booleans and models dict dispatch, min/max/getattr.
+proof: |
+  See receipts. gate-b31pp: plan() right over its whole domain (1.44M scripts); the blocks were the floor and three world/caller seams. Each seam now has a test that fails
+  on the mutant (b31-w-*, b31-poller-*). Council round 1 on d5369e3771 gave REWORK from both seats; the real defects were cured test-first in 07eac331f6 and the follow-up commit.
+bites:
+  consumer: >-
+    The callers of scripts/signal_merge_intent.sh: scripts/docs_guardian.sh (exit 2 now fails the run loudly) and apps/bali-intel-scraper/scripts/post_publish_poller.py
+    (rc 2 alerts post-publish:bot-pr-unlabelled), plus every session that arms a PR after the flip.
+  observation: >-
+    The shell suite scripts/tests/test_signal_merge_intent.sh and test_label_census.py drive the REAL helper against a stateful fake gh: absent/valid/stale/unreadable/killed/unstartable
+    labels end in the exit codes above, with the pr edit calls counted. The live observation (the census of open armed PRs without a valid label going to 0) is owed to the shipping session.
+ground:
+  ts: "2026-10-16T02:50:00Z"
+  siblings: >-
+    git merge-tree --write-tree of HEAD against origin/main 6a5364540b and against 22624838eb, 8578277eb2, bc27531703, 8988287dd3, 1f574ad2ce is clean for every one.
+spend:
+  adversarial_rounds: 2
+  wall_clock_hours: 4
+decisions:
+  - id: D-label-beats-arm
+    decision: >-
+      A label not shown valid exits 2 even when the arm also failed; exit 3 is an arm failure with a valid label. The spec L1 says "the exit stays 2" and the poller's label alert keys on 2;
+      the code returned 3. The code was changed, not the spec (gate-b31pp LOW).
+  - id: D-gear-3
+    decision: >-
+      The floor is 3 by churn (1830 lines at the gate, above 1828), so the brief is gear 3 with this pack; nothing was cut to get under the line.
+  - id: D-timeout-60
+    decision: >-
+      Every network command has a 60 s subprocess timeout (rc 124 = unknown). It bounds a hung gh or verify, which the deadline (asked only between commands) could not.
+receipts:
+  - claim: "R1 — the floor is 3 for the changed files (source size)."
+    cmd: python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <git diff origin/main...HEAD --name-only> --numstat-file <--numstat>
+    result: "3"
+    exit: 0
+    ts: "2026-10-16T02:38:00Z"
+    seat: Claude Sonnet 5.5 (impl-b31r, M5)
+  - claim: "R2 — Mini (venv311 py3.11), code head 07eac331f6: the whole scripts/localci/tests suite."
+    cmd: "ssh mini: nice -n 10 venv311 python -m pytest -q scripts/localci/tests -p no:cacheprovider (archive of 07eac331f6 under /tmp/gate-tmp-impl-b31r14)"
+    result: "2903 passed, 13 skipped, 1 warning in 851.42s"
+    exit: 0
+    ts: "2026-10-16T03:10:00Z"
+    seat: Claude Sonnet 5.5 (impl-b31r; run on Mini)
+  - claim: "R3 — Mini, every b31-* mutant (148) on 07eac331f6: 146 killed, 2 survivors; both cured in the next commit (a test of the exit-0-without-arm=skipped poller case; the timeout test moved to test_label_census.py, the file the census names for non-pure functions) and re-run: 3/3 killed on M5."
+    cmd: "ssh mini: merger_mutants.py --only <b31-*>, 8 shards of 19; then M5: merger_mutants.py --only b31-w-cmd-timeout-dropped b31-poller-skipped-conjunct-dropped b31-ast-label_intent-_run-except-7456-7481"
+    result: "146/148 killed on 07eac331f6, survivors b31-poller-skipped-conjunct-dropped and b31-ast-label_intent-_run-except-7456-7481; after the cure 3/3 killed, none survive"
+    exit: 0
+    ts: "2026-10-16T03:12:00Z"
+    seat: Claude Sonnet 5.5 (impl-b31r; Mini and M5)
+  - claim: "R4 — M5: shell suites and poller suite, anchors/rows/census/oracle tests."
+    cmd: bash scripts/tests/test_signal_merge_intent.sh (also under /usr/bin/python3 3.9.6); test_lane_ship.sh; test_mq_sh.sh; pytest apps/bali-intel-scraper/tests/unit/test_post_publish_poller.py; pytest test_label_intent/test_predicate_census/test_label_census/test_mutant_rows
+    result: "ALL PASS (py3.9 too); lane_ship PASS; mq_sh PASS; poller 77 passed; 325 passed before the last test move (rows+census re-run after: 67 passed)"
+    exit: 0
+    ts: "2026-10-16T03:08:00Z"
+    seat: Claude Sonnet 5.5 (impl-b31r, M5)
+  - claim: "R5 — merge-tree is clean against origin/main 6a5364540b and the in-flight heads 22624838eb, 8578277eb2, bc27531703, 8988287dd3, 1f574ad2ce."
+    cmd: git merge-tree --write-tree <ref> HEAD
+    result: "clean for all six"
+    exit: 0
+    ts: "2026-10-16T03:05:00Z"
+    seat: Claude Sonnet 5.5 (impl-b31r, M5)
+  - claim: "R6 — council round 1 on d5369e3771: codex-gpt-5.6-sol REWORK (8 DEFECT, 3 NOTE), agy-gemini-4-argon REWORK (11 DEFECT, 3 NOTE); verbatim in council-verbatim.txt."
+    cmd: scripts/with_seat.sh codex codex exec -m gpt-5.6-sol -s read-only --skip-git-repo-check -c model_reasoning_effort=high <prompt> </dev/null; scripts/with_seat.sh agy agy --sandbox --model 'Gemini 4 Argon (High)' --print-timeout 900s -p <prompt> </dev/null (both under env -i HOME PATH TERM=dumb LANG)
+    result: "both rc 0, both VERDICT: REWORK; dispositions in dissent"
+    exit: 0
+    ts: "2026-10-16T02:19:30Z"
+    seat: codex-gpt-5.6-sol and agy-gemini-4-argon
+dissent:
+  - seat: codex-gpt-5.6-sol (DEFECT label_intent.py:74)
+    objection: >-
+      arm_is_benign() accepts any failure containing "clean": arm rc 1 with "merge cannot be cleanly created" yields armed and exit 0 instead of exit 3.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 07eac331f6: the marker is "clean status"; test_label_intent asserts "merge cannot be cleanly created" is not benign; mutant b31-w-benign-arm-clean-substring killed.
+  - seat: codex-gpt-5.6-sol and agy-gemini-4-argon (DEFECT label_intent.py:182/180, no timeout)
+    objection: >-
+      Network subprocesses have no timeout; a verify or gh that hangs never reaches the required exit 2.
+    status: CONFIRMED
+    disposition: >-
+      CURED in 07eac331f6: CMD_TIMEOUT 60 s, rc 124 (unknown); test_a_command_that_outlives_its_timeout_is_rc_124_not_a_hang and mutant b31-w-cmd-timeout-dropped.
+  - seat: codex-gpt-5.6-sol and agy-gemini-4-argon (DEFECT predicate_census.py:97/89, try-else)
+    objection: >-
+      try ... except ... else is neither modelled nor rejected.
+    status: CONFIRMED
+    disposition: >-
+      CURED: the census raises on try finally/else (attack Q11).
+  - seat: codex-gpt-5.6-sol and agy-gemini-4-argon (DEFECT predicate_census.py:92/84, module-level dict dispatch)
+    objection: >-
+      A module dict indexed inside a function passes without a dispatch row.
+    status: CONFIRMED
+    disposition: >-
+      CURED: dict names are collected module-wide (attack Q12); bitwise & | ^ (agy) raise outside annotations (Q13, Q14); AnnAssign dicts and dict() calls are NOT modelled, accepted LOW.
+  - seat: agy-gemini-4-argon and codex-gpt-5.6-sol (DEFECT test_label_intent.py:157/175, transcripts not compared)
+    objection: >-
+      The oracle test compares only outcomes and never asserts the call transcripts equal.
+    status: CONFIRMED
+    disposition: >-
+      CURED: assert ca == cb added; the suite still passes (the reference makes the same calls).
+  - seat: codex-gpt-5.6-sol (DEFECT label_intent.py:223, SIGNAL_INTENT_SHOW_CONFIG=1 exits 0 without labelling)
+    objection: >-
+      The diagnostic, exported, silently makes the helper a no-op.
+    status: PLAUSIBLE
+    disposition: >-
+      Not changed: the header now says "WITHOUT labelling anything: a diagnostic, never export it"; the shell suite pins it. Same as gate-b31pp LOW.
+  - seat: codex-gpt-5.6-sol and agy-gemini-4-argon (DEFECT label_intent.py:102/173/171, verify success at or after the deadline; arm with no deadline check)
+    objection: >-
+      A verify that completes at/after the deadline is accepted, and arm is called without asking the deadline.
+    status: PLAUSIBLE
+    disposition: >-
+      NOT changed: the deadline gates STARTING a call (spec D2: asked before every network call and sleep); a read that returned rc 0 is a valid label read whenever it returned, and the arm is a single idempotent call after a
+      settled label. Changing it would move the reviewed plan() and the oracle (fix-of-a-fix depth); carried as a residual for the gate to rule.
+  - seat: agy-gemini-4-argon (DEFECT label_intent.py:171, arm when the label failed and a queue is present)
+    objection: >-
+      plan() still arms when the label failed with queue present.
+    status: PLAUSIBLE
+    disposition: >-
+      By design (spec L1): the arm is independent of the label; exit is 2 and the label failure is loud. The merge label, not the arm, is what merges after the flip.
+  - seat: agy-gemini-4-argon (DEFECT label_intent.py:117/121/201, view rc nonzero treated as absent; retry resets out; run_act ignores env; verify repo.split)
+    objection: >-
+      Several world/plan details: an unknown view rc proceeds to add; the retry overwrites out; run_act does not pass env to _run; label_census verify on a bad repo.
+    status: PLAUSIBLE
+    disposition: >-
+      NOT changed: an unknown view only skips the remove, and the read-back after the add still has to show a valid label (fails closed, exit 2); the out overwrite changes only the message tail;
+      the child inherits os.environ and receives repo/pr as arguments; label_census main turns any exception into rc 2. gate-b31pp's independent 1.44M-script properties agree. No behaviour was wrong.
+  - seat: codex-gpt-5.6-sol (DEFECT label_intent.py:210, elapsed floored to whole seconds)
+    objection: >-
+      A 1.9 s elapsed counts as 1 s, so a sleep of up to a second can overrun the deadline.
+    status: PLAUSIBLE
+    disposition: >-
+      Known and bounded (one second), the bash-era SECONDS granularity the spec D2 states; not changed.
+residuals:
+  - "Deadline semantics for a successful read/arm past the deadline (codex/agy DEFECT, PLAUSIBLE): for the gate to rule; changing it would move plan() and the oracle."
+  - "Census: AnnAssign dicts, dict() calls and tuple/list-bound variables are not modelled (agy)."
+  - "The workflow path filter .github/workflows/localci-tests.yml does not yet list the new files (spec D5, gear-3 follow-up)."
+  - "The live census of open armed PRs without a valid label is owed after merge."
+appetite_exceeded: false

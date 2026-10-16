@@ -1,5 +1,8 @@
 task_id: infra-localci-label-readback-1015
-gear: 2
+gear: 3
+gear_reason: >-
+  Deterministic floor 3, measured: evidence_pack_lint --print-floor over the changed files computes 3 (source size: churn above 1828 lines).
+  The first brief declared gear 2 and the floor recompute rejected it; the floor sets the gear, not the size.
 l_level: L1
 gate_class: opus
 objective: >-
@@ -19,4 +22,4 @@ residuals:
     /repos/{o}/{r}/issues/{n}/labels after the PR exists, with its own token (actor Balizero1987, admin) and read the B2a
     condition back. Not in this PR, because a backend-rag merge is a Fly deploy. Until then the census names those PRs.
   - queue_shepherd.py deliberately never labels after the flip (an admin's label removal must stay a stop); not changed.
-  - The live census and the helper are exercised by fakes in tests; the live read was one census call. Mutants b31-lc-* (census) and b31-sh-* / b31-docs-guardian-* (helper, caller) are replayable in merger_mutants.py: 12/12 killed.
+  - The live census and the helper are exercised by fakes in tests; the live read was one census call. Mutants b31-lc-* (census) and b31-sh-* / b31-docs-guardian-* (helper, caller) are replayable in merger_mutants.py: all b31-* mutants (hand-written b31-dg-*, b31-w-*, b31-poller-* and the generated b31-ast-*) are killed on Mini; the count is in the pack receipts.

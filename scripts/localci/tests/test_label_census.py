@@ -11,6 +11,7 @@ import pytest
 
 from .fixture_repo import runner  # noqa: F401 — puts scripts/localci on sys.path like its siblings
 from localci import label_census as lc  # noqa: E402
+from localci import label_intent as _li  # noqa: E402
 
 mg = lc.mg
 PUSH, BEFORE, AFTER = "2026-10-14T10:00:00Z", "2026-10-14T09:00:00Z", "2026-10-14T11:00:00Z"
@@ -313,6 +314,7 @@ def _poller():
     (2, "SIGNAL_INTENT pr=1 label=failed queue=absent arm=skipped\n", False, 1),   # B31: exit 2 also prints arm=skipped; it is NOT a labelled PR
     (2, "SIGNAL_INTENT pr=1 label=failed queue=present arm=armed\n", False, 1),
     (3, "", False, 0),
+    (0, "SIGNAL_INTENT pr=1 label=applied queue=present arm=armed\n", False, 0),   # exit 0 without arm=skipped is not "labelled (no merge queue)"
 ])
 def test_the_poller_logs_labelled_only_for_exit_0_and_alerts_on_exit_2(monkeypatch, rc, stdout, labelled, alerts):
     """B31 C4: `returncode == 0 and "arm=skipped"` — a helper that failed the label still says arm=skipped on stdout."""
@@ -334,3 +336,10 @@ def test_the_signal_merge_intent_shell_suite_passes():
     root = Path(__file__).resolve().parents[3]
     run = subprocess.run(["bash", str(root / "scripts/tests/test_signal_merge_intent.sh")], capture_output=True, text=True, timeout=300)
     assert run.returncode == 0, run.stdout[-1500:] + run.stderr[-500:]
+
+
+def test_a_command_that_outlives_its_timeout_is_rc_124_not_a_hang(monkeypatch):
+    monkeypatch.setattr(_li, "CMD_TIMEOUT", 1)
+    rc, out = _li._run(["sleep", "5"])
+    assert rc == 124 and "timed out" in out
+
