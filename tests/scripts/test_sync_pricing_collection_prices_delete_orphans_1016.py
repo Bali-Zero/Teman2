@@ -196,6 +196,33 @@ def test_an_expect_count_mismatch_deletes_nothing(
     )
 
 
+def test_an_expect_count_over_mismatch_deletes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    points = [*_live_points(), _point(5, "Retired 2025 Service")]
+    rec = _Recorder(monkeypatch, points)
+    rc = _run(tmp_path, _catalog(), apply=True, delete_orphans=True, expect_orphans=1)
+    assert rc == 2
+    assert rec.wrote_nothing()
+    assert (
+        "ORPHAN COUNT 2 != --expect-orphans 1 - nothing applied"
+        in capsys.readouterr().out
+    )
+
+
+def test_expect_orphans_zero_with_orphans_present_deletes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    rec = _Recorder(monkeypatch, _live_points())
+    rc = _run(tmp_path, _catalog(), apply=True, delete_orphans=True, expect_orphans=0)
+    assert rc == 2
+    assert rec.wrote_nothing()
+    assert (
+        "ORPHAN COUNT 1 != --expect-orphans 0 - nothing applied"
+        in capsys.readouterr().out
+    )
+
+
 @pytest.mark.parametrize("bad_name", [None, "", 7])
 def test_a_point_with_no_usable_name_is_a_refusal_and_nothing_is_deleted(
     tmp_path: Path,

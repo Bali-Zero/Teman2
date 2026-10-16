@@ -24,12 +24,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TEST_FILE = "tests/scripts/test_visa_ledger_seq29.py"
-MIN_TESTS = 54
+MIN_TESTS = 57
 _SUMMARY = re.compile(r"^=*\s*(\d+) passed in [0-9.]+s(?: \([0-9:]+\))?\s*=*$")
 
 
 def summary_ok(line: str | None) -> bool:
-    """True only for a pytest line that is exactly `N passed in Xs`, N >= 54.
+    """True only for a pytest line that is exactly `N passed in Xs`, N >= 57.
 
     Anything else (failed, skipped, error, xfail, a reduced count, no line) is False.
     """

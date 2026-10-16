@@ -52,14 +52,15 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
-    assert dated[1].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
-    assert "ledger addendum after the E33 closure" in dated[2]
-    assert "ledger wave 5 — the E33 family closes" in dated[3]
-    assert "ledger after E33 wave 4" in dated[4]
-    assert "ledger after E33 wave 3" in dated[5]
+    assert dated[0].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane)")
+    assert dated[1].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
+    assert dated[2].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
+    assert "ledger addendum after the E33 closure" in dated[3]
+    assert "ledger wave 5 — the E33 family closes" in dated[4]
+    assert "ledger after E33 wave 4" in dated[5]
+    assert "ledger after E33 wave 3" in dated[6]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 6
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 7
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -519,6 +520,7 @@ def test_skill_live_state_leads_with_wave5_and_stays_an_index():
 WAVE5_CLOSED = (
     ("The Qdrant pricing collection no longer serves", "closed 2026-10-14T23:23Z", ("re-plan after the apply shows deletes=0", "returns 0 points")),
     ("The Qdrant pricing collection now has a point for every public catalog row", "closed 2026-10-15T15:58Z", ("catalog_rows_without_point=0", "#8568", "'pensiun' (14.000.000, 10.000.000) and 'retirement' (14.000.000, 16.000.000)")),
+    ("The Qdrant pricing collection no longer carries the stale contact trailer or the 17 orphan points", "closed 2026-10-16T06:22Z", ("points_without_catalog_row=0", "#8594", "grep -c '3465 159'")),
     ("The iQOO walk of the E33 public surfaces", "closed 2026-10-15", ("W1-W6 PASS comments", "pull/8511#issuecomment-6188925096", "pull/8533#issuecomment-6188925677", "pull/8512#issuecomment-6188926239", "20261015-e33-mobile")),
     ("The brochure now prints the E33F Altus/Onshore row", "closed 2026-10-15", ("26185b41341de17f", "Onshore, 1 year Rp 16.000.000", "#8528")),
     ("The gate's 'pensiun' live query of #8505 was run and passes", "closed 2026-10-15", ("2026-10-14T16:45Z", "3 E33F rows", "no generic Retirement row")),
@@ -528,14 +530,13 @@ WAVE5_OPENED = (
     ("the book-pricing.spec.ts ID test added by #8543", "owner: me (nuzantara-57)", "TECH-DEBT"),
     ("seq-30 candidate, the E33F `sponsor_types` is INDIVIDUAL", "owner: me (next session, visa-night conductor and signer)", "TECH-DEBT"),
     ("the E28A Indonesian article does not render in Indonesian", "owner: me (nuzantara-57)", "TECH-DEBT"),
-    ("still carries stale data after the backfill", "owner: operator[business] (Zero)", "OPERATOR-GATED"),
     ("remaining LOWs of the E33 family (one row, no per-nit rows)", "owner: me (nuzantara-57)", "TECH-DEBT"),
 )
 
 
 def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
     closed = [r for r in ARMS_LINES if r.startswith("- closed 2026-10-1") and "VISA-ORACLE E33 wave 5" in r]
-    assert len(closed) == len(WAVE5_CLOSED) == 6
+    assert len(closed) == len(WAVE5_CLOSED) == 7
     for needle, prefix, proofs in WAVE5_CLOSED:
         rows = [r for r in closed if needle in r]
         assert len(rows) == 1, needle
@@ -548,7 +549,7 @@ def test_wave5_closed_rows_each_appear_once_with_owner_na_and_proof():
 
 def test_wave5_backlog_rows_each_open_once_with_owner_proof_and_class():
     opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E33 wave 5)")]
-    assert len(opened) == len(WAVE5_OPENED) == 5
+    assert len(opened) == len(WAVE5_OPENED) == 4
     for needle, owner, _ in WAVE5_OPENED:
         rows = [r for r in opened if needle in r]
         assert len(rows) == 1, needle
@@ -568,7 +569,7 @@ def test_wave5_low_row_merges_the_nits_into_one_row_and_the_qdrant_gap_row_names
         assert low[0].count(token) == 1, token
     assert len(_rows("match='PRICE_E33E'")) == 1 and len(_rows("StayPolicy at models.py:301")) == 1
     qdrant = _rows("still carries stale data after the backfill")[0]
-    assert "points_without_catalog_row=0" in qdrant.split(" | ")[4] and "patch_pricing_contact_block.py" in qdrant
+    assert "points_without_catalog_row=0" in qdrant.split(" | ")[3] and "patch_pricing_contact_block.py" in qdrant
     sponsor = _rows("seq-30 candidate, the E33F `sponsor_types`")[0]
     assert "e33f-sponsor-types-1014" in sponsor and "Pasal citation" in sponsor and "inert today" in sponsor
 
@@ -649,8 +650,8 @@ def test_qdrant_backfill_row_is_closed_once_and_the_old_open_needle_is_gone():
 def test_qdrant_backfill_log_entry_is_second_and_carries_the_apply_facts():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[1].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
-    start = text.index(dated[1])
+    assert dated[2].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
+    start = text.index(dated[2])
     body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
     for token in ("`b93adf342d`", "CREATED 66", "in_sync=116", "`6321afd152`"):
         assert body.count(token) >= 1, token
@@ -660,8 +661,9 @@ def test_skill_live_state_second_bullet_is_the_qdrant_backfill_and_only_one_says
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
     bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
-    assert bullets[0].startswith("- **2026-10-15 (E28 close-out part 1, newest)**")
-    assert bullets[1].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
+    assert bullets[0].startswith("- **2026-10-16 (Qdrant pricing cleanup, newest)**")
+    assert bullets[1].startswith("- **2026-10-15 (E28 close-out part 1)**")
+    assert bullets[2].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
     assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
@@ -704,7 +706,7 @@ def test_e28_entry_closes_only_c2_and_ships_the_audit_matrix_with_the_pages_on_m
 def test_skill_live_state_leads_with_the_e28_closeout_and_stays_an_index():
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
-    lead = block[block.index("- **2026-10-15 (E28 close-out part 1, newest)"):block.index("- **2026-10-15 (Qdrant pricing backfill)")]
+    lead = block[block.index("- **2026-10-15 (E28 close-out part 1)"):block.index("- **2026-10-15 (Qdrant pricing backfill)")]
     for pr, sha in E28_PRS:
         assert lead.count(f"#{pr} (`{sha[:10]}`") == 1, pr
     for token in ("**Open:**", "C2", "SEQ29-A2", "SEQ29-D1", "READY-TO-SIGN", "research/visa/2026-10-15-e28-family-audit.md"):
@@ -792,6 +794,36 @@ def test_no_open_e28_row_is_owned_by_operator():
     for r in open_rows:
         owner = r.split(" | ")[3]
         assert owner.startswith("owner: me (") and "operator" not in owner, owner
+
+
+def test_qdrant_cleanup_row_is_closed_once_and_the_old_open_needle_is_gone():
+    closed = _rows("The Qdrant pricing collection no longer carries the stale contact trailer or the 17 orphan points")
+    assert len(closed) == 1
+    row = closed[0]
+    assert row.startswith("- closed 2026-10-16T06:22Z (M5, VISA-ORACLE E33 wave 5)")
+    assert "#8594" in row and "`d85145eb8b`" in row and "points_without_catalog_row=0" in row
+    assert "stale_3465_159=0 ari_3454_721=116" in row and "pull/8594#issuecomment-6209555948" in row
+    assert not [r for r in ARMS_LINES if r.startswith("- opened") and "still carries stale data after the backfill" in r]
+
+
+def test_qdrant_cleanup_log_entry_is_first_and_carries_the_apply_facts():
+    text = LOG.read_text(encoding="utf-8")
+    dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
+    assert dated[0].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane): **the two stale-data items in bali_zero_pricing_hybrid are CLOSED on Zero's go")
+    start = text.index(dated[0])
+    body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
+    for token in ("`d85145eb8b0fcc00df9e8cb4229b722c36fa2449`", "DELETED 17 orphan point(s)", "kept_identical 116 of 116",
+                  "SCROLL_TOTAL=116 stale_3465_159=0 ari_3454_721=116", "pull/8594#issuecomment-6209555948", "b7ffd20208733d7b92ac5c86ef94b5d3379ddace928d7514547202ae2ca80179"):
+        assert body.count(token) >= 1, token
+
+
+def test_skill_live_state_first_bullet_is_the_qdrant_cleanup_and_only_one_says_newest():
+    text = SKILL.read_text(encoding="utf-8")
+    block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
+    bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
+    assert bullets[0].startswith("- **2026-10-16 (Qdrant pricing cleanup, newest)**")
+    assert "#8594" in bullets[0] and "`d85145eb8b`" in bullets[0] and "points_without_catalog_row=0" in bullets[0]
+    assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
