@@ -1,0 +1,17 @@
+{
+  "block": "B04",
+  "phase": "ANALYSIS",
+  "status": "CHECKPOINT_REQUIRED",
+  "requested_model": "gemini-4-argon-high",
+  "requested_effort": "high",
+  "effective_model": "UNOBSERVED",
+  "effective_effort": "UNOBSERVED",
+  "started_at": 1792052580.048666,
+  "raw_transcript_saved": false,
+  "exit": 0,
+  "elapsed_seconds": 30.25,
+  "stdout_sha256": "a04e8f4f8c006c46dcac494c09b519d30c632602742c4d367af0e1d731fdb56b",
+  "stderr_sha256": "6f9b232ca1f3b43aa72e2ba63698c09b0796b612d5a17cf05efee31e6c79b713",
+  "conversation_id": "0db3627f-7483-4259-98e1-4bf16babad18",
+  "artifacts_present": false
+}
