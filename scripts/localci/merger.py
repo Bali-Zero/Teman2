@@ -889,7 +889,7 @@ PLAN_TIMEOUT_S = 7500        # > runner.DEPS_BUILD_TIMEOUT_S (7200) + the rest o
 RUN_TIMEOUT_S = 7200
 TICK_TIMEOUT_S = 16200       # >= PLAN_TIMEOUT_S + RUN_TIMEOUT_S + the status step 900 + 600 margin
 
-def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int) -> dict:
+def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sha: str, pr: int, head_sha: str | None = None) -> dict:
     """plan → run → status with the BASE runner and matrix (trusted_base_required applies to the merger too)."""
     env = {k: os.environ[k] for k in RUNNER_ENV if k in os.environ} | GIT_ISOLATED | {"PYTHONPATH": str(base_wt), "PYTHONNOUSERSITE": "1",
                                                                                      "PYTHONDONTWRITEBYTECODE": "1",
@@ -900,6 +900,10 @@ def run_gate(a, base_wt: Path, cand: Path, run_dir: Path, base_sha: str, cand_sh
         plan += ["--contexts-file", str(base_wt / MATRIX)]
     if runner_takes(base_wt, "--pr-number"):   # merge_group.head_ref names the PR, as the queue does (Harness floor parses it)
         plan += ["--pr-number", str(pr)]
+    if runner_takes(base_wt, "--gate-ledger"):   # B25-prime P4: host readers read the Pro gate-verdict ledger at $GATE_LEDGER
+        plan += ["--gate-ledger", str(Path(getattr(a, "gate_ledger", None) or DEFAULT_GATE_LEDGER).expanduser())]
+    if head_sha and runner_takes(base_wt, "--head"):   # B25-prime P4: host readers pin the decided PR head sha ($HEAD)
+        plan += ["--head", head_sha]
     run_dir.mkdir(parents=True)
     out: dict = {"seal": None}
 
@@ -2106,7 +2110,7 @@ def decide(a, state: Path, repo_dir: Path, lease_id: str, n: int, head: str, bas
                 drop_worktree(repo_dir, old)
         base_wt = fresh_worktree(repo_dir, state / "base" / base_sha, base_sha)
         run_dir = state / "runs" / f"{key}-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
-        gate = run_gate(a, base_wt, cand, run_dir, base_sha, cand_sha, n)
+        gate = run_gate(a, base_wt, cand, run_dir, base_sha, cand_sha, n, head)
         status = gate["status"]
         ctx = status.get("contexts") if isinstance(status.get("contexts"), dict) and not gate.get("error") else {}   # an unvouched status lends no verdict
         results = ctx.get("results") if isinstance(ctx.get("results"), dict) else {}

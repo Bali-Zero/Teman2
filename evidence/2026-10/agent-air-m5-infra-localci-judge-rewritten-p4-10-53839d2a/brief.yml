@@ -1,0 +1,24 @@
+task_id: infra-localci-judge-rewritten-p4-1016
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  B25-prime P4 (docs/specs/localci-sovereign-2026-10-07.md §2b.5, flip prerequisite): wire the LocalCI host reader
+  (`scripts/ci/harness_gate_read.py`) of `Harness floor recompute` (`ctx.harness-floor`) to read the Pro gate-verdict
+  ledger (`~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl`) via `--ledger PATH --head SHA` while keeping the hosted
+  workflow path (`.github/workflows/harness-floor.yml`) byte-identical on GitHub commit statuses.
+constraints:
+  - "The hosted path (when `--ledger` and `--head` are omitted) stays byte-identical; `.github/workflows/harness-floor.yml` never passes `--ledger` or `--head`."
+  - "When `--ledger` is given, GitHub commit statuses are never read: an empty or missing ledger reads PENDING (`rc=1`, `::error::harness_gate_read: PENDING`), a live head different from `--head` reads false (`rc=1`, neither PENDING nor CANNOT-VERIFY), and a valid ledger `success` reads `0`."
+  - "The runner's container argv, env, and `/cfg/steps.json` never contain the host ledger path (`st.pop('side', None)` in `_run_leg`), while `state/plan.json` on the host retains `st['side']['argv']`."
+acceptance:
+  - text: "Guilt and innocence tests in `scripts/tests/test_harness_gate_read.py` and `scripts/localci/tests/test_gate_pending.py` pass."
+    probe: "pytest scripts/tests/test_harness_gate_read.py scripts/localci/tests/test_gate_pending.py"
+  - text: "All 12 B25-prime P4 mutant rows in `scripts/localci/tests/mutants/rows/b25p4.py` report KILLED and 0 of 1,332 total mutant rows are stale."
+    probe: "python3 scripts/localci/tests/mutants/merger_mutants.py --only b25p4-empty-ledger-not-pending b25p4-runner-side-leaks-into-steps-json"
+consumer_map:
+  - "Pro's LocalCI runner and merger (`merger.py run_gate` -> `runner.py plan --gate-ledger --head` -> `contexts_matrix.yaml` `Harness floor recompute` host step -> `harness_gate_read.py --ledger $GATE_LEDGER --head $HEAD`): observation is the next Gear >= 2 plan on Pro showing `side.argv` with `--ledger` and the decided head."
+risks:
+  - "Before a Gear >= 2 PR is gated on Pro (`harness_fable_gate.py --publish` appending to `~/.nuzantara-pilots/local-ci-gate/verdicts.jsonl`), its local `ctx.harness-floor` reads `gate_pending` even if a GitHub status was posted by hand."
+grader: |
+  Fresh Astra (gpt-6-astra xhigh) gate review on an immutable archive of the commit SHA under Zero's 2026-10-16 ruling.

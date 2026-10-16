@@ -706,3 +706,155 @@ def test_the_evidence_pack_validation_stays_gear_3_only():
     assert "steps.gearcheck.outputs.gear == '3'" in cond, (
         f"Evidence Pack validation must remain Gear-3-only — got: {cond!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# B25-prime P4 — LocalCI Pro gate-verdict ledger reader (`--ledger PATH --head SHA`)
+# ---------------------------------------------------------------------------
+
+def _write_ledger(path: Path, entries: list[dict], mode: int = 0o600) -> Path:
+    import json as _json
+    raw = "".join(_json.dumps(e, separators=(",", ":")) + "\n" for e in entries)
+    path.write_text(raw, encoding="utf-8")
+    path.chmod(mode)
+    return path
+
+
+def _ledger_entry(sha: str = VALID_SHA_A, verdict: str = "success", repo: str = "acme/example",
+                  pr: int = 42, supersedes: str | None = None, ts: str = "2026-10-16T12:00:00Z") -> dict:
+    return {
+        "v": 1,
+        "ts": ts,
+        "repo": repo,
+        "pr": pr,
+        "head_sha": sha,
+        "verdict": verdict,
+        "gate_session": "s1",
+        "evidence_sha256": "e" * 64,
+        "supersedes": supersedes,
+        "via": "local",
+    }
+
+
+def test_b25p4_github_success_with_empty_or_missing_ledger_reads_pending_locally(tmp_path, monkeypatch, capsys):
+    """Guilt (P4 spec §2b.5): GitHub commit status says 'success', but when `--ledger` points to
+    an empty (or missing) Pro ledger, `harness_gate_read.py` never calls `read_fable_gate_state`
+    and exits 1 with PENDING on stderr."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
+
+    def forbid_github_status(**kw):
+        raise AssertionError("read_fable_gate_state must never be called when --ledger is given")
+
+    monkeypatch.setattr(hgr, "read_fable_gate_state", forbid_github_status)
+
+    empty_ledger = _write_ledger(tmp_path / "empty.jsonl", [])
+    for ledger_path in (empty_ledger, tmp_path / "missing.jsonl"):
+        capsys.readouterr()
+        rc = hgr.main([
+            "--event-name", "merge_group", "--repo", "acme/example",
+            "--merge-group-head-ref", "refs/heads/gh-readonly-queue/main/pr-42-" + VALID_SHA_B,
+            "--ledger", str(ledger_path), "--head", VALID_SHA_A,
+        ])
+        err = capsys.readouterr().err
+        assert rc == 1
+        assert "::error::harness_gate_read: PENDING" in err
+
+
+def test_b25p4_ledger_success_reads_zero_without_github_status(tmp_path, monkeypatch, capsys):
+    """Innocence (P4 spec §2b.5): a valid 'success' entry in the Pro ledger for `(repo, sha)` with
+    matching `--head` exits 0 and emits the notice line without touching `read_fable_gate_state`."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
+    monkeypatch.setattr(hgr, "read_fable_gate_state", lambda **kw: (_ for _ in ()).throw(AssertionError("no gh status")))
+    ledger = _write_ledger(tmp_path / "verdicts.jsonl", [_ledger_entry(VALID_SHA_A, "success")])
+    capsys.readouterr()
+    rc = hgr.main([
+        "--event-name", "merge_group", "--repo", "acme/example",
+        "--merge-group-head-ref", "refs/heads/gh-readonly-queue/main/pr-42-" + VALID_SHA_B,
+        "--ledger", str(ledger), "--head", VALID_SHA_A,
+    ])
+    captured = capsys.readouterr()
+    assert rc == 0
+    assert "::notice::harness_gate_read: harness/fable-gate verdict = success" in captured.out
+    assert captured.err == ""
+
+
+def test_b25p4_live_head_different_from_decided_head_reads_false_never_pending(tmp_path, monkeypatch, capsys):
+    """Guilt (P4 spec §2b.5): if the live PR head resolved via `gh pr view` differs from `--head`
+    (the head the merger decided), `harness_gate_read.py` fails closed (rc=1) with neither PENDING
+    nor CANNOT-VERIFY, even if BOTH heads have 'success' in the ledger."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_B, "live PR #42 moved"))
+    ledger = _write_ledger(
+        tmp_path / "verdicts.jsonl",
+        [_ledger_entry(VALID_SHA_A, "success"), _ledger_entry(VALID_SHA_B, "success")],
+    )
+    capsys.readouterr()
+    rc = hgr.main([
+        "--event-name", "merge_group", "--repo", "acme/example",
+        "--merge-group-head-ref", "refs/heads/gh-readonly-queue/main/pr-42-" + VALID_SHA_A,
+        "--ledger", str(ledger), "--head", VALID_SHA_A,
+    ])
+    err = capsys.readouterr().err
+    assert rc == 1
+    assert f"live head {VALID_SHA_B} != decided head {VALID_SHA_A}" in err
+    assert "PENDING" not in err and "CANNOT-VERIFY" not in err
+
+
+def test_b25p4_ledger_failure_and_unsuperseded_failure_and_corrupt_ledger_all_fail_without_pending(tmp_path, monkeypatch, capsys):
+    """Guilt: a ledger 'failure', an unsuperseded earlier 'failure', or a corrupt/0644 ledger file
+    all return rc=1 and never emit PENDING or CANNOT-VERIFY."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
+
+    # 1. Newest entry is failure
+    f_ledger = _write_ledger(tmp_path / "fail.jsonl", [_ledger_entry(VALID_SHA_A, "failure")])
+    capsys.readouterr()
+    assert hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A,
+                     "--ledger", str(f_ledger), "--head", VALID_SHA_A]) == 1
+    err = capsys.readouterr().err
+    assert "verdict = 'failure'" in err and "PENDING" not in err and "CANNOT-VERIFY" not in err
+
+    # 2. Earlier failure not superseded by later success
+    unsup = _write_ledger(tmp_path / "unsup.jsonl", [
+        _ledger_entry(VALID_SHA_A, "failure", ts="2026-10-16T12:00:00Z"),
+        _ledger_entry(VALID_SHA_A, "success", ts="2026-10-16T12:01:00Z", supersedes=None),
+    ])
+    capsys.readouterr()
+    assert hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A,
+                     "--ledger", str(unsup), "--head", VALID_SHA_A]) == 1
+    err = capsys.readouterr().err
+    assert "verdict = 'failure'" in err and "PENDING" not in err and "CANNOT-VERIFY" not in err
+
+    # 3. Group-readable ledger (0644) -> LedgerFile error, not PENDING
+    bad_mode = _write_ledger(tmp_path / "badmode.jsonl", [_ledger_entry(VALID_SHA_A, "success")], mode=0o644)
+    capsys.readouterr()
+    assert hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A,
+                     "--ledger", str(bad_mode), "--head", VALID_SHA_A]) == 1
+    err = capsys.readouterr().err
+    assert "0600" in err and "PENDING" not in err and "CANNOT-VERIFY" not in err
+
+
+def test_b25p4_ledger_and_head_flags_require_each_other_and_valid_40_hex(tmp_path, monkeypatch, capsys):
+    """Guilt: `--head` without `--ledger`, `--ledger` without `--head`, empty `--ledger`, or
+    non-40-hex `--head` all fail closed before any `gh` or ledger read."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (_ for _ in ()).throw(AssertionError("must not resolve")))
+    ledger = _write_ledger(tmp_path / "ok.jsonl", [_ledger_entry(VALID_SHA_A, "success")])
+    for extra in (
+        ["--head", VALID_SHA_A],
+        ["--ledger", str(ledger)],
+        ["--ledger", "   ", "--head", VALID_SHA_A],
+        ["--ledger", str(ledger), "--head", "not-a-40-hex-sha"],
+        ["--ledger", str(ledger), "--head", "A" * 40],
+    ):
+        capsys.readouterr()
+        rc = hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A, *extra])
+        err = capsys.readouterr().err
+        assert rc == 1 and "PENDING" not in err and "CANNOT-VERIFY" not in err
+
+
+def test_b25p4_harness_floor_workflow_never_passes_ledger_or_head():
+    """Guilt (P4 spec §2b.5): `.github/workflows/harness-floor.yml` never passes `--ledger` or
+    `--head` — the hosted workflow stays byte-identical on the GitHub commit status path."""
+    raw = WORKFLOW_PATH.read_text()
+    step = _step_by_name_fragment("read the real gate verdict")
+    assert "--ledger" not in raw and not re.search(r"--head(?![A-Za-z0-9_-])", raw)
+    assert "--ledger" not in str(step.get("run", "")) and not re.search(r"--head(?![A-Za-z0-9_-])", str(step.get("run", "")))
+

@@ -498,3 +498,266 @@ def test_a_settled_decision_is_never_decided_again_even_with_the_status(world, m
     world.tick()
     assert len([r for r in world.journal() if r["kind"] == "decision"]) == 1 and st.reads == []
     assert "gate_pending" not in [r for r in world.journal() if r["kind"] == "decision"][0]
+
+
+# ------------------------------------------------------------------ B25-prime P4: matrix argv, runner $GATE_LEDGER / $HEAD, container spy, merger run_gate
+def _write_pro_ledger(path, entries, mode=0o600):
+    path.write_text("".join(json.dumps(e, separators=(",", ":")) + "\n" for e in entries), encoding="utf-8")
+    path.chmod(mode)
+    return path
+
+
+def _pro_entry(sha, verdict="success", repo="Bali-Zero/Teman2", pr_num=42):
+    return {
+        "v": 1, "ts": "2026-10-16T12:00:00Z", "repo": repo, "pr": pr_num, "head_sha": sha,
+        "verdict": verdict, "gate_session": "s1", "evidence_sha256": "e" * 64, "supersedes": None, "via": "local",
+    }
+
+
+def test_b25p4_matrix_declares_ledger_and_head_and_gate_ledger_trusted_file():
+    import yaml
+    doc = yaml.safe_load(runner.Path(runner.__file__).with_name("contexts_matrix.yaml").read_text())
+    (hf,) = [c for c in doc["contexts"] if c["name"] == "Harness floor recompute"]
+    assert hf["local"]["trusted_files"] == ["scripts/ci/harness_gate_read.py", "scripts/localci/gate_ledger.py"]
+    (host,) = [s for s in hf["local"]["steps"] if s.get("side") == "host"]
+    assert host["argv"][-4:] == ["--ledger", "$GATE_LEDGER", "--head", "$HEAD"]
+
+
+@pytest.mark.usefixtures("fake_env")
+def test_b25p4_plan_expands_gate_ledger_and_head_and_ignores_github_status_when_ledger_given(tmp_path, monkeypatch):
+    """Guilt + innocence (P4 spec §2b.5):
+    - GitHub commit status says 'success', but an empty ledger at $GATE_LEDGER reads PENDING locally (rc=None, gate_pending=True).
+    - A ledger with 'success' for $HEAD reads rc=0, and the planned host step shows --ledger <path> --head <decided_head>.
+    - A live head different from $HEAD reads rc=1 (not gate_pending)."""
+    import os
+    import yaml
+    from .test_service_contexts import WORKFLOW, WF, svc_ctx
+
+    real_hgr = (runner.Path(runner.__file__).resolve().parents[2] / "scripts" / "ci" / "harness_gate_read.py").read_text()
+    real_gl = (runner.Path(runner.__file__).resolve().parents[2] / "scripts" / "localci" / "gate_ledger.py").read_text()
+    decided_head = "a" * 40
+    live_head_file = tmp_path / "live_head"
+    live_head_file.write_text(decided_head)
+
+    # Fake `gh` in PATH: returns live_head for `pr view` and ALWAYS returns `success` for commit status!
+    gh_bin = tmp_path / "bin" / "gh"
+    gh_bin.parent.mkdir(parents=True, exist_ok=True)
+    gh_bin.write_text(
+        f'#!/bin/sh\n'
+        f'if [ "$1" = "pr" ] && [ "$2" = "view" ]; then\n'
+        f'  printf \'{{"headRefOid": "%s"}}\\n\' "$(cat {live_head_file})"\n'
+        f'  exit 0\n'
+        f'fi\n'
+        f'printf \'{{"statuses": [{{"context": "harness/fable-gate", "state": "success", "description": "PASS"}}]}}\\n\'\n'
+    )
+    gh_bin.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{gh_bin.parent}{os.pathsep}{os.environ['PATH']}")
+
+    wf = {**WORKFLOW, "jobs": {"fanin": {"name": "Fan In", "runs-on": "ubuntu-latest", "steps": [
+        {"name": "assert", "run": "true"},
+        {"name": "verdict", "env": {"GH_TOKEN": "${{ github.token }}"}, "run": "python3 scripts/ci/harness_gate_read.py"},
+    ]}}}
+    base_files = {
+        WF: yaml.safe_dump(wf),
+        "scripts/ci/harness_gate_read.py": real_hgr,
+        "scripts/localci/gate_ledger.py": real_gl,
+    }
+    ctx = svc_ctx(
+        jobs=[],
+        trusted_files=["scripts/ci/harness_gate_read.py", "scripts/localci/gate_ledger.py"],
+        steps=[
+            {"workflow_step": "assert"},
+            {
+                "workflow_step": "verdict",
+                "side": "host",
+                "argv": [
+                    "$PY", "scripts/ci/harness_gate_read.py",
+                    "--event-name", "merge_group",
+                    "--repo", "${{ github.repository }}",
+                    "--pr-head-sha", "",
+                    "--merge-group-head-ref", "${{ github.event.merge_group.head_ref }}",
+                    "--dispatch-sha", "",
+                    "--ledger", "$GATE_LEDGER",
+                    "--head", "$HEAD",
+                ],
+                "env": {"GH_TOKEN": ""},
+                "no_verdict_when": CNV,
+                "pending_when": PEND,
+            },
+        ],
+    )
+
+    # 1. Empty ledger + GitHub status=success -> PENDING locally (rc=None, gate_pending=True)
+    empty_ledger = _write_pro_ledger(tmp_path / "empty.jsonl", [])
+    spec_pend = planned_svc(
+        tmp_path / "pend", monkeypatch, fr.CANDIDATE_FILES, ctx, base_files,
+        "--pr-number", "42", "--gate-ledger", str(empty_ledger), "--head", decided_head,
+    )
+    step_pend = spec_pend["jobs"][0]["steps"][1]
+    assert step_pend["precomputed"]["rc"] is None and step_pend["precomputed"].get("gate_pending") is True
+    assert step_pend["side"]["argv"][-4:] == ["--ledger", str(empty_ledger), "--head", decided_head]
+    tdir = tmp_path / "pend" / "run" / "state" / "trusted" / "ctx" / "ctx.fan-in"
+    assert (tdir / "scripts/ci/harness_gate_read.py").is_file() and (tdir / "scripts/localci/gate_ledger.py").is_file()
+
+    # 2. Ledger success -> rc=0
+    ok_ledger = _write_pro_ledger(tmp_path / "ok.jsonl", [_pro_entry(decided_head, "success")])
+    spec_ok = planned_svc(
+        tmp_path / "ok", monkeypatch, fr.CANDIDATE_FILES, ctx, base_files,
+        "--pr-number", "42", "--gate-ledger", str(ok_ledger), "--head", decided_head,
+    )
+    step_ok = spec_ok["jobs"][0]["steps"][1]
+    assert step_ok["precomputed"]["rc"] == 0 and "gate_pending" not in step_ok["precomputed"]
+    assert step_ok["side"]["argv"][-4:] == ["--ledger", str(ok_ledger), "--head", decided_head]
+
+    # 3. Live head != decided head -> rc=1 (false, not PENDING)
+    live_head_file.write_text("b" * 40)
+    both_ledger = _write_pro_ledger(tmp_path / "both.jsonl", [_pro_entry(decided_head, "success"), _pro_entry("b" * 40, "success")])
+    spec_mismatch = planned_svc(
+        tmp_path / "mismatch", monkeypatch, fr.CANDIDATE_FILES, ctx, base_files,
+        "--pr-number", "42", "--gate-ledger", str(both_ledger), "--head", decided_head,
+    )
+    step_mismatch = spec_mismatch["jobs"][0]["steps"][1]
+    assert step_mismatch["precomputed"]["rc"] == 1 and "gate_pending" not in step_mismatch["precomputed"]
+
+
+@pytest.mark.usefixtures("fake_env")
+def test_b25p4_plan_blocks_when_trusted_helper_missing_or_ledger_or_head_invalid(tmp_path, monkeypatch):
+    """Guilt: if a secondary file in `trusted_files` is absent at BASE, or `$GATE_LEDGER` / `$HEAD`
+    receives an empty/non-hex value, `plan_service_context` returns BLOCKED."""
+    import yaml
+    from .test_service_contexts import WORKFLOW, WF, svc_ctx
+
+    wf = {**WORKFLOW, "jobs": {"fanin": {"name": "Fan In", "runs-on": "ubuntu-latest", "steps": [
+        {"name": "assert", "run": "true"}, {"name": "verdict", "run": "python3 scripts/ci/read.py"}]}}}
+    base_missing_helper = {WF: yaml.safe_dump(wf), READER: "raise SystemExit(0)\n"}
+    ctx = svc_ctx(
+        jobs=[],
+        trusted_files=[READER, "scripts/localci/gate_ledger.py"],
+        steps=[{"workflow_step": "assert"}, {"workflow_step": "verdict", "side": "host", "argv": ["$PY", READER, "$GATE_LEDGER", "$HEAD"]}],
+    )
+    spec = planned_svc(tmp_path / "missing_tf", monkeypatch, fr.CANDIDATE_FILES, ctx, base_missing_helper)
+    assert spec["status"] == "BLOCKED" and "trusted file present at BASE" in spec["reason"]
+
+    base_both = {**base_missing_helper, "scripts/localci/gate_ledger.py": "# stub\n"}
+    spec_empty_ledger = planned_svc(tmp_path / "empty_l", monkeypatch, fr.CANDIDATE_FILES, ctx, base_both, "--gate-ledger", "")
+    assert spec_empty_ledger["status"] == "BLOCKED" and "$GATE_LEDGER" in spec_empty_ledger["reason"]
+
+    with pytest.raises(SystemExit):
+        planned_svc(tmp_path / "bad_h", monkeypatch, fr.CANDIDATE_FILES, ctx, base_both, "--head", "not-a-sha")
+
+
+def test_b25p4_container_argv_env_and_steps_json_never_contain_the_ledger_path(tmp_path, monkeypatch):
+    """Guilt (P4 spec §2b.5): spy on `docker create` and container inputs — the runner's container
+    argv, env, and `/cfg/steps.json` never contain the host ledger path."""
+    from .test_service_contexts import fake_docker
+
+    secret_ledger = "/Users/pro-secret/.nuzantara-pilots/local-ci-gate/verdicts.jsonl"
+    docker_exe = fake_docker(tmp_path)
+    docker_env_log = tmp_path / "docker.env"
+    docker_exe.write_text(
+        docker_exe.read_text().replace(
+            'printf \'%s\\n\' "$*" >>',
+            f'env >> {docker_env_log}\nprintf \'%s\\n\' "$*" >>',
+        )
+    )
+    for d in ("receipts", "logs", "work"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    (tmp_path / "work" / "a.txt").write_text("hi\n")
+
+    captured_contained = {}
+    real_exec_contained = runner.execute_contained
+
+    def spy_execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, *a, **kw):
+        captured_contained["inner"] = list(inner)
+        captured_contained["env"] = dict(env)
+        captured_contained["steps_json"] = extra["cfg/steps.json"].decode("utf-8")
+        # Also invoke the real `execute_contained` against `fake_docker` so `docker create` is actually called and logged!
+        suite = runner.ET.Element("testsuite")
+        runner.ET.SubElement(suite, "testcase", name= GATE_STEP)
+        (tmp_path / "seed.xml").write_bytes(runner.ET.tostring(suite))
+        return real_exec_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, *a, **kw)
+
+    monkeypatch.setattr(runner, "execute_contained", spy_execute_contained)
+    monkeypatch.setattr(runner, "stream_tree_tar", lambda *a, **k: 0)
+    monkeypatch.setattr(runner, "disk_floor_refusal", lambda *a: None)
+    monkeypatch.setattr(runner, "start_services", lambda *a: ([], None, None))
+
+    host_step = {
+        "name": GATE_STEP,
+        "argv": ["$PY", "scripts/ci/harness_gate_read.py", "--ledger", "$GATE_LEDGER", "--head", "$HEAD"],
+        "side": {"where": "host", "argv": [sys.executable, "-I", "/trusted/harness_gate_read.py", "--ledger", secret_ledger, "--head", "a" * 40], "base_sha256": "0" * 64},
+        "precomputed": {"rc": 0, "reason": "host, at plan: BASE harness_gate_read.py rc=0", "log": ""},
+    }
+    job = {
+        "job_id": "harness-floor", "legs": [{}], "needs": [], "steps": [host_step],
+        "path_prefix": "", "venv": False, "job_env": {}, "services": [],
+        "image_id": "sha256:" + "a" * 64, "timeout_s": 60, "git_index": False, "checkout": None,
+    }
+    spec = {
+        "context": "Harness floor recompute", "jobs": [job], "needs": {}, "judge_modified": [],
+        "history": None, "expr": {"github": {}, "runner": {"temp": "/tmp"}},
+        "isolation": {"mode": "container", "docker": str(docker_exe), "image_id": "sha256:" + "a" * 64, "user": "65534:65534"},
+        "driver_sha256": runner.sha256_bytes(runner.STEPS_DRIVER.read_bytes()),
+        "expr_sha256": runner.sha256_bytes(runner.GH_EXPR.read_bytes()),
+    }
+    plan = {"run_id": "r1", "worktree": str(tmp_path / "work"), "candidate_sha": "c" * 40}
+    runner._run_leg("ctx.harness-floor", spec, job, {}, tmp_path, plan, {}, {}, runner._gh_expr())
+
+    docker_calls = (tmp_path / "docker.argv").read_text()
+    create_calls = [ln for ln in docker_calls.splitlines() if ln.startswith("create ")]
+    assert create_calls, f"expected at least one `docker create` call, got: {docker_calls}"
+    assert secret_ledger not in docker_calls
+    assert secret_ledger not in docker_env_log.read_text()
+    assert secret_ledger not in " ".join(captured_contained["inner"])
+    assert secret_ledger not in json.dumps(captured_contained["env"])
+    assert secret_ledger not in captured_contained["steps_json"]
+    assert '"side"' not in captured_contained["steps_json"]
+    # And the original step in `job["steps"]` (which lives in plan.json on the host) still holds `side.argv` with the ledger path:
+    assert host_step["side"]["argv"][-3] == secret_ledger
+
+
+def test_b25p4_merger_run_gate_passes_gate_ledger_and_head_only_when_base_runner_takes_them(tmp_path, monkeypatch):
+    """Innocence + guilt: `mg.run_gate` passes `--gate-ledger` and `--head` to `runner plan` when
+    the BASE runner declares them, and omits them when the BASE runner does not."""
+    base_wt, cand, run_dir = tmp_path / "base", tmp_path / "cand", tmp_path / "run"
+    (base_wt / "scripts" / "localci").mkdir(parents=True)
+    cand.mkdir()
+    (base_wt / "scripts" / "localci" / "runner.py").write_text(
+        'p.add_argument("--pr-number")\np.add_argument("--gate-ledger")\np.add_argument("--head")\n'
+    )
+    seen_plans = []
+
+    def fake_exec(argv, cwd, env, timeout, **kw):
+        if argv[3] == "plan":
+            seen_plans.append(list(argv))
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[3] == "run":
+            (run_dir / "status.json").write_text(json.dumps({
+                "candidate_sha": "c" * 40, "base_sha": "b" * 40, "seal": "f" * 64, "overall": "PASS",
+            }))
+            return subprocess.CompletedProcess(argv, 0, f"seal={'f' * 64}\n", "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(mg, "runner_exec", fake_exec)
+    a = mg.argparse.Namespace(
+        python=sys.executable, host_floor_gb=0, docker="docker",
+        plan_timeout=60, run_timeout=60, gate_ledger=str(tmp_path / "custom-ledger.jsonl"),
+    )
+    out = mg.run_gate(a, base_wt, cand, run_dir, "b" * 40, "c" * 40, 42, "d" * 40)
+    assert out["status"]["overall"] == "PASS"
+    assert "--gate-ledger" in seen_plans[-1] and str(tmp_path / "custom-ledger.jsonl") in seen_plans[-1]
+    assert "--head" in seen_plans[-1] and "d" * 40 in seen_plans[-1]
+
+    # Legacy BASE runner without --gate-ledger / --head: neither flag is passed
+    (base_wt / "scripts" / "localci" / "runner.py").write_text('p.add_argument("--pr-number")\n')
+    run_dir2 = tmp_path / "run2"
+
+    def fake_exec2(argv, cwd, env, timeout, **kw):
+        if argv[3] == "plan":
+            seen_plans.append(list(argv))
+        return subprocess.CompletedProcess(argv, 1, "", "stop")
+
+    monkeypatch.setattr(mg, "runner_exec", fake_exec2)
+    mg.run_gate(a, base_wt, cand, run_dir2, "b" * 40, "c" * 40, 42, "d" * 40)
+    assert "--gate-ledger" not in seen_plans[-1] and "--head" not in seen_plans[-1]
+
