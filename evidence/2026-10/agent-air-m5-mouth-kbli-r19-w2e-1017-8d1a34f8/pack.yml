@@ -1,0 +1,59 @@
+brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2e-1017-8d1a34f8/brief.yml
+seat_override: >-
+  BLUE mission, external builder prepare-only. A Claude session performs live browser verification,
+  ships if green, and a fresh gate judges the final candidate.
+plan_ref: >-
+  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1;
+  PR #8627 gate findings supplied in the W2'''' mandate.
+lanes:
+  - lane: mouth-kbli-r19-w2e-1017
+    role: build
+    seat: "Codex external builder"
+pii_scan: clean
+pii_scan_note: "Public UI CSS and synthetic browser fixtures only; no client data."
+provenance: >-
+  Fresh origin/main plus 187f9702a7, the exact replay of PR #8627. This lot changes only the R19
+  wrapper stylesheet, its browser regression tests, and this evidence pack.
+diff:
+  net_lines: >-
+    Minimal wrapper overrides for one Tailwind hover state and Sonner controls, plus two static-page
+    Playwright tests that exercise the real wrapper and Sonner CSS and delete each cure as a mutant.
+  behaviour_change: >-
+    The /kbli hero CTA keeps elevated text over its copper hover. Sonner success/error close buttons
+    and action/cancel controls use the R19 surface and border/ink tokens; icon and description remain
+    transparent with inherited ink.
+receipts:
+  - claim: "The CTA and Sonner innocence/mutant-guilt tests pass in a real Chrome process."
+    cmd: "python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover or sonner_rich_controls'"
+    result: TODO-live
+    exit: TODO-live
+    ts: TODO-live
+    seat: verifier
+  - claim: "The required offline mouth census suite remains green."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+    result: TODO-live
+    exit: TODO-live
+    ts: TODO-live
+    seat: verifier
+  - claim: "The full e2e selection includes and passes the two new tests."
+    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'e2e'"
+    result: TODO-live
+    exit: TODO-live
+    ts: TODO-live
+    seat: verifier
+  - claim: "Every test that is genuinely offline in the Air-M5 managed sandbox passes."
+    cmd: "CHROME_HEADLESS=/nonexistent python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e and not sector_route_is_the_first_card_the_server_links'"
+    result: "187 passed, 1 skipped, 116 deselected"
+    exit: 0
+    ts: "2026-10-16T22:40:03Z"
+    seat: "Codex external builder"
+dissent:
+  - seat: "Codex external builder"
+    objection: >-
+      Air-M5's managed sandbox denied Chromium's MachPort rendezvous and denied loopback socket bind.
+      The local required command reached 187 passes but two pre-existing environment-dependent tests
+      failed for those restrictions; the new e2e tests could not execute here.
+    status: CONFIRMED
+    resolution: "TODO-live: rerun all three receipts in the verifier's unrestricted browser environment."
+grader: |
+  A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.

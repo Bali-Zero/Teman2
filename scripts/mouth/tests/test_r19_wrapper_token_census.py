@@ -383,6 +383,141 @@ def walk_page(tmp_path, monkeypatch, body: str, css: str) -> dict:
     return census
 
 
+REPO = Path(__file__).resolve().parents[3]
+CTA_CURE = """/*
+ * The copper primary-action hover carries elevated text (contract section 7.1).
+ */
+.hover\\:bg-\\[\\#D01033\\]\\/90:is(.kbli-r19, .kbli-r19 *):hover {
+  color: var(--kbli-bg-elevated);
+}
+"""
+SONNER_CURE = """/*
+ * Sonner richColors must not restore type-specific dark control fills inside R19.
+ * Icons and descriptions have no fill and keep inheriting the ink rule above.
+ */
+[data-sonner-toast]:is(.kbli-r19, .kbli-r19 *)
+  :is([data-close-button], [data-button]) {
+  background: var(--kbli-bg-surface) !important;
+  border-color: var(--kbli-border) !important;
+  color: var(--kbli-text-primary) !important;
+}
+"""
+
+
+def _real_wrapper_css() -> str:
+    return (REPO / "apps/mouth/src/styles/kbli-r19-wrapper.css").read_text()
+
+
+def _real_sonner_css() -> str:
+    candidates = (REPO / "node_modules/sonner/dist/styles.css",
+                  REPO / "apps/mouth/node_modules/sonner/dist/styles.css")
+    found = next((path for path in candidates if path.is_file()), None)
+    assert found is not None, f"sonner styles.css not found at: {', '.join(map(str, candidates))}"
+    return found.read_text()
+
+
+def _without_cure(css: str, cure: str) -> str:
+    assert css.count(cure) == 1
+    return css.replace(cure, "")
+
+
+def _static_paints(tmp_path, body: str, css: str, selectors: list[str], hover: str | None = None) -> dict:
+    """Render a local page and return its real computed control paints."""
+    from playwright.sync_api import sync_playwright
+    page_path = tmp_path / "g.html"
+    page_path.write_text(f"<!doctype html><style>{css}</style>{body}")
+    m = census_mod._load_measure()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=m.CHROME)
+        page = browser.new_page()
+        page.goto(page_path.as_uri())
+        if hover:
+            page.hover(hover)
+        paints = page.evaluate(
+            """selectors => Object.fromEntries(selectors.map(selector => {
+              const element = document.querySelector(selector);
+              const style = getComputedStyle(element);
+              const glyph = element.matches("[data-close-button]") ? element.querySelector("svg") : null;
+              return [selector, { color: style.color, glyph: getComputedStyle(glyph || element).color,
+                                  background: style.backgroundColor, border: style.borderTopColor }];
+            }))""", selectors)
+        browser.close()
+        return paints
+
+
+def _hex(css_colour: str) -> str:
+    rgb = census_mod._load_measure().rgb_of(css_colour)
+    assert rgb is not None, css_colour
+    return "#" + "".join(f"{round(channel):02X}" for channel in rgb)
+
+
+def _paint_contrast(paint: dict) -> float:
+    ground = _hex(paint["background"])
+    foreground = census_mod.text_colour({"fg": _hex(paint["glyph"]), "a": ground, "fa": 1})
+    return census_mod.contrast(foreground, ground)
+
+
+CTA_CLASSES = (
+    "mt-8 inline-flex items-center gap-2 rounded-xl bg-[var(--kbli-bg-surface)] backdrop-blur-md "
+    "border border-[color:var(--border-strong)] px-7 py-3.5 text-sm font-bold text-white transition-all "
+    "duration-300 hover:bg-[#D01033]/90 hover:border-accent-sand active:scale-[0.98]"
+)
+
+
+@needs_browser
+def test_e2e_cta_hover_uses_elevated_text_on_copper_and_mutant_fails(tmp_path):
+    body = f'<div class="kbli-r19"><a id="cta" class="{CTA_CLASSES}" href="#search">Explore</a></div>'
+    # The utility declaration is the only compiled Tailwind CSS this static fixture needs.
+    utility = ".text-white{color:var(--color-white)}"
+    css = utility + _real_wrapper_css()
+    clean = _static_paints(tmp_path, body, css, ["#cta"], hover="#cta")["#cta"]
+    assert _hex(clean["background"]) == "#A44B36"
+    assert _hex(clean["color"]) == "#FFFCF7"
+    assert round(_paint_contrast(clean), 2) >= 5.64
+
+    mutant = _static_paints(tmp_path, body, _without_cure(css, CTA_CURE), ["#cta"], hover="#cta")["#cta"]
+    assert _hex(mutant["background"]) == "#A44B36"
+    assert _paint_contrast(mutant) == pytest.approx(2.47, abs=0.01)
+
+
+def _toast(toast_type: str) -> str:
+    return f'''<li id="{toast_type}" data-sonner-toast data-rich-colors="true" data-styled="true"
+      data-type="{toast_type}"><div data-icon><svg viewBox="0 0 16 16"><path d="M2 8h12"/></svg></div>
+      <div data-content><div data-title>Title</div><div data-description>Description</div></div>
+      <button data-button data-action>Action</button><button data-button data-cancel>Cancel</button>
+      <button data-close-button><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg></button></li>'''
+
+
+@needs_browser
+def test_e2e_sonner_rich_controls_stay_on_contract_and_mutant_fails(tmp_path):
+    body = ('<div class="kbli-r19"><ol data-sonner-toaster data-sonner-theme="dark">'
+            + _toast("success") + _toast("error") + "</ol></div>")
+    css = _real_sonner_css() + _real_wrapper_css()
+    selectors = [f"#{kind} {part}" for kind in ("success", "error")
+                 for part in ("[data-close-button]", "[data-icon]", "[data-description]",
+                              "[data-action]", "[data-cancel]")]
+    clean = _static_paints(tmp_path, body, css, selectors)
+    contract_colours = set(census_mod.DIRECTION_A.values()) | set(census_mod.SEMANTIC.values())
+    for kind in ("success", "error"):
+        close = clean[f"#{kind} [data-close-button]"]
+        assert _hex(close["background"]) in contract_colours
+        assert _hex(close["border"]) == "#DAD8D1"
+        assert _paint_contrast(close) >= 4.5
+        for part in ("[data-icon]", "[data-description]"):
+            paint = clean[f"#{kind} {part}"]
+            assert _hex(paint["color"]) == "#1D2C3B"
+            assert paint["background"] == "rgba(0, 0, 0, 0)"
+        for part in ("[data-action]", "[data-cancel]"):
+            paint = clean[f"#{kind} {part}"]
+            assert _hex(paint["background"]) in contract_colours
+            assert _paint_contrast(paint) >= 4.5
+
+    mutant = _static_paints(tmp_path, body, _without_cure(css, SONNER_CURE),
+                            ["#success [data-close-button]", "#error [data-close-button]"])
+    assert _paint_contrast(mutant["#success [data-close-button]"]) == pytest.approx(1.23, abs=0.01)
+    assert _paint_contrast(mutant["#error [data-close-button]"]) == pytest.approx(1.29, abs=0.01)
+
+
 BRACKET = "group-hover:text-[color:var(--accent-zantara)]"
 
 
