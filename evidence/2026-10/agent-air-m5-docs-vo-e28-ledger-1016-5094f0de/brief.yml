@@ -1,14 +1,14 @@
 gear: 2
 gear_reason: >-
-  Size floor 2 (churn about 468 > 400, the audit matrix is 294 of it). Docs, ledger and test pins only: two skill files, one pending-arms file, the ledger test, the observer floor and the
+  Size floor 2 (churn about 526 > 400, the audit matrix is 295 of it). Docs, ledger and test pins only: two skill files, one pending-arms file, the ledger test, the observer floor and the
   audit matrix document. No engine rule pack, no data, no runtime change.
 mission: >-
   The /visaoracle ledger records the three merged E28 close-out PRs (#8572, #8573, #8574) with their measured live
-  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix. C2 carries the production
-  addendum: #8578 merged, PROD A committed, PROD B not run, fix PR #8584 armed.
+  proofs, opens the C2, D, E and backlog rows, and ships the E28 family audit matrix. C2 is closed by PROD A
+  (#8578) and PROD B (#8584), #8586 is recorded, and D and E stay open.
 objective: >-
   live-state-log.md carries a dated 2026-10-15 E28 entry as newest, SKILL.md leads its LIVE STATE with one index line,
-  PENDING-ARMS.md carries four opened rows, the seq-29 ledger test pins them, and the observer floor equals the file's
+  PENDING-ARMS.md carries three opened rows (D, E, backlog) and one closed row (C2), the seq-29 ledger test pins them, and the observer floor equals the file's
   test count.
 scope:
   - .agents/skills/visaoracle/references/live-state-log.md
