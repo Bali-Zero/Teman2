@@ -4,7 +4,11 @@ reviewed_source_sha256: "03b6f11a4cc00c3e8eb537e04100a4abb55e3eaed9b54ba14bb272e
 review_disposition: PARTIAL_DOCUMENTATION_REQUIRES_RECONCILIATION
 ---
 
-# research(udb-wave8): B06 business-domain paths — 21 contract records, hermetic metadata fixtures, receipt-pinned census
+# research(udb-wave8): B06 business-domain paths — full source inventory, actual B05 submissions, explicit coverage gaps
+
+## Current package status (2026-10-16)
+
+Current source tests: 27 passed (18 preserved legacy tests plus 9 inventory tests). All 6029 C09 IDs and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The 21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics or business membership. Independent source execution is recorded; document and final commit gates remain incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This package is prepared for review; no final committed-head PASS is asserted.
 
 Block **B06** (`D04`–`D10`) of campaign `universal-db-wave8-20261015`. Status `PARTIAL`, `block_closed: false`. Authoritative evidence: [`RESULT.json`](RESULT.json).
 
@@ -35,6 +39,17 @@ Block **B06** (`D04`–`D10`) of campaign `universal-db-wave8-20261015`. Status 
 
 Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `REVIEWED_PARTIAL_WITH_BLOCKERS`; this file's reviewed bytes had SHA256 `03b6f11a4cc00c3e8eb537e04100a4abb55e3eaed9b54ba14bb272e704883e6d`. Its findings (NAGA source, 2,608 vs 683 premise, adopt actual receipts) are applied here. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. This revision was not re-reviewed.
 
-Bites: `research/operations/udb-wave8/B06/test_b06_domain_paths.py` and the `b06_domain_paths.py --metadata-fixture` CLI, both shipped in this PR, consume the adapter, the 21 records and `fixtures/`; at the committed head the suite runs 18 passed, 0 skipped, exit 0 from committed files only (recorded in the evidence pack).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## 2026-10-16 bounded inventory completion
+
+`b06_inventory.py` captures and consumes `fixtures/source-inventory.json.gz` with pinned provenance. Original C09 bytes are processed locally; only the minimal projection is published. All 6029 canonical IDs are retained: 4231 public-code paths, 1566 rows with static call anchors, 4463 rows without an operation trace, and 21001 syntax call signals.
+
+Seven families are overlapping public-path candidate sets, not business-domain denominators. Generic calls, loops, exception handlers and consumer-level store bindings do not establish persistence, retries, failure behavior or effective targets. Those semantics remain UNKNOWN. The original 21 detailed examples remain separate historical evidence and do not establish full coverage.
+
+Actual committed B05 validation is recorded in B05-VALIDATION.json. Principal, role, recovery and operation IDs remain unresolved. The parent reported at 2026-10-16T07:39Z that a secure owner-only credential file exists but zero canonical nuzantara_readonly DSN candidates are present and both observer DSN variables are unset. This is an access blocker, not a B06 native query.
+
+`block_closed:false` remains binding. Required follow-up: establish business-family membership, inspect untraced and dynamic paths, prove effective call targets/effects/failure/retry behavior, obtain admitted observer access and satisfy dependent recovery evidence. No operational closure is claimed.
+
+Bites: B06 inventory consumer loads the pinned projection, reconciles 6029 IDs, reports seven candidate sets and retains untraced/semantic gaps; actual B05 validation and clean reproduction receipts prove the prepared behavior.

@@ -1,7 +1,15 @@
 {
   "block_id": "B06",
   "campaign_id": "universal-db-wave8-20261015",
-  "dimensions": ["D04", "D05", "D06", "D07", "D08", "D09", "D10"],
+  "dimensions": [
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08",
+    "D09",
+    "D10"
+  ],
   "status": "PARTIAL",
   "block_closed": false,
   "base_sha": "8061c88e0c43dd42e735fd012f9ed072df3ef3d6",
@@ -50,6 +58,48 @@
       "file": "research/operations/udb-wave8/B06/test_b06_domain_paths.py",
       "sha256": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444",
       "status": "EVIDENCED"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/b06_inventory.py",
+      "sha256": "31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/test_b06_inventory.py",
+      "sha256": "193ba3a711f5e9654aa53fd28519553f769602f0fd9d432bfab44511a60755eb",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/validate_b05_submission.py",
+      "sha256": "46ecde24f2c8a0aea35ce87098c38c904c2fedbde8366baf18ed9abc8ef741aa",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/fixtures/source-inventory.json.gz",
+      "sha256": "c8dfd7ae1d2ae4182fa36aa4cf21e9b6aad40838309d7b77c736af4ec03fb68e",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/fixtures/source-inventory-provenance.json",
+      "sha256": "c57f8a654295a43f2b7500ce57619ca85db8aab0929cc677eff7943fc4e50643",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/B05-VALIDATION.json",
+      "sha256": "d4c8e14249ab08c76445b50123fe3fa30ead992df2fcca23cdfe771793dc7c2b",
+      "status": "EVIDENCED_STATIC_PREPARATION"
+    },
+    {
+      "claim": "Bounded inventory phase evidence; semantic/runtime gaps retained.",
+      "file": "research/operations/udb-wave8/B06/INVENTORY-VERIFICATION.json",
+      "sha256": "291b3f2df9784f8863a73962d115108e1b5638bdb4deff4d536a4d1b4f21e729",
+      "status": "EVIDENCED_STATIC_PREPARATION"
     }
   ],
   "missing": [
@@ -57,7 +107,10 @@
     "Canonical operation_id assignment from the B05 catalog for the 21 instances still marked UNASSIGNED_B05 (routed to B05).",
     "Restore-drill verification for public.clients (last real run FAIL) and public.conversations (last real run CANNOT-VERIFY) and B06 tables absent from scripts/ci/restore_drill_verify.py (routed to B01/B07).",
     "Live read-only aggregates DUX-REQ-B06-10/11/12 (duplicate normalized phones, split invoice/payment rows, outbox dead-letter counts): not admitted, not run.",
-    "Withdrawn as unsupported: a 2,608-row subset of seven business-domain labels in domain_hint (none of the seven labels occurs in the producer receipt's domain or domain_hint counters); the 527/155/1 split of the 683 prefix rows; a 'parent run 3 passed / 8 failed' (no receipt exists)."
+    "Withdrawn as unsupported: a 2,608-row subset of seven business-domain labels in domain_hint (none of the seven labels occurs in the producer receipt's domain or domain_hint counters); the 527/155/1 split of the 683 prefix rows; a 'parent run 3 passed / 8 failed' (no receipt exists).",
+    "Business-family membership remains inferred from public paths; 4463 identities lack operation traces.",
+    "Static call targets, runtime effects and failure/retry semantics need further evidence.",
+    "Concrete observer access blocker: zero canonical read-only DSN candidates; no runtime query authorized or attempted."
   ],
   "tests": [
     {
@@ -69,6 +122,11 @@
       "command": "python research/operations/udb-wave8/B06/b06_domain_paths.py --repo-root . --metadata-fixture research/operations/udb-wave8/B06/fixtures/manifest.json",
       "result": "Parent clean scratch: exit 0, 21 records, 6029 source rows, 683 prefix rows, processed and source byte identities distinct (stdout sha256 d309f78dd7642ad55d626090664a5feaafee447786de00d8c5f1cb98f1ca6d47).",
       "evidence_file": "research/operations/udb-wave8/B06/fixtures/manifest.json"
+    },
+    {
+      "command": "See INVENTORY-VERIFICATION.json",
+      "result": "27 passed in worktree; 27 passed in clean copy; CLI exit 0; original 18 tests byte-identical. Initial new anchor test failed for decorators; diagnosed, corrected and regression added.",
+      "evidence_file": "research/operations/udb-wave8/B06/INVENTORY-VERIFICATION.json"
     }
   ],
   "dux_correction": {
@@ -108,5 +166,29 @@
     "native_probe_executed": false,
     "live_pg_probed": false,
     "runtime_unknowns_retained": true
+  },
+  "inventory_phase": {
+    "status": "PARTIAL",
+    "source_inventory": "fixtures/source-inventory.json.gz",
+    "provenance": "fixtures/source-inventory-provenance.json",
+    "source_rows": 6029,
+    "public_source_rows": 4231,
+    "static_call_anchor_rows": 1566,
+    "untraced_rows": 4463,
+    "operation_signals": 21001,
+    "business_domain_denominators": "UNKNOWN; candidate sets overlap",
+    "b05_validation_file": "B05-VALIDATION.json",
+    "native_probe_executed": false,
+    "b05_original_accepted": 21,
+    "b05_additional_accepted": 21001
+  },
+  "access_blocker": {
+    "observed_at": "2026-10-16T07:39:00Z",
+    "observer": "parent coordinator; not reproduced by B06",
+    "secure_owned_mode_0600_secret_file_present": true,
+    "canonical_nuzantara_readonly_dsn_candidates": 0,
+    "B06_OBSERVER_DSN": "UNSET",
+    "B07_OBSERVER_DSN": "UNSET",
+    "native_query_executed": false
   }
 }

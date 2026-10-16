@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-16T08:50:49.266831+00:00",
+  "scope": "Independent source-bound support review, not final committed-head gate",
+  "source_hashes": {
+    "b06_inventory.py": "31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed",
+    "test_b06_inventory.py": "193ba3a711f5e9654aa53fd28519553f769602f0fd9d432bfab44511a60755eb",
+    "b06_domain_paths.py": "59f3b7ad6b427110cbdd30f709cf6a4cdddfb6c88f70721c5cef43075a3f2fbe",
+    "test_b06_domain_paths.py": "66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444"
+  },
+  "original_adapter_and_18_tests_byte_identical": true,
+  "inventory": {
+    "source_rows": 6029,
+    "public_source_rows": 4231,
+    "traced_rows": 1566,
+    "operation_signals": 21001,
+    "untraced_rows": 4463,
+    "family_candidates": {
+      "D04": {
+        "candidate_rows": 511,
+        "traced_rows": 306
+      },
+      "D05": {
+        "candidate_rows": 244,
+        "traced_rows": 165
+      },
+      "D06": {
+        "candidate_rows": 296,
+        "traced_rows": 211
+      },
+      "D07": {
+        "candidate_rows": 637,
+        "traced_rows": 523
+      },
+      "D08": {
+        "candidate_rows": 205,
+        "traced_rows": 145
+      },
+      "D09": {
+        "candidate_rows": 207,
+        "traced_rows": 159
+      },
+      "D10": {
+        "candidate_rows": 405,
+        "traced_rows": 305
+      }
+    },
+    "count_semantics": "Overlapping public-path candidate sets, not business-domain denominators",
+    "block_closed": false
+  },
+  "unique_consumer_ids": 6029,
+  "unique_public_paths": 4231,
+  "receipt_tree_absent": true,
+  "native_probes": false,
+  "raw_test_output_saved": false,
+  "tests": {
+    "exit_code": 0,
+    "stdout_sha256": "d6a6d26925ef97ba2b49d3a86d64b6db1186e2d5bd9b712f0c04f2ea5ccc4bca",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_bytes": 99,
+    "stderr_bytes": 0,
+    "pass_summary": [
+      "27 passed in 4.33s"
+    ]
+  },
+  "cli": {
+    "exit_code": 0,
+    "stdout_sha256": "605f6d6a49155529f74680313ca3eb01f801e29ca1f8744e5e645ca63956041d",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_bytes": 627,
+    "stderr_bytes": 0,
+    "pass_summary": []
+  },
+  "b05_committed_proof": {
+    "head": "ec648b4a46fa7adcaf12fa7d9cab506ea7d753ec",
+    "sha256": "791e64bd1060a188981b36fa7e1ce1f57e45544e11e7c414b25ed7c0d9d5e43d",
+    "current_equals_committed": true
+  },
+  "b05_validation": {
+    "original": {
+      "records": 21,
+      "accepted": 21,
+      "errors": 0
+    },
+    "additional": {
+      "records": 21001,
+      "accepted": 21001,
+      "errors": 0
+    }
+  },
+  "schema_acceptance_is_operational_closure": false,
+  "block_closed": false
+}

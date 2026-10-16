@@ -1,0 +1,13 @@
+{
+  "schema": "b06-inventory-provenance-v1",
+  "source_csv_sha256": "c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118",
+  "projection_sha256": "c8dfd7ae1d2ae4182fa36aa4cf21e9b6aad40838309d7b77c736af4ec03fb68e",
+  "source_head": "5f2e0ad9112c0c26ef472b444adbf0693b9dd542",
+  "source_is_original_c09": true,
+  "projection_is_not_original_bytes": true,
+  "native_probe_executed": false,
+  "command": "python -I -B b06_inventory.py --capture --repo-root REPO --matrix PINNED_C09 --bindings B04_BINDINGS --catalog B04_CATALOG",
+  "capture_producer_source_sha256": "9c98e5740b9b60396fc892c8023932234d281c6490695f9b64b7e95601f9521d",
+  "consumer_source_sha256": "31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed",
+  "producer_delta": "Added hermetic validation-payload export only after capture; capture and trace functions unchanged."
+}

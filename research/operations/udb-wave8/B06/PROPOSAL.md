@@ -88,41 +88,11 @@ During the subsequent authorised synthesis/execution stage, B06 proposes to mate
 
 Because `run_command` is disabled in this analysis window (`DUX-NOTE-ANALYSIS.md:13-22`), the following read-only, aggregate/hashed computations are requested from the BLUE Dux to pin missing evidence before B06 synthesis:
 
-### `DUX-REQ-B06-01`: Exact Domain Row & Disposition Breakdown in `consumer-matrix.csv` for `D04`–`D10`
+### Admitted census and withdrawn duplicate request
 
-- **id**: `DUX-REQ-B06-01`
-- **Command / Script**:
-  ```bash
-  python3 -c '
-  import csv, collections, hashlib, json, pathlib
-  p = pathlib.Path(".agent-receipts/udb-wave8-inputs/consumer-matrix.csv")
-  counts = collections.Counter()
-  by_domain_disp = collections.defaultdict(collections.Counter)
-  with p.open() as f:
-      for r in csv.DictReader(f):
-          dom = r.get("domain_heuristic", "UNKNOWN")
-          disp = r.get("disposition", "UNKNOWN")
-          status = r.get("contract_coverage_status", "UNKNOWN")
-          counts[dom] += 1
-          by_domain_disp[dom][f"{disp}|{status}"] += 1
-  print(json.dumps({"sha256": hashlib.sha256(p.read_bytes()).hexdigest(), "domain_counts": dict(counts), "by_domain_disposition": {k: dict(v) for k, v in by_domain_disp.items()}}, indent=2, sort_keys=True))
-  '
-  ```
-- **Inputs**: `.agent-receipts/udb-wave8-inputs/consumer-matrix.csv` (`sha256: c09e14328f391d2615d320b6dc4218bf35a37e76fb847c46659a8db0f9326118`)
-- **Expected Output Shape**: JSON object with `sha256`, `domain_counts` (`dict[str, int]`), and `by_domain_disposition` (`dict[str, dict[str, int]]`). Zero row content or PII.
-- **Why It Matters**: Pins the exact deterministic denominator of `consumer-matrix.csv` rows per `domain_heuristic` (`crm_cases`, `visa_company_tax_property`, `pricing_payments_accounting`, `conversations_channels`, `knowledge_rag`, `document_ingestion`, `editorial`, `research_intelligence`, `agent_workflows`) so B06 synthesis can account for 100% of domain rows without estimation.
+DUX-REQ-B06-01 and DUX-REQ-B06-03 retain captured source/prefix census receipts. Neither defines a seven-family business denominator. The nonexistent-column computation is withdrawn. Duplicate DUX-REQ-B06-02 was NOT_ADMITTED_CONSENT and is removed from active work; B01 owns restore verification.
 
-### `DUX-REQ-B06-02`: Sub-Check Disaggregation of `clients` (`FAIL`) and `conversations` (`CANNOT-VERIFY`) from Mini Restore Drill
-
-- **id**: `DUX-REQ-B06-02`
-- **Command / Script**:
-  ```bash
-  python3 scripts/ci/restore_drill_verify.py --fixture scripts/tests/fixtures/restore_drill/healthy.json --json
-  ```
-  _(Plus read-only inspection of the Mini restore drill raw JSON output or re-running the two aggregate `SELECT jsonb_build_object(...)` queries from `scripts/ci/restore_drill_verify.py:207-229` against the isolated Mini restore target database, emitting only boolean/integer check counts.)_
-- **Inputs**: `scripts/ci/restore_drill_verify.py:207-229` and the isolated Mini restore drill database referenced in `.agent-receipts/udb-wave8-inputs/REAL-RUN-RECEIPT.json:15-74`.
-- **Expected Output Shape**: Aggregate JSON counts only: `{"clients": {"client_type_unknown": <int>, "lead_metadata_not_object": <int>}, "conversations": {"messages_not_json_array": <int_or_error_class>}}`. Zero client rows, zero PII.
-- **Why It Matters**: Resolves Unknown #2 and Unknown #3 in `ANALYSIS.md` by identifying whether `clients` failed on `client_type_unknown` or `lead_metadata_not_object`, and why `_CONVERSATIONS_VIOLATIONS_SQL` returned `UNMEASURED_CHECK: 1` on Mini restore.
+The current inventory retains every canonical identity, approved public-code paths, source hashes and syntax anchors with explicit gaps. No raw matrix or native query is proposed.
 
 ### `DUX-REQ-B06-03`: Pool-Factory Actor & Grant Join for B06 Backend Routers/Services
 
@@ -157,3 +127,13 @@ Because `run_command` is disabled in this analysis window (`DUX-NOTE-ANALYSIS.md
 ## Adversarial review
 
 Scoped Codex document review, parent receipt [`R1-DOCUMENT-REVIEW.json`](R1-DOCUMENT-REVIEW.json) (observed 2026-10-15T16:54:26Z): `HISTORICAL_OR_PENDING_PROPOSAL_NOT_ADMITTED` for this file's bytes with SHA256 `236f3745e7ddb421be06abd65dd4481356634cac3159775d35758e798e71b6ea` at base `8061c88e0c43dd42e735fd012f9ed072df3ef3d6`. Bounded excerpts only: not a full document or code review, not implementation approval, not the final BLUE gate. Requested seat Astra 6/xhigh; effective runtime identity not observed. Edits after the reviewed bytes (corrections, addendum) apply its findings and were not re-reviewed.
+
+## 2026-10-16 bounded inventory completion
+
+`b06_inventory.py` captures and consumes `fixtures/source-inventory.json.gz` with pinned provenance. Original C09 bytes are processed locally; only the minimal projection is published. All 6029 canonical IDs are retained: 4231 public-code paths, 1566 rows with static call anchors, 4463 rows without an operation trace, and 21001 syntax call signals.
+
+Seven families are overlapping public-path candidate sets, not business-domain denominators. Generic calls, loops, exception handlers and consumer-level store bindings do not establish persistence, retries, failure behavior or effective targets. Those semantics remain UNKNOWN. The original 21 detailed examples remain separate historical evidence and do not establish full coverage.
+
+Actual committed B05 validation is recorded in B05-VALIDATION.json. Principal, role, recovery and operation IDs remain unresolved. The parent reported at 2026-10-16T07:39Z that a secure owner-only credential file exists but zero canonical nuzantara_readonly DSN candidates are present and both observer DSN variables are unset. This is an access blocker, not a B06 native query.
+
+`block_closed:false` remains binding. Required follow-up: establish business-family membership, inspect untraced and dynamic paths, prove effective call targets/effects/failure/retry behavior, obtain admitted observer access and satisfy dependent recovery evidence. No operational closure is claimed.

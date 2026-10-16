@@ -2,111 +2,36 @@ mandate: universal-db-wave8-20261015-B06
 brief_ref: evidence/brief.yml
 status: PARTIAL_PREPARED_NOT_CLOSED
 receipts:
-  - claim:
-      Pre-patch NAGA regression on the original adapter failed as expected; the cited naga_persistence.py
-      evidence path does not exist at the pinned base.
-    cmd:
-      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider --color=no
-      -q research/operations/udb-wave8/B06/test_b06_domain_paths.py -k "naga_instance_is_grounded or missing_evidence_file"
-    exit: 1
-    ts: "2026-10-15T14:40:00+00:00"
+  - claim: Exact frozen source identity checked; prior focused suite 27P remains the recorded source execution.
+    cmd: /opt/homebrew/bin/python3 -c 'import hashlib;from pathlib import Path;assert hashlib.sha256(Path('"'"'research/operations/udb-wave8/B06/b06_inventory.py'"'"').read_bytes()).hexdigest()=='"'"'31e48bea8cdb05c8c83f5193f80d572be99b2ac4ad9a539122d7cb282e557bed'"'"''
+    exit: 0
+    ts: "2026-10-16T09:10:45.359653+00:00"
     seat: codex-coordinator
-    execution_context: Mini broker scratch db-udb-deadline-astra-b06 at8061c88; see pinned parent regression-before.json
-    evidence_ref: research/operations/udb-wave8/B06/test_b06_domain_paths.py:525
-  - claim:
-      Corrected B06 candidate:13tests passed against the original worktree sources; the NAGA instance
-      cites persist.py save_session and no research_os_objects bridge.
-    cmd:
-      <backend-venv>/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider --rootdir=<original-b06-worktree>
-      --basetemp=<scratch-worktree>/pytest --color=no -q research/operations/udb-wave8/B06/test_b06_domain_paths.py
-    exit: 0
-    ts: "2026-10-15T14:47:42+00:00"
-    seat: codex-coordinator
-    execution_context:
-      Mini original worktree db-udb-b06-domains at8061c88, uncommitted candidate; see pinned
-      parent ACTUAL-CANDIDATE-RECEIPT.json
-    evidence_ref: research/operations/udb-wave8/B06/test_b06_domain_paths.py:525
-    patch_sha256: 94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5
-    source_pins:
-      b06_domain_paths.py: d76a5ebe8482f1cb64f7271e7313a6ca926fd4b9abb366e0b15323b71d5c5daa
-      test_b06_domain_paths.py: c8d4281607f32aaa54b9650fb2991bcacd5e19717989f01d73658c8e31dc5d99
-      domain-operation-instances.json: 857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae
-  - claim:
-      Dux verified the three post-patch pins before recording receipts; the synthesis row 19 is superseded
-      by a prepended addendum, original text retained.
-    cmd: /usr/bin/python3 -I -B b06_finalize.py research/operations/udb-wave8/B06 B06-ADDENDUM.md
-    exit: 0
-    ts: "2026-10-15T16:57:00+00:00"
-    seat: claude-opus-5-5-dux
-    execution_context: Mini original worktree db-udb-b06-domains at8061c88, uncommitted candidate
-    evidence_ref: research/operations/udb-wave8/B06/DEFINITIVE-SYNTHESIS.md:3
-    patch_sha256: 94e3c2cf81ba6636aacb100bd7242001bbe6132371a891cc09e2af162341ffb5
-  - claim:
-      "Parent clean-checkout reproduction patch applied to the original worktree: 18 tests passed,
-      0 skipped, from committed files only."
-    cmd:
-      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B -m pytest -c /dev/null --noconftest -p no:cacheprovider
-      --color=no -q -rA --tb=short research/operations/udb-wave8/B06/test_b06_domain_paths.py
-    exit: 0
-    ts: "2026-10-16T01:35:00Z"
-    seat: claude-opus-5-5
-    stdout_sha256: ac4bb4adba19de4a6867cda4ef18f5daad7f82b4a707cb3fc5e86d2782caadfa
-    result: 18 passed
-    patch_sha256: ca70804be9f4acfe6605a35984d9997d56465491c64473e1022297a560e807ae
-    source_pins:
-      b06_domain_paths.py: 59f3b7ad6b427110cbdd30f709cf6a4cdddfb6c88f70721c5cef43075a3f2fbe
-      test_b06_domain_paths.py: 66a6d8a3563e49e22efb0bc270bf892ef5a33e6d2344472259766b9d38609444
-      domain-operation-instances.json: 857c7aee1c1065bff446aeab97d45b4b1ea4cf4f631e15e064773a0ef133c0ae
-      fixtures/manifest.json: 5861322d678a0012086a8a2617d62da1c910189edc2d7a9c1ffaa517944c4ff9
-  - claim: All five B06 Markdown files carry a scoped Codex adversarial review attribution.
-    cmd:
-      ~/nuzantara/apps/backend-rag/.venv/bin/python -I -B scripts/check_adversarial_review.py --files
-      research/operations/udb-wave8/B06/ANALYSIS.md research/operations/udb-wave8/B06/BATTLE.md research/operations/udb-wave8/B06/DEFINITIVE-SYNTHESIS.md
-      research/operations/udb-wave8/B06/PROPOSAL.md research/operations/udb-wave8/B06/PR_BODY.md
-    exit: 0
-    ts: "2026-10-16T01:41:00Z"
-    seat: claude-opus-5-5
-    evidence_ref: research/operations/udb-wave8/B06/R1-DOCUMENT-REVIEW.json:1
+    result: Identity bound to existing execution evidence; final package ungraded.
+    evidence_ref: research/operations/udb-wave8/B06/integration-20261016/CURRENT-PACKAGE-STATUS.json
 dissent:
-  - seat: campaign-independent-adversary
-    objection:
-      "B06: runtime DB roles, B05 operation ids and restore-drill coverage are unproved; static
-      source is not runtime evidence. See frozen ADVERSARY-FINDINGS.md B06 section. Native probe is not
-      executed by this preparation."
+  - seat: independent-support-review
+    objection: Static or limited native evidence does not establish full operation coverage and recovery.
     status: CONFIRMED
-  - seat: codex
-    objection:
-      "Scoped document review REVIEWED_PARTIAL_WITH_BLOCKERS: NAGA source, 2,608 vs 683 premise,
-      adopt actual receipts. Applied by the addendum and PR body; not re-reviewed."
-    status: CONFIRMED
-    evidence_ref: research/operations/udb-wave8/B06/R1-DOCUMENT-REVIEW.json:1
 pii_scan: clean
 block_closed: false
 native_probe_executed: false
-final_gate: PENDING_NEW_EXACT_COMMITTED_HEAD
 production_adoption: false
-limitations:
-  - All runtime unknowns remain (DB roles, operation ids pending B05, restore-drill table coverage, replay
-    idempotency, erasure proof).
-  - R1 adversarial-review metadata, secret-scan baseline decisions and the exact-head final gate are checked
-    by the Dux before arming.
-  - This pack does not authorize changing any armed branch or starting successors.
+final_gate: PENDING_FRESH_INDEPENDENT_EXACT_COMMITTED_HEAD
 lanes:
   - lane: B06-original
     role: build
     seat: gemini-4-argon-high
-  - lane: B06-bounded-prepare
-    role: build
-    seat: codex-coordinator
-  - lane: B06-dux-apply
-    role: build
-    seat: claude-opus-5-5-dux
-  - lane: B06-campaign-adversary
+  - lane: B06-support
     role: review
-    seat: campaign-independent-adversary
+    seat: astra-requested-support
 seat_override:
-  The explicit owner mandate selects Gemini Argon/high, Astra6/xhigh support and Opus5.5/xhigh
-  support, with one adversarial pass then synthesis. This model assignment supersedes the legacy two-seat
-  council whitelist; no legacy Sol/Kimi/TP1 reviewer is invoked or claimed. Actual source-pinned modern-seat
-  evidence is retained. The independent fresh BLUE Opus5.5/xhigh exact-head final gate remains mandatory
-  and PENDING; this override does not sign a gate or grant block closure.
+  Authenticated owner Claude-availability and completion exceptions; no effective identity
+  inferred.
+limitations:
+  - "Current source tests: 27 passed (18 preserved legacy tests plus 9 inventory tests). All 6029 C09 IDs
+    and 4231 public source paths are retained; 1566 rows have static anchors and 4463 have no trace. The
+    21001 additional syntax signals pass actual B05 schema validation but do not establish operation semantics
+    or business membership. Independent source execution is recorded; document and final commit gates remain
+    incomplete. block_closed:false; production adoption is not claimed. Original deadline elapsed. This
+    package is prepared for review; no final committed-head PASS is asserted."

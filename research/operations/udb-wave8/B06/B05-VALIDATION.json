@@ -1,0 +1,26 @@
+{
+  "additional": {
+    "accepted": 21001,
+    "error_count": 0,
+    "error_sha256_counts": {},
+    "records": 21001,
+    "rejected": 0
+  },
+  "command": "python -I -B validate_b05_submission.py --validator-root COMMITTED_B05_ROOT --payload b06-validator-payload.json.gz --output B05-VALIDATION.json",
+  "exit_code": 0,
+  "input_payload_sha256": "e48735d233ab884a15525610d0f9c74240f778ef4136ef87cddc5e91415dd149",
+  "native_probe_executed": false,
+  "observed_at": "2026-10-16T08:10:21.409216+00:00",
+  "original": {
+    "accepted": 21,
+    "error_count": 0,
+    "error_sha256_counts": {},
+    "records": 21,
+    "rejected": 0
+  },
+  "runner_source_sha256": "46ecde24f2c8a0aea35ce87098c38c904c2fedbde8366baf18ed9abc8ef741aa",
+  "validator_committed_head": "ec648b4a46fa7adcaf12fa7d9cab506ea7d753ec",
+  "validator_equals_committed_bytes": true,
+  "validator_path": "research/operations/udb-wave8/B05/b05_contracts_validator.py",
+  "validator_source_sha256": "791e64bd1060a188981b36fa7e1ce1f57e45544e11e7c414b25ed7c0d9d5e43d"
+}
