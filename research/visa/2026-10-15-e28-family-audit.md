@@ -13,7 +13,8 @@ sources:
   - https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28E (fetched 2026-10-15T14:22:49Z)
   - https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E28F (fetched 2026-10-15T14:22:50Z)
   - apps/backend-rag/backend/services/visa_engine/contracts/packs/rulepack-prod-029.signed.json
-adversarial_review: codex gpt-5.6-sol (read-only, 2026-10-15) — verdict UNSOUND; dispositions in §Adversarial review
+adversarial_review: codex
+adversarial_review_detail: codex gpt-5.6-sol (read-only, 2026-10-15) — verdict UNSOUND; dispositions in §Adversarial review
 ---
 
 # E28 family audit matrix — 2026-10-15

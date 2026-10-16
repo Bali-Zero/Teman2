@@ -693,9 +693,9 @@ def test_e28_entry_carries_the_three_prs_with_full_merge_shas_once():
         assert body.count(token) == 1, token
 
 
-def test_e28_entry_closes_no_row_and_ships_the_audit_matrix_with_the_pages_on_main():
+def test_e28_entry_closes_only_c2_and_ships_the_audit_matrix_with_the_pages_on_main():
     body = _e28_entry()
-    assert "No row is closed." in body
+    assert "Closed: C2, by PROD A + PROD B" in body and "No row is closed." not in body
     assert "already on main via #8572" in body
     assert E28_AUDIT.is_file() and E28_AUDIT.read_text(encoding="utf-8").startswith("---")
     assert len(list(E28_PAGES.rglob("*.txt"))) == 6 and (E28_PAGES / "e28-pages.receipts.jsonl").is_file()
@@ -709,11 +709,10 @@ def test_skill_live_state_leads_with_the_e28_closeout_and_stays_an_index():
         assert lead.count(f"#{pr} (`{sha[:10]}`") == 1, pr
     for token in ("**Open:**", "C2", "SEQ29-A2", "SEQ29-D1", "READY-TO-SIGN", "research/visa/2026-10-15-e28-family-audit.md"):
         assert token in lead, token
-    assert len(lead) < 2600
+    assert "C2 DONE" in lead and "**Open:** D (" in lead and "NOT RUN" not in lead and len(lead) < 3000
 
 
 E28_OPENED = (
-    ("C2: the KB data PR #8578 is MERGED", "migration 128", "owner: me (next session; the PROD data op is operator-run)"),
     ("D: the article PR", "/visa/kitas", "owner: me (next session)"),
     ("E: seq-30 is owned by the Pro conductor", "SEQ29-D1", "owner: me (next session, visa-night conductor and signer)"),
     ("BACKLOG of the E28 close-out", "F73", "owner: me (nuzantara-57)"),
@@ -722,14 +721,18 @@ E28_OPENED = (
 
 def test_e28_opened_rows_each_appear_once_in_the_ledger_format():
     opened = [r for r in ARMS_LINES if r.startswith("- opened 2026-10-15 (M5, VISA-ORACLE E28 close-out)")]
-    assert len(opened) == len(E28_OPENED) == 4
+    assert len(opened) == len(E28_OPENED) == 3
     for needle, token, owner in E28_OPENED:
         rows = [r for r in opened if needle in r]
         assert len(rows) == 1, needle
         fields = rows[0].split(" | ")
         assert len(fields) == 5 and token in fields[1] and fields[3] == owner, needle
         assert fields[2].startswith("missing arming step:") and fields[4].startswith("proof-of-armed:"), needle
-    assert not [r for r in ARMS_LINES if r.startswith("- closed") and "VISA-ORACLE E28 close-out" in r]
+    closed = [r for r in ARMS_LINES if r.startswith("- closed") and "VISA-ORACLE E28 close-out" in r]
+    assert len(closed) == 1 and closed[0].startswith("- closed 2026-10-16 (M5, VISA-ORACLE E28 close-out)")
+    assert not [r for r in opened if "C2:" in r]
+    for r in opened:
+        assert "owner: operator" not in r and "owner=operator" not in r and "operator-run" not in r.split(" | ")[3]
 
 
 def test_e28_backlog_row_carries_every_item_once():
@@ -739,26 +742,39 @@ def test_e28_backlog_row_carries_every_item_once():
                   "about 20 other investor/golden articles", "a Qdrant re-embed", "`visa_check.py:166` 25 days", "IMTA mentions left in KG routes",
                   "`services_data.ts:165` KITAP", "`FunnelFeature.tsx:80`", "Last updated: April 2026", "government-fee inclusion for non-visa services",
                   "Investor KITAS notes are empty", "extensions_possible 1 for E28A", "\"Covers 730 days\" but the pack has 180+180", "assumes a foreign branch",
-                  "(16) E28B-F metadata.bali_zero_service is false", "(17) the retired E28G row still has foreign_eligible true"):
+                  "(16) E28B-F metadata.bali_zero_service is false", "(17) the retired E28G row still has foreign_eligible true",
+                  "(18) the Qdrant E28 payloads keep the heading", "(19) MCP ask_legal routed an informational E28D question to client_journey",
+                  "(20) the Canva MCP client passes the httpx2-based OAuth provider", "(21) other FR/IT/RU articles may carry bare '<' MDX breaks"):
         assert row.count(token) == 1, token
 
 
-def test_e28_c2_production_addendum_is_stated_as_given_and_the_row_stays_open():
+def test_e28_c2_is_closed_with_prod_a_and_prod_b_as_given_and_headline_leaves_only_d_and_e_open():
     body = _e28_entry()
+    head = body[:body.index("(1) PR C")]
+    assert "C2 is DONE (PROD A committed, PROD B applied and verified); open = the article PR (D) and seq-30 (E) only." in head
+    assert "KB data PR not merged" not in body and "still open.**" not in body and "PROD B not run" not in body
     for token in ("PR C2 #8578, merge `5fe495bb02`", 'printed "COMMITTED: 6 row(s) updated"', 'a second run printed "NO-OP: every row already matches every target field"',
-                  "2026-10-15T18:42:46Z", "PROD B (Qdrant visa_oracle payload fixer): NOT RUN", "Nothing was written to Qdrant",
-                  "stated as given by the Dux, not re-measured", "vo-e28-qdrant-id-1016", "C2 stays OPEN after PROD A",
-                  "PROD A committed, PROD B not run; open = the Qdrant run (fix PR #8584, armed), the article PR (D) and seq-30 (E)",
-                  "PR #8584 (head `29778d03ed`, gate PASS, armed", 'E28A cost_visa "IDR'):
+                  "2026-10-15T18:42:46Z", "PROD B (Qdrant visa_oracle payload fixer), first attempt: NOT RUN then", "nothing was written to Qdrant",
+                  "PR #8584, merged `fa07e40f82` (2026-10-16T01:41Z)", 'B1 dry-run exit 0 "7 change(s) planned (dry-run)" (01:42:17Z)',
+                  "B3 anchor check 5/5 OK", 'verified: re-read shows 0 pending changes", exit 0', 'B5 dry-run "0 change(s) planned"', "C2 is DONE (PROD A + PROD B).",
+                  "(3c) #8586, merge `0b1aef0928` (01:09Z): mcp 2.2.0 cured CVE-2026-59951", "healthy at 01:37:46Z", 'E28A cost_visa "IDR', "(7) NOT done: D and E are open;"):
         assert body.count(token) == 1, token
-    assert "KB data PR not merged" not in body and "still open.**" not in body
-    row = _rows("C2: the KB data PR #8578 is MERGED")[0]
-    assert 'E28A cost_visa "IDR' in row and "PR #8584 (head `29778d03ed`" in row
-    assert row.startswith("- opened 2026-10-15") and "so the row stays OPEN" in row
-    for token in ('"COMMITTED: 6 row(s) updated"', '"NO-OP: every row already matches every target field"', "PROD B (Qdrant visa_oracle payload fixer): the dry-run refused with exit 3",
-                  "plans 7 changes", "0 pending", "no E28G point is left"):
-        assert row.count(token) == 1, token
-    assert not [r for r in ARMS_LINES if r.startswith("- closed") and "VISA-ORACLE E28 close-out" in r]
+    closed = _rows("C2: the E28 KB data close-out is DONE")
+    assert len(closed) == 1 and closed[0].startswith("- closed 2026-10-16 (M5, VISA-ORACLE E28 close-out)")
+    fields = closed[0].split(" | ")
+    assert len(fields) == 4 and fields[2] == "owner: n/a (closed)" and fields[3].startswith("proof-of-armed:")
+    for token in ('"COMMITTED: 6 row(s) updated"', '"NO-OP: every row already matches every target field"', "`fa07e40f82`", "\"7 change(s) planned (dry-run)\"",
+                  "5/5 OK", "0 pending changes", "no E28G point"):
+        assert closed[0].count(token) >= 1, token
+    assert not [r for r in ARMS_LINES if r.startswith("- opened") and "C2:" in r and "VISA-ORACLE E28" in r]
+
+
+def test_no_open_e28_row_is_owned_by_operator():
+    open_rows = [r for r in ARMS_LINES if r.startswith("- opened") and "VISA-ORACLE E28 close-out" in r]
+    assert open_rows
+    for r in open_rows:
+        owner = r.split(" | ")[3]
+        assert owner.startswith("owner: me (") and "operator" not in owner, owner
 
 
 def test_observer_floor_is_the_true_count_of_this_file():
