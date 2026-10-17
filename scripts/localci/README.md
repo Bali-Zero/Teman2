@@ -230,7 +230,7 @@ postgresql-client: 11.9 GB, its Python layers shared with Backend Tests'); Front
 ### The merge label is read back (B31)
 
 `scripts/signal_merge_intent.sh <PR>` no longer trusts a write. It first asks `scripts/localci/label_census.py verify` (the merger's own `label_arm`:
-the label on the PR, the last `LabeledEvent` by an admin or maintain user, stamped no earlier than the head's push). Valid: nothing is written. Absent:
+the label on the PR, the last `LabeledEvent` by an admin or maintain user, or by the write-role author of its own same-repo PR (B42), stamped no earlier than the head's push). Valid: nothing is written. Absent:
 add. Present but stale: remove, then add. The add retries with bounded backoff (`SIGNAL_INTENT_TRIES`, `SIGNAL_INTENT_BACKOFF_S`, under the `SIGNAL_INTENT_DEADLINE_S` wall clock), then the label is read
 back again; a label not shown valid is exit 2 and `SIGNAL_INTENT_FAIL` on stderr, queue or no queue (with the queue rule present the arm is still
 attempted first). An unreadable read (rc other than 0 and 1, including a check-suites read that failed) is unknown, never invalid: it is retried and never removes a label. The whole helper runs under a wall-clock deadline (`SIGNAL_INTENT_DEADLINE_S`, default 45 s; the poller kills it at 60 s, pinned by test). No caller swallows it (`docs_guardian.sh` used `|| true`; a test now refuses that spelling). Before the flip run
@@ -241,6 +241,10 @@ backend-rag's `GitHubPublisher`, which enables auto-merge but never labels; that
 #### Predicate census (B31'')
 
 `scripts/signal_merge_intent.sh` has no decision in it: it is `exec python3 scripts/localci/label_intent.py`, whose pure `plan()` is the whole logic, compared with an independent oracle over the entire finite domain by `tests/test_label_intent.py`. The census is Python only and generated: `python3 scripts/localci/predicate_census.py` prints every conditional of `label_intent.py` and `label_census.py` (and raises on a construct it does not model); `predicate_census.jsonl` has one row each, naming its generated mutant (`b31-ast-*`); `python3 scripts/localci/predicate_census.py --draft` rewrites it; `tests/test_predicate_census.py` fails on a missing or stale row. Spec: `docs/specs/localci-sovereign-2026-10-07.md` (B31'').
+
+### A write-role author's own label is a merge order (B42)
+
+`merger.label_arm` counts a `localci:merge-shadow-ok` LabeledEvent when its actor is admin or maintain, or when ALL of these hold: the actor is the PR's own author (exact login), the author is a `User` (never a `Bot`), the actor's role is exactly `write` (`role_name`, one `collaborators/<login>/permission` read), the PR is same-repo (`isCrossRepository is False`), and the label postdates the head (B2a). It is parity with GitHub auto-merge, which that author already uses. `label_census.py verify` shares the predicate, and the flip's carry-over command above applies the same rule, spelled with the fields `gh pr list` returns: the arm actor equals the author's login exactly, `author.is_bot` is false (gh exposes no `__typename`, so this is not-Bot, a weaker test than the merger's `__typename == User`: it also passes any non-Bot author the merger would refuse, such as a Mannequin; for the pre-flip self-arms this is equivalent because the arm actor must equal the author and hold the `write` role, which an author of that kind does not), `isCrossRepository` is false, and `role_name` is exactly `write`. Pinned by `tests/test_author_intent.py` and `tests/mutants/rows/b42.py`, `b42fu.py`.
 
 ### Sandbox of kind `pytest` sees what hosted sees (`tests.scripts_impacted`)
 
@@ -1135,10 +1139,10 @@ environment: before (3) the first push is refused and halts. A session runs the 
 pass of `scripts/queue_shepherd.py` labels nothing and arms nothing; it journals `flipped: no merge queue, nothing to rearm`, or
 `queue state unknown: rearm skipped`, once per run. Merge intent after the flip is only a human's, or a ship session's own,
 `scripts/signal_merge_intent.sh <PR>`. The pre-flip arms are carried over ONCE by the flip operator: at flip time, the admin-armed
-open PRs are labelled from a snapshot (bots skipped, only admin/maintain arms) (operator runbook step, run right after step (3), before the shepherd's next tick):
+open PRs are labelled from a snapshot (bots skipped; only arms by admin/maintain, or by the write-role author of their own same-repo PR, B42) (operator runbook step, run right after step (3), before the shepherd's next tick):
 
 ```bash
-gh pr list --repo Bali-Zero/Teman2 --state open --limit 500 --json number,labels,autoMergeRequest --jq '.[]|select(.autoMergeRequest!=null and (.autoMergeRequest.enabledBy.is_bot|not) and ([.labels[].name]|index("localci:merge-shadow-ok")|not))|"\(.number) \(.autoMergeRequest.enabledBy.login)"' | while read -r n who; do role=$(gh api "repos/Bali-Zero/Teman2/collaborators/$who/permission" --jq .role_name) || { echo "skip #$n"; continue; }; case "$role" in admin|maintain) scripts/signal_merge_intent.sh "$n";; *) echo "skip #$n: $who $role";; esac; done
+gh pr list --repo Bali-Zero/Teman2 --state open --limit 500 --json number,labels,autoMergeRequest,author,isCrossRepository --jq '.[]|select(.autoMergeRequest!=null and (.autoMergeRequest.enabledBy.is_bot|not) and ([.labels[].name]|index("localci:merge-shadow-ok")|not))|"\(.number) \(.autoMergeRequest.enabledBy.login) \(.author.login) \(.author.is_bot) \(.isCrossRepository)"' | while read -r n who author abot cross; do role=$(gh api "repos/Bali-Zero/Teman2/collaborators/$who/permission" --jq .role_name) || { echo "skip #$n"; continue; }; case "$role" in admin|maintain) scripts/signal_merge_intent.sh "$n";; write) if [ "$who" = "$author" ] && [ "$abot" = false ] && [ "$cross" = false ]; then scripts/signal_merge_intent.sh "$n"; else echo "skip #$n: $who write, not the author of a same-repo PR"; fi;; *) echo "skip #$n: $who $role";; esac; done
 ```
 
 ## Tests
