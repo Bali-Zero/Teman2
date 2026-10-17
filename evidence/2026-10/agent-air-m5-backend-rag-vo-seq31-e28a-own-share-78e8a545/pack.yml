@@ -1,5 +1,5 @@
 # Gear-3 evidence pack - seq-31 SIGNED (E28A own-shareholding re-key), step C of the E28A chain
-# (step A: engine fact 089d9fca48; step B: interview question 960895959d). Receipts are this session's own runs on M5 on
+# (step A: engine fact, main 57102d0897 #8644; step B: interview question, main fa7e45ca1f #8649). Receipts are this session's own runs on M5 on
 # 2026-10-17 (UTC). The owner signed on M5 after the council SIGN verdicts; nothing is pushed or merged by this lane.
 gear: 3
 brief_ref: evidence/brief.yml
@@ -19,7 +19,7 @@ lanes:
   - lane: seq31-fold-and-tests
     role: build
     seat: >-
-      claude-sonnet-5.5 implementer, worktree backend-rag-vo-seq31-e28a-own-share-1017 on M5, mirroring the seq-30
+      claude-sonnet-5 implementer, worktree backend-rag-vo-seq31-e28a-own-share-1017 on M5, mirroring the seq-30
       fold (#8624, 3f23a84da7) and the seq-29 retire-and-insert pattern for the rule replacement.
   - lane: e28a-ground-truth
     role: ground_truth
@@ -42,67 +42,67 @@ receipts:
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.scripts.visa_engine.compile_pack backend/services/visa_engine/contracts/packs/rulepack-prod-031.source.json"
     result: "rule_pack_id=4bff6af7-395d-5c98-9b43-0a45e04ee651 sequence=31; OK - zero compilation errors"
     exit: 0
-    ts: "2026-10-17T09:40:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: The fold reproduces from verified signed seq-30 and the candidate payload digest is 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4 (unsigned; JCS).
     cmd: 'cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -c "fold_pack_seq31.main([''--check''])"  # trust-store env set from the pinned public keys, as the tests do'
     result: "fold_pack_seq31: OK (rulepack-prod-031.source.json, payload_sha256=7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4)"
     exit: 0
-    ts: "2026-10-17T09:41:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: The seq-31 pack gate - chain, source_records byte identity, the exact rule diff and nothing else, the boundary witnesses, builder guards, gold personas.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq31_pack.py -p no:cacheprovider  # probes: backend/tests/services/visa_engine/test_seq31_pack.py::TestCommittedSourceMatchesFold, backend/tests/services/visa_engine/test_seq31_pack.py::TestE28ABoundaryWitnesses, backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource (skipped until signed)"
     result: "35 passed, 4 skipped (the 4 skips are TestSignedBundleTiesToSource, waiting for rulepack-prod-031.signed.json)"
     exit: 0
-    ts: "2026-10-17T09:55:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
-  - claim: The interview walk census (182 walks) on the candidate with the new seq-31 pins; no state moves, two walks lose E28A.
+  - claim: The interview walk census (182 walks) on the candidate with the new seq-31 pins; no state moves, exactly one walk (the 9,999,999,999 witness) loses E28A.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider  # probe: backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack"
     result: "125 passed in 362.50s on the cured tree (182-walk corpus with the cured default own-shareholding answer; 14 of them are candidate-mode tests that skip once seq-31 is signed: 111 passed, 14 skipped expected)"
     exit: 0
-    ts: "2026-10-17T09:30:00Z"
+    ts: "2026-10-17T03:50:08Z"
     seat: this session
   - claim: Seq-30 gate, rulepack compiler, compiled-pack, sponsor-type rollout and negative-persona tests stay green.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq30_pack.py test_rulepack_compiler.py test_compiler_build_compiled_pack.py test_sponsor_type_rollout.py test_gold_coverage_negative_personas.py -p no:cacheprovider"
     result: "316 passed in 8.86s (adds test_fact_registry.py)"
     exit: 0
-    ts: "2026-10-17T09:35:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: Gold harness, gold coverage floor, evaluator gold, replay artifact, gold scripts and the seq-28 and seq-29 pack gates stay green with the E28A persona answering the new fact.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/gold_harness test_gold_coverage_floor.py test_evaluator_gold.py test_gold_replay_artifact.py backend/tests/scripts/visa_engine/test_gold_coverage_eval.py test_gold_coverage_replay.py test_gold_replay_driver.py test_seq28_pack.py test_seq29_pack.py -p no:cacheprovider"
     result: "539 passed in 23.19s (gold_coverage dir included)"
     exit: 0
-    ts: "2026-10-17T09:50:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: Mouth engine-adapter, no-path-doors, fixture freshness, copy-truth and walk-corpus tests; four engine-adapter tests read the highest SIGNED pack and are red until seq-31 is signed.
     cmd: "cd apps/mouth && npx vitest --run engine-adapter.test.ts no-path-doors.test.tsx no-path-doors-fixture-freshness.test.ts copy-truth.test.ts walk-corpus-determinism.test.ts"
     result: "653 passed, 4 failed (PR-15 retired-key orphans, I-M01 orphans, Slice A10 thresholds, SUPPORT-copy anchors - each reads rulepack-prod-NNN.signed.json)"
     exit: 1
-    ts: "2026-10-17T09:45:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: With a SIMULATED rulepack-prod-031.signed.json (the source wrapped in a payload envelope, no signature, deleted after the run) engine-adapter.test.ts is fully green, proving the four waiting tests pass on the seq-31 payload.
     cmd: "write {payload: seq31 source} as rulepack-prod-031.signed.json; npx vitest --run engine-adapter.test.ts; rm the file"
     result: "Tests 230 passed (230); the simulated file was removed (git status clean of it)"
     exit: 0
-    ts: "2026-10-17T09:48:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: apps/mouth typechecks.
     cmd: "cd apps/mouth && npx tsc --noEmit"
     result: "no output"
     exit: 0
-    ts: "2026-10-17T09:58:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: The signed-state observer's summary parser and constants tests.
     cmd: "python3 -m pytest tests/scripts/test_observe_visa_seq31_signed.py -p no:cacheprovider"
     result: "14 passed (observer floors now 39/0 for test_seq31_pack.py, 111/14 for the census)"
     exit: 0
-    ts: "2026-10-17T09:37:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: "Mutation: flipping el.e28a.investment back to investment.investment_capital_idr in the committed source (backup restored by cp) turns the pack gate red."
     cmd: "rewrite the 4th arg of el.e28a.investment to investment.investment_capital_idr and required_facts accordingly; pytest test_seq31_pack.py; cp the backup back"
     result: "8 failed, 23 passed, 4 skipped on the pre-rebase 31-test file; after restore 31 passed, 4 skipped (run before the corpus tests were added)"
     exit: 1
-    ts: "2026-10-17T09:28:00Z"
+    ts: "2026-10-17T01:25:49Z"
     seat: this session
   - claim: The owner signed seq-31 on M5; sign_pack self-verified. Pre-Prettier file sha256 prefix 827c7977a1039710, one post-sign Prettier pass, post-Prettier prefix 4c29ee47390124c9, file mode 0644.
     cmd: "sign_pack (owner, offline CLI, kid prod-2026-07-1); then npx prettier --write rulepack-prod-031.signed.json"
@@ -114,43 +114,43 @@ receipts:
     cmd: "verify_rule_pack(rulepack-prod-031.signed.json, StaticTrustStore.from_env()) and canonicalize_json(payload) == canonicalize_json(source)"
     result: "payload_sha256 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4; kid prod-2026-07-1; True"
     exit: 0
-    ts: "2026-10-17T04:20:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: With the signed bundle on disk the 4 TestSignedBundleTiesToSource tests run and pass (39 passed, 0 skipped).
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq31_pack.py -p no:cacheprovider  # probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource"
     result: "39 passed in 19.11s"
     exit: 0
-    ts: "2026-10-17T04:22:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: Signed-state census (14 candidate-mode tests skip) and the real observer run.
     cmd: "python3 scripts/ci/observe_visa_seq31_signed.py"
     result: "highest signed sequence=31; test_seq31_pack.py 39 passed; census 111 passed, 14 skipped in 335.25s; test_review_hold_inventory.py 7 passed; inventory reads seq-31 and all three consumers green"
     exit: 0
-    ts: "2026-10-17T04:40:00Z"
+    ts: "2026-10-17T04:27:57Z"
     seat: this session
   - claim: The 4 previously red mouth tests are green with the signed bundle; fixture freshness and no-path-doors pass after the header-only bump (file, sequence 31, version 2026.10.17, as_of = signed_at); tsc clean.
     cmd: "cd apps/mouth && npx vitest --run engine-adapter.test.ts no-path-doors.test.tsx no-path-doors-fixture-freshness.test.ts copy-truth.test.ts walk-corpus-determinism.test.ts; npx tsc --noEmit"
     result: "Test Files 5 passed (5); Tests 657 passed (657); tsc no output"
     exit: 0
-    ts: "2026-10-17T04:45:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
   - claim: Seq-30 gate, compiler, compiled-pack, rollout, negative personas, fact registry; gold harness and coverage, seq-28 and seq-29 gates; observer constants tests.
     cmd: "pytest test_seq30_pack.py test_rulepack_compiler.py test_compiler_build_compiled_pack.py test_sponsor_type_rollout.py test_gold_coverage_negative_personas.py test_fact_registry.py; pytest gold_harness gold_coverage test_gold_coverage_floor.py ... test_seq28_pack.py test_seq29_pack.py; pytest tests/scripts/test_observe_visa_seq31_signed.py"
     result: "316 passed; 539 passed; 14 passed"
     exit: 0
-    ts: "2026-10-17T04:50:00Z"
+    ts: "time not recorded (run before the commit that records it)"
     seat: this session
 council_run: journal.jsonl
 dissent:
-  - seat: codex-gpt-5.6-sol (council on 5221456ba0, FIX-FIRST; the journal line is the orchestrator's, not written here)
+  - seat: codex-gpt-6.1-sol (round 1 on 5221456ba0, FIX-FIRST; account-default model gpt-6.1-sol)
     objection: "HIGH - rulepack-prod-031.source.json created_at 2026-10-17T12:00:00Z was in the future; the signer's chronology check rejects it."
     status: CONFIRMED
     note: "Cured: fold_pack_seq31.py stamps a fixed past instant 2026-10-17T03:30:00Z (the seq-29/seq-30 fixed-constant convention); new payload sha256 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4; TestPackIntegrity pins created_at <= now."
-  - seat: codex-gpt-5.6-sol (same council pass)
+  - seat: codex-gpt-6.1-sol (same council pass)
     objection: "HIGH - the reworded E28A_INVESTMENT_ELIGIBLE sentence would tell a seq-30-evaluated applicant (who may own IDR 1) that they personally own IDR 10 bn+; replay and rollback keep emitting the old code."
     status: CONFIRMED
     note: "Cured by renaming: el.e28a.investment now emits the new E28A_OWN_SHAREHOLDING_ELIGIBLE; E28A_INVESTMENT_ELIGIBLE regains its original copy and is retired-replayable from seq-31 (RETIRED_FROM_SEQUENCE); anchors re-keyed to the new code."
-  - seat: codex-gpt-5.6-sol (same council pass)
+  - seat: codex-gpt-6.1-sol (same council pass)
     objection: "LOW - brief.yml acceptance said two walks lose E28A; implementation, tests and replay show one."
     status: CONFIRMED
     note: "Cured: acceptance now says exactly one walk."
@@ -162,6 +162,10 @@ dissent:
     objection: "LOW - stale census comment said two walks move; exclusion copy omits the page's work-visa redirect; copy-before-pack window."
     status: CONFIRMED
     note: "Census comment fixed (one walk); the redirect omission is pre-existing advisory copy and the window is bounded by the activation ordering (mouth copy live before activation)."
+  - seat: codex-gpt-5.6-sol (titolare, round 2b on 7522492b44, SIGN)
+    objection: "LOW - pack.yml:59 still said two walks lose E28A; LOW - runbook:421 overstates the unknown-SUPPORT-code risk (the client falls back safely)."
+    status: CONFIRMED
+    note: "pack.yml walk text fixed in this correction commit; runbook wording left as a follow-up (see D-gate-and-follow-ups). Quorum on payload 7a5d80c6...: kimi-code/k3 round 2 SIGN plus codex-gpt-5.6-sol round 2b SIGN."
 decisions:
   - id: D-retire-and-insert
     decision: >-
@@ -207,5 +211,13 @@ decisions:
       replayable from seq-31; the seq-31 rule emits the new E28A_OWN_SHAREHOLDING_ELIGIBLE with own-shares copy built from
       E28A_OWN_SHAREHOLDING_THRESHOLD_IDR and E28A_PAID_UP_CAPITAL_THRESHOLD_IDR, anchored to the backing rule. Ordering:
       the mouth copy is safe to ship before activation; activation must wait until the mouth deploy carrying the new code is live.
+  - id: D-gate-and-follow-ups
+    decision: >-
+      Fresh Opus 5.5 gate on 7522492b44 returned PASS with two conditions: (a) after rebasing onto origin/main the delta must
+      equal the 18-file 547873bfa5..7522492b44 delta (verified: the pre- and post-rebase diffs are byte-identical, cmp clean,
+      rebased HEAD 99dc8bbb17); (b) the correction commit touches only this evidence directory. LOW follow-ups NOT done in this
+      PR: runbook:421 wording overstates the unknown-code risk; observe_visa_seq31_signed.py dropped test_e30_family_pricing.py
+      (could be re-added); the E28A_OWN_SHAREHOLDING_BELOW_MIN copy omits the page's work-visa redirect sentence; flow.ts still asks
+      investment_capital_idr, which no seq-31 rule reads (post-activation tidy-up).
 spend:
   wall_clock_hours: 3
