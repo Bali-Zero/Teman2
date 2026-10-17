@@ -520,7 +520,9 @@ def cmd_auto(seat_map_path: Path, *, do_print: bool, do_activate: bool,
     try:
         seat_map = load_seat_map(seat_map_path)
         now = _now()
-        candidates = collect_candidates(seat_map, now, set(exclude))
+        # A retired seat (FLEET_TOPOLOGY.json status) is never an auto pick.
+        candidates = collect_candidates(
+            seat_map, now, set(exclude) | retired_seats(_default_topology_path()))
         if not candidates:
             emit_err("[cswap auto] no eligible seats available (all excluded, missing, "
                      "or orphan/legacy)")

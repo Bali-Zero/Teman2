@@ -1,12 +1,13 @@
 {
   "_doc": "Local profile dir -> seat mapping, per FLEET_TOPOLOGY.json accounts + research/operations/2026-08-10-fleet-order-spec.md §3.1. A machine reads its own by_machine block (key = short hostname, case-insensitive); a machine WITHOUT a block reads the top-level map, which is an unmeasured fallback and never another machine's truth.",
+  "_retired": "~/.claude-acct3 and ~/.claude-acct4 carry the BARE ids A3/A4 (closed 2026-10-17) so cswap's exact-id retired filter (FLEET_TOPOLOGY.json status) matches them; cswap auto and exec never pick them.",
   "_status": "mapping only — this file is tracked in the PUBLIC Bali-Zero/Teman2 repo and carries NO identities. Run `cswap fingerprint` to populate ~/.config/cswap/fingerprints.json (local, 0600, never committed) with real auth-status results.",
   "claude_profiles": {
     "~/.claude": "AZ",
     "~/.claude-kaiser": "A2",
     "~/.claude-acct2": "A1",
-    "~/.claude-acct3": "A3 (retired 2026-10-17: account closed)",
-    "~/.claude-acct4": "A4 (retired 2026-10-17: account closed)",
+    "~/.claude-acct3": "A3",
+    "~/.claude-acct4": "A4",
     "~/.claude-zero-team": "AZ-legacy-verify"
   },
   "codex_homes": {
