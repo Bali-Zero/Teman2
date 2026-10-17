@@ -2,8 +2,9 @@ gear: 2
 brief_ref: evidence/brief.yml
 ruling: >-
   Zero, 2026-10-15 (handoff row SEQ29-A1, Pro conductor inbox) - the E28A 10 bn test is re-keyed to a NEW fact,
-  the applicant's OWN shareholding value in the sponsoring company (gte 10_000_000_000), per Permenkumham
-  22/2023 jo 11/2024 Pasal 38(2)(a); the 2.5 bn paid-up bound stays as the PT PMA company prerequisite. Step A
+  the applicant's OWN shareholding value in the sponsoring company (gte 10_000_000_000), per the saved official
+  imigrasi E28A page (research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt line 98); the
+  handoff's pinpoint Permenkumham 22/2023 jo 11/2024 Pasal 38(2)(a) is TO VERIFY against source; the 2.5 bn paid-up bound stays as the PT PMA company prerequisite. Step A
   is the engine accepting the fact; the pack rule and the mouth question follow in later steps.
 mission: >-
   The Visa Oracle engine accepts the fact investment.own_shareholding_idr on /evaluate so the E28A test can be
@@ -146,8 +147,10 @@ decisions:
       fix (exclude unset rollout defaults from canonical_request) is a separate PR.
   - id: D-sentry-scrub
     decision: >-
-      The field is SENSITIVE and the mouth does not send a value in this step. Facts scrub coverage for the
-      value must land before the mouth step starts sending it; carried to that step.
+      The field is SENSITIVE and /evaluate is public, so the Sentry facts scrub lands in THIS step (red-team
+      HIGH): own_shareholding is in _PII_KEY_SUBSTRINGS with a nested-facts PII_SAMPLES case. Not covered (already
+      on main, same as work.annual_foreign_income_usd): a request body Sentry attaches as a raw JSON string rather
+      than a parsed dict.
 dissent:
   - seat: "codex (cross-family red team) - FIX-FIRST, findings 1-4 as relayed by the coordinator"
     objection: "HIGH: Sentry scrub lacks the new SENSITIVE key in step A."
