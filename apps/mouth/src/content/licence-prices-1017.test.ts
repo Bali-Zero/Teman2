@@ -4,7 +4,9 @@
  *   - alcohol licence (NPBBKC): IDR 4M (Golongan A only), 10M (B + C only),
  *     12M (A + B + C); the old A+B+C figure was 15M;
  *   - SLHS, halal certification and PIRT: no Bali Zero price, "on request";
- *   - standalone MERP: not a priced item (KITAP + MERP bundles are, and stay).
+ *   - standalone MERP: not a priced item (KITAP + MERP bundles are, and stay);
+ *   - the re-entry permit: Bali Zero quotes it on request only, so a cost list
+ *     gives it no amount (the state's own fee, labelled as such, stays a fact).
  *
  * Line-based on purpose: each rule reads one article line, the way a client
  * reads it, so a stale figure in any locale names its own file:line.
@@ -226,6 +228,59 @@ export function exitPermitViolation(line: string): boolean {
   return false;
 }
 
+/**
+ * The re-entry permit in a Bali Zero cost list is quoted ON REQUEST, never with
+ * an amount (owner ruling 2026-10-17). A violation is a re-entry permit label
+ * with an IDR/Rp amount, in one of three shapes:
+ *  1. a list line: label, up to 40 characters ("renewal", "(if traveling)"),
+ *     a colon and an amount: "- **Re-entry permit:** IDR 500,000-1,000,000",
+ *     "- Re-entry permit renewal (if traveling): IDR 500,000";
+ *  2. a table row whose first cell is the label and a later cell is an amount;
+ *  3. a "Cost:" sub-bullet that sits under a numbered re-entry permit step
+ *     ("2. **Re-entry permit (if traveling)**" ... "- Cost: ~IDR 500,000").
+ * Innocent: "on request" lines, a government / PNBP / immigration fee, and the
+ * MERP / ERP acronym lines, which the MERP rules above already own.
+ */
+const REENTRY_LABEL =
+  /(?:re-?entry permits?|permess[oi] di rientro|permis de r[ée]?entr[ée]e|izin masuk kembali|izin keluar-masuk|разрешени[а-яё]* на повторный въезд)/i;
+const COST_LABEL =
+  /^\s*[-*]\s*\**\s*(?:Cost|Costo|Coût|Biaya|Стоимость)\**\s*:/i;
+const NUMBERED_REENTRY = new RegExp(
+  `^\\s*\\d+\\.\\s*\\**\\s*${REENTRY_LABEL.source}`,
+  "i",
+);
+const REENTRY_CLAUSE = new RegExp(
+  `${REENTRY_LABEL.source}[^:|\\n]{0,40}\\s?:`,
+  "i",
+);
+// "IDR 500,000" / "Rp 500.000" / "500 000 IDR": one amount is enough here
+const hasMoney = (s: string) =>
+  /(?:\b(?:IDR|Rp)\s?~?\d|\d\s?(?:IDR|Rp)\b)/.test(s);
+const ON_REQUEST_ONLY =
+  /on request|atas permintaan|su richiesta|sur demande|по запросу/i;
+// A single-trip ERP / SERP has a stated standard fee ("Single Exit Re-Entry
+// Permit (ERP): IDR 800,000 per trip"); like the MERP rules above, this rule
+// leaves those lines to the article and only closes the on-request permit.
+const SINGLE_TRIP = /\bS?ERP\b|single|однократн|singol[oa]|unique|sekali/i;
+export function reentryViolation(line: string, prev = ""): boolean {
+  if (isFactAmount(line) || ON_REQUEST_ONLY.test(line)) return false;
+  if (SINGLE_TRIP.test(line)) return false;
+  if (line.trimStart().startsWith("|")) {
+    const cells = line.split("|").slice(1, -1);
+    return (
+      REENTRY_LABEL.test(cells[0] ?? "") &&
+      cells.slice(1).some((c) => hasMoney(c))
+    );
+  }
+  const m = REENTRY_CLAUSE.exec(line);
+  if (m) return hasMoney(line.slice(m.index + m[0].length));
+  return (
+    COST_LABEL.test(line) &&
+    hasMoney(line) &&
+    prev.split("\n").some((p) => NUMBERED_REENTRY.test(p))
+  );
+}
+
 const files = walk(ARTICLES);
 const lines = files.flatMap((f) =>
   fs
@@ -239,7 +294,13 @@ const lines = files.flatMap((f) =>
  * (an SLHS label keeps its price on the line after) and a scope name (a halal
  * article file, or the URL of the llms section the line sits in).
  */
-type Unit = { at: string; text: string; next: string; scope: string };
+type Unit = {
+  at: string;
+  text: string;
+  next: string;
+  prev: string; // the three previous non-empty lines, newline-joined
+  scope: string;
+};
 
 function unitsOf(
   fileLines: string[],
@@ -249,8 +310,22 @@ function unitsOf(
   const out: Unit[] = new Array(fileLines.length);
   let next = "";
   for (let i = fileLines.length - 1; i >= 0; i--) {
-    out[i] = { at: at(i), text: fileLines[i], next, scope: scopeOf(i) };
+    out[i] = {
+      at: at(i),
+      text: fileLines[i],
+      next,
+      prev: "",
+      scope: scopeOf(i),
+    };
     if (fileLines[i].trim()) next = fileLines[i];
+  }
+  const recent: string[] = [];
+  for (let i = 0; i < fileLines.length; i++) {
+    out[i].prev = recent.join("\n");
+    if (fileLines[i].trim()) {
+      recent.push(fileLines[i]);
+      if (recent.length > 3) recent.shift();
+    }
   }
   return out;
 }
@@ -392,6 +467,35 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
     expect(exitPermitViolation('        Cost: "IDR 1-1.5M",')).toBe(true);
     expect(halalViolation("IDR 5-8M")).toBe(true);
     expect(halalViolation("5–8 juta")).toBe(true);
+    // the re-entry permit lines removed on 2026-10-17, verbatim, in each locale form
+    for (const line of [
+      "- **Re-entry permit:** IDR 500,000-1,000,000 (if needed)",
+      "- **Re-entry permit:** IDR 500,000-1,000,000 (if child travels)",
+      "- **Permesso di rientro:** IDR 500.000-1.000.000 (se necessario)",
+      "- **Permis de rentrée :** IDR 500,000-1,000,000 (si nécessaire)",
+      "- **Permis de rentrée:** IDR 500,000-1,000,000 (si l'enfant voyage)",
+      "- **Izin keluar-masuk:** IDR 500.000-1.000.000 (jika diperlukan)",
+      "- **Разрешение на повторный въезд:** 500 000-1 000 000 IDR (если требуется)",
+      "- **Разрешение на повторный въезд:** IDR 500,000-1,000,000 (если ребенок путешествует)",
+      "- Re-entry permit renewal (if traveling): IDR 500,000",
+      "- Renouvellement du permis de réentrée (si voyage) : IDR 500 000",
+      "- Продление разрешения на повторный въезд (при путешествиях): IDR 500,000",
+      "- Re-entry permit: IDR 1,000,000",
+      "| Re-entry permit | IDR 500,000 | 1 week |",
+    ])
+      expect(reentryViolation(line)).toBe(true);
+    // the "Cost:" sub-bullet under a numbered re-entry permit step (e25b)
+    const step =
+      "2. **Re-entry permit (if traveling)**\n   - **Multiple re-entry:** Valid for duration of KITAS\n   - Apply online via **ALKI** app";
+    expect(reentryViolation("   - Cost: ~IDR 500,000-1,000,000", step)).toBe(
+      true,
+    );
+    expect(
+      reentryViolation(
+        "   - Coût : ~IDR 500,000-1,000,000",
+        "2. **Permis de rentrée (si vous voyagez)**\n   - **Multiples entrées :** Valide",
+      ),
+    ).toBe(true);
   });
 
   it("the ruled prices, on-request wording and KITAP bundles pass", () => {
@@ -506,6 +610,31 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
         "Single ERP costs IDR 800,000 per trip. The MERP price is quoted on request.",
       ),
     ).toBe(false);
+    // re-entry permit: on request, government fee rows, MERP description lines
+    for (const line of [
+      "- Re-entry permit: On request",
+      "- **Total: ~IDR 54,200,000 (USD 3,388), plus re-entry permit on request**",
+      "- Permesso di rientro: Su richiesta",
+      "- Разрешение на повторный въезд: По запросу",
+      "- Government re-entry permit fee: IDR 500,000",
+      "- Biaya PNBP pemerintah izin masuk kembali: Rp 500.000",
+      "| MERP | IDR 800K-1M | On request | On request |",
+      "- Multiple re-entry permit (MERP)",
+      "- **Multiple re-entry permit (MERP):** Allows unlimited international travel",
+      "| STM/MERP (re-entry permit) | On request |",
+      "- **Single Exit Re-Entry Permit (ERP):** IDR 800,000 per trip",
+      "- ERP (Single Re-entry): IDR 800,000 standard, IDR 1,300,000 urgent",
+      "## MERP (Multiple Exit Re-Entry Permit)",
+      "- ✅ **Post-approval support:** SKTT, re-entry permits, extensions",
+    ])
+      expect(reentryViolation(line)).toBe(false);
+    // a Cost line that is not under a re-entry permit step is not this rule's business
+    expect(
+      reentryViolation(
+        "   - Cost: ~IDR 500,000-1,000,000",
+        "3. **Annual reporting**\n   - Report to immigration",
+      ),
+    ).toBe(false);
   });
 });
 
@@ -544,6 +673,13 @@ describe("licence prices follow the 2026-10-17 owner ruling", () => {
   it("no standalone MERP price carries an amount", () => {
     const hits = everyUnit
       .filter((u) => merpViolation(u.text) && !governmentMerpFact(u.text))
+      .map((u) => u.at);
+    expect(hits).toEqual([]);
+  });
+
+  it("no cost list gives the re-entry permit an amount (on request only)", () => {
+    const hits = everyUnit
+      .filter((u) => reentryViolation(u.text, u.prev))
       .map((u) => u.at);
     expect(hits).toEqual([]);
   });
