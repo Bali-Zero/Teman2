@@ -1,0 +1,83 @@
+brief_ref: evidence/brief.yml
+plan_ref:
+  "team-lead dispatch (2026-10-12): migration 325 re-emits the live client_expiry_alerts_view with
+  isfinite guards and adds NOT VALID finite CHECKs on the four expiry columns; data fix for
+  client_id 12336 stays with the operator. Lane backend-rag."
+lanes:
+  - lane: migration-325-expiry-view-isfinite
+    role: build
+    seat:
+      "claude-opus-5-5 (implementer: read the live viewdef/columns/dependents read-only, wrote the
+      migration and the real-Postgres tests, ran them on PG 17 and PG 15 plus three mutants)"
+
+pii_scan: clean
+pii_scan_note:
+  "The bad row is named only as client_id 12336. PROD reads returned a viewdef, column names/types,
+  role names and counts — no client field values. Test fixtures use placeholder names."
+
+diff:
+  net_lines: |
+    One migrations_v2 SQL file, one test module, this brief and pack. Totals are not declared: the
+    pack is part of the diff it would count.
+  behaviour_change: >-
+    client_expiry_alerts_view excludes rows whose expiry date is infinite and computes
+    days_until_expiry only for finite dates; the four expiry columns (clients.passport_expiry,
+    client_family_members.passport_expiry, client_family_members.visa_expiry,
+    documents.expiry_date) reject new infinite values via NOT VALID CHECKs. Column list unchanged.
+
+receipts:
+  - claim: "PROD view is broken and the only infinite value is one clients.passport_expiry (read-only)."
+    cmd: 'bash scripts/pg.sh -tA -c "SELECT count(*) FROM <table> WHERE <col> IS NOT NULL AND NOT isfinite(<col>)" x4'
+    result: "clients.passport_expiry 1; client_family_members.passport_expiry 0; .visa_expiry 0; documents.expiry_date 0; ledger max 323; PG 17.9; view and tables owned by backend_rag_v2; dependent view client_profile_view"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+  - claim: "The migration's view text minus both guards equals the live pg_get_viewdef."
+    cmd: "_pre_325_view() vs pg_get_viewdef('client_expiry_alerts_view'::regclass, true), whitespace-normalised"
+    result: "identical (only the CASE indentation differs before normalisation)"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+  - claim: "GREEN on local PostgreSQL 17.8 and on postgres:15 (15.19, the CI version): test_view_keeps_the_live_column_list_in_order, test_forward_adds_four_not_valid_finite_checks, test_infinite_row_breaks_the_old_view_and_not_the_new_one, test_new_infinite_dates_are_rejected_and_null_still_admitted (x4)."
+    cmd: "TEST_DATABASE_URL=<local|container> PYTHONPATH=. pytest backend/tests/db/test_migration_325_expiry_view_isfinite_guard.py"
+    result: "7 passed (both servers)"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+  - claim: "CI-shape DB (clients + documents only, no client_family_members): forward applies twice cleanly, skips the view, adds the two applicable CHECKs NOT VALID."
+    cmd: "psql -v ON_ERROR_STOP=1 -f <forward section> (x2) on postgres:15; then to_regclass + pg_constraint"
+    result: "run1 rc=0, run2 rc=0; view absent; clients_passport_expiry_finite f, documents_expiry_date_finite f"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+  - claim: "Mutants: WHERE guard removed -> RED; NOT VALID dropped -> RED (ADD aborts on the existing infinite row); CASE guard removed -> stays GREEN."
+    cmd: "cp-backed edits of the SQL, pytest -k infinite_row, restored and cmp-verified"
+    result: "1 failed / 1 failed / 1 passed"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+  - claim: "Squawk (CI flag set, squawk 2.60.0) and ruff on the changed files."
+    cmd: "squawk --pg-version=15.0 <CI excludes> 325_expiry_view_isfinite_guard.sql; ruff check; ruff format --check"
+    result: "Found 0 issues; All checks passed; formatted"
+    exit: 0
+    ts: "2026-10-12"
+    seat: claude-opus-5-5
+
+dissent:
+  - seat: claude-opus-5-5
+    objection: "The CASE guard on days_until_expiry has no red test: on the PG 17/15 plans the WHERE isfinite qual already runs before a pushed-down days_until_expiry predicate."
+    status: PLAUSIBLE
+    resolution: "Kept as defence in depth: PostgreSQL documents that AND-qual evaluation order is not defined and that CASE is the way to force it; qual order is cost-based, so a plan or a pushed-down consumer filter can change it. It costs no column-shape change (still integer)."
+
+prove_live:
+  - "After merge, the release_command applies 325; confirm `_schema_versions` carries 325_expiry_view_isfinite_guard."
+  - 'bash scripts/pg.sh -tA -c "SELECT count(*) FROM client_expiry_alerts_view" returns a number, not `cannot subtract infinite dates`.'
+  - "pg_constraint shows the four *_finite constraints with convalidated = f."
+  - "Next S7 yield run (scripts/s7_yield_draft_local.py) ends SUMMARY OK instead of rc=3."
+
+operator_followups:
+  - "Fix the infinite clients.passport_expiry on client_id 12336 (set the real date or NULL), then ALTER TABLE clients VALIDATE CONSTRAINT clients_passport_expiry_finite; the other three can be validated at once (0 infinite rows today)."
+
+spend:
+  adversarial_rounds: 0
+council_run: council-journal.jsonl
