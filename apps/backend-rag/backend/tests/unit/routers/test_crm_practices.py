@@ -2656,7 +2656,7 @@ class TestUploadClientDocument:
                 },
             ]
         )
-        mock_db_conn.fetchval = AsyncMock(side_effect=[501])
+        mock_db_conn.fetchval = AsyncMock(side_effect=[None, 501])
         mock_db_conn.execute = AsyncMock(return_value="UPDATE 1")
         drive_service = AsyncMock()
         drive_service.get_folder_structure.return_value = {

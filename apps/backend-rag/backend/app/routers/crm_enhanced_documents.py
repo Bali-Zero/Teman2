@@ -654,6 +654,23 @@ class DocumentUploadBase64(BaseModel):
     expected_phone_core: str | None = None
 
 
+async def _active_duplicate_document_id(conn: Any, client_id: int, content_hash: str) -> int | None:
+    """Id of a document this client already has with the same file content.
+
+    "Active" is the PR 7967 predicate: a document deleted by the team
+    (status) or by the client (deleted_at) does not count, so it may be
+    uploaded again. Application-level check; index 074 stays non-unique.
+    """
+    return await conn.fetchval(
+        "SELECT d.id FROM documents d"
+        " WHERE d.client_id = $1 AND d.content_hash = $2"
+        f" AND {admin_document_not_deleted_clause('d')}"
+        " ORDER BY d.id LIMIT 1",
+        client_id,
+        content_hash,
+    )
+
+
 @router.post("/clients/{client_id}/documents/upload")
 async def upload_document_base64(
     client_id: int,
@@ -778,6 +795,18 @@ async def upload_document_base64(
                     raise HTTPException(
                         status_code=400, detail="Company is not linked to this client"
                     )
+
+            # PR 2a: the same file (content_hash) already on this client is
+            # refused BEFORE any Drive work, so a refusal leaves no orphan.
+            existing_doc_id = await _active_duplicate_document_id(conn, client_id, content_hash)
+            if existing_doc_id is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Duplicate file: this client already has the same document "
+                        f"(document id {existing_doc_id}). Nothing was uploaded."
+                    ),
+                )
 
             drive_service = ServiceAccountDriveService()
 
