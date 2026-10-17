@@ -1,0 +1,89 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17: "Re-entry permit su e25b/e31e: togli. Su e31b c'è anche 'renewal IDR 500,000':
+  togli." Bali Zero's re-entry permit is quoted on request; the totals already say "plus
+  re-entry permit on request".
+mission: >-
+  A reader of the E25B, E31E or E31B KITAS guide, in any language, or an LLM reading the llms
+  exports, sees no Bali Zero re-entry permit price, only "on request".
+lanes:
+  - lane: article-reentry-remove
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; articles, stamps, llms sections, guard, guard cure)
+  - lane: article-reentry-remove
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; scoped the lines, re-ran the content and i18n suites)
+  - lane: article-reentry-remove
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, gear-2 adversarial spalla on aaf4d00e8c, review only)
+pii_scan: clean
+bites: >-
+  Consumers: readers of balizero.com and LLM crawlers of /llms-full.txt. After the merge and the
+  Vercel production deploy, https://balizero.com/visas/e25b-director-kitas-guide no longer shows
+  "IDR 500,000-1,000,000" for the re-entry permit and still shows "plus re-entry permit on
+  request"; https://balizero.com/llms-full.txt contains neither "Re-entry permit renewal (if
+  traveling): IDR 500,000" nor "Re-entry permit:** IDR 500,000-1,000,000". Not yet observed.
+receipts:
+  - claim: The re-entry guard and the E33 claim ratchet pass on HEAD b3adb1a424 (the ratchet baseline needed no change).
+    cmd: cd apps/mouth && npx vitest run src/content/licence-prices-1017.test.ts src/i18n/secondhome-article-claims.test.ts
+    result: "21 passed"
+    exit: 0
+    ts: "2026-10-17T13:36:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: The content and i18n suites pass on HEAD b3adb1a424.
+    cmd: cd apps/mouth && npx vitest run src/content src/i18n
+    result: "Test Files 18 passed (18); Tests 975 passed (975)"
+    exit: 0
+    ts: "2026-10-17T13:40:00Z"
+    seat: this session
+  - claim: Mutants turn the guard red (removed e31e EN line restored in the article; e31b renewal line restored in llms-full.txt), restored with cp and verified with cmp.
+    cmd: cp backup, scripted edit, vitest, cp back + cmp
+    result: "red at e31e-child-dependent-kitas-guide.mdx:108 and llms-full.txt:192896; restored"
+    exit: 0
+    ts: "2026-10-17T13:36:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-e25b-step-cost
+    text: >-
+      The E25B step sub-bullet "Cost: ~IDR 500,000-1,000,000" under "Re-entry permit (if
+      traveling)" is the same Bali Zero price and was removed in every locale with the cost-list
+      line.
+  - id: D-stamps
+    text: >-
+      Re-stamped with the translator's source_digest: E25B id/it/fr/ru, E31E fr/ru, E31B fr/ru
+      (edited) and E31B id/it (fresh before, never carried the removed line). E31E id/it stay
+      abridged and unstamped.
+  - id: D-llms-id-e25b
+    text: >-
+      The committed llms-id E25B section held an older Bahasa translation with a re-entry amount in
+      its totals; it was replaced whole from a fresh regeneration (byte-identical), which is why
+      llms-id shows about 550 changed lines for one section.
+  - id: D-erp-out-of-scope
+    text: >-
+      Single-trip ERP fee lines in other articles (multiple-entry-vs-single-entry, emergency-visa,
+      exit-reentry) state the government fact and are not Bali Zero prices; untouched and exempt.
+  - id: D-pii-override
+    text: >-
+      The first commit used PII_GATE_ENFORCEMENT=false after confirming the only hit is the
+      published NPWP format example 01.234.567.8-901.000, already on main.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Spalla on aaf4d00e8c, VERDICT CONCERNS: reentryViolation has three false negatives (table row
+      without the closing pipe, lowercase idr, any line with the unrelated word single) and one
+      false positive (Immigration re-entry permit fee).
+    status: CONFIRMED
+    resolution: >-
+      Resolved by b3adb1a424: case-insensitive amounts, open table rows, the ERP exemption scoped
+      to the S?ERP acronym, government fee labels exempt; the four cases are fixtures.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      DISSENT: the global single exemption could hide an explicit Bali Zero price.
+    status: CONFIRMED
+    resolution: >-
+      Same commit: the global exemption is gone; "- Re-entry permit (single use): IDR 500,000" is a
+      guilt fixture.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
