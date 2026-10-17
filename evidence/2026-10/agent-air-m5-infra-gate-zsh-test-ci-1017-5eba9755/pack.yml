@@ -11,6 +11,12 @@ lanes:
   - lane: gate-zsh-test-ci
     role: review
     seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: gate-zsh-test-ci
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, read-only, VERDICT PASS)
+  - lane: gate-zsh-test-ci
+    role: review
+    seat: agy-gemini-4-argon (scripts/seat_build.sh, read-only, VERDICT PASS)
 pii_scan: clean
 bites: >-
   Consumer: the guard-conformance workflow on this PR (the diff touches the workflow and the test,
@@ -46,7 +52,30 @@ decisions:
     text: >-
       CI sets REQUIRE_ZSH=1 so a runner without zsh fails the step instead of skipping it; local
       runs keep skipping when zsh is absent.
-dissent: []
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  agy-gemini-4-argon (reserve) was dispatched beside codex-gpt-5.6-sol (titolare) as the second
+  cross-family read-only reviewer. No titolare unavailability was observed or claimed;
+  kimi-code/k3 and tp1-qwen3.8-max were simply not dispatched for this small CI-wiring diff.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      A transient apt-get update/install failure can red an otherwise correct PR or consume the
+      job's timeout budget.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted residual risk. The same job already depends on apt for tmux, the step fails closed
+      via command -v zsh, and a transient mirror failure is a known-cause rerun, not a silent green.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      A second unconditional sudo apt-get update and install adds apt-mirror failure surface
+      (command -v zsh would skip apt when zsh exists); and the test's _git() fixture helper lacks
+      GIT_CONFIG_GLOBAL=/dev/null, so a local env with commit.gpgsign=true could fail fixture setup.
+    status: PLAUSIBLE
+    resolution: >-
+      The apt half is the same accepted residual risk as above. The _git() isolation is a
+      local-only false-red risk, since CI runners carry no signing config; noted as a follow-up and
+      deliberately not changed in this PR after the council had reviewed it.
 spend:
   wall_clock_hours: 0.2
-  adversarial_rounds: 0
+  adversarial_rounds: 1
