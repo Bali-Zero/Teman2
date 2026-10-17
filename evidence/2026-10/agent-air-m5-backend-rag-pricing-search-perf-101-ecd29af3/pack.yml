@@ -1,0 +1,133 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Issue 8665 item 1, filed as condition 2 of PR 8664's gate: the word/phrase matcher of PR 8655
+  (Zero 2026-10-17 alcohol licence ruling: only the three alcohol licence prices exist and a
+  question not about alcohol must not price one) made search_service about 17x slower than the
+  old substring code, and PR 8664's noise stemming doubled that; it runs synchronously inside the
+  async WhatsApp build_context_package. This PR keeps every result and removes the slowdown.
+mission: >-
+  A client's long WhatsApp message gets the same price rows as before, in a few milliseconds
+  instead of tens to hundreds, so the price lookup no longer blocks the bot's event loop.
+lanes:
+  - lane: pricing-search-perf
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented the task written by the orchestrator, then the council cure)
+  - lane: pricing-search-perf
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; read the refactor clause by clause against _token_matches_words and _token_matches_keyword; checked every cache bound)
+  - lane: pricing-search-perf
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, round 1 on 24a17bf494, review only by instruction; sandbox workspace-write, git status clean after, diff_stat empty)
+  - lane: pricing-search-perf
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, round 1 on 24a17bf494, review only)
+  - lane: pricing-search-perf-ground-truth
+    role: ground_truth
+    seat: >-
+      origin/main's own search_service (e866835d98) as the behavioural oracle, under Zero's owner
+      ruling of 2026-10-17 on the alcohol licence that PR 8655 and PR 8664 implement.
+    nb: owner ruling 2026-10-17 (the pack of PR 8655 quotes it)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: PricingService.search_service on nuzantara-rag production (GET /api/pricing/search,
+  Zantara's PricingTool, the WhatsApp bot's price context in wa_package_builder). Observation after
+  the deploy (a merge to apps/backend-rag is the deploy; /health build_sha must contain this PR):
+  the authenticated probe queries of PR 8655 and PR 8664 return the same rows as before the deploy
+  (izin usaha minuman ringan 0 Alcohol License rows, liquor license 3, Which licenses do I need
+  for a restaurant 0), and the response time of a 1,500-character /api/pricing/search request drops
+  versus a pre-deploy measurement of the same request. Not yet observed: nothing is merged or deployed.
+receipts:
+  - claim: The pricing suite (corpus both directions, matcher unit cases, the call-count, reload, vocabulary-equivalence, noise-predicate and newline-guard tests) passes on HEAD a9e50317a2.
+    cmd: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    result: "383 passed in 2.61s"
+    exit: 0
+    ts: "2026-10-17T11:54:36Z"
+    seat: this session
+  - claim: The catalogue decision pins pass.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py
+    result: "57 passed in 0.11s"
+    exit: 0
+    ts: "2026-10-17T11:54:36Z"
+    seat: this session
+  - claim: Lint and format are clean on the two changed python files.
+    cmd: ruff check and ruff format --check on pricing_service.py and test_search_token_matching_1017.py
+    result: "All checks passed!; 2 files already formatted"
+    exit: 0
+    ts: "2026-10-17T11:54:36Z"
+    seat: this session
+  - claim: search_service on HEAD returns the same full payload as origin/main e866835d98 for every compared query (corpus, gate and test-file examples, 200 synthetic WhatsApp-style messages of 5 to 4,000 characters, seed 20261017).
+    cmd: scratch harness loading origin/main's module via git show and HEAD's module, json.dumps order-sensitive payload equality (perf-equivalence-E.json in the session scratchpad)
+    result: "659 compared, 0 differences"
+    exit: 0
+    ts: "2026-10-17T11:52:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Median of 20 runs at 1-minute load about 7.5 on M5, origin/main vs HEAD vs the pre-8655 substring code.
+    cmd: timing harness in the session scratchpad (perf-old/)
+    result: "50 chars 4.14 / 0.52 / 0.22 ms; 400 chars 31.11 / 2.12 / 1.08 ms; 1,500 chars 84.36 / 4.01 / 3.75 ms; 4,000 chars 231.49 / 10.82 / 11.55 ms"
+    exit: 0
+    ts: "2026-10-17T11:52:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutants killed (per-query phrase credit recomputed per row 1 red; row cache key truncated 10 red; _NOISE_FORMS without the 4-character bound 1 red; each restored with cp and verified with cmp).
+    cmd: cp backup, scripted edit, pytest, cp back + cmp
+    result: "1 / 10 / 1 red; restored"
+    exit: 0
+    ts: "2026-10-17T11:52:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-prepare-once
+    text: >-
+      Everything about a query that does not depend on the row (deduped terms, noise-stripped
+      tokens, alias expansions, hyphen phrases, keyword credit) is computed once per search in
+      _PreparedQuery; a per-search _Vocabulary answers the word rule over the distinct row words.
+  - id: D-content-keyed-caches
+    text: >-
+      Row tokenisation and keyword phrases are cached by row CONTENT (lru_cache, 4,096 entries),
+      so a reloaded or edited catalogue row is never served stale and no invalidation hook is
+      needed; these keys come from the catalogue, never from client text.
+  - id: D-noise-frozenset
+    text: >-
+      _is_noise is a membership test in a precomputed frozenset of every noise form (noise words
+      plus noise words of 4+ characters with each light suffix): the same predicate as before,
+      with no cache over client tokens (codex round 1).
+  - id: D-no-wall-clock-test
+    text: >-
+      The speed shape is guarded by call counts (row tokeniser once per row, _is_noise bounded per
+      query token), not by a wall-clock assertion, which would be flaky on shared runners.
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol and kimi-code/k3, round 1 on 24a17bf494, dispatched
+  2026-10-17T11:44Z (logs seat-build-codex-20261017T114424Z-22856 and
+  seat-build-kimi-20261017T114429Z-23028 under /Users/balizero/nuzantara/.worktrees/); the
+  journal lines were written after the runs. The cure a9e50317a2 was not shown to the seats
+  again; it is covered by the predicate-equivalence test, the newline-guard test, the
+  659-query equivalence and the fresh gate.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1, VERDICT CONCERNS: _is_noise lru_cache(maxsize=8192) persistently caches
+      attacker-controlled, size-unbounded token strings (the public route has no max_length).
+    status: CONFIRMED
+    resolution: >-
+      Resolved by a9e50317a2: _is_noise is a frozenset membership test over the finite set of
+      noise forms; no cache holds client text. A test compares it with the reference definition.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1 DISSENT: the structural call-count test asserts no timing budget, so other latency
+      regressions could stay green.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted (D-no-wall-clock-test): a wall-clock assertion is flaky on shared CI runners; the
+      timing receipt is in this pack and the post-deploy probe measures the live latency.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 1, VERDICT PASS with DISSENT: _Vocabulary.matching's blob probe silently relies on
+      tokens never containing a newline.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by a9e50317a2: a token that is not a plain word falls back to the reference
+      _token_matches_words; a unit test covers newline, space, hyphen and asterisk tokens.
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 1

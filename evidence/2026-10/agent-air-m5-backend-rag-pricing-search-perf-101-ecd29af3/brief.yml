@@ -1,0 +1,31 @@
+task_id: pricing-search-perf-1017
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Issue 8665 item 1 (MEDIUM follow-up of the PR 8655 and PR 8664 gates): PricingService.search_service
+  prepares the query once per search (terms deduped, noise-stripped tokens, aliases, hyphen
+  phrases, keyword credit), tokenises each row once through bounded content-keyed caches, and
+  answers the word rule through a per-search vocabulary of distinct row words, instead of
+  re-deriving the query for every row. Results stay byte-identical to origin/main; no matching
+  rule, result shape, ordering, internal-row exclusion, empty-query rule or raw-query fallback
+  changes.
+acceptance:
+  - text: >-
+      search_service returns the same full payload as origin/main for every query of the corpus,
+      the gate examples and 200 synthetic WhatsApp-style messages (5 to 4,000 characters).
+    probe: scratch comparison of origin/main vs HEAD (perf-equivalence-E.json in the session scratchpad)
+  - text: >-
+      A 1,500-character message is answered in at most 15 ms median (was about 243 ms on the
+      same synthetic set at origin/main), and a call-count test proves the row tokeniser and
+      _is_noise do not scale with rows times tokens.
+    probe: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+assumptions:
+  - text: >-
+      The catalogue holds a few hundred rows, so content-keyed caches bounded at 4,096 rows and
+      8,192 noise tokens never evict during a search and cannot grow with client text.
+    status: verified
+    probe: lru_cache(maxsize=...) on _row_profile, _keyword_phrases and _is_noise in the diff
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
