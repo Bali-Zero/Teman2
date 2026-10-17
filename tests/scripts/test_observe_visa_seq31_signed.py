@@ -48,5 +48,5 @@ def test_ansi_colour_is_stripped_before_the_line_is_judged():
 def test_the_observer_is_pinned_to_seq31_and_runs_its_own_pack_gate_and_the_census():
     assert EXPECTED_SIGNED_SEQUENCE == 31
     modules = {module: (floor, skips) for module, floor, skips in TEST_MODULES}
-    assert modules["backend/tests/services/visa_engine/test_seq31_pack.py"] == (37, 0)
+    assert modules["backend/tests/services/visa_engine/test_seq31_pack.py"] == (39, 0)
     assert modules["backend/tests/services/visa_engine/test_interview_walk_census.py"] == (111, 14)

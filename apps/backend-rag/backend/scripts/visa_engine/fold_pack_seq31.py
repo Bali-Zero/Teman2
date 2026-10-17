@@ -16,7 +16,9 @@ total-investment figure.  So the IDR 10,000,000,000 test is re-keyed from the co
 (engine step A, interview step B):
 
 * ``el.e28a.investment`` -- ``investment.own_shareholding_idr gte 10_000_000_000`` replaces
-  ``investment.investment_capital_idr gte 10_000_000_000``; ``required_facts`` follows.  The
+  ``investment.investment_capital_idr gte 10_000_000_000``; ``required_facts`` follows, and the
+  SUPPORT reason code is renamed ``E28A_INVESTMENT_ELIGIBLE`` -> ``E28A_OWN_SHAREHOLDING_ELIGIBLE``
+  (the sentence it carries changes meaning, so a replayed old code keeps the old one).  The
   INVESTMENT purpose, the PT PMA commitment and the IDR 2.5bn paid-up bound stay.
 * ``hf.e28a.total-investment-below-min`` (``E28A_TOTAL_INVESTMENT_BELOW_MIN``) is RETIRED and
   ``hf.e28a.own-shareholding-below-min`` (``E28A_OWN_SHAREHOLDING_BELOW_MIN``) is inserted
@@ -67,7 +69,9 @@ SEQ30_PAYLOAD_SHA256 = (
 )
 SEQ31_SEQUENCE = 31
 FOLD_VERSION = "2026.10.17"
-FOLD_CREATED_AT = "2026-10-17T12:00:00Z"
+# A fixed instant in the past at fold time (the seq-29/seq-30 convention), so the signer's
+# chronology check (created_at <= signing time) holds whenever the owner signs.
+FOLD_CREATED_AT = "2026-10-17T03:30:00Z"
 FOLD_CREATED_BY = "agent.air-m5.backend-rag.vo-seq31-e28a-own-share-1017"
 NEW_RULE_VALID_FROM = "2026-10-17T00:00:00Z"
 
@@ -87,6 +91,8 @@ OLD_TOTAL_INVESTMENT_REASON_CODE = "E28A_TOTAL_INVESTMENT_BELOW_MIN"
 OWN_SHAREHOLDING_RULE_ID = "hf.e28a.own-shareholding-below-min"
 OWN_SHAREHOLDING_REASON_CODE = "E28A_OWN_SHAREHOLDING_BELOW_MIN"
 PAID_CAPITAL_RULE_ID = "hf.e28a.paid-capital-below-min"
+OLD_ELIGIBLE_REASON_CODE = "E28A_INVESTMENT_ELIGIBLE"
+OWN_SHAREHOLDING_ELIGIBLE_REASON_CODE = "E28A_OWN_SHAREHOLDING_ELIGIBLE"
 
 MODIFIED_RULE_IDS = frozenset({E28A_RULE_ID})
 INSERTED_RULE_IDS_IN_ORDER = (OWN_SHAREHOLDING_RULE_ID,)
@@ -128,7 +134,10 @@ def build_e28a_rule(rule: dict[str, Any]) -> dict[str, Any]:
         _fail(f"{E28A_RULE_ID!r} on_unknown is not NEEDS_INPUT")
 
     out = copy.deepcopy(rule)
+    if rule.get("effect", {}).get("reason_code") != OLD_ELIGIBLE_REASON_CODE:
+        _fail(f"{E28A_RULE_ID!r} reason_code is not {OLD_ELIGIBLE_REASON_CODE!r}")
     out["when"] = _e28a_when(OWN_SHAREHOLDING_FACT)
+    out["effect"]["reason_code"] = OWN_SHAREHOLDING_ELIGIBLE_REASON_CODE
     out["required_facts"] = _fact_paths(out["when"])
     return out
 

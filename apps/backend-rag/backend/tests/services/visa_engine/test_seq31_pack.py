@@ -142,6 +142,14 @@ class TestPackIntegrity:
         assert seq31["rollback_of_payload_sha256"] is None
         assert seq31["rule_pack_id"] == str(seq28_mod._rule_pack_id(31))
 
+    def test_created_at_is_a_past_instant_so_the_signer_chronology_check_holds(
+        self, seq31: dict[str, Any], anchor: dict[str, Any]
+    ) -> None:
+        created = datetime.fromisoformat(seq31["created_at"].replace("Z", "+00:00"))
+        assert created <= datetime.now(timezone.utc)
+        assert created > datetime.fromisoformat(anchor["created_at"].replace("Z", "+00:00"))
+        assert seq31["created_at"] == fold_mod.FOLD_CREATED_AT
+
     def test_only_expected_paths_move(
         self, restamped: dict[str, Any], seq31: dict[str, Any], anchor: dict[str, Any]
     ) -> None:
@@ -230,10 +238,18 @@ class TestExactRuleDiff:
         ]
         assert after["required_facts"] == seq28_mod._fact_paths(after["when"])
         assert after["on_unknown"] == before["on_unknown"] == "NEEDS_INPUT"
-        assert after["effect"] == before["effect"]
-        assert after["effect"]["reason_code"] == "E28A_INVESTMENT_ELIGIBLE"
-        for key in set(before) - {"when", "required_facts"}:
+        # The sentence the code carries changes meaning (company capital -> own shares), so the
+        # SUPPORT code is renamed; a replayed seq-20..30 decision keeps the old one.
+        assert before["effect"]["reason_code"] == "E28A_INVESTMENT_ELIGIBLE"
+        assert after["effect"] == {
+            **before["effect"],
+            "reason_code": "E28A_OWN_SHAREHOLDING_ELIGIBLE",
+        }
+        for key in set(before) - {"when", "required_facts", "effect"}:
             assert after[key] == before[key], key
+
+    def test_no_rule_emits_the_retired_support_code_any_more(self, seq31: dict[str, Any]) -> None:
+        assert "E28A_INVESTMENT_ELIGIBLE" not in json.dumps(seq31["rules"])
 
     def test_new_hard_filter_shape_mirrors_the_retired_one_with_the_new_fact(
         self, anchor: dict[str, Any], seq31: dict[str, Any]
