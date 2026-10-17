@@ -1,0 +1,125 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17, answering the open questions of issue 8665: a bare "license" is generic ("ma è
+  generico no?") and must not return the alcohol licence prices; add the keywords bar, birra,
+  vino and minol to the three Alcohol License rows ("aggiungi"). Standing ruling: only the three
+  alcohol licence prices exist (A 4M, B+C 10M, A+B+C 12M) and a question not about alcohol must not
+  price one.
+mission: >-
+  A client who sends only "license", "selling" or "license to" gets no alcohol licence price; a
+  client who asks about opening a bar, a beer or wine licence, or izin minol gets the three rows.
+lanes:
+  - lane: pricing-generic-licence
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented the task written by the orchestrator, then the council cure)
+  - lane: pricing-generic-licence
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; reviewed the fallback change, the empty fallback result and the catalogue diff)
+  - lane: pricing-generic-licence
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, round 1 on ea43de2a29, review only by instruction; sandbox workspace-write, git status clean after, diff_stat empty)
+  - lane: pricing-generic-licence
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh; round 1 dispatch failed on an OAuth network error, round 2 on a071b9c2f1)
+  - lane: pricing-generic-licence-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner rulings of 2026-10-17 (the ruling field above) and the catalogue rows of PR 8629
+      (three Alcohol License rows, golongan A, B + C, A + B + C).
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: PricingService.search_service on nuzantara-rag production (GET /api/pricing/search,
+  Zantara's PricingTool, the WhatsApp bot's price context in wa_package_builder). After the deploy
+  (a merge to apps/backend-rag is the deploy; /health build_sha must contain this PR), authenticated
+  ?q=license and ?q=license%20to return no rows (HTTP 200), ?q=izin%20minol and
+  ?q=I%20want%20to%20open%20a%20bar%20in%20Canggu return the three Alcohol License rows, and
+  ?q=prices returns the same rows as before the deploy. Not yet observed: nothing is merged or deployed.
+receipts:
+  - claim: The pricing suite (corpus both directions incl. the bare-word, residual-noise and new-keyword cases, the no-row result shape, matcher unit cases, the call-count test of PR 8668) passes on HEAD e5af294ed5 (code at a071b9c2f1).
+    cmd: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    result: "447 passed in 10.25s"
+    exit: 0
+    ts: "2026-10-17T13:30:46Z"
+    seat: this session
+  - claim: The catalogue decision pins pass.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py
+    result: "57 passed in 0.69s"
+    exit: 0
+    ts: "2026-10-17T13:30:46Z"
+    seat: this session
+  - claim: Lint and format are clean on the two changed python files, and the frontend price mirror is in sync (keywords are not mirrored).
+    cmd: ruff check and ruff format --check on pricing_service.py and test_search_token_matching_1017.py; python3 scripts/sync_frontend_prices.py --check
+    result: "All checks passed!; 2 files already formatted; sync exit 0"
+    exit: 0
+    ts: "2026-10-17T13:30:46Z"
+    seat: this session
+  - claim: Before/after of origin/main vs HEAD over 244 queries; 25 change, all inside the ruling; the 20 all-noise queries without a generic trade word (prices, price, bali, years, year, the, for, how much does it cost, berapa harga ...) are identical.
+    cmd: scratch comparison old module and catalogue (git show origin/main) vs HEAD (search-after-F.json in the session scratchpad)
+    result: "lost: Alcohol License x3 on bare license/licence/licenses/licences/sells/seller/sellers, LICENCE, TO!!!; C1, C6, E33, E33E also on bare sell/selling; gained: Alcohol License x3 on bar license, open a bar, licenza birra, licenza per vendita vino, izin minol, izin minolnya berapa and the bare new keywords"
+    exit: 0
+    ts: "2026-10-17T13:28:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutants killed (old fallback restored 17 red; minol removed 2 red; bar removed 2 red; vino and birra removed 2 red; each restored with cp and verified with cmp).
+    cmd: cp backup, scripted edit, pytest, cp back + cmp
+    result: "17 / 2 / 2 / 2 red; restored"
+    exit: 0
+    ts: "2026-10-17T13:28:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-generic-trade-fallback
+    text: >-
+      An all-noise query that holds a generic trade word (license, licence, licensing, sell or a
+      light-suffix form) is generic and gets no whole-query fallback, so it matches no row; every
+      other all-noise query keeps the fallback unchanged.
+  - id: D-alcohol-keywords-owner
+    text: >-
+      bar, birra, vino and minol join the keywords of the three Alcohol License rows by owner
+      ruling; bar is three letters, so it matches by equality only; keywords only, no price, name
+      or note changed.
+  - id: D-sell-side-effect
+    text: >-
+      Bare sell/selling also stop returning C1 Tourism, C6 Social Activity, E33 Second Home and
+      E33E rows that merely carry the sale word; under the ruling the word names no service, and
+      mixed queries with a distinctive word are unchanged.
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol round 1 on ea43de2a29 (CONCERNS, cured by
+  a071b9c2f1) and kimi-code/k3 round 2 on a071b9c2f1 (PASS); kimi's round 1 dispatch failed on an
+  OAuth network error and is journaled as non-judgement. Logs under /Users/balizero/nuzantara/.worktrees/:
+  seat-build-codex-20261017T131551Z-24781, seat-build-kimi-20261017T131553Z-25436 (failed),
+  seat-build-kimi-20261017T132447Z-71868. Journal lines were written after the runs.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1, VERDICT CONCERNS: all-noise queries with a licence/sale word plus another noise
+      word (license to, LICENCE, TO!!!, selling to, license of) still return the Alcohol License
+      rows.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by a071b9c2f1: such a query gets no whole-query fallback; the seven cases are pinned
+      as no-row in the corpus and the old fallback turns 17 tests red.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1 DISSENT: bar, vino and the mino prefix over-match ordinary contexts and names (bar
+      chart, 3 bar, Vino Rossi, Mino).
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as an owner decision: the keywords were added by Zero's explicit ruling; the name
+      risk (Vino is a common Indonesian given name) is reported to the owner in the session report.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2, VERDICT PASS with DISSENT: bar makes juice bar / chocolate bar price the alcohol
+      licences; sale, sales and licenza are not generic trade words (they match nothing today).
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted: bar is owner-mandated; sale/sales/licenza match no row today, so adding them would
+      change nothing observable now; filed as a follow-up note in the PR body.
+spend:
+  wall_clock_hours: 0.75
+  adversarial_rounds: 2
+appetite_exceeded: >-
+  Two adversarial rounds instead of one: kimi's round 1 dispatch failed on an OAuth network error,
+  and codex's round 1 found a real residual-noise hole that needed a cure and a second titolare.

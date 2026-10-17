@@ -48,7 +48,8 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
      Curated keywords must therefore carry the distinctive single words a client actually types
      (for the alcohol rows: "alkohol", "beralkohol"), never a generic one ("izin", "minuman").
      The three Alcohol License rows also carry the English, Italian and Indonesian distinctive words
-     `liquor`, `beer`, `wine`, `alcol`, `alcolici`, `alcolico`, `bir` (after #8655's gate, council of the
+     `liquor`, `beer`, `wine`, `alcol`, `alcolici`, `alcolico`, `bir`, and (owner ruling 2026-10-17) `bar`,
+     `birra`, `vino`, `minol` (`bar` has three characters, so it matches by equality only: "bars" does not) (after #8655's gate, council of the
      licence-noise PR: "liquor license" lost its only bridge once `license` became noise); `spirit` is
      deliberately absent ("spirit festival" would over-match); the multi-word keywords
      `spirits license` and `spirits licence` cover that phrase only as a contiguous phrase.
@@ -66,7 +67,9 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
    same rule as row matching. `permit` and `izin` are NOT noise. The implementation measures before adding each one (rule 5) and does not
    add a word that is the only token of a legitimate single-word query in the corpus.
 4. The one-character-token drop and the "all tokens were noise → use the raw query" fallback stay;
-   the fallback uses the same matcher. The legacy LIST-format branch uses the same matcher.
+   the fallback uses the same matcher, except that a query holding one of the generic trade words of
+   rule 3 (`license`, `licence`, `licensing`, `sell` and their inflections) has no fallback at all,
+   so "license", "license to", "selling and" match no row whatever other noise they hold. The legacy LIST-format branch uses the same matcher.
    Result shape, ordering and the internal-row exclusion are unchanged.
    **Aliases.** A tiny curated map (`_TOKEN_ALIASES`) expands an acronym a client types into extra
    target words the old substring match found by accident: itas → kitas, itap → kitap, tka →
@@ -111,9 +114,9 @@ Accepted and documented, not fixed (council 2026-10-17, v4):
 
 - Plural stemming hits that are semantically right but contextually off ("send your addresses",
   "Chrome extensions").
-- A query whose every word is noise falls back to the raw-query path, so "license", "licenses",
-  "prices" or "selling" ALONE still return the rows that carry that word (for "license": the three
-  Alcohol License rows).
+- A query whose every word is noise falls back to the raw-query path, so "prices" ALONE still
+  returns the rows that carry that word. The generic trade words of rule 3 ("license", "licenses",
+  "selling" ...) remove that fallback (owner ruling 2026-10-17), so a query holding one matches no row.
 - "toko minuman" / "jualan minuman ringan" no longer return the alcohol rows: "minuman" alone is
   generic, by design.
 - Typos such as "seha" do not match.
@@ -123,3 +126,7 @@ ITAS/ITAP/TKA recall, hyphen compounds and negation; kimi-code/k3: PASS).
 
 Revised 2026-10-17 after #8655's gate: noise words stem like row words; `license`, `licence`,
 `licensing`, `sell` joined the noise list (rule 3).
+
+Revised 2026-10-17 by owner ruling: a bare generic licence/sale word is not an alcohol question
+(the all-noise fallback drops it, rule 4) and the Alcohol License rows carry `bar`, `birra`, `vino`,
+`minol` (rule 2).
