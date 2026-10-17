@@ -802,8 +802,9 @@ function investmentRouteQuestionIds(facts: OracleFacts): readonly string[] {
 }
 
 /**
- * `el.e28a.investment` and its two capital filters (`hf.e28a.paid-capital-
- * below-min`, `hf.e28a.total-investment-below-min`, both `on_unknown:
+ * `el.e28a.investment` and its two filters (`hf.e28a.paid-capital-below-min`
+ * and, from seq-31, `hf.e28a.own-shareholding-below-min` — seq-20..30 carried
+ * `hf.e28a.total-investment-below-min` in its place — both `on_unknown:
  * NEEDS_INPUT`) for a branch that is INVESTMENT-purpose but not the `pt_pma`
  * vehicle. The commitment question comes first: a "no" makes the E28A rule
  * DEFINITELY FALSE and the engine then asks for no figure (measured on seq-20

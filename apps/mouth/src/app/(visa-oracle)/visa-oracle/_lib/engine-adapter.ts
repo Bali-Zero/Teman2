@@ -418,7 +418,20 @@ export const C6_MAX_STAY_DAYS = 180;
 export const RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS: readonly string[] = [
   "E33E_DEPOSIT_INCOME_BASIS_ADVISOR_CHECK",
   "E33G_INCOME_60K_ADVISOR_CHECK",
+  // E28A own-shareholding re-key (seq-31): signed seq-28..30 still emit it
+  // (`hf.e28a.total-investment-below-min`), seq-31 retires the rule and emits
+  // E28A_OWN_SHAREHOLDING_BELOW_MIN instead. See RETIRED_FROM_SEQUENCE.
+  "E28A_TOTAL_INVESTMENT_BELOW_MIN",
 ];
+/**
+ * The first signed sequence that no longer emits a retired key. Keys absent from
+ * this table were retired before seq-28 (the floor the "came back" check reads
+ * from); a key retired later names its own sequence so the check does not call
+ * the signed packs that legitimately still emit it a regression.
+ */
+export const RETIRED_FROM_SEQUENCE: Readonly<Record<string, number>> = {
+  E28A_TOTAL_INVESTMENT_BELOW_MIN: 31,
+};
 export const RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS: readonly string[] = [
   "E33B_EXPERTISE_QUALIFICATION_ADVISOR_CHECK",
   "E33F_AGE_UNDER_55_ADVISOR_CHECK",
@@ -458,8 +471,8 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `Tujuan sosial atau lainnya, dengan penjamin terkonfirmasi dan rencana total masa tinggal ${C6_MAX_STAY_DAYS} hari atau kurang.`,
   ),
   E28A_INVESTMENT_ELIGIBLE: text(
-    "You committed to a PT PMA with paid-up capital of IDR 2.5 billion or more and total investment capital of IDR 10 billion or more.",
-    "Anda berkomitmen pada PT PMA dengan modal disetor minimal Rp 2,5 miliar dan total modal investasi minimal Rp 10 miliar.",
+    "You committed to a PT PMA with paid-up capital of IDR 2.5 billion or more, and you personally own shares worth IDR 10 billion or more in it.",
+    "Anda berkomitmen pada PT PMA dengan modal disetor minimal Rp 2,5 miliar, dan Anda sendiri memiliki saham senilai minimal Rp 10 miliar di perusahaan tersebut.",
   ),
   E33E_RETIREMENT_ELIGIBLE: text(
     `Retirement, age 55 or over, with a deposit of ${usd(E33E_DEPOSIT_THRESHOLD_USD, "en-US")} or more held in your own name at a state bank, plus income or allowance of ${usd(RETIREMENT_INCOME_THRESHOLD_USD, "en-US")} or more a month.`,
@@ -977,6 +990,7 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     `The Investor Visa (E28A) requires you to personally own shares worth at least ${idr(E28A_OWN_SHAREHOLDING_THRESHOLD_IDR, "en-US")} in the sponsoring company, and the figure you gave is below it.`,
     `Visa Investor (E28A) memerlukan kepemilikan saham Anda sendiri di perusahaan penjamin senilai minimal ${idr(E28A_OWN_SHAREHOLDING_THRESHOLD_IDR, "id-ID")}, dan angka yang Anda berikan berada di bawahnya.`,
   ),
+  // RETIRED (replayable): last emitted by signed seq-30; seq-31 re-keys the IDR 10bn test to the applicant's own shareholding (E28A_OWN_SHAREHOLDING_BELOW_MIN). See RETIRED_SUPPORT_REASON_KEYS.
   E28A_TOTAL_INVESTMENT_BELOW_MIN: text(
     "The Investor Visa (E28A) requires total investment capital of at least IDR 10,000,000,000, and the figure you gave is below it.",
     "Visa Investor (E28A) memerlukan total modal investasi minimal Rp 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",

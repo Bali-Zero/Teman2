@@ -13,6 +13,7 @@ import {
   PROHIBITED_ACTIVITY_PRODUCT_COPY,
   REVIEW_REASON_ELEMENTS,
   REVIEW_REASON_COPY,
+  RETIRED_FROM_SEQUENCE,
   RETIRED_NEVER_EMITTED_SUPPORT_REASON_KEYS,
   RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS,
   RETIRED_SUPPORT_REASON_KEYS,
@@ -1465,6 +1466,9 @@ describe("support reasons are sentences, not machine codes", () => {
     const cameBack: string[] = [];
     for (const [sequence, codes] of packs) {
       for (const key of RETIRED_SUPPORT_REASON_KEYS) {
+        // A key retired after seq-28 names its own first silent sequence: the
+        // signed packs before it legitimately still emit it.
+        if (sequence < (RETIRED_FROM_SEQUENCE[key] ?? 28)) continue;
         if (codes.has(key)) cameBack.push(`seq-${sequence}: ${key}`);
       }
     }
@@ -1543,42 +1547,35 @@ describe("support reasons are sentences, not machine codes", () => {
     const liveE28 = [...live].filter((key) => /^E28[A-Z]_/.test(key));
     expect(liveE28.length).toBeGreaterThanOrEqual(7);
     expect(liveE28.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
-    expect(e28CopyOrphans(Object.keys(SUPPORT_REASON_COPY), packs)).toEqual([]);
-  });
-
-  // E28A own-shareholding step B: the copy lands one step ahead of the pack
-  // that emits it (step C, seq-31). The exemption holds ONLY while the highest
-  // signed pack is seq-30 or lower; from seq-31 the pack must emit the reason,
-  // so a seq-31 pack that omits it (or a later pack that drops it) goes red.
-  const PENDING_PACK_E28_KEYS = ["E28A_OWN_SHAREHOLDING_BELOW_MIN"];
-  const PENDING_EXEMPTION_LAST_SEQUENCE = 30;
-  function e28CopyOrphans(
-    copyKeys: string[],
-    packs: Map<number, Set<string>>,
-  ): string[] {
-    const highest = Math.max(...packs.keys());
-    const live = packs.get(highest)!;
-    const pendingAllowed = highest <= PENDING_EXEMPTION_LAST_SEQUENCE;
-    return copyKeys
+    const orphans = Object.keys(SUPPORT_REASON_COPY)
       .filter((key) => /^E28[A-Z]_/.test(key))
       .filter(
-        (key) =>
-          !live.has(key) &&
-          !RETIRED_SUPPORT_REASON_KEYS.includes(key) &&
-          !(pendingAllowed && PENDING_PACK_E28_KEYS.includes(key)),
+        (key) => !live.has(key) && !RETIRED_SUPPORT_REASON_KEYS.includes(key),
       );
-  }
+    expect(orphans).toEqual([]);
+  });
 
-  it("I-M01: the pending own-shareholding exemption expires at seq-31", () => {
-    const key = "E28A_OWN_SHAREHOLDING_BELOW_MIN";
-    const rest = new Set(["E28B_COMPANY_ESTABLISHMENT_ELIGIBLE"]);
-    // Guilt: a seq-31 pack that omits the reason is an orphan.
-    expect(e28CopyOrphans([key], new Map([[31, rest]]))).toEqual([key]);
-    // Innocence: seq-31 emitting it, or seq-30 still pending, passes.
-    expect(
-      e28CopyOrphans([key], new Map([[31, new Set([...rest, key])]])),
-    ).toEqual([]);
-    expect(e28CopyOrphans([key], new Map([[30, rest]]))).toEqual([]);
+  it("E28A own-shareholding re-key (seq-31): the total-investment code is retired-replayable and the own-shareholding code is a normal emitted key", () => {
+    expect(RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS).toContain(
+      "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+    );
+    expect(RETIRED_SUPPORT_REASON_KEYS).not.toContain(
+      "E28A_OWN_SHAREHOLDING_BELOW_MIN",
+    );
+    expect(RETIRED_FROM_SEQUENCE.E28A_TOTAL_INVESTMENT_BELOW_MIN).toBe(31);
+    // Replayable means the copy stays so signed seq-28..30 decisions still render.
+    expect("E28A_TOTAL_INVESTMENT_BELOW_MIN" in SUPPORT_REASON_COPY).toBe(true);
+    const packs = reasonCodesOfSignedPacksFrom(0);
+    for (const [sequence, codes] of packs) {
+      if (sequence >= 28 && sequence < 31) {
+        expect(codes.has("E28A_TOTAL_INVESTMENT_BELOW_MIN")).toBe(true);
+        expect(codes.has("E28A_OWN_SHAREHOLDING_BELOW_MIN")).toBe(false);
+      }
+      if (sequence >= 31) {
+        expect(codes.has("E28A_TOTAL_INVESTMENT_BELOW_MIN")).toBe(false);
+        expect(codes.has("E28A_OWN_SHAREHOLDING_BELOW_MIN")).toBe(true);
+      }
+    }
   });
 
   /**
@@ -1616,29 +1613,29 @@ describe("support reasons are sentences, not machine codes", () => {
     const paidCapitalRule = rules.find(
       (r) => r.rule_id === "hf.e28a.paid-capital-below-min",
     );
-    const totalInvestmentRule = rules.find(
-      (r) => r.rule_id === "hf.e28a.total-investment-below-min",
+    const ownShareholdingRule = rules.find(
+      (r) => r.rule_id === "hf.e28a.own-shareholding-below-min",
     );
     // Guard-of-the-guard: both rules must actually be found in the signed
     // pack, or the assertions below would vacuously pass on `undefined`.
     expect(paidCapitalRule).toBeDefined();
-    expect(totalInvestmentRule).toBeDefined();
+    expect(ownShareholdingRule).toBeDefined();
     const paidCapitalValue = findLtValue(
       paidCapitalRule!.when,
       "investment.paid_up_capital_idr",
     );
-    const totalInvestmentValue = findLtValue(
-      totalInvestmentRule!.when,
-      "investment.investment_capital_idr",
+    const ownShareholdingValue = findLtValue(
+      ownShareholdingRule!.when,
+      "investment.own_shareholding_idr",
     );
     expect(paidCapitalValue).toBeDefined();
-    expect(totalInvestmentValue).toBeDefined();
+    expect(ownShareholdingValue).toBeDefined();
 
     const paidCapitalEn = paidCapitalValue!.toLocaleString("en-US");
     const paidCapitalId = paidCapitalValue!.toLocaleString("id-ID");
     // I-M02: Indonesian writes rupiah as "Rp", never "IDR"; one style per language.
-    const totalInvestmentEn = totalInvestmentValue!.toLocaleString("en-US");
-    const totalInvestmentId = totalInvestmentValue!.toLocaleString("id-ID");
+    const ownShareholdingEn = ownShareholdingValue!.toLocaleString("en-US");
+    const ownShareholdingId = ownShareholdingValue!.toLocaleString("id-ID");
 
     expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.en).toContain(
       `IDR ${paidCapitalEn}`,
@@ -1649,14 +1646,14 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).not.toContain(
       "IDR",
     );
-    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.en).toContain(
-      `IDR ${totalInvestmentEn}`,
+    expect(SUPPORT_REASON_COPY.E28A_OWN_SHAREHOLDING_BELOW_MIN.en).toContain(
+      `IDR ${ownShareholdingEn}`,
     );
-    expect(SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id).toContain(
-      `Rp ${totalInvestmentId}`,
+    expect(SUPPORT_REASON_COPY.E28A_OWN_SHAREHOLDING_BELOW_MIN.id).toContain(
+      `Rp ${ownShareholdingId}`,
     );
     expect(
-      SUPPORT_REASON_COPY.E28A_TOTAL_INVESTMENT_BELOW_MIN.id,
+      SUPPORT_REASON_COPY.E28A_OWN_SHAREHOLDING_BELOW_MIN.id,
     ).not.toContain("IDR");
   });
 
@@ -1667,6 +1664,11 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(support.id).not.toContain("IDR");
     expect(support.en).toContain("IDR 2.5 billion");
     expect(support.en).toContain("IDR 10 billion");
+    // Seq-31: the IDR 10 billion is the applicant's own shareholding, not company capital.
+    expect(support.en).toContain("you personally own shares");
+    expect(support.en).not.toContain("total investment");
+    expect(support.id).toContain("Anda sendiri memiliki saham");
+    expect(support.id).not.toContain("total modal investasi");
     // SEQ29-A2 (seq-30): el.e28a.investment drops investment.proposed_role, so
     // E28A_INVESTMENT_ELIGIBLE no longer claims the applicant is a director or commissioner.
     expect(support.en).not.toContain("shareholder-director");
@@ -2021,11 +2023,12 @@ describe("support reasons are sentences, not machine codes", () => {
       readEn: idrBillionFromProse,
       readId: rpMiliarFromProse,
     },
-    // I-M02: the same sentence names the SECOND figure the rule checks.
-    "E28A_INVESTMENT_ELIGIBLE#total_investment": {
+    // I-M02: the same sentence names the SECOND figure the rule checks — since
+    // seq-31 the applicant's own shareholding, no longer the company's capital.
+    "E28A_INVESTMENT_ELIGIBLE#own_shareholding": {
       copyKey: "E28A_INVESTMENT_ELIGIBLE",
       ruleId: "el.e28a.investment",
-      fact: "investment.investment_capital_idr",
+      fact: "investment.own_shareholding_idr",
       readEn: (copy: string) => idrBillionFromProse(copy, 1),
       readId: (copy: string) => rpMiliarFromProse(copy, 1),
     },
