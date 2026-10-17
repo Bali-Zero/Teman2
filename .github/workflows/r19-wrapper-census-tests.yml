@@ -84,7 +84,18 @@ jobs:
         run: npx playwright install --with-deps --only-shell chromium
       - name: Live census, palette guard, guilt and innocence fixtures
         working-directory: apps/mouth
-        run: npm test -- r19-wrapper
+        run: |
+          set -o pipefail
+          npm test -- r19-wrapper 2>&1 | tee "$RUNNER_TEMP/w1.txt"
+      - name: The palette line is printed JUDGED and 0
+        run: |
+          want="palette-outside-direction-a (r19 scope, 48/48 captures): 0"
+          if ! grep -Fxq "$want" "$RUNNER_TEMP/w1.txt"; then
+            echo "::error::the W1 run did not print '$want'"
+            grep -E '^palette-outside-direction-a' "$RUNNER_TEMP/w1.txt" || true
+            exit 1
+          fi
+          echo "$want"
 
   wrapper-census-part:
     runs-on: ubuntu-latest
@@ -180,15 +191,21 @@ jobs:
           cat /dev/null "$RUNNER_TEMP"/parts/*.jsonl > "$RUNNER_TEMP/census.jsonl"
           python scripts/mouth/r19_wrapper_token_census.py --replay "$RUNNER_TEMP/census.jsonl" \
             --diff-base "$DIFF_BASE" | tee "$RUNNER_TEMP/census.txt"
-      # Contract section 8.8: the W0d instrument lines of the exit block, exactly. The census-replay job
+      # Contract section 8.8: all fifteen lines of the exit block, exactly. The census-replay job
       # replays this step on a log carrying `: 1`, an INCOMPLETE log and a red part, and each exits 1.
       - name: Every scenario received, every capture and every surface opened and claimed, every shared component pinned and unchanged
         env:
           PARTS_RESULT: ${{ needs.wrapper-census-part.result }}
         run: |
           fail=0
-          for want in "scenarios-off-manifest: 0" "captures: 54 ok, 0 failed" "surfaces-unclaimed: 0" "opened-surfaces: 50 ok, 0 failed" \
-                      "shared-touched-unpinned: 0" "shared-component-drift: 0"; do
+          for want in "scenarios-off-manifest: 0" "captures: 54 ok, 0 failed" \
+                      "read-but-undefined: 0" "colors-outside-direction-a: 0" \
+                      "state-rows-unseen: 0" "state-colors-off-contract: 0" \
+                      "page-grounds-off-contract: 0" "surfaces-unclaimed: 0" \
+                      "opened-surfaces: 51 ok, 0 failed" "opened-outside-wrapper: 0" \
+                      "opened-grounds-off-contract: 0" "ground-resolver-disagree: 0" \
+                      "shared-touched-unpinned: 0" "shared-component-drift: 0" \
+                      "opened-text-below-4.5: 0"; do
             if grep -Fxq "$want" "$RUNNER_TEMP/census.txt"; then
               echo "ok: $want"
             else

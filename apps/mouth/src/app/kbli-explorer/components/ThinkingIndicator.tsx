@@ -58,18 +58,20 @@ export default function ThinkingIndicator({
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: idx === activeStage ? 1 : 0.4, y: 0 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                   className="flex items-center gap-2.5"
                 >
                   <stage.icon
                     size={14}
                     className={
-                      idx === activeStage ? "text-accent-sand" : "text-[#888]"
+                      idx === activeStage
+                        ? "text-accent-sand"
+                        : "text-[var(--kbli-text-muted)]"
                     }
                   />
                   <span
-                    className={`text-sm ${idx === activeStage ? "text-[#CCC]" : "text-[#888]"}`}
+                    className={`text-sm ${idx === activeStage ? "text-[var(--foreground)]" : "text-[var(--kbli-text-muted)]"}`}
                   >
                     {stage.text}
                   </span>
@@ -90,7 +92,7 @@ export default function ThinkingIndicator({
         {/* Progress bar */}
         <div className="h-[2px] w-full bg-surface-editorial-elevated rounded-full overflow-hidden mt-2">
           <motion.div
-            className="h-full bg-gradient-to-r from-[#D4B483] to-[#C4A473]"
+            className="h-full bg-[var(--kbli-ink)]"
             style={{ width: `${progress}%` }}
             animate={isComplete ? { width: "100%" } : undefined}
             transition={

@@ -66,9 +66,7 @@ export function RiskBadge({
         style={{ backgroundColor: color }}
       />
       {label} Risk
-      {verificationPending && (
-        <span className="opacity-70">· pending verification</span>
-      )}
+      {verificationPending && <span>· pending verification</span>}
     </span>
   );
 }

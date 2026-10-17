@@ -47,9 +47,8 @@ export function KBLIConsultationCTA({
       <div
         className="rounded-2xl border p-6 sm:p-8"
         style={{
-          background:
-            "linear-gradient(135deg, rgba(212,132,90,0.08) 0%, rgba(30,30,35,0.95) 100%)",
-          borderColor: "rgba(212,132,90,0.2)",
+          background: "var(--kbli-bg-surface)",
+          borderColor: "var(--kbli-border)",
         }}
       >
         <div className="flex flex-col gap-6">
@@ -57,7 +56,7 @@ export function KBLIConsultationCTA({
           <div className="flex items-start gap-4">
             <div
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl"
-              style={{ backgroundColor: "rgba(212,132,90,0.15)" }}
+              style={{ backgroundColor: "var(--kbli-accent-subtle)" }}
             >
               {isPMAOpen ? "\u{1f3e2}" : "\u{1f4cb}"}
             </div>
@@ -79,8 +78,8 @@ export function KBLIConsultationCTA({
               <div
                 className="rounded-xl border p-4"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.06)",
+                  background: "var(--kbli-bg-surface)",
+                  borderColor: "var(--kbli-border)",
                 }}
               >
                 <p className="text-xs font-medium uppercase tracking-wider text-[var(--kbli-text-muted)]">
@@ -98,8 +97,8 @@ export function KBLIConsultationCTA({
               <div
                 className="rounded-xl border p-4"
                 style={{
-                  background: "rgba(255,255,255,0.03)",
-                  borderColor: "rgba(255,255,255,0.06)",
+                  background: "var(--kbli-bg-surface)",
+                  borderColor: "var(--kbli-border)",
                 }}
               >
                 <p className="text-xs font-medium uppercase tracking-wider text-[var(--kbli-text-muted)]">
@@ -131,7 +130,7 @@ export function KBLIConsultationCTA({
               utm={{ page: `/kbli/${code}` }}
               fallbackHref={`${WHATSAPP_BASE}?text=${waText}`}
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-[var(--accent-whatsapp-ink)] transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "#25d366" }}
+              style={{ backgroundColor: "var(--accent-funnel)" }}
             >
               <svg
                 viewBox="0 0 24 24"
