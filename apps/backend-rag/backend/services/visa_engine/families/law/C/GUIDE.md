@@ -19,10 +19,20 @@ Q1  What will you do in Indonesia?
     └── Internship
           └── Q1b  For your studies or for skills? .. C22A | C22B
 
-Q2  Does an Indonesian organisation sponsor you?      (asked for every code except C1, C2)
-    no  → this visa is not possible without a sponsor
+Q1c (gates, asked only for the codes named)
+    C1, C2  Do you hold a national passport, or another travel document
+            (stateless, emergency passport, other non-national document)?
+              national_passport → no sponsor question
+              other_document    → Q2 (sponsor)
+    C8A, C8B  Is the sport activity non-commercial (government invitation,
+              international championship, international sports organisation event)?
+              no → not covered by this visa (verdict NOT_COVERED)
 
-Q3  How many days do you need?
+Q2  Does an Indonesian organisation sponsor you?      (every code except C1/C2 with a national passport)
+    no  → this visa is not possible without a sponsor
+    (answers are option keys "yes" / "no"; any other value asks again)
+
+Q3  How many days do you need?                        (a positive whole number; anything else asks again)
     ≤ stay on the Law card ............ OK
     ≤ stay + extensions ............... OK, with extension
     more .............................. not possible on this visa
@@ -42,12 +52,12 @@ Leaf table (from the Law cards):
 | C18             | yes                                                                 | 90   | no              |
 | C22A / C22B     | yes                                                                 | 180  | 12 months total |
 
-Paths: 13 visas, each with yes/no sponsor and 3 stay outcomes. Every path becomes one test.
+Paths: 13 visas, each with the gate and sponsor branches that apply and 3 stay outcomes. Every path becomes one test; the extra gates (travel document, non-commercial sport) have their own tests.
 Documents (passport validity, 3-month bank statement, photo, letters) are a checklist on the result screen, not questions.
 
 TO VERIFY before shipping:
 
-- C1/C2 "listed countries" that need a sponsor: the list is behind a link that was not captured.
+- C1/C2 "listed countries" that need a sponsor: the list is behind a link that was not captured, so a national passport of a listed country is not detected yet.
 - C12 price: requested from Adit (2026-10-17).
 
 Decided:

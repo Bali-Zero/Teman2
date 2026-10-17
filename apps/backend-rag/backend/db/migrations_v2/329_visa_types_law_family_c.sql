@@ -7,6 +7,16 @@
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
+-- Guard: refuse to run if a row already holds one of these codes in another case
+-- (the UNIQUE on code is case-sensitive, so the upsert below would add a duplicate).
+DO $guard$
+BEGIN
+    IF EXISTS (SELECT 1 FROM visa_types WHERE code <> upper(code) AND upper(code) IN ('C1', 'C10', 'C12', 'C18', 'C2', 'C22A', 'C22B', 'C6', 'C7A', 'C7B', 'C7C', 'C8A', 'C8B')) THEN
+        RAISE EXCEPTION 'visa_types holds a non-uppercase duplicate of a family code; fix the case first';
+    END IF;
+END
+$guard$;
+
 INSERT INTO visa_types (code, name, category, family, official_name_id, permit_class, is_sold, price_keys, entry_type, sponsor, apply_channel, initial_stay_days, extendable, max_total_days, max_total_months, itap, law_card, source_url, page_sha256, retrieved_at, card_sha256, verification_status, valid_from, valid_until, superseded_by)
 VALUES (
     'C1',

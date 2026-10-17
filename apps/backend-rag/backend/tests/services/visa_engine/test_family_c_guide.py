@@ -8,6 +8,7 @@ import pytest
 from backend.services.visa_engine.families import guide
 from backend.services.visa_engine.families.guide import (
     NEEDS_SPONSOR,
+    NOT_COVERED,
     OK,
     OK_WITH_EXTENSION,
     STAY_TOO_LONG,
@@ -116,35 +117,126 @@ def test_every_code_is_reached_by_exactly_one_path():
     assert sorted(PATH_TO_CODE.values()) == CODES
 
 
+CONDITIONAL_SPONSOR = {"C1", "C2"}
+GATED = {"C8A", "C8B"}
+
+
+def prefix_for(code, path):
+    """Answers that get a path past the gate questions (travel document, non-commercial sport)."""
+    extra = {}
+    if code in CONDITIONAL_SPONSOR:
+        extra["travel_document"] = "national_passport"
+    if code in GATED:
+        extra["sport_non_commercial"] = "yes"
+    return answers_for(path, **extra)
+
+
 @pytest.mark.parametrize("path,code", PATH_TO_CODE.items())
 def test_path(path, code):
     sponsor_needed, stay, max_ok = EXPECTED[code]
 
-    # questions come in order: activity -> (sub) -> sponsor (if needed) -> days
+    # questions come in order: activity -> (sub) -> gate -> sponsor (if needed) -> days
     assert resolve("C", {}) == {"ask": "activity"}
     if len(path) == 2:
         assert resolve("C", {"activity": path[0]}) == {"ask": SUB_QUESTION[path[0]]}
     nxt = resolve("C", answers_for(path))
-    assert nxt == {"ask": "sponsor" if sponsor_needed else "stay_days", "code": code}
+    if code in CONDITIONAL_SPONSOR:
+        assert nxt == {"ask": "travel_document", "code": code}
+    elif code in GATED:
+        assert nxt == {"ask": "sport_non_commercial", "code": code}
+    else:
+        assert nxt == {"ask": "sponsor" if sponsor_needed else "stay_days", "code": code}
 
-    sp = {"sponsor": True} if sponsor_needed else {}
+    base = prefix_for(code, path)
     if sponsor_needed:
-        assert resolve("C", answers_for(path, sponsor=False)) == {
-            "code": code,
-            "verdict": NEEDS_SPONSOR,
-        }
+        assert resolve("C", {**base}) == {"ask": "sponsor", "code": code}
+        assert resolve("C", {**base, "sponsor": "no"}) == {"code": code, "verdict": NEEDS_SPONSOR}
+        base = {**base, "sponsor": "yes"}
+    assert resolve("C", base) == {"ask": "stay_days", "code": code}
 
     def verdict(days):
-        return resolve("C", answers_for(path, stay_days=days, **sp))
+        return resolve("C", {**base, "stay_days": days})
 
     assert verdict(1) == {"code": code, "verdict": OK}
     assert verdict(stay) == {"code": code, "verdict": OK}
+    assert verdict(str(stay)) == {"code": code, "verdict": OK}
     if max_ok is None:
         assert verdict(stay + 1) == {"code": code, "verdict": STAY_TOO_LONG}
     else:
         assert verdict(stay + 1) == {"code": code, "verdict": OK_WITH_EXTENSION}
         assert verdict(max_ok) == {"code": code, "verdict": OK_WITH_EXTENSION}
         assert verdict(max_ok + 1) == {"code": code, "verdict": STAY_TOO_LONG}
+
+
+@pytest.mark.parametrize("code,activity", [("C1", "holiday"), ("C2", "business_meetings")])
+def test_conditional_sponsor_other_document_needs_sponsor(code, activity):
+    a = {"activity": activity, "travel_document": "other_document"}
+    assert resolve("C", a) == {"ask": "sponsor", "code": code}
+    assert resolve("C", {**a, "sponsor": "no"}) == {"code": code, "verdict": NEEDS_SPONSOR}
+    assert resolve("C", {**a, "sponsor": "yes"}) == {"ask": "stay_days", "code": code}
+    assert resolve("C", {**a, "sponsor": "yes", "stay_days": 30}) == {"code": code, "verdict": OK}
+
+
+@pytest.mark.parametrize("code,activity", [("C1", "holiday"), ("C2", "business_meetings")])
+def test_conditional_sponsor_national_passport_skips_sponsor(code, activity):
+    a = {"activity": activity, "travel_document": "national_passport"}
+    assert resolve("C", a) == {"ask": "stay_days", "code": code}
+    # a stray sponsor answer is ignored
+    assert resolve("C", {**a, "sponsor": "no", "stay_days": 30}) == {"code": code, "verdict": OK}
+
+
+@pytest.mark.parametrize("code,role", [("C8A", "athlete"), ("C8B", "official")])
+def test_commercial_sport_is_not_covered(code, role):
+    a = {"activity": "sport", "sport_role": role, "sport_non_commercial": "no"}
+    assert resolve("C", a) == {"code": code, "verdict": NOT_COVERED}
+    # not covered wins over every later answer
+    assert resolve("C", {**a, "sponsor": "yes", "stay_days": 10}) == {
+        "code": code,
+        "verdict": NOT_COVERED,
+    }
+
+
+def test_sport_non_commercial_unknown_key_asks_again():
+    a = {"activity": "sport", "sport_role": "athlete"}
+    for bad in (None, True, "maybe"):
+        assert resolve("C", {**a, "sport_non_commercial": bad}) == {
+            "ask": "sport_non_commercial",
+            "code": "C8A",
+        }
+
+
+def test_non_gated_codes_never_ask_the_gate_questions():
+    assert resolve("C", {"activity": "speaker"}) == {"ask": "sponsor", "code": "C10"}
+    assert resolve("C", {"activity": "holiday", "travel_document": "national_passport"}) == {
+        "ask": "stay_days",
+        "code": "C1",
+    }
+
+
+@pytest.mark.parametrize(
+    "bad", [True, False, 0, -1, -30, 1.5, 30.0, None, "", "abc", "-5", "0", "1.5", " 7", "٣٠"]
+)
+def test_invalid_stay_days_asks_again(bad):
+    a = {"activity": "speaker", "sponsor": "yes", "stay_days": bad}
+    assert resolve("C", a) == {"ask": "stay_days", "code": "C10"}
+
+
+def test_valid_stay_days_forms():
+    a = {"activity": "speaker", "sponsor": "yes"}
+    assert resolve("C", {**a, "stay_days": 60})["verdict"] == OK
+    assert resolve("C", {**a, "stay_days": "60"})["verdict"] == OK
+
+
+@pytest.mark.parametrize("bad", [True, False, None, "", "maybe", "YES", 1])
+def test_unknown_sponsor_key_asks_again(bad):
+    a = {"activity": "speaker", "sponsor": bad, "stay_days": 30}
+    assert resolve("C", a) == {"ask": "sponsor", "code": "C10"}
+
+
+def test_unknown_travel_document_asks_again():
+    for bad in (None, True, "passport"):
+        a = {"activity": "holiday", "travel_document": bad}
+        assert resolve("C", a) == {"ask": "travel_document", "code": "C1"}
 
 
 def test_unknown_answer_asks_again():

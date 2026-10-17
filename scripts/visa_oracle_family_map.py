@@ -8,10 +8,6 @@ import collections
 import json
 import sys
 
-with open(sys.argv[1]) as _fh:
-    d = json.load(_fh)
-pv = {p["product_version_id"]: p for p in d["products"]}
-
 
 def fmt(w):
     op = w["op"]
@@ -50,62 +46,6 @@ def fmt(w):
     return f"{f}{sym}{v}"
 
 
-FAM = [
-    ("A", "Visa-free", ["A1"]),
-    ("B", "VOA", ["B1"]),
-    ("C", "Single-entry visit", ["C1", "C2", "C6"]),
-    ("D", "Multiple-entry visit", ["D1", "D2", "D12"]),
-    ("E23", "Work", ["E23", "E23U", "E23V"]),
-    ("E28", "Investor", ["E28A", "E28B", "E28C", "E28D", "E28F"]),
-    ("E30", "Study", ["E30", "E30A", "E30B", "E30E", "E30F"]),
-    (
-        "E31",
-        "Family",
-        ["E31A", "E31B", "E31C", "E31D", "E31E", "E31F", "E31G", "E31H", "E31J"],
-    ),
-    ("E33", "Second Home", ["E33", "E33A", "E33B", "E33C", "E33E", "E33F", "E33G"]),
-    ("X", "Status bridging", ["BRIDGING"]),
-]
-if "--coverage" in sys.argv:
-    FAM = []
-by = collections.defaultdict(list)
-glob = []
-for r in d["rules"]:
-    ids = r.get("product_version_ids") or []
-    if not ids:
-        glob.append(r)
-    for x in ids:
-        by[pv[x]["product_code"]].append(r)
-code2p = {p["product_code"]: p for p in d["products"]}
-out = []
-for k, name, codes in FAM:
-    facts = set()
-    for c in codes:
-        for r in by[c]:
-            facts.update(f for f in r["required_facts"] if f != "intent.purposes")
-    out.append(f"\n### {k} — {name} ({len(codes)} products, {len(facts)} gate facts)\n")
-    for c in codes:
-        p = code2p[c]
-        sp = p.get("stay_policy") or {}
-        out.append(
-            f"- **{c}** {p['names'].get('en', '')} · purposes {','.join(p['covered_purposes'])} · stay {sp.get('maximum_days', '?')}d"
-        )
-        for r in sorted(by[c], key=lambda r: r["stage"]):
-            tag = {
-                "ELIGIBILITY": "SUPPORT",
-                "HARD_FILTER": "EXCLUDE",
-                "HUMAN_REVIEW": "REVIEW",
-            }[r["stage"]]
-            out.append(
-                f"  - {tag} `{fmt(r['when'])}` → {r['effect'].get('reason_code', '')}"
-            )
-out.append("\n### GLOBAL hard filters\n")
-for r in glob:
-    out.append(f"- `{fmt(r['when'])}` → {r['effect'].get('reason_code', '')}")
-if "--coverage" not in sys.argv:
-    print("\n".join(out))
-
-
 def coverage(pack_path, seed_path, price_path):
     """Index coverage: every visa code in the seed, flagged SOLD (price list) and IN_ORACLE (pack)."""
     import re as _re
@@ -138,5 +78,71 @@ def coverage(pack_path, seed_path, price_path):
     print(f"\nSold but NOT in Oracle ({len(gap)}): {', '.join(gap)}")
 
 
-if len(sys.argv) > 2 and sys.argv[2] == "--coverage":
-    coverage(sys.argv[1], sys.argv[3], sys.argv[4])
+def main() -> None:
+    with open(sys.argv[1]) as _fh:
+        d = json.load(_fh)
+    pv = {p["product_version_id"]: p for p in d["products"]}
+
+    FAM = [
+        ("A", "Visa-free", ["A1"]),
+        ("B", "VOA", ["B1"]),
+        ("C", "Single-entry visit", ["C1", "C2", "C6"]),
+        ("D", "Multiple-entry visit", ["D1", "D2", "D12"]),
+        ("E23", "Work", ["E23", "E23U", "E23V"]),
+        ("E28", "Investor", ["E28A", "E28B", "E28C", "E28D", "E28F"]),
+        ("E30", "Study", ["E30", "E30A", "E30B", "E30E", "E30F"]),
+        (
+            "E31",
+            "Family",
+            ["E31A", "E31B", "E31C", "E31D", "E31E", "E31F", "E31G", "E31H", "E31J"],
+        ),
+        ("E33", "Second Home", ["E33", "E33A", "E33B", "E33C", "E33E", "E33F", "E33G"]),
+        ("X", "Status bridging", ["BRIDGING"]),
+    ]
+    if "--coverage" in sys.argv:
+        FAM = []
+    by = collections.defaultdict(list)
+    glob = []
+    for r in d["rules"]:
+        ids = r.get("product_version_ids") or []
+        if not ids:
+            glob.append(r)
+        for x in ids:
+            by[pv[x]["product_code"]].append(r)
+    code2p = {p["product_code"]: p for p in d["products"]}
+    out = []
+    for k, name, codes in FAM:
+        facts = set()
+        for c in codes:
+            for r in by[c]:
+                facts.update(f for f in r["required_facts"] if f != "intent.purposes")
+        out.append(
+            f"\n### {k} — {name} ({len(codes)} products, {len(facts)} gate facts)\n"
+        )
+        for c in codes:
+            p = code2p[c]
+            sp = p.get("stay_policy") or {}
+            out.append(
+                f"- **{c}** {p['names'].get('en', '')} · purposes {','.join(p['covered_purposes'])} · stay {sp.get('maximum_days', '?')}d"
+            )
+            for r in sorted(by[c], key=lambda r: r["stage"]):
+                tag = {
+                    "ELIGIBILITY": "SUPPORT",
+                    "HARD_FILTER": "EXCLUDE",
+                    "HUMAN_REVIEW": "REVIEW",
+                }[r["stage"]]
+                out.append(
+                    f"  - {tag} `{fmt(r['when'])}` → {r['effect'].get('reason_code', '')}"
+                )
+    out.append("\n### GLOBAL hard filters\n")
+    for r in glob:
+        out.append(f"- `{fmt(r['when'])}` → {r['effect'].get('reason_code', '')}")
+    if "--coverage" not in sys.argv:
+        print("\n".join(out))
+
+    if len(sys.argv) > 2 and sys.argv[2] == "--coverage":
+        coverage(sys.argv[1], sys.argv[3], sys.argv[4])
+
+
+if __name__ == "__main__":
+    main()

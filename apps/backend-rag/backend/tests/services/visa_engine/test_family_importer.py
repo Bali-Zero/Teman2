@@ -100,3 +100,13 @@ def test_sql_never_overwrites_legacy_columns():
         "metadata",
     ):
         assert f"    {col} = EXCLUDED" not in sql
+
+
+def test_migration_starts_with_case_duplicate_guard():
+    from backend.services.visa_engine.families import importer
+
+    sql = importer.emit_sql("C")
+    guard = sql.index("DO $guard$")
+    assert guard < sql.index("INSERT INTO visa_types")
+    assert "code <> upper(code)" in sql[guard : sql.index("$guard$;")]
+    assert "'C1'" in sql[guard : sql.index("$guard$;")]

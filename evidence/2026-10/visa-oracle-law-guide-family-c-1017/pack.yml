@@ -1,0 +1,200 @@
+# Gear-3 evidence pack: visa oracle Law + Guide model, family C (migrations 328/329).
+# Written 2026-10-17T13:50:41Z by the implementer session (Claude Sonnet 5.5). Receipts E1-E3 are earlier commands run by this session, each ts read in the shell call just before the command.
+# Council round (codex, argon, kimi) and fixes: receipts C1-C6, each ts read in the shell call just before the command. The independent gate verdict (E4) is relayed by the coordinator; the gate ran earlier in this session and its exact start time was not recorded.
+gear: 3
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  No titolare was replaced. codex-gpt-5.6-sol and kimi-code/k3 (two titolari) both answered; agy-gemini-4-argon sat beside them as an additional third
+  reviewer, not instead of anyone. tp1-qwen3.8-max was not dispatched this round (no liveness probe was run for it).
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner ruling (Zero, 2026-10-17): keep the visa oracle simple, two sides only: a Law card per code verbatim from imigrasi.go.id and a Guide per
+  family with at most 3 questions. C18 is 90 days, not extendable (owner ruling; the conflicting page sentence is recorded in the card).
+mission: >-
+  Ship the Law + Guide model for family C: 13 sha256-pinned Law cards, the Guide resolver, migration 328 (additive Law columns on visa_types)
+  and migration 329 (generated from the cards), without touching legacy columns or readers.
+lanes:
+  - lane: council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --profile astra-deep, read-only sandbox, on the PR diff at 35a36df157)
+  - lane: council-argon
+    role: review
+    seat: agy-gemini-4-argon (agy -p --model gemini-4-argon-high --mode plan, same diff)
+  - lane: council-kimi
+    role: review
+    seat: kimi-code/k3 (kimi -m kimi-code/k3 -p, same diff)
+  - lane: ground-truth-nb2
+    role: ground_truth
+    seat: nlm
+    nb: cff93ab0-813a-42f2-a8de-36987e724271
+    query_hash: 57f67b52c88c424954915d736165f62544bda9bdff26423d472f90840722f765 # pragma: allowlist secret
+    notebook_name: "NB-2: Immigration & Visa — Indonesia 2025"
+    profile: default
+    ts: "2026-10-17T14:20:12Z"
+  - lane: build
+    role: build
+    seat: Claude Sonnet 5.5 (implementer; not a grader here)
+  - lane: independent-gate
+    role: review
+    seat: opus independent gate (fresh agent, coordinator-dispatched; it built nothing)
+seat_diversity: >-
+  Builder: Claude Sonnet 5.5. Gate: a fresh Opus agent with no shared context, dispatched by the coordinator (gate_class opus). The council added three reviewers of other families (OpenAI codex, Google argon, Moonshot kimi); none built anything.
+pii_scan: clean
+pii_scan_note: >-
+  Public visa regulation text from imigrasi.go.id, SQL and tests. No client data; the production check was a read-only schema read.
+what_changed: |
+  Council round fixes: guide.py resolves sponsor through the option keys, validates stay_days (positive integer only), asks a travel_document question for
+  C1/C2 (national passport vs other document) before any sponsor question, and asks sport_non_commercial for C8A/C8B (no gives the new NOT_COVERED verdict);
+  328 bootstraps the full 24-column production legacy shape; 329 starts with a DO guard that raises if a non-uppercase duplicate of a family code exists
+  (regenerated through the importer); scripts/visa_oracle_family_map.py runs only under __main__; GUIDE.md and tests updated (122 tests in the two files).
+  Earlier content:
+  apps/backend-rag/backend/services/visa_engine/families/ (importer.py, guide.py, family_c.json, 13 Law cards, GUIDE.md, INDEX.md),
+  migrations_v2/328_visa_types_law_projection.sql and 329_visa_types_law_family_c.sql, two test files, 13 audited false-positive entries in .secrets.baseline,
+  the design doc research/visa/2026-10-17-visa-oracle-law-and-guide.md. Gate fixes: squawk-ignore on the 328 rollback statement, this pack, and a test
+  that every non-extendable visa has max_total_days equal to stay_days.
+proof: |
+  Gate verdict SHIP-AFTER-FIXES (E4). The throwaway Postgres 16 proof (E2) and the test run (E1) were re-run by this session after the fixes.
+bites:
+  consumer: >-
+    apps/backend-rag apply-all on deploy runs 328 and 329; no existing reader imports the new families package.
+  observation: >-
+    Owed to the shipping session after merge: 13 family-C rows in visa_types with verification_status VERIFIED and the legacy columns unchanged.
+ground:
+  ts: "2026-10-17T13:50:41Z"
+  siblings: >-
+    Rebased onto origin/main at push time; migrations 328 and 329 did not exist on origin/main then.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 3
+decisions:
+  - id: D-rollback-squawk-ignore
+    decision: >-
+      CI squawk reports ban-drop-constraint (14 findings) only on the inline ROLLBACK statement of 328, which apply-all never executes; one
+      squawk-ignore ban-drop-constraint comment is added above that statement and nothing before the ROLLBACK marker changes. ban-drop-column is already excluded by CI.
+  - id: D-non-extendable-total
+    decision: >-
+      A non-extendable visa must carry max_total_days equal to stay_days and no months total; pinned by a new test parametrized over the 13 codes.
+receipts:
+  - claim: "E1 — the two visa_engine test files pass, 89 tests (76 original plus 13 from the parametrized non-extendable total test)."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_family_importer.py backend/tests/services/visa_engine/test_family_c_guide.py -p no:cacheprovider"
+    result: "89 passed in 0.13s"
+    exit: 0
+    ts: "2026-10-17T13:27:11Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "E2 — throwaway Postgres 16 with a prod-shaped visa_types (id serial PK, code varchar NOT NULL UNIQUE, name, category, requirements text[], metadata jsonb; 17 legacy rows incl. the 13 C codes): forward 328+329 twice, rollback 329 then 328, forward again. The forward and rollback parts are split at the ROLLBACK marker with awk."
+    cmd: "bash proof.sh (initdb + pg_ctl in a mktemp dir, psql -v ON_ERROR_STOP=1 -f per part; server stopped and dir removed on exit)"
+    result: "forward x2 ok (second run only skips existing columns/index); 13 VERIFIED of 17 rows; columns 28 after forward and 6 after rollback; legacy hash (id, code, name, category) identical after forward x2, after rollback and after the final forward; legacy names kept (C1, C18, E28A read 'legacy <code>')"
+    exit: 0
+    ts: "2026-10-17T13:50:17Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "E3 — squawk on 328 with CI's exclusion list: the local squawk 2.60.0 has no ban-drop-constraint rule (CI installs the latest and does), so the local run cannot prove the ignore silences the 14 CI findings."
+    cmd: "squawk --pg-version=15.0 <the CI --exclude list> apps/backend-rag/backend/db/migrations_v2/328_visa_types_law_projection.sql"
+    result: "exit 1 with the ignore present: warning unused-ignore unknown name ban-drop-constraint (local squawk does not know the rule); on the unfixed HEAD file the same command exits 0 locally. CI log of the previous push shows 14 ban-drop-constraint findings at lines 137-150. Whether the ignore silences them is decided by the CI Lint job."
+    exit: 1
+    ts: "2026-10-17T13:27:47Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "E4 — independent gate verdict SHIP-AFTER-FIXES (verdict relayed by the coordinator; gate run earlier this session, exact start time not recorded)."
+    cmd: "fresh Opus agent dispatched by the coordinator, read-only on the PR diff"
+    result: "SQL proven safe on a prod-shaped Postgres through the real split_migration_sql runner (forward x2, rollback, forward again); legacy diff 0; no reader breakage; 76 tests real; secrets clean. Required fixes: squawk-ignore on the 328 rollback, the evidence pack, and a non-extendable total test."
+    exit: 0
+    ts: "2026-10-17T13:50:41Z"
+    seat: opus independent gate (fresh agent, coordinator-dispatched)
+  - claim: "C1 — after the council fixes, the two visa_engine test files pass: 122 tests (new paths: travel_document both branches for C1 and C2, non-commercial sport no gives NOT_COVERED, invalid stay_days re-asks, sponsor yes/no/unknown keys, the 329 guard present before the first INSERT)."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_family_c_guide.py backend/tests/services/visa_engine/test_family_importer.py -p no:cacheprovider"
+    result: "122 passed in 0.32s"
+    exit: 0
+    ts: "2026-10-17T14:31:32Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "C2 — throwaway Postgres 16 with the FULL production legacy shape (24 columns, 117 rows incl. the 13 C codes uppercase): forward parts of 328+329 twice (split at the ROLLBACK marker), rollback 329 then 328, forward again; then a fresh empty database; then a database holding a lowercase c1 row."
+    cmd: "bash proof.sh (initdb + pg_ctl in a mktemp dir under /tmp, psql -v ON_ERROR_STOP=1 -f per part; server stopped and dir removed on exit; log kept in the session scratchpad proof/proof.log)"
+    result: "prod-shaped: forward x2 ok, 13 VERIFIED, 46 columns after forward and 24 after rollback, rows 117 throughout, md5 of all 24 legacy columns identical before, after forward x2, after rollback and after the final forward (legacy_hash_match=YES). Fresh empty db: 328+329 twice ok, 13 VERIFIED, 24 legacy columns present. Lowercase c1 duplicate: 329 aborts with ERRORE: visa_types holds a non-uppercase duplicate of a family code; fix the case first (psql exit 3), 1 row after, 0 VERIFIED."
+    exit: 0
+    ts: "2026-10-17T14:32:09Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "C3 — ruff check and ruff format --check clean on the changed Python (script, families package, the two test files); prettier --check clean on family_c.json and GUIDE.md; importer --check reports no drift of 329."
+    cmd: "ruff check <files>; ruff format --check <files>; node_modules/.bin/prettier --check <json, md>; python -m backend.services.visa_engine.families.importer --family C --check backend/db/migrations_v2/329_visa_types_law_family_c.sql"
+    result: "All checks passed; 8 files already formatted; prettier clean; drift exit 0"
+    exit: 0
+    ts: "2026-10-17T14:32:45Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "C4 — council round on the PR diff @35a36df157 (see council-journal.jsonl): codex-gpt-5.6-sol, agy-gemini-4-argon and kimi-code/k3 each returned SHIP-AFTER-FIXES; the fixes in C1-C3 answer their findings."
+    cmd: "codex exec --profile astra-deep --sandbox read-only; agy -p --model gemini-4-argon-high --mode plan; kimi -m kimi-code/k3 -p (all prompt-only on gh pr diff 8672); started 2026-10-17T14:19:27Z"
+    result: "3 of 3 seats ok, verdict SHIP-AFTER-FIXES each; outputs kept in the session scratchpad council/out_{codex,argon,kimi}.md"
+    exit: 0
+    ts: "2026-10-17T14:26:31Z"
+    seat: codex-gpt-5.6-sol, agy-gemini-4-argon, kimi-code/k3
+  - claim: "C5 — NotebookLM ground truth, NB-2 Immigration & Visa Indonesia 2025, profile default, on the family-C facts (question sha256 57f67b52c88c424954915d736165f62544bda9bdff26423d472f90840722f765). NB-2 disagrees with the official imigrasi.go.id pages on C7A/B/C, C2 sponsor, C12 sponsor and C22A; the cards follow the verbatim official page (see dissent)."
+    cmd: "nlm notebook query cff93ab0-813a-42f2-a8de-36987e724271 <contents of council/nlm_question.txt> (answer in council/nlm_answer.json)"
+    result: "answer received (nlm_answer.json); four disagreements with the official pages recorded in the dissent entries below; NB-2 treated as stale on those points"
+    exit: 0
+    ts: "2026-10-17T14:20:12Z"
+    seat: nlm (NB-2)
+dissent:
+  - seat: independent Opus gate (E4; start time not recorded)
+    objection: "Required squawk-ignore on the 328 rollback, the evidence pack, and a non-extendable total test."
+    status: CONFIRMED
+    disposition: "CURED before the council round (commits 86735bb165 and 35a36df157); E1-E3."
+  - seat: codex-gpt-5.6-sol, agy-gemini-4-argon, kimi-code/k3
+    objection: "C1/C2 sponsor exceptions ignored (codex, argon); sponsor option keys not resolved, so the key no read as truthy (argon); stay_days unvalidated: 0, negatives, floats pass, None and non-numeric crash (all three)."
+    status: CONFIRMED
+    disposition: "CURED: travel_document question, sponsor resolved through options, stay_days must be a positive integer else re-ask; tests in C1."
+  - seat: codex-gpt-5.6-sol
+    objection: "C8A/C8B cover non-commercial sport only, the guide never asks."
+    status: CONFIRMED
+    disposition: "CURED: sport_non_commercial question, no gives verdict NOT_COVERED."
+  - seat: codex-gpt-5.6-sol
+    objection: "328 fresh-database bootstrap created a partial legacy shape."
+    status: CONFIRMED
+    disposition: "CURED: full 24-column production shape; no-op on production where the table exists; C2."
+  - seat: kimi-code/k3
+    objection: "329 should guard against a code-case mismatch (a lowercase row would produce a duplicate through the case-sensitive UNIQUE)."
+    status: CONFIRMED
+    disposition: "CURED: DO guard at the top of 329, generated by the importer; proven to raise on a lowercase c1 row in C2."
+  - seat: agy-gemini-4-argon
+    objection: "scripts/visa_oracle_family_map.py executes at import time (reads argv)."
+    status: CONFIRMED
+    disposition: "CURED: all execution moved under if __name__ == __main__."
+  - seat: agy-gemini-4-argon, kimi-code/k3
+    objection: "C12 is_sold=TRUE with empty price_keys."
+    status: PLAUSIBLE
+    disposition: "NOT cured, owner ruling: C12 is sold, the price was requested from the team (Adit)."
+  - seat: agy-gemini-4-argon
+    objection: "importer constants are specific to family C (permit_class VISIT_SINGLE, entry_type SINGLE, category Visit Visa)."
+    status: PLAUSIBLE
+    disposition: "NOT cured: generalised when the next family lands; one family exists today."
+  - seat: agy-gemini-4-argon, kimi-code/k3
+    objection: "Scalars (stay_days, extendable, sponsor) are duplicated in family_c.json next to the cards."
+    status: PLAUSIBLE
+    disposition: "NOT cured: the law-match tests cross-check every scalar against its card; deriving them from the card is a later step."
+  - seat: kimi-code/k3
+    objection: "C18 scalar (90 days, not extendable) conflicts with the 60-day sentence in the page jenis_visa paragraph."
+    status: PLAUSIBLE
+    disposition: "NOT cured, owner ruling (Zero 2026-10-17): 90 days; the conflicting sentence is recorded in the card notes."
+  - seat: kimi-code/k3
+    objection: "C7B pnbp reference carries a scrape artifact."
+    status: PLAUSIBLE
+    disposition: "NOT cured: reference-only text, not read by the guide or the importer."
+  - seat: agy-gemini-4-argon
+    objection: "C12 page says 60 atau 180 hari; the guide models 180."
+    status: PLAUSIBLE
+    disposition: "NOT cured: the initial stay is modelled as the 180-day maximum, as the card states it."
+  - seat: agy-gemini-4-argon
+    objection: "C7C definition_verbatim equals C7B's; also vt_verified_needs_source_chk allows VERIFIED rows with NULL scalars, and tests that assert importer constants cannot fail independently."
+    status: PLAUSIBLE
+    disposition: "NOT changed in this round: the card text is the verbatim official page and is not edited by hand; the CHECK and test points are carried as residuals for the next family."
+  - seat: nlm (NB-2) vs official imigrasi.go.id pages, C7A/B/C
+    objection: "NB-2 says 60 days extendable to 180."
+    status: PLAUSIBLE
+    disposition: "NOT followed: the official page says 30 days, not extendable; the cards follow the verbatim page. NB-2 flagged as stale."
+  - seat: nlm (NB-2) vs official page, C2 sponsor
+    objection: "NB-2 says a sponsor is required."
+    status: PLAUSIBLE
+    disposition: "NOT followed: the official page says not required except stateless, non-national travel document and listed countries (modelled by travel_document; the country list is still TO VERIFY). NB-2 stale."
+  - seat: nlm (NB-2) vs official page, C12 sponsor
+    objection: "NB-2 says a sponsor is not required."
+    status: PLAUSIBLE
+    disposition: "NOT followed: the official page requires a sponsor. NB-2 stale."
+  - seat: nlm (NB-2) vs official page, C22A
+    objection: "NB-2 says 60 days."
+    status: PLAUSIBLE
+    disposition: "NOT followed: the official page says 180 days. NB-2 stale."

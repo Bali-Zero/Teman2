@@ -135,6 +135,7 @@ def literal(column: str, value) -> str:
 def emit_sql(family: str) -> str:
     fam = family.upper()
     parts = [HEADER.format(family=fam, lower=fam.lower())]
+    parts.append(_case_guard_sql(sorted(build_rows(fam), key=lambda r: r["code"])))
     cols = ("code", "name", "category", *LAW_COLUMNS)
     updates = ",\n    ".join(f"{c} = EXCLUDED.{c}" for c in LAW_COLUMNS)
     for row in build_rows(fam):
@@ -153,6 +154,19 @@ def emit_sql(family: str) -> str:
         )
     parts.append(_rollback_sql(build_rows(fam)))
     return "".join(parts)
+
+
+def _case_guard_sql(rows: list[dict]) -> str:
+    codes = ", ".join(_text(r["code"]) for r in rows)
+    return (
+        "\n-- Guard: refuse to run if a row already holds one of these codes in another case\n"
+        "-- (the UNIQUE on code is case-sensitive, so the upsert below would add a duplicate).\n"
+        "DO $guard$\nBEGIN\n"
+        f"    IF EXISTS (SELECT 1 FROM visa_types WHERE code <> upper(code) AND upper(code) IN ({codes})) THEN\n"
+        "        RAISE EXCEPTION 'visa_types holds a non-uppercase duplicate of a family code; fix the case first';\n"
+        "    END IF;\n"
+        "END\n$guard$;\n"
+    )
 
 
 def _rollback_sql(rows: list[dict]) -> str:

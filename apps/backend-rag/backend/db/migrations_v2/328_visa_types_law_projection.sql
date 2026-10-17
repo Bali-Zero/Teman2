@@ -29,15 +29,32 @@ SET statement_timeout = '60s';
 -- visa_types is not created by any numbered migration (production has it from
 -- before the ledger). On such a database this is a no-op; on a fresh database
 -- (CI, local) it creates the legacy shape so the additive columns below have a
--- table to extend. The shape is the production one: id, code, name, category,
--- requirements, metadata.
+-- table to extend. The shape is the full production legacy one (24 columns).
 CREATE TABLE IF NOT EXISTS visa_types (
     id SERIAL PRIMARY KEY,
     code VARCHAR NOT NULL UNIQUE,
     name VARCHAR NOT NULL,
-    category VARCHAR,
+    duration VARCHAR,
+    extensions VARCHAR,
+    total_stay VARCHAR,
+    renewable BOOLEAN DEFAULT FALSE,
+    processing_time_normal VARCHAR,
+    processing_time_express VARCHAR,
+    processing_timeline JSONB,
+    cost_visa VARCHAR,
+    cost_extension VARCHAR,
+    cost_details JSONB,
     requirements TEXT[],
-    metadata JSONB
+    restrictions TEXT[],
+    allowed_activities TEXT[],
+    benefits TEXT[],
+    process_steps TEXT[],
+    tips TEXT[],
+    category VARCHAR,
+    foreign_eligible BOOLEAN DEFAULT TRUE,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    last_updated TIMESTAMPTZ DEFAULT now(),
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE visa_types

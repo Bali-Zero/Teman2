@@ -12,6 +12,7 @@ OK = "OK"
 OK_WITH_EXTENSION = "OK_WITH_EXTENSION"
 NEEDS_SPONSOR = "NEEDS_SPONSOR"
 STAY_TOO_LONG = "STAY_TOO_LONG"
+NOT_COVERED = "NOT_COVERED"  # the activity is outside what this visa allows (e.g. commercial sport on C8A/C8B)
 
 
 @cache
@@ -23,6 +24,17 @@ def max_total_days(visa: dict) -> int:
     if "max_total_days" in visa:
         return visa["max_total_days"]
     return visa["max_total_months"] * 30
+
+
+def _positive_int(value) -> int | None:
+    """A positive integer, from an int or a string of digits; anything else is None."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, str) and value.isascii() and value.isdigit():
+        return int(value) or None
+    return None
 
 
 def resolve(family: str, answers: dict) -> dict:
@@ -41,14 +53,27 @@ def resolve(family: str, answers: dict) -> dict:
             return {"ask": sub}
     code = choice
     visa = data["visas"][code]
+    gate = visa.get("requires_question")
+    if gate:
+        if answers.get(gate) not in questions[gate]["options"]:
+            return {"ask": gate, "code": code}
+        if not questions[gate]["options"][answers[gate]]:
+            return {"code": code, "verdict": NOT_COVERED}
     if visa["sponsor_required"]:
-        if "sponsor" not in answers:
+        needs_sponsor_question = True
+    else:
+        # Sponsor is conditional (stateless / non-national travel document / listed countries).
+        if answers.get("travel_document") not in questions["travel_document"]["options"]:
+            return {"ask": "travel_document", "code": code}
+        needs_sponsor_question = questions["travel_document"]["options"][answers["travel_document"]]
+    if needs_sponsor_question:
+        if answers.get("sponsor") not in questions["sponsor"]["options"]:
             return {"ask": "sponsor", "code": code}
-        if not answers["sponsor"]:
+        if not questions["sponsor"]["options"][answers["sponsor"]]:
             return {"code": code, "verdict": NEEDS_SPONSOR}
-    if "stay_days" not in answers:
+    days = _positive_int(answers.get("stay_days"))
+    if days is None:
         return {"ask": "stay_days", "code": code}
-    days = int(answers["stay_days"])
     if days <= visa["stay_days"]:
         return {"code": code, "verdict": OK}
     if visa["extendable"] and days <= max_total_days(visa):
