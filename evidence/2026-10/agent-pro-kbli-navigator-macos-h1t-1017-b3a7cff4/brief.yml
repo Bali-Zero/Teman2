@@ -23,9 +23,12 @@ acceptance:
     probe: "theme_flip_check.py --selftest 4/4 (a day render judged as night fails surface+chip; judged as day passes; and back)"
   - text: A3. No render of the forced-theme set changes.
     probe: "render_set IMM=1 head vs H1d 64ad9c30bc: 141 of 141 PNGs byte-identical"
+  - text: A5. The launch seed is guarded: a launch seeded in the wrong mode fails.
+    probe: "Pro offscreen: theme_flip_check.py PASS 8/8 (4 seeded launches from -themeOverride/-AppleInterfaceStyle on the harness command line, judged on the seed and the pixels); the seed reverted to .dark FAILs the two light-ending launches"
   - text: A4. The harness still takes no focus.
     probe: "no_focus_check.sh PASS 4/4 on the head binary"
 deferred:
-  - id: launch-order-offscreen
+  - id: app-seed-line
     to: none
-    text: The offscreen host does not reproduce a launch built in the wrong mode (the seed reverted alone passes there); the cause is closed at the seed, measured on a real display before the owner's no-launch rule (origin/main 5/5 launches defective under override light and system, 0/5 with the seed).
+    text: The harness executes ThemeManager.launchMode(override:system:) but not the App's own line that calls it; a launch built in the wrong mode paints correctly offscreen once settled, so the guard reads the seed (seedMode) beside the pixels. Measured on a real display before the owner's no-launch rule (origin/main 5/5 launches defective, 0/5 with the seed); no real-display check is committed.
+base: stacked on H1d 64ad9c30bc; re-based onto main after #8660 merges.
