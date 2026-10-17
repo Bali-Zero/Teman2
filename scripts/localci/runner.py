@@ -68,7 +68,7 @@ HOST_NO_VERDICT = re.compile(r"^(?:host_disk_full|host_disk_below_floor \d+(?:\.
 MIN_FREE_ENV, DEFAULT_MIN_FREE_GB = "LOCALCI_MIN_FREE_GB", 12.0
 _HOST_FREE: dict = {}   # run dir -> (free GB or None, why): the docker host's free space, read once per `run`
 RESERVED_CHECK_PREFIXES = ("policy.", "tests.", "review.", "trusted.")  # planned by the runner itself, never by --extra-check
-RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files"})
+RUNNER_OWNED_KEYS = frozenset({"extra", "isolation", "trusted_pythonpath", "trusted_dir_sha256", "trusted_files", "deps_image", "deps_note"})
 EXTRA_CHECK_KINDS = ("cmd", "pytest")  # an extra check must EXECUTE something: a `record` extra would be a verdict without evidence
 EXTRA_CHECK_NAME = re.compile(r"^[a-z][a-z0-9_-]*(\.[a-z0-9][a-z0-9_-]*)+$")  # no whitespace/case twins of a planned name ("security.pysa_python " is not a new check)
 TRUSTED_PYSA_FILES = ["scripts/localci/pysa_check.py", "scripts/localci/pysa/taint.config", "scripts/localci/pysa/fastapi_sources_sinks.pysa",
@@ -248,7 +248,7 @@ def env_fingerprint(venv_py: str, checks: dict | None = None) -> dict:
         kind = spec.get("kind")
         iso = spec.get("isolation") or {}
         if kind in CANDIDATE_KINDS and iso.get("mode") == "container":
-            tools[name] = {"image_id": iso.get("image_id"), "docker": tool_identity(iso.get("docker") or "docker")}
+            tools[name] = {"image_id": iso.get("image_id"), "docker": tool_identity(iso.get("docker") or "docker"), **({"deps_image": spec["deps_image"]} if spec.get("deps_image") else {})}
         elif kind == "cmd" and spec.get("cmd"):
             tools[name] = tool_identity(spec["cmd"][0], spec.get("cwd"))
         elif kind == "trusted_steps":
@@ -392,6 +392,17 @@ IMPLICIT_USES = ("actions/checkout@", "actions/setup-python@")   # stood in for 
 STEPS_DRIVER = Path(__file__).with_name("steps_driver.py")
 PYTEST_INDEXED = Path(__file__).with_name("pytest_indexed.py")
 HOSTED_SCRIPTS_PYTHON = "3.11"   # scripts-tests-sweep.yml's setup-python: the interpreter hosted runs scripts/tests with
+# scripts-tests-sweep.yml's "Install dependencies" step, line by line (a test pins it to the workflow): (cwd under the tree, argv). They run offline inside
+# the sandbox against the deps image's /opt/wheels, so the interpreter holds the lock + cell-core + the four test packages hosted's sweep has.
+SWEEP_INSTALL = (("apps/backend-rag", ["pip", "install", "--upgrade", "pip", "uv"]),
+                 ("apps/backend-rag", ["uv", "pip", "install", "--system", "-r", "requirements.lock.txt"]),
+                 ("apps/backend-rag", ["uv", "pip", "install", "--system", "-e", "../../packages/cell-core"]),
+                 ("apps/backend-rag", ["uv", "pip", "install", "--system", "pytest", "pytest-asyncio", "pytest-mock", "fakeredis"]))
+SWEEP_DEPS_CONTEXT = "Backend Tests (Python)"   # its matrix deps recipe IS that closure: same recipe, same digest, same image, no second build
+SWEEP_ENV = {"HOME": "/home/runner", "USER": "runner", "LOGNAME": "runner", "UV_OFFLINE": "1", "UV_FIND_LINKS": "/opt/wheels", "PIP_FIND_LINKS": "/opt/wheels", "PIP_NO_INDEX": "1",
+             "PIP_DISABLE_PIP_VERSION_CHECK": "1", "JWT_SECRET_KEY": "test_jwt_secret_key_for_testing_only_min_32_chars_long",   # pragma: allowlist secret — the sweep's public constants
+             "API_KEYS": "test_api_key_1,test_api_key_2"}   # pragma: allowlist secret — its DATABASE_URL/REDIS_URL are services this sandbox does not have, so not set
+INSTALL_RC = 97   # pytest_indexed.py's exit when the env install failed: no verdict on the candidate (same literal there, pinned by a test)
 # What a contained step sees of GitHub: the merge_group event (the build whose verdict lands on main), and an offline pip.
 CONTAINED_STEP_ENV = {"CI": "true", "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "merge_group", "GITHUB_WORKSPACE": "/w",
                       "HOME": "/home/runner", "SHELL": "/bin/bash", "PIP_FIND_LINKS": "/opt/wheels",
@@ -1705,6 +1716,13 @@ def cmd_plan(a):
             spec["isolation"] = iso
             if iso["mode"] == "container":
                 spec.pop("python", None)   # the interpreter is the pinned image's, not a host venv
+    sc = checks.get("tests.scripts_impacted")
+    if sc and sc["kind"] == "pytest" and iso.get("mode") == "container" and ctxs["status"] == "ok":   # hosted's sweep env: the Backend Tests deps image
+        deps = ((ctxs["map"].get(SWEEP_DEPS_CONTEXT) or {}).get("local") or {}).get("deps")
+        image, note = plan_deps_image(wt, ident["candidate_sha"], iso, deps, os.path.dirname(hosted_python(iso)), run_dir, "backend-tests") if deps \
+            else (None, f"the contexts matrix has no deps recipe for {SWEEP_DEPS_CONTEXT!r}")
+        checks["tests.scripts_impacted"] = {**sc, "deps_image": image, "deps_note": note} if image else \
+            _blocked(f"tests.scripts_impacted: hosted's sweep env (lock + cell-core + test packages) is not available offline: {note}")
     for spec in checks.values():   # every trusted dir is sha-mapped at plan time and re-verified before it runs (classifier dir included)
         if spec.get("kind") == "cmd" and spec.get("trusted_pythonpath") and "trusted_dir_sha256" not in spec:
             spec["trusted_dir_sha256"] = trusted_dir_map(Path(spec["trusted_pythonpath"]))
@@ -1761,6 +1779,8 @@ def classify_pytest(rc: int | None, counts: dict) -> tuple[str, str]:
         return "ERROR", "no exit code — not a verdict on the candidate"
     if rc < 0:
         return "ERROR", f"pytest crashed (signal {-rc}) — not a verdict on the candidate"
+    if rc == INSTALL_RC:
+        return "ERROR", "the sandbox's offline env install failed (see the log) — not a verdict on the candidate"
     if rc == 5 or counts["collected"] == 0:
         return "ERROR", f"pytest rc={rc}: zero tests collected (junit={counts.get('junit')}) — not PASS"
     if rc in (2, 3, 4):
@@ -2320,6 +2340,10 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
             notes.append(f"# python: the image carries no {HOSTED_SCRIPTS_PYTHON} interpreter — pytest runs on the image default, which is not hosted's\n")
         argv = [py, "-m", "pytest", "-p", "no:cacheprovider", "-q", "--junitxml=/out/junit.xml", *spec["modules"]]
         env["PYTHONPATH"] = workdir
+        sweep = spec.get("deps_image")   # hosted's sweep env: its HOME, the offline install of its three lines, ~/logs as collecting the whole directory leaves it
+        if sweep:
+            env.update(SWEEP_ENV)
+            notes.append(f"# env: deps image {sweep[:19]} ({spec.get('deps_note')}); offline install of the sweep's lines, HOME={SWEEP_ENV['HOME']}\n")
         hist = history_delta(Path(plan["worktree"]), plan["base_sha"], plan["candidate_sha"])   # hosted checks the tree out as a repository: so does the sandbox
         if isinstance(hist, str):   # hosted's checkout is depth 1: the indexed tree alone is what it has, so a BASE that cannot be rebuilt is no verdict-changer
             notes.append(f"# history: BASE not rebuilt as a commit ({hist[:160]}) — the tree is indexed alone, as hosted's depth-1 checkout is\n")
@@ -2331,7 +2355,7 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         tp, files, pack_note = tree_pack_ship_safe(run_dir, plan)
         pack_note = "".join(notes) + (pack_note or "")
         extra["cfg/pytest_indexed.json"] = json.dumps({"root": workdir, "history": hist, "argv": argv, **({"path_prefix": str(Path(py).parent)} if py != "python" else {}),
-                                                       **({"tree_pack": tp} if tp else {})}).encode()
+                                                       **({"install": SWEEP_INSTALL, "home_dirs": ["logs"]} if sweep else {}), **({"tree_pack": tp} if tp else {})}).encode()
         inner = ["python", "-I", "/cfg/pytest_indexed.py", "/cfg/pytest_indexed.json"]
     elif kind == "contained_steps":
         drv = STEPS_DRIVER.read_bytes()
@@ -2356,7 +2380,8 @@ def _execute_candidate_contained(name: str, spec: dict, run_dir: Path, plan: dic
         fh.write(pack_note or "")
     t0, probe = time.monotonic(), new_probe(name)
     try:
-        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir, files=files, probe=probe)
+        rc, err = execute_contained(name, spec, run_dir, plan, inner, overrides, extra, env, log, junit, timeout, workdir, files=files, probe=probe,
+                                    image_id=spec.get("deps_image") if kind == "pytest" else None)
     except ContainerCleanupError:
         raise
     except (OSError, subprocess.SubprocessError, RuntimeError) as e:

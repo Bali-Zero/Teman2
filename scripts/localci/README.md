@@ -256,6 +256,25 @@ object, 3.11 raises `RecursionError`). The leg now runs `pytest_indexed.py` in t
 tree pack and BASE history included) and runs pytest as its CHILD on the image's 3.11 (`hosted_python`; the image default when it carries none). No check is
 excluded or weakened; the modules and the verdict rule are unchanged.
 
+**Its Python environment is the sweep's (pytest env v2).** The bare 3.11 (pytest + PyYAML) and `HOME=/tmp` made the next class of false red: #8648's two modules were
+11 failures there (`pydantic`, `numpy`, and `~/logs/dlq_autopilot.log`, whose `FileHandler` `scripts/dlq_autopilot.py:27` opens at import) and 0 in hosted's sweep, so after the
+flip every PR touching such a module would have needed a human merge (at least 32 of 582 `scripts/tests` modules import a package the image lacks). Now `plan` gives the
+check the Backend Tests deps image (`plan_deps_image` on the BASE matrix's `Backend Tests (Python)` recipe: same recipe, same digest, the image Backend Tests already built, no
+second build), and the sandbox runs `scripts-tests-sweep.yml`'s own install lines (`SWEEP_INSTALL`, pinned to the workflow by a test) offline against its `/opt/wheels`: the
+backend-rag lock, `-e packages/cell-core`, `pytest pytest-asyncio pytest-mock fakeredis`, on the same 3.11, with `HOME=/home/runner`, `USER=runner` and the sweep's two constants
+(`JWT_SECRET_KEY`, `API_KEYS`). `~/logs` is created first: hosted gets it as a side effect of COLLECTING the whole directory (`test_profile_monitor_wrapper_bind.py` imports
+`profile-monitor/wrapper.py` at module level, which makes it), so the dlq tests pass there by collection order and would fail on any subset; the honest cure is `dlq_autopilot.py` making
+its own log directory (a hot-zone file, not touched here). An install that fails is `INSTALL_RC` (97): ERROR, no verdict, never FAIL. A deps image that cannot be had at plan time
+is BLOCKED, never the bare sandbox. Measured on Pro (real images, network none, uid 65534): #8648's two modules at `7f670dcde0` and `64d0656d7b` 11 failed (bare) -> 63 passed (here), install 25 s;
+the whole `scripts/tests` at `ad49c9c93f` (the head of hosted sweep run 38865896219): 100 failed / 13,542 passed / 1,374 skipped here vs 224 / 13,278 / 1,525 hosted, 102 failures in both, 122
+hosted-only (a red hosted, green here: `test_dynamic_workflow` x100 and 22 more), and the residuals against hosted named: three red here and green hosted
+(`test_insight_cover_cards`: no usable font, the image has none and hosted's runner has DejaVu, a collection error; `test_lint_workflow_script::test_innocence_in_root_violation_still_prints_relative_path`:
+the tree is mounted at `/w`, and `/w` is a substring of `.github/workflows/`; `test_mailbox_inject_ttl_dedup::test_three_same_key_plus_one_stale_yields_exactly_one_injection`: three files written in one
+kernel tick of Pro's Colima VM share an mtime, and the test picks the survivor by mtime) and eleven skipped here that pass hosted (`test_wa_attention_result_guard` x5 and `test_wa_attention_sender_phone` x4: no
+postgres server binaries; `test_agent_lease` x1: no Redis; `test_regulatory_watcher_gh_context` x1: a git object outside the indexed history). **Still not reproduced:** the sweep's postgres and redis services
+(its `DATABASE_URL`/`REDIS_URL` are not set, so no module is made to fail on a connection the sandbox cannot have; 25 modules mention them and only the three above differ from hosted),
+and linux/arm64 wheels where hosted installs x64 ones. A lock that changed in the PR (or on main since the image was built) costs a cold deps build at plan time, as it does for Backend Tests.
+
 ### Sandbox git index (B14)
 
 Every sandbox whose steps config has `git_index: true` indexes the tree as a git commit before its first step, and that time is
