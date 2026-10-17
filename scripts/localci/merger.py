@@ -60,7 +60,7 @@ JUDGE_BASE_OK = "judge_rewritten_base_ok"
 LABEL = "localci:merge"
 ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
-ESCALATIONS_ENV = "LOCALCI_ESCALATIONS_FILE"   # the Pro escalation board the false-green alarm appends to; default ~/Desktop/nuzantara/shared/escalations_pro.jsonl
+ESCALATIONS_ENV = "LOCALCI_ESCALATIONS_FILE"   # the Pro escalation board the false-green alarm appends to; default the checkout's shared/escalations_pro.jsonl under $HOME/nuzantara (never the Desktop path: TCC denies it to a launchd job, W84)
 PHASE_F_ENV, KEY_FILE, HALT_FILE = "LOCALCI_MERGER_PHASE_F", "deploy_key", "phase_f_halt"   # F2: the env half of the arm, the key and the sticky halt in the state dir
 PUSH_TIMEOUT_S = 120
 READBACK_SETTLE_S = 5      # B21: (b) needs two reads this far apart to agree
@@ -1816,7 +1816,7 @@ def alarm_false_green(state: Path, keys: list) -> None:
     alarmed before (the journal's ``false_green_alarm`` rows are the memory): a HIGH line on the Pro escalation board, then the journal
     row. A board that cannot be written is said in the row (``escalated`` false), never retried: the row is the trail."""
     seen = {r.get("key") for r in read_journal(state) if r.get("kind") == "false_green_alarm"}
-    board = Path(os.environ.get(ESCALATIONS_ENV) or Path.home() / "Desktop" / "nuzantara" / "shared" / "escalations_pro.jsonl")
+    board = Path(os.environ.get(ESCALATIONS_ENV) or Path.home() / "nuzantara" / "shared" / "escalations_pro.jsonl")
     for key in (k for k in keys if k not in seen):
         ts, ok = time.time(), True
         line = {"job": f"localci:false-green:{key}", "type": "localci_false_green", "priority": "HIGH", "status": "pending", "ts": ts, "machine": "pro",

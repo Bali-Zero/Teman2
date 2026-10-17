@@ -20,5 +20,6 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "fg-keys-skip-pr-level": (PY, 'if rows[-1]["class"] == "FALSE_GREEN" or ctx_fg or raw - len(got) > 0:', "if ctx_fg or raw - len(got) > 0:", T),
     "fg-board-fixture-not-autouse": (CF, "@pytest.fixture(autouse=True)\ndef board_off_the_checkout(", "@pytest.fixture\ndef board_off_the_checkout(", T),
     "fg-board-fixture-sets-no-env": (CF, '    monkeypatch.setenv("LOCALCI_ESCALATIONS_FILE", str(path))\n', "", T),
+    "fg-board-default-on-desktop": (PY, 'Path.home() / "nuzantara" / "shared" / "escalations_pro.jsonl")', 'Path.home() / "Desktop" / "nuzantara" / "shared" / "escalations_pro.jsonl")', T),
     "fg-keys-skip-every-level": (PY, 'if rows[-1]["class"] == "FALSE_GREEN" or ctx_fg or raw - len(got) > 0:', "if False:", T),
 }

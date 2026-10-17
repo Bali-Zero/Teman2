@@ -160,3 +160,12 @@ def test_a_test_without_its_own_board_alarms_into_the_session_temp_not_a_checkou
     before = len(lines(path))
     mg.alarm_false_green(fw.state, ["#7@dddddddddddd"])
     assert alarms(fw)[-1]["escalated"] is True and len(lines(path)) == before + 1
+
+
+def test_the_default_board_is_the_checkout_under_home_never_the_desktop_symlink(fw, tmp_path, monkeypatch):
+    monkeypatch.delenv(mg.ESCALATIONS_ENV)
+    monkeypatch.setenv("HOME", str(tmp_path))   # Path.home(); the Pro merger runs under launchd, and TCC denies it ~/Desktop (W84)
+    (tmp_path / "nuzantara" / "shared").mkdir(parents=True)
+    mg.alarm_false_green(fw.state, ["#8@cccccccccccc"])
+    assert [x["job"] for x in lines(tmp_path / "nuzantara" / "shared" / "escalations_pro.jsonl")] == ["localci:false-green:#8@cccccccccccc"]
+    assert not (tmp_path / "Desktop").exists() and alarms(fw)[-1]["escalated"] is True
