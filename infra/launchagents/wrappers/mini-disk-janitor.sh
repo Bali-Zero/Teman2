@@ -67,10 +67,18 @@ fi
 # G10_single_instance — pidfile + liveness probe + trap cleanup. The Mini healer
 # (scripts/healer_receptor_registry.py) reads only ok/success/healthy/starting/running as alive, so
 # every non-failure here is status ok and the nuance rides in the note.
+# A live pid on an OLD pidfile is a hung run or a reused pid, not "still working": past
+# MINI_DISK_JANITOR_STALE_LOCK_MIN the lock is logged, removed and this run proceeds.
+STALE_LOCK_MIN="${MINI_DISK_JANITOR_STALE_LOCK_MIN:-120}"
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
-    log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
-    heartbeat "ok" "previous-run-active"
-    exit 0
+    if [ -n "$(find "$PIDFILE" -mmin +"$STALE_LOCK_MIN" 2>/dev/null)" ]; then
+        log "stale lock (pid $(cat "$PIDFILE"), older than ${STALE_LOCK_MIN}m) — removing and proceeding"
+        rm -f "$PIDFILE"
+    else
+        log "previous run still alive (pid $(cat "$PIDFILE")) — skipping"
+        heartbeat "ok" "previous-run-active"
+        exit 0
+    fi
 fi
 echo $$ > "$PIDFILE"
 
@@ -84,8 +92,26 @@ if [ ! -f "$PAYLOAD" ]; then
     heartbeat "error" "payload missing"
     exit 0
 fi
-OUT=$(bash "$PAYLOAD" --apply 2>>"$LOG")
-RC=$?
+# Overall deadline (pure bash): a watchdog TERMs the payload, then KILLs it after 2 s. Each external
+# command inside the payload has its own bound, so nothing it started outlives its own timeout.
+DEADLINE_S="${MINI_DISK_JANITOR_DEADLINE_S:-$(( ${MINI_DISK_JANITOR_DEADLINE_MIN:-90} * 60 ))}"
+OUTF="$LOG_DIR/.payload-out.$$"; rm -f "$OUTF" "$OUTF.deadline"
+bash "$PAYLOAD" --apply >"$OUTF" 2>>"$LOG" &
+PP=$!
+# The watchdog polls once a second and leaves as soon as the payload is gone (no orphaned long sleep).
+( i=0; while [ "$i" -lt "$DEADLINE_S" ]; do sleep 1; kill -0 "$PP" 2>/dev/null || exit 0; i=$((i + 1)); done
+  : > "$OUTF.deadline"; kill -TERM "$PP" 2>/dev/null; sleep 2; kill -KILL "$PP" 2>/dev/null ) >/dev/null 2>&1 &
+WD=$!
+wait "$PP"; RC=$?
+wait "$WD" 2>/dev/null
+OUT=$(cat "$OUTF" 2>/dev/null)
+if [ -e "$OUTF.deadline" ]; then
+    rm -f "$OUTF" "$OUTF.deadline"
+    log "payload killed by the ${DEADLINE_S}s deadline"
+    heartbeat "error" "deadline ${DEADLINE_S}s"
+    exit 0
+fi
+rm -f "$OUTF"
 SUMMARY=$(printf '%s\n' "$OUT" | grep '^summary ' | tail -1)
 LEVEL=$(printf '%s\n' "$OUT" | grep '^level=' | tail -1 | sed 's/^level=//')
 FREED_KB=$(printf '%s' "$SUMMARY" | sed -n 's/.*freed_kb=\(-\{0,1\}[0-9][0-9]*\).*/\1/p')
