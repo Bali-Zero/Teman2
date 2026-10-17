@@ -55,6 +55,7 @@ _SEARCH_NOISE_WORDS = frozenset(
         "del", "della", "dei", "delle", "con", "and", "e", "or", "o",
         "ke", "dan", "yang", "dari", "to", "as", "on", "at", "mi", "ma", "si",
         "ci", "lo", "che",
+        "license", "licence", "licensing", "sell",
     }
 )  # fmt: skip
 
@@ -83,6 +84,20 @@ _LIGHT_SUFFIXES = frozenset(
         "ati",
     }
 )
+
+
+def _is_noise(token: str) -> bool:
+    """A noise word, or a noise word of 4+ characters plus a light suffix.
+
+    "prices" = "price" + "s", "biayanya" = "biaya" + "nya", "selling" = "sell" + "ing".
+    """
+    if token in _SEARCH_NOISE_WORDS:
+        return True
+    return any(
+        len(w) >= 4 and token.startswith(w) and token[len(w) :] in _LIGHT_SUFFIXES
+        for w in _SEARCH_NOISE_WORDS
+    )
+
 
 # Domain acronyms a client types that are not a prefix/infix of the catalogue word any more
 # (the old substring match found "itas" inside "kitas"): query token -> extra target words.
@@ -127,7 +142,7 @@ def _query_terms(query: str) -> tuple[list[str], list[str]]:
         if first in _NEGATORS:
             continue
         tokens.extend(item.split(" "))
-        if item not in _SEARCH_NOISE_WORDS and len(item) > 1:
+        if not _is_noise(item) and len(item) > 1:
             terms.append(item)
     return (tokens, terms) if terms else (flat, [])
 
@@ -213,7 +228,7 @@ def _count_search_matches(
         return int(_contains_phrase(row_list, terms))
     matched = {t for t in terms if _term_matches_row(t, row_list, row_words)}
     if isinstance(keywords, list):
-        stripped = [t for t in query_tokens if t not in _SEARCH_NOISE_WORDS]
+        stripped = [t for t in query_tokens if not _is_noise(t)]
         for keyword in keywords:
             phrase = _words(keyword)
             if len(phrase) == 1:
