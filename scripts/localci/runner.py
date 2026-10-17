@@ -1368,42 +1368,44 @@ def _squashed(d) -> dict:
     return {str(k): " ".join(str(v).split()) for k, v in (d or {}).items()}
 
 
-PIN_REF = re.compile(r"^[^@\s]+@[0-9a-f]{40}$")
+PIN_REF = re.compile(r"[^@\s]+@[0-9a-f]{40}")
 
 
 def candidate_pin_follow(wt: Path, base: str, cand: str, wf: str, local: dict, ctx_job: str | None) -> str | None:
     """The plan reads BASE's workflow and matrix, so a bump merged without its matrix pin leaves main with a workflow the matrix does not
     follow and every later PR BLOCKED, the fix included (it is judged by that BASE matrix). Here the candidate's own workflow and matrix are read
-    as data: for every step BASE's matrix pins, the candidate's matrix must still pin it and agree with the candidate's workflow, and a pin the
-    candidate changes must be an immutable `<action>@<40 hex>`. Nothing of the candidate runs; the plan stays BASE's. None when they agree, when
-    BASE pins nothing, or when neither file differs from BASE; else the reason."""
-    mrel = "scripts/localci/contexts_matrix.yaml"
-    base_pins = {(jl.get("job_id"), ms.get("workflow_step")): ms for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx_job}]
-                 for ms in jl.get("steps") or [] if isinstance(ms.get("uses_pin"), str) or isinstance(ms.get("with_pin"), dict)}
+    as data (the capped `parity_yaml` loader): over the UNION of the steps BASE's matrix pins and the steps the candidate's matrix pins, the
+    candidate matrix must still pin what BASE pinned and agree with the candidate workflow (a pin the candidate ADDS included), and a changed
+    `uses_pin` must be an immutable `<action>@<40 hex>`. Nothing of the candidate runs; the plan stays BASE's. None when they agree, when
+    BASE pins nothing and the matrix is unchanged, or when neither file differs from BASE; else the reason (a value is never echoed raw)."""
+    mrel = MATRIX_REL
+
+    def pins(jobs_local: dict) -> dict:
+        return {(jl.get("job_id"), ms.get("workflow_step")): ms for jl in [*(jobs_local.get("jobs") or []), {**jobs_local, "job_id": ctx_job}]
+                for ms in jl.get("steps") or [] if isinstance(ms.get("uses_pin"), str) or isinstance(ms.get("with_pin"), dict)}
+    base_pins = pins(local)
     blobs = {r: (_extract_base_file(wt, base, r), _extract_base_file(wt, cand, r)) for r in (wf, mrel)}
-    if not base_pins or all(a == b for a, b in blobs.values()):
+    if all(a == b for a, b in blobs.values()) or (not base_pins and blobs[mrel][0] == blobs[mrel][1]):
         return None
     try:
-        import yaml
-
-        wdoc, mdoc = (yaml.safe_load(blobs[r][1] or b"") for r in (wf, mrel))
+        wdoc, mdoc = (parity_yaml(blobs[r][1] or b"", r) for r in (wf, mrel))
         cl = next(c["local"] for c in mdoc["contexts"] if (c.get("local") or {}).get("check") == local.get("check"))
-        cms = {(jl.get("job_id"), ms.get("workflow_step")): ms for jl in [*(cl.get("jobs") or []), {**cl, "job_id": ctx_job}] for ms in jl.get("steps") or []}
-        for (jid, step), bms in base_pins.items():
-            ms, lab = cms.get((jid, step)) or {}, f"job {jid}: step {step!r}"
+        cand_pins = pins(cl)
+        for jid, step in [*base_pins, *(k for k in cand_pins if k not in base_pins)]:
+            bms, ms, lab = base_pins.get((jid, step)) or {}, cand_pins.get((jid, step)) or {}, f"job {jid}: step {step!r}"
             ws = next((x for x in ((wdoc["jobs"].get(jid) or {}).get("steps") or []) if isinstance(x, dict) and x.get("name") == step), {})
-            if isinstance(bms.get("uses_pin"), str):
-                if not isinstance(ms.get("uses_pin"), str):
-                    return f"{lab}: the candidate matrix no longer pins the action"
+            if isinstance(bms.get("uses_pin"), str) and not isinstance(ms.get("uses_pin"), str):
+                return f"{lab}: the candidate matrix no longer pins the action"
+            if isinstance(ms.get("uses_pin"), str):
                 if ws.get("uses") != ms["uses_pin"]:
-                    return f"{lab}: the candidate workflow uses {ws.get('uses')!r} but the candidate matrix transcribes {ms['uses_pin']!r} — a bump carries its matrix pin"
-                if ms["uses_pin"] != bms["uses_pin"] and not PIN_REF.match(ms["uses_pin"]):
-                    return f"{lab}: the candidate's new pin {ms['uses_pin']!r} is not an immutable <action>@<40 hex sha> ref"
-            if isinstance(bms.get("with_pin"), dict):
-                if not isinstance(ms.get("with_pin"), dict):
-                    return f"{lab}: the candidate matrix no longer pins the action inputs"
-                if _squashed(ws.get("with")) != _squashed(ms["with_pin"]):
-                    return f"{lab}: the candidate workflow's inputs differ from the candidate matrix's with_pin — a changed input carries its matrix pin"
+                    seen = ws["uses"][:120] if isinstance(ws.get("uses"), str) else f"a {type(ws.get('uses')).__name__}"
+                    return f"{lab}: the candidate workflow uses {seen!r} but the candidate matrix transcribes {ms['uses_pin'][:120]!r} — a bump carries its matrix pin"
+                if ms["uses_pin"] != bms.get("uses_pin") and not PIN_REF.fullmatch(ms["uses_pin"]):
+                    return f"{lab}: the candidate's new pin {ms['uses_pin'][:120]!r} is not an immutable <action>@<40 hex sha> ref"
+            if isinstance(bms.get("with_pin"), dict) and not isinstance(ms.get("with_pin"), dict):
+                return f"{lab}: the candidate matrix no longer pins the action inputs"
+            if isinstance(ms.get("with_pin"), dict) and _squashed(ws.get("with")) != _squashed(ms["with_pin"]):
+                return f"{lab}: the candidate workflow's inputs differ from the candidate matrix's with_pin — a changed input carries its matrix pin"
     except Exception as e:  # noqa: BLE001
         return f"candidate workflow/matrix unreadable as data ({type(e).__name__}): its pins cannot be compared"
     return None

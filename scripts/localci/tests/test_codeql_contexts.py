@@ -1001,6 +1001,29 @@ def test_a_candidate_matrix_that_drops_a_pin_is_refused(tmp_path, monkeypatch):
     assert spec["status"] == "BLOCKED" and "no longer pins the action" in spec["reason"]
 
 
+def test_a_pin_the_candidate_adds_must_agree_with_the_candidate_workflow(tmp_path, monkeypatch):
+    mx = (REAL / MATRIX_REL).read_text()
+    marker = "        - workflow_step: Autobuild\n          uses_pin: github/codeql-action/autobuild@" + OLD_SHA + "\n"
+    assert mx.count(marker) == 2
+    spec = bumped(tmp_path, monkeypatch, None, mx.replace(marker, marker + "          with_pin: {added: input}\n"))
+    assert spec["status"] == "BLOCKED" and "Autobuild" in spec["reason"] and "inputs differ" in spec["reason"]
+
+
+def test_a_non_string_uses_is_described_by_type_never_echoed(tmp_path, monkeypatch):
+    wf = (REAL / SECURITY).read_text()
+    old = "        uses: github/codeql-action/init@" + OLD_SHA + " # v4.38.2\n"
+    assert wf.count(old) == 1
+    spec = bumped(tmp_path, monkeypatch, wf.replace(old, "        uses:\n          - SECRET-SENTINEL\n"), None)
+    assert spec["status"] == "BLOCKED" and "a list" in spec["reason"] and "SECRET-SENTINEL" not in spec["reason"]
+
+
+def test_a_pin_with_a_trailing_newline_is_not_an_immutable_ref(tmp_path, monkeypatch):
+    wf, mx = (REAL / SECURITY).read_text(), (REAL / MATRIX_REL).read_text()
+    ref = '"github/codeql-action/init@' + "f" * 40 + '\\n"'
+    spec = bumped(tmp_path, monkeypatch, wf.replace("github/codeql-action/init@" + OLD_SHA + " # v4.38.2", ref), mx.replace("github/codeql-action/init@" + OLD_SHA, ref))
+    assert spec["status"] == "BLOCKED" and "not an immutable" in spec["reason"]
+
+
 def test_an_unreadable_candidate_matrix_cannot_have_its_pins_compared(tmp_path, monkeypatch):
     spec = bumped(tmp_path, monkeypatch, dependabot_bump((REAL / SECURITY).read_text()), "contexts: [unclosed\n")
     assert spec["status"] == "BLOCKED" and "unreadable as data" in spec["reason"]
