@@ -14,5 +14,5 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "b43-not-wired-in-clearance": (PY, "elif reads.withdrawn(rid, e.get(\"completed_at\"))[0]:", "elif False:", WD),
     "b43-pull-not-handed-to-the-judge": (PY, "            abort.pull = prs[n]   # B43", "            pass   # B43", WD),
     "b43-listed-among-the-setup-aborts": (PY, '.items(), key=lambda kv: tuple(str(x) for x in kv[0])) if v != WITHDRAWN]', '.items(), key=lambda kv: tuple(str(x) for x in kv[0]))]', WD),
-    "b43-memo-pull-without-close-is-final": (PY, 'pr.get("state") == "closed" and "closed_at" in pr and isinstance(newest', 'pr.get("state") == "closed" and isinstance(newest', WD),
+    "b43-memo-pull-without-close-is-served": (PY, 'return got if isinstance(got, dict) and "closed_at" in got else None', 'return got if isinstance(got, dict) else None', WD),
 }

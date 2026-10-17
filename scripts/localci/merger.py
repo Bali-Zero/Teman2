@@ -2525,13 +2525,13 @@ class ReadMemo:
 
 def memo_final_pr(pr, newest) -> bool:
     """C2: a PR's reads are final when the PR is closed per the read itself and its newest decision row is at least FINAL_AFTER_S old."""
-    return isinstance(pr, dict) and pr.get("state") == "closed" and "closed_at" in pr and isinstance(newest, (int, float)) and time.time() - newest >= FINAL_AFTER_S
+    return isinstance(pr, dict) and pr.get("state") == "closed" and isinstance(newest, (int, float)) and time.time() - newest >= FINAL_AFTER_S
 
 
 def memo_pull_served(mem: "ReadMemo", repo: str, n) -> dict | None:
     """The stored pull of ``n`` without counting a hit: what the final-ness test looks at before the memo is asked for it."""
     got = mem.data["pulls"].get(f"{repo}#{n}") if mem.path is not None else None
-    return got if isinstance(got, dict) else None
+    return got if isinstance(got, dict) and "closed_at" in got else None   # B43: a pull stored before closed_at was kept is read again
 
 
 def mem_live(mem: "ReadMemo", key: str):

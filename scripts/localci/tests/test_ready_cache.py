@@ -429,7 +429,7 @@ def test_the_memo_keeps_only_what_the_report_reads_and_the_report_is_unchanged(f
     raw = (fw.state / mg.MEMO_FILE).read_text()
     assert "summary" not in raw and "html_url" not in raw and "owner" not in raw and '"body"' not in raw
     doc = json.loads(raw)
-    assert {tuple(sorted(v)) for v in doc["pulls"].values()} == {("head", "merge_commit_sha", "merged", "merged_at", "state")}
+    assert {tuple(sorted(v)) for v in doc["pulls"].values()} == {("closed_at", "head", "merge_commit_sha", "merged", "merged_at", "state")}
     run0 = next(iter(doc["lives"].values()))["check_runs"][0]
     assert set(run0) == {"id", "name", "status", "conclusion", "head_sha", "completed_at", "app"} and set(run0["app"]) == {"id", "slug"}
     assert len(raw) < 20 * 1024 * (len(doc["lives"]) + len(doc["pulls"]))

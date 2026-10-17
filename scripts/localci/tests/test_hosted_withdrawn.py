@@ -92,11 +92,13 @@ def test_the_report_keeps_the_false_green_when_the_cancel_came_before_the_close_
     assert rc == 1 and rep["hosted_withdrawn"]["count"] == 0 and rep["false_green_breakdown"]["context"] == 1
 
 
-def test_a_memoed_pull_without_closed_at_is_not_final_so_it_is_read_again():
+def test_a_memoed_pull_without_closed_at_is_not_served_so_it_is_read_again(tmp_path):
+    memo = mg.ReadMemo(tmp_path / "memo.json")
     old = {"merged": False, "state": "closed", "merge_commit_sha": None, "merged_at": None, "head": {"sha": "a"}}
-    assert not mg.memo_final_pr(old, 0.0)
-    assert mg.memo_final_pr({**old, "closed_at": CLOSED}, 0.0)
-    assert mg.project_pull({**old, "closed_at": CLOSED})["closed_at"] == CLOSED
+    memo.put("pulls", f"{REPO}#1", old)
+    assert mg.memo_pull_served(memo, REPO, 1) is None
+    memo.put("pulls", f"{REPO}#1", mg.project_pull({**old, "closed_at": CLOSED}))
+    assert mg.memo_pull_served(memo, REPO, 1)["closed_at"] == CLOSED
 
 
 @pytest.mark.parametrize("pr", [{**PULL, "closed_at": None}, {"state": "closed", "merged": False}])
