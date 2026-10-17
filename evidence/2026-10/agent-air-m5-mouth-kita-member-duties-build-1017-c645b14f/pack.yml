@@ -31,8 +31,19 @@ meta_pattern: >-
   Deriving duties avoids a second task state that could disagree with them.
 operator_only: >-
   No operator-only action is needed for this release. The authorized supervisor
-  grant is staged by the BLUE release owner without exposing its value.
+  grant was staged by the BLUE release owner before PR 8656 without exposing its
+  value; the successor retains it and must not stage it again.
 dissent:
+  - seat: ci-production-build
+    objection: >-
+      PR 8656 failed its E2E webserver startup because the new register route
+      was statically prerendered outside the accepted security baseline.
+    status: CONFIRMED
+    resolution: >-
+      The successor adds a server layout with force-dynamic for this route.
+      The existing proxy and accepted prerender baseline remain unchanged.
+      A full production build and both bundle assertions are required before
+      the new final gate; source permission and query logic are unchanged.
   - seat: kimi-code/k3
     objection: >-
       Existing case-sensitive client-owner and creator predicates can hide a
@@ -70,6 +81,23 @@ dissent:
       Uses the existing database convention and a strict fourteen-day boundary.
       No migration or automatic failure transition is added.
 receipts:
+  - claim: Chromium navigates the production bundle with source-derived fixtures.
+    cmd: playwright_cli.sh --session kita-duties-prod-1017 run-code "$(cat /tmp/kita-member-duties-browser-qa.js)"
+    result: >-
+      PASS for personal links, team scope, owner filtering, process-link
+      permission, refresh after source resolution and the dynamic register.
+      Desktop and mobile screenshots inspected; no horizontal overflow.
+    exit: 0
+    ts: "2026-10-17T10:04:00Z"
+    seat: codex-gpt-6
+  - claim: The complete production build passes the existing security assertions.
+    cmd: cd apps/mouth && npm run build
+    result: >-
+      Exit zero, including both public-bundle assertions. The build marks the
+      register route dynamic; it is absent from prerender-manifest.json.
+    exit: 0
+    ts: "2026-10-17T10:02:42Z"
+    seat: codex-gpt-6
   - claim: Post-rebase authorization fixtures and generated-contract parity pass.
     cmd: PYTHONPATH=.:../crm-cell SKIP_SENTRY_INIT=1 pytest backend/tests/app/routers/test_member_obligations.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/app/routers/test_garuda_voa_openapi_parity.py
     result: 71 passed.

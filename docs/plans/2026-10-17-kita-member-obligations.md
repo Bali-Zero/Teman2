@@ -86,6 +86,9 @@ manager is required.
 - TypeScript, token lint, generated OpenAPI schema/pin parity, required backend
   smoke checks and required CI pass. Independent cross-family review and a fresh
   BLUE gate precede release; the BLUE release owner handles shipping.
+- A full production frontend build must pass the public-login bundle and roster
+  payload assertions. The register route is explicitly dynamic through a server
+  layout; the accepted prerender baseline and proxy protections are unchanged.
 - Live proof uses synthetic browser responses and read-only aggregate API checks.
   No real client records are changed for QA and no outbound messages are sent.
 
@@ -98,6 +101,6 @@ The enforced Gear-3 evidence floor separately requires two independent review
 receipts; Codex and Kimi supplied those bounded reviews.
 Codex prepares implementation; Claude Opus 5.5 xhigh
 owns design review and release. A distinct fresh Opus 5.5 xhigh session grades
-the final candidate. Worktree: `.worktrees/mouth-kita-member-duties-1017`.
+the final candidate. Successor worktree: `.worktrees/mouth-kita-member-duties-build-1017`.
 Base refreshed from `d9546c7` to `1b743cb60a` before release; generated contracts
 include the intervening main changes. Other sessions' workspaces remain untouched.

@@ -1,5 +1,18 @@
 # Verification
 
+PR 8656 was stopped before merge after its production-build security guard
+rejected the new static register route. This successor adds an explicit dynamic
+server layout. The existing proxy, prerender baseline and all CRM source logic
+are unchanged. The full production build passed, including both public-bundle
+security assertions. Its output marks the register dynamic and the route is
+absent from the prerender manifest. Both independent delta reviews returned PASS.
+The earlier targeted checks below retain their original scope.
+
+Chromium also passed against the actual production build with synthetic API
+responses: personal source links, team scope, owner filtering, server-controlled
+process links, mobile layout, resolution refresh and navigation into the dynamic
+register. No real client records were read or changed for that browser check.
+
 - 178 backend tests passed: real PostgreSQL member-obligation fixtures, existing
   practice routers and CRM role boundaries. The fixture schema is isolated in
   `nuzantara_test`; no production client rows were written.
@@ -36,10 +49,11 @@ can cause a transient mismatch until refresh. The view uses the current active
 status aliases and existing ownership strings. No new `failed` state or automatic
 age-based transition is introduced; source closure uses completed/cancelled.
 
-The additional supervisor setting is absent in the current Fly secret inventory.
-A read-only preflight found exactly one active intended supervisor account. The
-release owner must stage the narrow setting before deployment; its value is never
-included in evidence. `flyctl secrets import --stage` explicitly skips deployment.
+The release owner staged the additional supervisor setting before PR 8656.
+A read-only preflight found exactly one active intended supervisor account with
+the verified role and department. The successor retains that staged setting and
+must not overwrite or stage it again. Its value is never included in evidence.
+`flyctl secrets import --stage` explicitly skips deployment.
 
 After rebasing onto `1b743cb60a`, the generated API types preserve the intervening
 main change. The new PostgreSQL fixtures and OpenAPI parity checks passed again

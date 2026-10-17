@@ -1,7 +1,9 @@
 # Independent review receipts
 
 Both bounded reviews examined candidate `8435e375539dd86f6a4953efdf201aa6861ec2c7`
-against base `1b743cb60a`. Subsequent changes only complete these evidence files.
+against base `1b743cb60a`. The underlying personal view, CRM queries and permission
+logic remain byte-identical. The successor additionally adds a server layout to
+keep the register route dynamic; follow-up review receipts cover that small delta.
 
 The native code-reviewer seat is pinned by its role to GPT-5.6 Sol, high effort.
 It returned PASS after checking owner isolation, the human-role gate, response
@@ -24,3 +26,10 @@ denied. It supplies no successful review receipt. No reserve seat was used.
 
 The earlier independent Opus static review and the distinct fresh BLUE gate are
 separate from this quorum. The final gate only signs; the BLUE Dux releases.
+
+Both reviewers also returned PASS on the successor's server-layout delta. The
+native reviewer checked the proxy's descendant session gate, route matcher and
+prerender-manifest assertion, and ran a targeted export check. Kimi reviewed only
+the supplied layout and guard rationale, without tools or execution claims.
+Neither asked to alter the baseline, proxy or guard. The production build then
+passed and confirmed the register route dynamic and absent from the manifest.
