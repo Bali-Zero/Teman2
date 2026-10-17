@@ -15,15 +15,16 @@
 #                 MINI_DISK_JANITOR_BUSY_WAIT_MIN, then skipped runner-busy; the idle test is repeated
 #                 inside the exec script itself). Removes exactly /home/runner/.cache/pip,
 #                 /home/runner/.cache/uv, /tmp/pytest-of-runner, /tmp/pip-unpack-* and /tmp/tmp* older
-#                 than a day (all maxdepth 1 / mindepth 1). If the container / is still >= TOOL_PCT
-#                 after that, also the CONTENTS of /home/runner/_work/_tool. Never anything else under
-#                 _work (not _work/zero, not _work/_actions); never docker rm / stop / restart / volumes.
+#                 than a day (all maxdepth 1 / mindepth 1). `_work` is never touched (no exec script
+#                 mentions it); never docker rm / stop / restart / volumes. The in-exec idle re-check
+#                 fails CLOSED: ps failing or printing nothing -> exit 74 (step error idle-recheck-failed,
+#                 nothing deleted). `docker inspect` failing for any reason other than "no such object"
+#                 is a step error (inspect-failed) and floor level unknown, never "not running".
 #                 Race: inside each exec script, after the idle re-check, every target is first renamed
 #                 (atomic mv, same filesystem) to a `.janitor-trash-*` sibling and only then deleted, so a
 #                 job that starts mid-run finds an empty cache that pip/uv/setup actions recreate. The
 #                 residual window is the rename instant, not the delete. Leftover `.janitor-trash-*` from
 #                 an interrupted run are swept at the start of every script (maxdepth 1, exact prefix).
-#                 An absent `_work/_tool` is a no-op (tool-absent), never an error.
 #   docker        `docker image prune -f` and `docker builder prune -f` (dangling images, build cache).
 #                 Never -a, never volume / container / system prune.
 #   vm_trim       `colima ssh -- sudo fstrim -av`: hands the freed guest blocks back to the host.
@@ -49,7 +50,8 @@
 # of ~/Library/Caches on 2026-10-17 deleted it and broke the production journey-sentinel until
 # `npx playwright install chromium` was re-run), any cache entry not in the allowlist, and
 # anything under ~/pro-offload, ~/icloud-*, ~/Desktop, ~/Downloads, ~/.ollama, ~/.cache/huggingface,
-# OSINT data, Docker volumes, git worktrees (the broker owns them) and backups. `uv cache clean` is
+# `_work/_tool` (a job mid tool-setup breaks harder than one losing a pip cache, and recreating it from
+# `docker exec` would give it the exec user's uid/umask, not the Runner.Worker's), OSINT data, Docker volumes, git worktrees (the broker owns them) and backups. `uv cache clean` is
 # never used either (prune only).
 #
 # DRY-RUN by default: deletes nothing and runs no mutating command, but it DOES append its receipt to
@@ -68,7 +70,6 @@ while [ "${H%/}" != "$H" ]; do H="${H%/}"; done   # "/" becomes "" and is refuse
 RUNNER="${MINI_DISK_JANITOR_RUNNER:-zero-runner-1}"
 BUSY_WAIT_MIN="${MINI_DISK_JANITOR_BUSY_WAIT_MIN:-45}"
 BUSY_POLL_S="${MINI_DISK_JANITOR_BUSY_POLL_S:-60}"
-TOOL_PCT="${MINI_DISK_JANITOR_TOOL_PCT:-75}"
 CACHE_DAYS="${MINI_DISK_JANITOR_CACHE_DAYS:-14}"
 CACHE_ALLOW="${MINI_DISK_JANITOR_CACHE_ALLOW:-Homebrew Google Codex ollama pip go-build com.exafunction.windsurf.ShipIt}"
 HOST_WARN_GB="${MINI_DISK_JANITOR_HOST_WARN_GB:-40}"
@@ -89,7 +90,7 @@ if [ -z "$JOURNAL" ]; then
 fi
 
 log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] mini-disk-janitor[$MODE] $*" >&2; }
-for knob in BUSY_WAIT_MIN BUSY_POLL_S TOOL_PCT CACHE_DAYS HOST_WARN_GB HOST_CRIT_GB RUNNER_WARN_PCT \
+for knob in BUSY_WAIT_MIN BUSY_POLL_S CACHE_DAYS HOST_WARN_GB HOST_CRIT_GB RUNNER_WARN_PCT \
             RUNNER_CRIT_PCT EXEC_TIMEOUT PROBE_TIMEOUT TRIM_TIMEOUT CACHE_TOOL_TIMEOUT; do
   case "${!knob}" in ''|*[!0-9]*) log "REFUSE: MINI_DISK_JANITOR_$knob must be a non-negative integer"; exit 2 ;; esac
 done
@@ -132,15 +133,24 @@ runner_busy() {
   case "$rc" in 0) return 0 ;; 1) return 1 ;; *) return 2 ;; esac
 }
 HAVE_DOCKER=false; command -v docker >/dev/null 2>&1 && HAVE_DOCKER=true
-RUNNING=false
-if $HAVE_DOCKER && [ "$(bounded "$PROBE_TIMEOUT" docker inspect -f '{{.State.Running}}' "$RUNNER" 2>/dev/null)" = "true" ]; then RUNNING=true; fi
+RUNNING=false; INSPECT=none   # none | running | stopped | absent | failed
+if $HAVE_DOCKER; then
+  ins=$(bounded "$PROBE_TIMEOUT" docker inspect -f '{{.State.Running}}' "$RUNNER" 2>&1); irc=$?
+  if [ "$irc" -eq 0 ]; then
+    if [ "$ins" = "true" ]; then RUNNING=true; INSPECT=running; else INSPECT=stopped; fi
+  elif printf '%s' "$ins" | grep -qiE 'no such (object|container)'; then INSPECT=absent
+  else INSPECT=failed; fi   # daemon down, timeout, permission: never read as "not running"
+fi
 
 KB_BEFORE=$(host_free_kb); PCT_BEFORE=""; $RUNNING && PCT_BEFORE=$(ctr_df | awk '{print $1}')
 
 # ── runner_cache ────────────────────────────────────────────────────────────
 # The exec script re-checks idleness itself: the runner can pick up a job between probe and rm.
-SWEEP='find /home/runner/.cache /tmp /home/runner/_work -mindepth 1 -maxdepth 1 -name ".janitor-trash-*" -exec rm -rf {} + 2>/dev/null'
-CLEAN_SCRIPT='ps -eo args 2>/dev/null | grep -q "[R]unner\.Worker" && exit 75
+SWEEP='find /home/runner/.cache /tmp -mindepth 1 -maxdepth 1 -name ".janitor-trash-*" -exec rm -rf {} + 2>/dev/null'
+IDLE_CHECK='o=$(ps -eo args 2>/dev/null) || exit 74
+[ -n "$o" ] || exit 74
+printf "%s\n" "$o" | grep -q "[R]unner\.Worker" && exit 75'
+CLEAN_SCRIPT="$IDLE_CHECK"'
 '"$SWEEP"'
 mv /home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-$$ 2>/dev/null
 mv /home/runner/.cache/uv /home/runner/.cache/.janitor-trash-uv-$$ 2>/dev/null
@@ -150,15 +160,9 @@ find /tmp -mindepth 1 -maxdepth 1 \( -name "pip-unpack-*" -o \( -name "tmp*" -mt
 done
 '"$SWEEP"'
 exit 0'
-TOOL_SCRIPT='ps -eo args 2>/dev/null | grep -q "[R]unner\.Worker" && exit 75
-[ -d /home/runner/_work/_tool ] || exit 76
-'"$SWEEP"'
-mv /home/runner/_work/_tool /home/runner/_work/.janitor-trash-tool-$$ || exit 1
-mkdir -p /home/runner/_work/_tool
-'"$SWEEP"'
-exit 0'
 step_begin
 if ! $HAVE_DOCKER; then step_end runner_cache skipped docker-absent
+elif [ "$INSPECT" = failed ]; then step_end runner_cache error inspect-failed
 elif ! $RUNNING; then step_end runner_cache skipped container-not-running
 else
   waited=0; limit=$((BUSY_WAIT_MIN * 60)); idle=false; pr=2
@@ -175,19 +179,9 @@ else
   else
     bounded "$EXEC_TIMEOUT" docker exec "$RUNNER" sh -c "$CLEAN_SCRIPT" >/dev/null 2>&1; rc=$?
     if [ "$rc" -eq 75 ]; then BUSY=1; step_end runner_cache skipped runner-busy
+    elif [ "$rc" -eq 74 ]; then step_end runner_cache error idle-recheck-failed
     elif [ "$rc" -ne 0 ]; then step_end runner_cache error "$([ "$rc" -eq 124 ] && echo exec-timeout || echo exec-failed)"
-    else
-      reason=""
-      cur=$(ctr_df | awk '{print $1}')
-      if [ -n "$cur" ] && [ "$cur" -ge "$TOOL_PCT" ]; then
-        bounded "$EXEC_TIMEOUT" docker exec "$RUNNER" sh -c "$TOOL_SCRIPT" >/dev/null 2>&1; trc=$?
-        if [ "$trc" -eq 0 ]; then reason=tool-cleared
-        elif [ "$trc" -eq 76 ]; then reason=tool-absent
-        elif [ "$trc" -eq 75 ]; then BUSY=1; reason=tool-skipped-runner-busy
-        else reason=tool-clear-failed; fi
-      fi
-      if [ "$reason" = tool-clear-failed ]; then step_end runner_cache error "$reason"; else step_end runner_cache "done" "$reason"; fi
-    fi
+    else step_end runner_cache "done"; fi
   fi
 fi
 
@@ -274,7 +268,8 @@ HOST_LV=ok; RUN_LV=ok; FLOOR_ERR=""
 if [ -z "$KB_AFTER" ]; then HOST_LV=unknown; FLOOR_ERR=host-df-failed
 elif [ "$KB_AFTER" -lt $((HOST_CRIT_GB * 1048576)) ]; then HOST_LV=critical
 elif [ "$KB_AFTER" -lt $((HOST_WARN_GB * 1048576)) ]; then HOST_LV=warning; fi
-if $RUNNING; then   # a stopped container contributes nothing: runner_pct stays na, never 0
+if [ "$INSPECT" = failed ]; then RUN_LV=unknown; FLOOR_ERR="${FLOOR_ERR:-inspect-failed}"
+elif $RUNNING; then   # a stopped or absent container contributes nothing: runner_pct stays na, never 0
   if [ -z "$PCT_AFTER" ]; then RUN_LV=unknown; FLOOR_ERR="${FLOOR_ERR:-runner-df-failed}"
   elif [ "$PCT_AFTER" -ge "$RUNNER_CRIT_PCT" ]; then RUN_LV=critical
   elif [ "$PCT_AFTER" -ge "$RUNNER_WARN_PCT" ]; then RUN_LV=warning; fi
