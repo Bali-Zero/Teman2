@@ -1,0 +1,32 @@
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 from the changed-file set (blast radius: a ~1.5k-line diff plus a new
+  scripts/ci observer). The work itself is a presentation layer over the parity-tested pricing
+  snapshot: no catalogue figure, backend or migration is touched; the price surface contract (one
+  element per catalogue row, exact figure in text) is pinned by existing unit + e2e tests and by the
+  new ledger tests, so the council is the one extra ceremony the floor buys.
+mission: >-
+  Zero's 2026-10-17 order: the services price list must be rebuilt urgently - not every row dumped
+  as one undifferentiated wall ("mappazzone"), but a few macro categories each holding coherent
+  visas/services, with a detailed design and a layout that is not boring.
+objective: >-
+  1) /services/visa renders its 79 exact PricingTool rows as five chapters (Short stays, Multiple
+  entry, KITAS, KITAP, Paperwork and permits), each split into families; variant families
+  (Offshore / Onshore / Extension, 1-2-5 years, 5-10 years) read as matrices, the rest as ledger
+  lines. 2) A sticky chapter index (rail on desktop, chip row on mobile) tracks the reader.
+  3) Extensions, onshore variants and multi-year options read as ONE service (owner, 2026-10-17:
+  never fragment them): variant columns, or variant lines under one service name. 4) Every row keeps its public-service-price-card contract: data-pricing-category/key, the exact
+  snapshot figure in its text, a "More Details" trigger opening the shared details dialog.
+  5) Nothing is hidden: a row the ledger spec does not place renders in a trailing chapter, and a
+  spec key the catalogue dropped is reported, both under test.
+scope:
+  - apps/mouth/src/data/visa-price-ledger.ts
+  - apps/mouth/src/data/visa-price-ledger.test.ts
+  - apps/mouth/src/components/services/VisaPriceLedger.tsx
+  - apps/mouth/src/components/services/VisaPriceLedger.test.tsx
+  - apps/mouth/src/components/services/ServicePricing.tsx
+  - apps/mouth/src/components/services/r19-skin.guard.test.ts
+  - scripts/ci/observe_visa_price_ledger.py
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
