@@ -34,6 +34,9 @@ refuses. The sub-criteria, each of which alone refuses and is named in the line'
 
 - no check of its own is FAIL, ERROR, STALE, INTERRUPTED, RUNNING or QUEUED, except `review.independent`, which must be
   QUEUED or PASS;
+  among those checks, `policy.matrix_parity` (matrix drift, 2026-10-17) reads the candidate's required workflows and `contexts_matrix.yaml` as
+  data with BASE's `resolve_steps` and is FAIL when the candidate leaves a step of an executed context unmapped that BASE did not: the PR
+  that adds or changes a workflow step must carry its matrix row (a drift BASE already has is `NOT_APPLICABLE`, never the innocent PR's red);
 - every executed required context is OK; a BLOCKED context passes only when its mapping is `blocked` or `not_implemented`, and
   the line names each one with its mapping beside `executed_required: N/M`;
 - every context branch protection requires, read live and never hardcoded, is green on the PR head, red-dominant: failure,
