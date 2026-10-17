@@ -58,6 +58,10 @@ URGENT_NOTE = re.compile(
     r"|urgent handling is quoted separately)",
     re.IGNORECASE,
 )
+URGENT_NOTE_SQUEEZED = re.compile(
+    r"(?:\+?rp[\d.,]+k?forurgent|plus[\d.,]+k?urgent|urgenthandlingisquotedseparately)",
+    re.IGNORECASE,
+)
 
 RETIRED_NAMES = (
     "Urgent 1 Hari",
@@ -102,7 +106,9 @@ def _pdf_mentions_urgent(pdf_path: Path) -> str | None:
     """The surcharge sentence in the committed brochure PDF, if any. Needs
     pypdf (the brochure text is font-encoded, so a raw byte scan is blind):
     without it the check is announced as skipped, never silently passed;
-    backend CI's test_brochure_price_parity reads the same PDF with pypdf."""
+    backend CI's test_brochure_price_parity reads the same PDF with pypdf.
+    pypdf 6.12 splits words of this PDF ("urgen t han dlin g"), so the match
+    runs on the text with every whitespace removed."""
     if not pdf_path.exists():
         return "<missing brochure PDF>"
     try:
@@ -115,7 +121,7 @@ def _pdf_mentions_urgent(pdf_path: Path) -> str | None:
     text = " ".join(
         (page.extract_text() or "") for page in PdfReader(str(pdf_path)).pages
     )
-    hit = URGENT_NOTE.search(text)
+    hit = URGENT_NOTE_SQUEEZED.search(re.sub(r"\s+", "", text))
     return hit.group(0) if hit else None
 
 

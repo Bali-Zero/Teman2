@@ -93,6 +93,15 @@ receipts:
     exit: 0
     ts: "2026-10-17T21:42:46+08:00"
     seat: agent-air-m5-backend-rag-urgent-notes-1017
+  - claim: >-
+      Depth-1 fix after the brochure seat's finding - the PDF guards match whitespace-free text;
+      the guilt case holds under both pypdf versions present on this machine and the regenerated
+      PDF passes both.
+    cmd: python3 / apps/backend-rag/.venv/bin/python -c "<import observer>; print(obs._pdf_mentions_urgent(head_pdf), obs._pdf_mentions_urgent(obs.BROCHURE_PDF))"; python3 scripts/ci/observe_pricing_retire_1017.py; .venv/bin/python -m pytest backend/tests/services/crm/test_brochure_price_parity.py -p no:cacheprovider -k urgent
+    result: "pypdf 6.13.0 and 6.12.2: HEAD pdf -> urgenthandlingisquotedseparately, worktree pdf -> None; observer holds; 1 passed"
+    exit: 0
+    ts: "2026-10-17T22:05:00+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
 council_run: council-journal.jsonl
 dissent:
   - seat: agy-gemini-4-argon
@@ -166,6 +175,17 @@ dissent:
       The 2025 sheet is historical (referenced only by migration_066's comments) and is left as
       the record it is; the empty heading in PricingService is named as a follow-up, out of this
       PR's one concern.
+  - seat: claude-sonnet-5 (pr-a-brochure)
+    objection: >-
+      The backend venv's pypdf (6.12) extracts the brochure as "urgen t han dlin g is quoted
+      separately", so a plain substring check on the PDF text counts zero hits on the OLD PDF: the
+      observer's PDF check and the new tripwire test would both pass blind in CI.
+    severity: major
+    status: CONFIRMED
+    resolution: >-
+      Both guards match the text with every whitespace removed; the guilt case is receipted under
+      pypdf 6.13 and 6.12 on the pre-regeneration PDF, and the regenerated PDF passes both.
+      Pushed as the one depth-1 fix of this PR after disarming and before re-arming.
 decisions:
   - id: D-exact-text-pairs
     decision: >-

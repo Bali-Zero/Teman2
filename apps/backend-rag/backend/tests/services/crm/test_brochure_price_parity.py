@@ -909,5 +909,6 @@ def test_brochure_pdf_no_longer_quotes_urgent_handling() -> None:
     brochure's "urgent handling is quoted separately" sentence went too. The
     committed PDF is what clients download, so it is read here, not just the
     template it is generated from."""
-    text = _extract_normalised_pdf_text().lower()
+    # pypdf 6.12 splits words of this PDF ("urgen t"): compare without any whitespace.
+    text = re.sub(r"\s+", "", _extract_normalised_pdf_text()).lower()
     assert "urgent" not in text, "the committed brochure PDF still mentions urgent handling"
