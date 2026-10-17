@@ -279,6 +279,7 @@ extension Snapshot {
         let imm = Motion.configure(args)   // --imm: the immersive twin of the band; hooks: --at-ms --reduce-motion --ribbon --scale-focus
         let content: AnyView
         var textView: AnyView?
+        var flipManager: ThemeManager?   // root-sheet --flip: the manager the toolbar toggle would set
         switch band {
         case "registry-table":
             // The live scan surface: `SearchListView` browsing the sector --code belongs to, no
@@ -335,7 +336,9 @@ extension Snapshot {
                 state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
                 state.selected = k
                 UserDefaults.pinThemeOverride(Theme.mode)
-                content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(ThemeManager.launchMode()))
+                let tm = ThemeManager(ThemeManager.launchMode())
+                flipManager = tm
+                content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(tm)
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
         case "root-browse":
@@ -401,6 +404,18 @@ extension Snapshot {
         // The live sheet sizes itself from what it measures (`SheetFit`, `PaneKey`): a preference read into @State lays the window out
         // once more, which a single draw never reaches. The window the user has settles; these two bands render it settled.
         if ["live-sheet", "root-sheet"].contains(band) {
+            for _ in 0..<12 {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.03))
+                host.layoutSubtreeIfNeeded()
+                host.cacheDisplay(in: host.bounds, to: rep)
+            }
+        }
+        // `--flip`: the window the user has, flipped the way the toolbar toggle (or a system appearance change) flips it, after it
+        // settled in its launch mode. Tools/design/theme_flip_check.py reads the result: a token-reading view that did not repaint is a pixel.
+        if band == "root-sheet", args.contains("--flip"), let tm = flipManager {
+            let next: Theme.Mode = tm.mode == .dark ? .light : .dark
+            UserDefaults.pinThemeOverride(next)   // the toggle writes `themeOverride` first, then the mode
+            tm.mode = next
             for _ in 0..<12 {
                 RunLoop.current.run(until: Date().addingTimeInterval(0.03))
                 host.layoutSubtreeIfNeeded()
