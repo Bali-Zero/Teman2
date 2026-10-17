@@ -255,18 +255,26 @@ const REENTRY_CLAUSE = new RegExp(
 );
 // "IDR 500,000" / "Rp 500.000" / "500 000 IDR": one amount is enough here
 const hasMoney = (s: string) =>
-  /(?:\b(?:IDR|Rp)\s?~?\d|\d\s?(?:IDR|Rp)\b)/.test(s);
+  /(?:\b(?:IDR|Rp)\s?~?\d|\d\s?(?:IDR|Rp)\b)/i.test(s);
 const ON_REQUEST_ONLY =
   /on request|atas permintaan|su richiesta|sur demande|по запросу/i;
 // A single-trip ERP / SERP has a stated standard fee ("Single Exit Re-Entry
 // Permit (ERP): IDR 800,000 per trip"); like the MERP rules above, this rule
-// leaves those lines to the article and only closes the on-request permit.
-const SINGLE_TRIP = /\bS?ERP\b|single|однократн|singol[oa]|unique|sekali/i;
+// leaves those lines to the article. Scoped to the acronym itself: every real
+// ERP line in the corpus carries it, and an unrelated "single" ("(single use)")
+// must not hide a Bali Zero price.
+const SINGLE_TRIP = /\bS?ERP\b/;
+// The state's own fee, named as such: "Immigration re-entry permit fee: ...
+// (paid to Imigrasi)", "biaya negara", and their it / fr / ru forms.
+const GOV_FEE =
+  /\b(?:immigration|imigrasi|immigrazione)\b[^:|\n]{0,40}\b(?:fees?|biaya|tariffa|tassa|frais|taxe)\b|biaya negara|paid to (?:the )?(?:immigration|imigrasi)|pagat[oae] (?:all'|a )?(?:immigrazione|imigrasi)|pay[ée]e? (?:à|a) l'(?:immigration|imigrasi)|иммиграционн[а-яё]* сбор/i;
 export function reentryViolation(line: string, prev = ""): boolean {
   if (isFactAmount(line) || ON_REQUEST_ONLY.test(line)) return false;
-  if (SINGLE_TRIP.test(line)) return false;
+  if (SINGLE_TRIP.test(line) || GOV_FEE.test(line)) return false;
   if (line.trimStart().startsWith("|")) {
-    const cells = line.split("|").slice(1, -1);
+    // with or without the closing pipe
+    const cells = line.trim().split("|").slice(1);
+    if (cells.length && cells[cells.length - 1].trim() === "") cells.pop();
     return (
       REENTRY_LABEL.test(cells[0] ?? "") &&
       cells.slice(1).some((c) => hasMoney(c))
@@ -482,6 +490,9 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
       "- Продление разрешения на повторный въезд (при путешествиях): IDR 500,000",
       "- Re-entry permit: IDR 1,000,000",
       "| Re-entry permit | IDR 500,000 | 1 week |",
+      "| Re-entry permit | IDR 750,000",
+      "- Re-entry permit: idr 500.000",
+      "- Re-entry permit (single use): IDR 500,000",
     ])
       expect(reentryViolation(line)).toBe(true);
     // the "Cost:" sub-bullet under a numbered re-entry permit step (e25b)
@@ -617,6 +628,11 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
       "- Permesso di rientro: Su richiesta",
       "- Разрешение на повторный въезд: По запросу",
       "- Government re-entry permit fee: IDR 500,000",
+      "Immigration re-entry permit fee: IDR 1,000,000 (paid to Imigrasi)",
+      "- Biaya negara izin masuk kembali: Rp 500.000",
+      "- Разрешение на однократный выезд и повторный въезд (ERP): 800 000 IDR за поездку",
+      "- ERP (Rientro Singolo): IDR 800.000 standard, IDR 1.300.000 urgente",
+      "- Single Exit Re-Entry Permit (ERP): IDR 800.000 per perjalanan",
       "- Biaya PNBP pemerintah izin masuk kembali: Rp 500.000",
       "| MERP | IDR 800K-1M | On request | On request |",
       "- Multiple re-entry permit (MERP)",
