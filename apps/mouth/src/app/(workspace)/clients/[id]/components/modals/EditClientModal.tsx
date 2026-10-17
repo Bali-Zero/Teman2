@@ -61,6 +61,18 @@ export function EditClientModal({
   onSave: () => void;
 }) {
   const { options: teamMemberOptions } = useTeamMemberOptions();
+  // Show what the record holds even when it is outside the pickers: an
+  // assignee who is not in the team list, or a status (e.g. "prospect") that
+  // is not one of the five buttons. Without this the modal read "Unassigned"
+  // and showed no status, so touching a control overwrote a value never seen.
+  const initialAssignee = client.assigned_to || "";
+  const assigneeIsUnlisted =
+    initialAssignee !== "" &&
+    !teamMemberOptions.some((m) => m.value === initialAssignee);
+  const initialStatus = client.status || "lead";
+  const statusIsUnlisted = !CLIENT_STATUSES.some(
+    (s) => s.value === initialStatus,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   // Tracks an explicit "remove photo" so the save can clear the avatar. Uploads
@@ -477,6 +489,11 @@ export function EditClientModal({
             className={inputClass}
           >
             <option value="">Unassigned</option>
+            {assigneeIsUnlisted && (
+              <option value={initialAssignee}>
+                {initialAssignee} (current)
+              </option>
+            )}
             {teamMemberOptions.map((m) => (
               <option key={m.value} value={m.value}>
                 {m.label}
@@ -487,6 +504,26 @@ export function EditClientModal({
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Status</label>
           <div className="flex gap-2 flex-wrap">
+            {statusIsUnlisted && (
+              <button
+                type="button"
+                aria-pressed={formData.status === initialStatus}
+                onClick={() =>
+                  setFormData({ ...formData, status: initialStatus })
+                }
+                className="px-3 py-1.5 rounded-full text-sm font-medium transition-all border capitalize"
+                style={{
+                  borderColor:
+                    formData.status === initialStatus
+                      ? "var(--bz-border)"
+                      : "transparent",
+                  backgroundColor: "var(--bz-surface)",
+                  color: "var(--bz-text-2)",
+                }}
+              >
+                {initialStatus} (current)
+              </button>
+            )}
             {CLIENT_STATUSES.map(({ value, label }) => {
               const tone = STATUS_PICKER_TONE[value];
               const selected = formData.status === value;
@@ -494,6 +531,7 @@ export function EditClientModal({
                 <button
                   key={value}
                   type="button"
+                  aria-pressed={selected}
                   onClick={() => setFormData({ ...formData, status: value })}
                   className="px-3 py-1.5 rounded-full text-sm font-medium transition-all border"
                   style={{
