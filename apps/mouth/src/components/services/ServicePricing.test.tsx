@@ -35,7 +35,7 @@ describe("ServicePricing details dialog", () => {
     const user = userEvent.setup();
     render(<ServicePricing service={service} slug="visa" />);
 
-    const trigger = screen.getByRole("button", { name: "More Details" });
+    const trigger = screen.getByRole("button", { name: /^More Details/ });
     trigger.focus();
     expect(trigger).toHaveFocus();
 

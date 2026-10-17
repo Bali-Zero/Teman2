@@ -1,0 +1,201 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-17, direct session order: the services price list must be rebuilt urgently - not
+  every row dumped as one wall ("mappazzone") but a few macro categories each holding coherent
+  visas/services, with a detailed design and a layout that is not boring.
+mission: >-
+  Rebuild balizero.com/services/visa's price list as a chaptered ledger over the existing
+  PricingTool snapshot, without touching a single figure.
+lanes:
+  - lane: build
+    role: build
+    seat: Claude Fable 5.1 (owner-opened interactive window), worktree mouth-pricing-list-redesign-1017 on Air-M5.
+  - lane: mouth-tests
+    role: review
+    seat: claude-sonnet-5 subagent, read-only test runner (shared node_modules symlink, no install).
+  - lane: owner-ruling-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero, owner order given directly in the interactive session on 2026-10-17 ("poche macro
+      categorie e dentro i visa/services coerenti", "estensioni, onshore o piu anni in un unico
+      servizio, non frammentare"); no regulation is interpreted, only the published catalogue is
+      re-read.
+    nb: apps/mouth/data/bali-zero-prices.json
+    query_hash: "484dbb4d55971f72d5e5e9d631ad06da622640e18b0ad26917bb4f65957c7aea" # pragma: allowlist secret
+    note: >-
+      query_hash is sha256(json.dumps(sorted keys)) of the public visa rows of the mirror
+      (single_entry_visas, multiple_entry_visas, kitas_permits, kitap_permits, other_process) as
+      read in this worktree; the ledger spec must place exactly these.
+pii_scan: clean
+cloud_ok: "Builder Contract 4: code and public catalogue text only; no client data reached any seat."
+seat_fallback_reason: >-
+  agy-gemini-4-argon replaced codex-gpt-5.6-sol: the Codex red-team seat died on "workspace routing
+  discovery timed out" (network) on 2026-10-17 in this mission's first council and was not
+  re-dispatched for this diff; tp1-qwen3.8-max was not dispatched (no headless wrapper in this loop).
+  kimi-code/k3 (titolare) sat through the kimi CLI directly after scripts/kimi_client.py's 300 s cap.
+bites:
+  consumer: >-
+    balizero.com/services/visa (the public visa page, served by Vercel from apps/mouth) renders
+    ServicePricing, which for the visa slug now mounts VisaPriceLedger over SERVICES_DATA.visa.packages.
+    The observation is the page itself: five chapter headings (I-V) with a chapter index, 79
+    public-service-price-card elements each carrying its exact snapshot figure, and no trailing
+    "More services" chapter once the 2026-10-17 retirement (sibling PR) is on main. Unit tests pin the
+    ledger placement (every row exactly once, drift reported both ways) and the e2e book-pricing spec
+    keeps reading the same per-row contract live. scripts/ci/observe_visa_price_ledger.py is the
+    Python twin of the placement test for the harness job (no node_modules there).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_price_ledger.py
+  expect: "contains:public visa rows placed exactly once"
+receipts:
+  - claim: Ledger placement, ledger render, ServicePricing dialog, R19 skin guard (now covering VisaPriceLedger.tsx), snapshot parity and services data suites pass on the catalogue minus the five retiring rows (throwaway local merge with the retire branch).
+    cmd: cd apps/mouth && npx vitest run src/data/visa-price-ledger.test.ts src/components/services/VisaPriceLedger.test.tsx src/components/services/ServicePricing.test.tsx src/components/services/r19-skin.guard.test.ts src/lib/pricing-snapshot.test.ts src/data
+    result: "7 files, 50 passed"
+    exit: 0
+    ts: "2026-10-17T17:42:42+08:00"
+    seat: agent-air-m5-mouth-pricing-list-redesign-1017
+  - claim: On origin/main as-is (five rows not yet retired) the same suites pass except the two ledger assertions that the trailing chapter is empty; the rows render in the "+ More services" chapter, nothing is hidden. The PR is serialized behind the retire PR.
+    cmd: cd apps/mouth && npx vitest run src/data/visa-price-ledger.test.ts src/components/services/VisaPriceLedger.test.tsx src/components/services/ServicePricing.test.tsx src/components/services/r19-skin.guard.test.ts src/lib/pricing-snapshot.test.ts
+    result: "33 passed, 2 failed (unplaced: the five retiring rows)"
+    exit: 1
+    ts: "2026-10-17T17:38:49+08:00"
+    seat: mouth-tests (claude-sonnet-5)
+  - claim: Sitewide R19 colour guard passes with the new component; Prettier and ESLint clean on the six changed files; tsc clean (pre-commit typecheck on the WIP commit).
+    cmd: cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts; npx prettier --check <6 files>; npx eslint <4 source files>; tsc --noEmit (pre-commit)
+    result: "812 passed; All matched files use Prettier code style; 0 errors; All pre-commit checks passed"
+    exit: 0
+    ts: "2026-10-17T17:42:00+08:00"
+    seat: mouth-tests (claude-sonnet-5) + agent-air-m5-mouth-pricing-list-redesign-1017
+  - claim: >-
+      Rendered proof on a local webpack dev server (Turbopack refuses the worktree's node_modules symlink): /services/visa shows the chaptered ledger at 1440px and 390px with zero horizontal overflow; 79 price elements on the merged catalogue, 84 on origin/main as-is.
+    cmd: npx next dev --webpack -p 3517; node <scratch>/shoot_ledger.mjs (Playwright chromium, screenshots of the ledger, the KITAS chapter and the top at both viewports)
+    result: "desktop: cards=79 overflowPx=0; mobile: cards=79 overflowPx=0"
+    exit: 0
+    ts: "2026-10-17T17:43:00+08:00"
+    seat: agent-air-m5-mouth-pricing-list-redesign-1017
+  - claim: No open PR and no sibling worktree touches ServicePricing.tsx, services_data.ts or pricing-snapshot.ts besides the retire branch, which this PR does not overlap (different lines, clean throwaway merge).
+    cmd: gh pr list --state open --json number,files (filtered on the three paths); git worktree list; git merge agent/air-m5/backend-rag/pricing-retire-5-1017 (throwaway)
+    result: "no open PR on those paths; merge clean"
+    exit: 0
+    ts: "2026-10-17T17:42:30+08:00"
+    seat: agent-air-m5-mouth-pricing-list-redesign-1017
+  - claim: >-
+      After the council cures (no ARIA table semantics, plain buttons with aria-haspopup and per-row
+      accessible names, controlled dialog opened by onPick, row validity only when every cell agrees,
+      scroll-spy keeps every intersecting chapter, two-track list rows, stable keys) the component, dialog,
+      skin-guard and snapshot suites pass.
+    cmd: cd apps/mouth && npx vitest run src/components/services src/lib/pricing-snapshot.test.ts
+    result: "4 files, 27 passed"
+    exit: 0
+    ts: "2026-10-17T17:55:00+08:00"
+    seat: agent-air-m5-mouth-pricing-list-redesign-1017
+council_run: council-journal.jsonl
+dissent:
+  - seat: agy-gemini-4-argon
+    objection: >-
+      role="table" owned a heading child and, below md, lost its column headers and had uneven cell counts
+      (hidden header row and hidden empty cells).
+    severity: major
+    status: CONFIRMED
+    resolution: >-
+      Matrices no longer claim table semantics: each family is a labelled section, the column labels are
+      decorative on desktop and every priced cell carries its own column label (visible on mobile,
+      sr-only on desktop).
+  - seat: agy-gemini-4-argon
+    objection: >-
+      79 DialogTrigger instances inside one Dialog broadcast aria-expanded to every button and overwrite
+      Radix's trigger ref.
+    severity: major
+    status: CONFIRMED
+    resolution: >-
+      Ledger buttons are plain buttons with aria-haspopup="dialog"; ServicePricing opens its controlled
+      Dialog in onPick and keeps restoring focus to the clicked button itself.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      rowValidity stamped the first cell's duration under rows whose columns are themselves durations
+      (D1 Tourism "1 year", C22 Internship "60 days", E30A "1 year", passports "5 years").
+    severity: major
+    status: CONFIRMED
+    resolution: The sub-line renders only when every priced cell of the row agrees on one duration.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      The scroll-spy only looked at the entries whose state changed, so a chapter already inside the band
+      could be skipped; a tall viewport could never activate a short chapter.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      The observer keeps a set of intersecting chapters and activates the first in document order; the
+      band is -20% / -55%.
+  - seat: agy-gemini-4-argon
+    objection: Unused third grid track in list rows on sm+ added a trailing gap.
+    severity: minor
+    status: CONFIRMED
+    resolution: List rows are a two-track grid at every width.
+  - seat: agy-gemini-4-argon
+    objection: 79 identical aria-label="More Details" masked the row identity for screen readers.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      Accessible name is "More Details: <row name>"; the unit tests match the prefix, Playwright's
+      substring match is unchanged.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      buildVisaLedger does not guard duplicate spec keys; unplaced rows without livePriceKey collide on
+      key={undefined}.
+    severity: nit
+    status: CONFIRMED
+    resolution: >-
+      Duplicate spec keys are pinned by the "never references a key twice" test; list keys fall back to
+      the package name.
+  - seat: kimi-code/k3
+    objection: >-
+      Inline style border/colour beat every Tailwind hover: class on the details buttons and chapter
+      links, so no hover state ever showed.
+    severity: minor
+    status: CONFIRMED
+    resolution: Border, colour, active background and inset rule moved to classes; hover now applies.
+  - seat: kimi-code/k3
+    objection: >-
+      Identical "More Details" names, a duration caption under multi-duration rows, keyless packages
+      colliding on key=undefined and redundant list grid classes (reviewed on the pre-cure diff).
+    severity: minor
+    status: CONFIRMED
+    resolution: All four were cured in the Gemini round of the same council (see the entries above).
+  - seat: kimi-code/k3
+    objection: >-
+      The mobile sticky chip row assumes a 24px parent padding; the price-fidelity test matches by
+      substring; the builder places without its own duplicate-key check.
+    severity: nit
+    status: PLAUSIBLE
+    resolution: >-
+      The section wrapper is px-6 on mobile (measured overflow 0 at 390px); the exact-figure format
+      makes a substring collision implausible and the e2e reads the same way; duplicate spec keys are
+      pinned by the "never references a key twice" test.
+decisions:
+  - id: D-presentation-only
+    decision: >-
+      The ledger is a presentation layer over SERVICES_DATA.visa.packages: ServicePricing keeps the
+      one PricingTool resolver (usePackagePrice) and the one details dialog; VisaPriceLedger receives
+      a renderPrice callback and never reads the snapshot itself.
+  - id: D-explicit-spec-not-regex
+    decision: >-
+      Chapters, families and matrix cells are an explicit, reviewable table (visa-price-ledger.ts),
+      not a regex over catalogue names: the placement is derivable from the table and tested in
+      both drift directions (dangling spec keys, unplaced catalogue rows).
+  - id: D-nothing-hidden
+    decision: >-
+      A catalogue row the spec does not place still renders, in a trailing "More services" chapter;
+      the unit test asserts that chapter is empty for the live catalogue so every new row forces a
+      conscious placement.
+  - id: D-serialized-behind-retire
+    decision: >-
+      Opened after the 2026-10-17 retire PR merges and rebased on it: the ledger spec places the
+      79 surviving rows and the empty-trailing-chapter test is red on origin/main until then.
+  - id: D-card-contract-kept
+    decision: >-
+      Every priced cell keeps data-testid=public-service-price-card, data-pricing-category/key, the
+      exact figure in its text and a "More Details" trigger, so book-pricing.spec.ts and
+      ServicePricing.test.tsx read the new surface unchanged.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

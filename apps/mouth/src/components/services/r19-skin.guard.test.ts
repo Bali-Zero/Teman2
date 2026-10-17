@@ -20,6 +20,7 @@ const FILES = [
     "page.tsx",
   ),
   join(__dirname, "ServicePricing.tsx"),
+  join(__dirname, "VisaPriceLedger.tsx"),
 ].map((p) => [p, readFileSync(p, "utf8")] as const);
 
 export function stripComments(src: string): string {

@@ -18,6 +18,7 @@ import {
   useTierFloorPricingData,
 } from "@/hooks/usePricingData";
 import { R19_VARS } from "@/components/r19/presentation";
+import VisaPriceLedger from "./VisaPriceLedger";
 
 // ServiceData without icon (React component cannot be serialized)
 type ServiceDataWithoutIcon = Omit<
@@ -56,14 +57,15 @@ function PriceValue({
   variant,
 }: {
   pkg: ServicePackage;
-  variant: "card" | "modal";
+  variant: "card" | "modal" | "ledger";
 }) {
   const price = usePackagePrice(pkg);
+  const ledger = variant === "ledger";
 
   if (price === "Contact") {
     return (
       <span
-        className="text-2xl font-medium"
+        className={ledger ? "text-[14px]" : "text-2xl font-medium"}
         style={{ color: "var(--r19-copper)" }}
       >
         Contact for quote
@@ -73,14 +75,17 @@ function PriceValue({
 
   const amount = (
     <span
-      className="text-3xl font-medium"
-      style={{ color: "var(--text-primary)" }}
+      className={ledger ? "text-[17px] tabular-nums" : "text-3xl font-medium"}
+      style={{
+        color: "var(--text-primary)",
+        ...(ledger ? { fontFamily: "var(--font-serif)" } : {}),
+      }}
     >
       {price}
     </span>
   );
 
-  if (variant === "card") {
+  if (variant !== "modal") {
     return amount;
   }
 
@@ -118,94 +123,106 @@ export default function ServicePricing({ service, slug }: ServicePricingProps) {
             Pricing
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {service.packages.map((pkg) => {
-              return (
-                <div
-                  key={pkg.name}
-                  data-testid="public-service-price-card"
-                  data-pricing-category={pkg.livePriceCategory}
-                  data-pricing-key={pkg.livePriceKey}
-                  className="rounded-xl border p-6 transition-all hover:scale-[1.02]"
-                  style={{
-                    background: "var(--r19-surface)",
-                    borderColor: pkg.popular
-                      ? "var(--r19-copper)"
-                      : "var(--border-subtle)",
-                  }}
-                >
-                  {pkg.popular && (
-                    <span
-                      className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-4"
-                      style={{
-                        background: "var(--r19-copper)",
-                        color: "var(--r19-cta-ink, #fff)",
-                      }}
-                    >
-                      Most Popular
-                    </span>
-                  )}
-                  <h3
-                    className="font-medium text-lg mb-2"
-                    style={{ color: "var(--text-primary)" }}
+          {slug === "visa" ? (
+            <VisaPriceLedger
+              packages={service.packages}
+              renderPrice={(pkg) => <PriceValue pkg={pkg} variant="ledger" />}
+              onPick={(pkg, trigger) => {
+                dialogTriggerRef.current = trigger;
+                setSelectedPackage(pkg);
+                setIsDetailsOpen(true);
+              }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {service.packages.map((pkg) => {
+                return (
+                  <div
+                    key={pkg.name}
+                    data-testid="public-service-price-card"
+                    data-pricing-category={pkg.livePriceCategory}
+                    data-pricing-key={pkg.livePriceKey}
+                    className="rounded-xl border p-6 transition-all hover:scale-[1.02]"
+                    style={{
+                      background: "var(--r19-surface)",
+                      borderColor: pkg.popular
+                        ? "var(--r19-copper)"
+                        : "var(--border-subtle)",
+                    }}
                   >
-                    {pkg.name}
-                  </h3>
-                  <p
-                    className="text-sm mb-4"
-                    style={{ color: "var(--text-tertiary)" }}
-                  >
-                    {pkg.description}
-                  </p>
-
-                  <div className="mb-6">
-                    <PriceValue pkg={pkg} variant="card" />
-                  </div>
-
-                  <ul className="space-y-3 mb-6">
-                    {pkg.features.map((feature, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm"
-                        style={{ color: "var(--text-secondary)" }}
+                    {pkg.popular && (
+                      <span
+                        className="inline-block px-3 py-1 rounded-full text-xs font-medium mb-4"
+                        style={{
+                          background: "var(--r19-copper)",
+                          color: "var(--r19-cta-ink, #fff)",
+                        }}
                       >
-                        <Check
-                          className="w-4 h-4 mt-0.5 flex-shrink-0"
-                          style={{ color: "var(--r19-copper)" }}
-                        />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <DialogTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        dialogTriggerRef.current = event.currentTarget;
-                        setSelectedPackage(pkg);
-                      }}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors"
-                      style={
-                        pkg.popular
-                          ? {
-                              background: "var(--r19-copper)",
-                              color: "var(--r19-cta-ink, #fff)",
-                            }
-                          : {
-                              border: "1px solid var(--r19-line-strong)",
-                              color: "var(--text-primary)",
-                            }
-                      }
+                        Most Popular
+                      </span>
+                    )}
+                    <h3
+                      className="font-medium text-lg mb-2"
+                      style={{ color: "var(--text-primary)" }}
                     >
-                      <Info className="w-4 h-4" aria-hidden="true" />
-                      More Details
-                    </button>
-                  </DialogTrigger>
-                </div>
-              );
-            })}
-          </div>
+                      {pkg.name}
+                    </h3>
+                    <p
+                      className="text-sm mb-4"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {pkg.description}
+                    </p>
+
+                    <div className="mb-6">
+                      <PriceValue pkg={pkg} variant="card" />
+                    </div>
+
+                    <ul className="space-y-3 mb-6">
+                      {pkg.features.map((feature, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start gap-2 text-sm"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          <Check
+                            className="w-4 h-4 mt-0.5 flex-shrink-0"
+                            style={{ color: "var(--r19-copper)" }}
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          dialogTriggerRef.current = event.currentTarget;
+                          setSelectedPackage(pkg);
+                        }}
+                        className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors"
+                        style={
+                          pkg.popular
+                            ? {
+                                background: "var(--r19-copper)",
+                                color: "var(--r19-cta-ink, #fff)",
+                              }
+                            : {
+                                border: "1px solid var(--r19-line-strong)",
+                                color: "var(--text-primary)",
+                              }
+                        }
+                      >
+                        <Info className="w-4 h-4" aria-hidden="true" />
+                        More Details
+                      </button>
+                    </DialogTrigger>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <p
             className="text-sm text-center mt-8"
