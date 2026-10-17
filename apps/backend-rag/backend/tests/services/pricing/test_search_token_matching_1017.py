@@ -366,8 +366,15 @@ def _long_message(words: int) -> str:
 
 def test_search_prepares_the_query_and_the_rows_once(pricing_service, m, monkeypatch):
     """Tokeniser and noise-check calls must not scale with rows x query tokens."""
-    calls = {"row_profile": 0}
+    calls = {"row_profile": 0, "noise": 0}
     real_profile = m._row_profile
+    real_noise = m._is_noise
+
+    def counting_noise(token):
+        calls["noise"] += 1
+        return real_noise(token)
+
+    monkeypatch.setattr(m, "_is_noise", counting_noise)
 
     def counting_profile(texts):
         calls["row_profile"] += 1
@@ -378,10 +385,9 @@ def test_search_prepares_the_query_and_the_rows_once(pricing_service, m, monkeyp
     per_search = {}
     for label, query in (("short", short), ("long", long)):
         calls["row_profile"] = 0
-        m._is_noise.cache_clear()
+        calls["noise"] = 0
         pricing_service.search_service(query)
-        info = m._is_noise.cache_info()
-        per_search[label] = (calls["row_profile"], info.hits + info.misses, len(m._words(query)))
+        per_search[label] = (calls["row_profile"], calls["noise"], len(m._words(query)))
     # One profile per row, whatever the query length.
     assert per_search["short"][0] == per_search["long"][0] > 50
     # Noise checks scale with the QUERY (a few per token), never with rows x tokens
@@ -430,3 +436,34 @@ def test_vocabulary_lookup_equals_the_reference_word_rule(pricing_service, m):
     for token in tokens:
         expected = {w for w in words if m._token_matches_words(token, {w})}
         assert vocab.matching(token) == expected, token
+
+
+def test_noise_predicate_equals_the_reference_definition(m):
+    def reference(token: str) -> bool:
+        if token in m._SEARCH_NOISE_WORDS:
+            return True
+        return any(
+            len(w) >= 4 and token.startswith(w) and token[len(w) :] in m._LIGHT_SUFFIXES
+            for w in m._SEARCH_NOISE_WORDS
+        )
+
+    noise = sorted(m._SEARCH_NOISE_WORDS)
+    suffixed = [w + s for w in noise for s in [*sorted(m._LIGHT_SUFFIXES), "x", "xyz"]]
+    short_plus_suffix = [w + s for w in noise if len(w) <= 3 for s in m._LIGHT_SUFFIXES]
+    assert short_plus_suffix  # 3-char noise words + suffix are NOT noise
+    others = [f"{w[:n]}{k}" for k, w in enumerate(noise * 6) for n in (1, 2, 3, 4)]
+    others += ["kitas", "alcohol", "visa", "pricey", "costume", "yearly", "kitasnya", "di5", ""]
+    for token in {*noise, *suffixed, *short_plus_suffix, *others}:
+        assert m._is_noise(token) == reference(token), token
+    assert not any(
+        m._is_noise(t)
+        for t in short_plus_suffix
+        if t not in m._SEARCH_NOISE_WORDS and not reference(t)
+    )
+
+
+def test_vocabulary_falls_back_to_the_reference_rule_for_non_word_tokens(m):
+    vocab = m._Vocabulary({"kitas", "alkohol", "extension"})
+    for token in ("kit\nas", "kit as", "ext-ension", "alk\n", "kitas\n", "e*t", "\nkitas"):
+        expected = {w for w in vocab.words if m._token_matches_words(token, {w})}
+        assert vocab.matching(token) == expected, repr(token)

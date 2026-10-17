@@ -88,18 +88,17 @@ _LIGHT_SUFFIXES = frozenset(
 )
 
 
-@lru_cache(maxsize=8192)
-def _is_noise(token: str) -> bool:
-    """A noise word, or a noise word of 4+ characters plus a light suffix.
+# Every form ``_is_noise`` accepts, precomputed: a noise word, or a noise word of 4+
+# characters plus a light suffix ("prices" = "price" + "s", "biayanya" = "biaya" + "nya",
+# "selling" = "sell" + "ing"). A set, not a cache: its size does not depend on the query.
+_NOISE_FORMS = _SEARCH_NOISE_WORDS | {
+    w + suffix for w in _SEARCH_NOISE_WORDS if len(w) >= 4 for suffix in _LIGHT_SUFFIXES
+}
 
-    "prices" = "price" + "s", "biayanya" = "biaya" + "nya", "selling" = "sell" + "ing".
-    """
-    if token in _SEARCH_NOISE_WORDS:
-        return True
-    return any(
-        len(w) >= 4 and token.startswith(w) and token[len(w) :] in _LIGHT_SUFFIXES
-        for w in _SEARCH_NOISE_WORDS
-    )
+
+def _is_noise(token: str) -> bool:
+    """A noise word, or a noise word of 4+ characters plus a light suffix."""
+    return token in _NOISE_FORMS
 
 
 # Domain acronyms a client types that are not a prefix/infix of the catalogue word any more
@@ -228,6 +227,12 @@ class _Vocabulary:
         hit = self._memo.get(token)
         if hit is not None:
             return hit
+        if not _WORD_RE.fullmatch(token):
+            # The blob probe assumes a plain \w+ token; anything else takes the reference rule.
+            result = self._memo[token] = frozenset(
+                w for w in self.words if _token_matches_words(token, {w})
+            )
+            return result
         words = self.words
         found: set[str] = set()
         if token in words:
