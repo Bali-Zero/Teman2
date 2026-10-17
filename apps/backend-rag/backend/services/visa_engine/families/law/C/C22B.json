@@ -1,0 +1,78 @@
+{
+  "code": "C22B",
+  "official_name_id": "C22B Visa Kunjungan Pemagangan Kompetensi",
+  "source_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C22B",
+  "retrieved_at": "2026-10-17T10:08:17Z",
+  "page_sha256": "f22326521017ea9d422a3af3f08df0447e7ac8a2e20216936bf26e34a8cc9278",
+  "definition_verbatim": "melakukan magang, melakukan pengembangan kompetensi pada perusahaan, kantor atau tempat kerja lainnya. Termasuk dengan visa ini anda dapat berwisata serta mengunjungi teman dan keluarga.",
+  "jenis_visa_verbatim": "Visa C22B merupakan Visa Kunjungan untuk satu kali masuk ke Indonesia dengan izin tinggal pertama kali maksimal 180 hari, dihitung sejak tanggal kedatangan. Izin Tinggal ini dapat diperpanjang dan dapat dikonversikan menjadi Izin Tinggal Terbatas dengan penjamin yang sama.",
+  "stay_days": [
+    "Anda dapat tinggal di Indonesia maksimal 180 hari, dihitung sejak tanggal kedatangan."
+  ],
+  "extendable": [
+    "Anda dapat memperpanjang izin tinggal ini diberikan dengan jangka waktu 180 Hari setiap kali perpanjangan terhitung sejak tanggal berakhirnya Izin Tinggal Kunjungan dengan ketentuan keseluruhan Izin Tinggal di Wilayah Indonesia tidak lebih dari 12 (dua belas) bulan.",
+    "Izin Tinggal ini dapat diperpanjang dan dapat dikonversikan menjadi Izin Tinggal Terbatas dengan penjamin yang sama."
+  ],
+  "entry": "single",
+  "where_to_apply": null,
+  "sponsor_required": {
+    "as_stated_boolean": true,
+    "verbatim": [
+      "Anda membutuhkan penjamin/sponsor untuk mengajukan visa ini."
+    ],
+    "invitation_requirement_see": "requirements_verbatim (Persyaratan Khusus)"
+  },
+  "requirements_verbatim": [
+    {
+      "n": 1,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "surat permohonan dan surat pernyataan penjamin,"
+    },
+    {
+      "n": 2,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "dokumen perjalanan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, (untuk pemegang dokumen perjalanan selain paspor kebangsaan seperti paspor darurat, dokumen identitas, dll harus berlaku selama 12 bulan);"
+    },
+    {
+      "n": 3,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin;"
+    },
+    {
+      "n": 4,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "pasfoto berwarna terbaru (setahun terakhir). Detail"
+    },
+    {
+      "n": 5,
+      "section": "Persyaratan Khusus",
+      "text": "surat perjanjian pemagangan atau keterangan dari instansi pemerintah atau lembaga swasta selaku penyelenggara kegiatan."
+    }
+  ],
+  "pengajuan_intro_verbatim": "Penjamin (sponsor) harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa bagi Orang Asing yang dia sponsori. Setelah memiliki akun, penjamin dapat mengajukan visa C22B bagi Orang Asing setelah login di evisa.imigrasi.go.id dengan menyiapkan berkas elektronik (detail format file) Orang Asing antara lain:",
+  "allowed_activities": "see definition_verbatim",
+  "prohibited_or_conditions_verbatim": [
+    "Orang Asing dengan izin tinggal dari Visa C22B dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia."
+  ],
+  "ketentuan_lain_verbatim": [
+    "Orang Asing tanpa kewarganegaraan dan Orang Asing pemegang dokumen perjalanan (bukan paspor kebangsaan) berupa paspor sementara, paspor darurat, titre du voyage, certificate of identity, laissez passer, atau dokumen sejenis lainnya harus melampirkan dokumen Izin Masuk Kembali ke negara tempat Visa Kunjungan diajukan serta tiket kembali/tiket terusan ke negara lain (kecuali bagi awak alat angkut).",
+    "Masa berlaku visa adalah 90 hari sejak diterbitkan. Jika tidak digunakan setelah jangka waktu tersebut, Orang Asing harus mengajukan visa baru untuk dapat masuk ke Indonesia.",
+    "Harap diperhatikan bahwa masa berlaku visa berbeda dengan masa tinggal, silakan periksa visa Anda untuk informasi tentang lama izin tinggal.",
+    "Orang Asing dengan izin tinggal dari Visa C22B dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia."
+  ],
+  "pnbp_verbatim_for_reference_only": [
+    "Masa tinggal 60 Hari Rp. 3.000.000",
+    "Komponen biaya:",
+    "- Biaya visa C22 Rp 1.000.000",
+    "- Biaya Verifikasi II Rp 2.000.000",
+    "Masa tinggal 180 Hari Rp. 4.000.000",
+    "- Biaya visa C22 Rp 2.000.000",
+    "- Biaya Verifikasi II Rp 2.000.000",
+    "Semua pembayaran (PNBP) dapat dilakukan melalui beberapa bank yang telah ditunjuk. Silakan lihat kode billing yang muncul di sistem setelah pengajuan visa oleh sponsor."
+  ],
+  "notes": [
+    "Page 'Masa tinggal' extension sentence is grammatically garbled in the source (quoted verbatim).",
+    "Page shows no explicit offshore/onshore statement; where_to_apply is null. Application is via evisa.imigrasi.go.id per page text. Requirements numbered by order of appearance (page uses bullets, not numbers)."
+  ],
+  "status": "VERIFIED_FROM_SOURCE"
+}

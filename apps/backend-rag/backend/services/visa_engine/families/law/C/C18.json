@@ -1,0 +1,67 @@
+{
+  "code": "C18",
+  "official_name_id": "C18 Visa Kunjungan Uji Kemampuan Tenaga Kerja Asing",
+  "source_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C18",
+  "retrieved_at": "2026-10-17T10:08:17Z",
+  "page_sha256": "d85379b33c24f8f86b5aac6c885e8df9f2692c9f3431c52da680d11bee4e3a6c",
+  "definition_verbatim": "melakukan uji coba kemampuan dalam bekerja dalam perusahaan. Termasuk dengan visa ini anda dapat berwisata serta mengunjungi teman dan keluarga.",
+  "jenis_visa_verbatim": "Visa C18 merupakan Visa Kunjungan untuk satu kali masuk ke Indonesia dengan izin tinggal pertama kali maksimal 60 hari, dihitung sejak tanggal kedatangan. Izin Tinggal ini dapat diperpanjang dan dapat dikonversikan menjadi Izin Tinggal Terbatas dengan penjamin yang sama.",
+  "stay_days": [
+    "Anda dapat tinggal di Indonesia maksimal 90 hari, dihitung sejak tanggal kedatangan."
+  ],
+  "extendable": ["Anda tidak dapat memperpanjang izin tinggal ini"],
+  "entry": "single",
+  "where_to_apply": null,
+  "sponsor_required": {
+    "as_stated_boolean": true,
+    "verbatim": [
+      "Anda membutuhkan penjamin/sponsor untuk mengajukan visa ini."
+    ],
+    "invitation_requirement_see": "requirements_verbatim (Persyaratan Khusus)"
+  },
+  "requirements_verbatim": [
+    {
+      "n": 1,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "dokumen perjalanan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis, (untuk pemegang dokumen perjalanan selain paspor kebangsaan seperti paspor darurat, dokumen identitas, dll harus berlaku selama 12 bulan);"
+    },
+    {
+      "n": 2,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin"
+    },
+    {
+      "n": 3,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "pasfoto berwarna terbaru (setahun terakhir). Detail"
+    },
+    {
+      "n": 4,
+      "section": "Persyaratan Khusus",
+      "text": "surat undangan uji coba kemampuan dari instansi pemerintah atau lembaga swasta."
+    }
+  ],
+  "pengajuan_intro_verbatim": "Penjamin (sponsor) harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa bagi Orang Asing yang dia sponsori. Setelah memiliki akun, penjamin dapat mengajukan visa C18 bagi Orang Asing setelah login di evisa.imigrasi.go.id dengan menyiapkan berkas elektronik (detail format file) Orang Asing antara lain:",
+  "allowed_activities": "see definition_verbatim",
+  "prohibited_or_conditions_verbatim": [
+    "Orang Asing dengan izin tinggal dari Visa C18 dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia."
+  ],
+  "ketentuan_lain_verbatim": [
+    "Orang Asing tanpa kewarganegaraan dan Orang Asing pemegang dokumen perjalanan (bukan paspor kebangsaan) berupa paspor sementara, paspor darurat, titre du voyage, certificate of identity, laissez passer, atau dokumen sejenis lainnya harus melampirkan dokumen Izin Masuk Kembali ke negara tempat Visa Kunjungan diajukan serta tiket kembali/tiket terusan ke negara lain (kecuali bagi awak alat angkut).",
+    "Masa berlaku visa adalah 90 hari sejak diterbitkan. Jika tidak digunakan setelah jangka waktu tersebut, Orang Asing harus mengajukan visa baru untuk dapat masuk ke Indonesia.",
+    "Harap diperhatikan bahwa masa berlaku visa berbeda dengan masa tinggal, silakan periksa visa Anda untuk informasi tentang lama izin tinggal.",
+    "Orang Asing dengan izin tinggal dari Visa C18 dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia."
+  ],
+  "pnbp_verbatim_for_reference_only": [
+    "Masa tinggal 90 hari (tidak bisa diperpanjang): Rp. 4.000.000",
+    "Komponen biaya:",
+    "- Biaya visa Rp 2.000.000",
+    "- Biaya Verifikasi II Rp 2.000.000",
+    "- Semua pembayaran (PNBP) dapat dilakukan melalui beberapa bank yang telah ditunjuk. Silakan lihat kode billing yang muncul di sistem setelah pengajuan visa oleh sponsor."
+  ],
+  "notes": [
+    "INTERNAL INCONSISTENCY on page: 'Jenis visa' says izin tinggal pertama kali maksimal 60 hari and 'dapat diperpanjang/dikonversikan'; 'Masa tinggal' says maksimal 90 hari and 'tidak dapat memperpanjang'. Not resolved here.",
+    "Page shows no explicit offshore/onshore statement; where_to_apply is null. Application is via evisa.imigrasi.go.id per page text. Requirements numbered by order of appearance (page uses bullets, not numbers)."
+  ],
+  "status": "VERIFIED_FROM_SOURCE"
+}
