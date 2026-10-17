@@ -286,7 +286,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         ok, state, err = read_ledger_state(sha=sha, repo=args.repo, ledger=args.ledger)
         if not ok:
-            print(f"::error::harness_gate_read: {err}", file=sys.stderr)
+            print(f"::error::harness_gate_read: CANNOT-VERIFY (the ledger itself is unreadable, not the same as 'no verdict') — {err}", file=sys.stderr)
             return 1
         description = None
     else:

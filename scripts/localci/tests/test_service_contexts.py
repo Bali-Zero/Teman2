@@ -337,6 +337,32 @@ def test_a_host_reader_is_the_base_copy_run_at_plan_and_its_answer_is_frozen_in_
     assert step["precomputed"]["rc"] == 3 and step["side"]["argv"][1] == "-I"   # BASE's reader answered; the candidate's exits 0
 
 
+SECONDARY = "scripts/localci/sibling.py"
+SIBLING_READER = ("import sys\nfrom pathlib import Path\n"
+                  "ns = {}\nexec((Path(__file__).resolve().parents[1] / 'localci' / 'sibling.py').read_text(), ns)\nsys.exit(ns['RC'])\n")
+
+
+def sibling_ctx() -> dict:
+    ctx = host_ctx(["$PY", READER])
+    ctx["local"]["trusted_files"] = [READER, SECONDARY]
+    return ctx
+
+
+def test_every_trusted_file_of_a_host_reader_is_the_base_copy_never_the_candidates(tmp_path, monkeypatch):
+    """LOW-2 (gate-b25p4): a reader that loads a sibling trusted file (harness_gate_read -> gate_ledger.py) runs BASE's sibling.
+    The primary file alone being from BASE is not enough: the candidate's sibling decides the answer if it is read from the candidate."""
+    base = {**HOST_BASE, READER: SIBLING_READER, SECONDARY: "RC = 3\n"}
+    spec = planned_svc(tmp_path, monkeypatch, {**fr.CANDIDATE_FILES, READER: SIBLING_READER, SECONDARY: "RC = 0\n"}, sibling_ctx(), base)
+    step = spec["jobs"][0]["steps"][1]
+    assert step["precomputed"]["rc"] == 3   # BASE's sibling answered; the candidate's exits 0
+
+
+def test_a_trusted_file_that_exists_only_in_the_candidate_blocks_the_plan(tmp_path, monkeypatch):
+    base = {**HOST_BASE, READER: SIBLING_READER}   # no sibling at BASE
+    spec = planned_svc(tmp_path, monkeypatch, {**fr.CANDIDATE_FILES, SECONDARY: "RC = 0\n"}, sibling_ctx(), base)
+    assert spec["status"] == "BLOCKED" and "trusted file present at BASE" in spec["reason"]
+
+
 MARK = "::error::r: CANNOT-VERIFY"
 ERR = "import sys; print({!r}, file=sys.stderr); raise SystemExit(1)"
 
