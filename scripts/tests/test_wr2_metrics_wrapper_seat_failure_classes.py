@@ -103,13 +103,13 @@ def test_disabled_subscription_seat_is_passed_and_a_later_seat_answers(tmp_path:
     seat_dir = tmp_path / "seats"
     seat_dir.mkdir()
     _seat(seat_dir, "seat-one", out="", err="quota exhausted\n", rc=1)
-    _seat(seat_dir, "seat-three", **DISABLED_SHAPES[shape])
+    _seat(seat_dir, "seat-five", **DISABLED_SHAPES[shape])
 
-    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three", 4: "seat-four"})
+    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 5: "seat-five", 6: "seat-six"})
 
-    assert trace == ["seat-one", "seat-three", "seat-four"]
+    assert trace == ["seat-one", "seat-five", "seat-six"]
     assert rc == 0
-    assert "used: CLAUDE_CODE_OAUTH_TOKEN_4" in log
+    assert "used: CLAUDE_CODE_OAUTH_TOKEN_6" in log
     assert "disabled Claude subscription access" not in log
 
 
@@ -129,11 +129,11 @@ def test_session_limit_notice_is_never_accepted_as_an_answer(tmp_path: Path, sha
     seat_dir.mkdir()
     _seat(seat_dir, "seat-one", **LIMIT_SHAPES[shape])
 
-    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three"})
+    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 5: "seat-five"})
 
-    assert trace == ["seat-one", "seat-three"]
+    assert trace == ["seat-one", "seat-five"]
     assert rc == 0
-    assert "used: CLAUDE_CODE_OAUTH_TOKEN_3" in log
+    assert "used: CLAUDE_CODE_OAUTH_TOKEN_5" in log
     assert "hit your" not in log
 
 
@@ -174,7 +174,7 @@ def test_an_answer_that_discusses_limits_or_organizations_is_accepted(tmp_path: 
     seat_dir.mkdir()
     _seat(seat_dir, "seat-one", out=answer, rc=0)
 
-    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three"})
+    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", 5: "seat-five"})
 
     assert trace == ["seat-one"]
     assert rc == 0
@@ -186,7 +186,7 @@ def test_an_unclassified_failure_still_stops_the_loop(tmp_path: Path) -> None:
     seat_dir.mkdir()
     _seat(seat_dir, "seat-one", out="", err="Error: agent definition not found\n", rc=2)
 
-    rc, trace, _, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three"})
+    rc, trace, _, _ = _run(tmp_path, {1: "seat-one", 5: "seat-five"})
 
     assert trace == ["seat-one"]
     assert rc == 2
@@ -197,7 +197,7 @@ def test_a_cli_exiting_98_is_not_a_next_account_signal(tmp_path: Path) -> None:
     seat_dir.mkdir()
     _seat(seat_dir, "seat-one", out="", err="Error: agent definition not found\n", rc=98)
 
-    rc, trace, _, _ = _run(tmp_path, {1: "seat-one", 3: "seat-three"})
+    rc, trace, _, _ = _run(tmp_path, {1: "seat-one", 5: "seat-five"})
 
     assert trace == ["seat-one"]
     assert rc == 1
@@ -285,3 +285,20 @@ REAL_ANSWERS = ANSWERS + [
 @pytest.mark.parametrize("answer", REAL_ANSWERS)
 def test_no_real_answer_is_classified_as_a_seat_failure(tmp_path: Path, answer: str) -> None:
     assert _classify(tmp_path, answer) == ""
+
+
+@pytest.mark.parametrize("closed_slot", [2, 3, 4])
+def test_a_closed_account_token_is_never_spent_even_when_it_would_answer(tmp_path: Path, closed_slot: int) -> None:
+    # Guilt case for the 2026-10-17 closure: slots 2/3/4 are retired, so their
+    # token must not reach the CLI; the loop goes from seat 1 straight to seat 5.
+    seat_dir = tmp_path / "seats"
+    seat_dir.mkdir()
+    _seat(seat_dir, "seat-one", out="", err="quota exhausted\n", rc=1)
+    _seat(seat_dir, "seat-closed", out="CLOSED ACCOUNT ANSWERED\n/tmp/a.md\n", rc=0)
+
+    rc, trace, log, _ = _run(tmp_path, {1: "seat-one", closed_slot: "seat-closed", 5: "seat-five"})
+
+    assert "seat-closed" not in trace
+    assert trace == ["seat-one", "seat-five"]
+    assert rc == 0
+    assert "used: CLAUDE_CODE_OAUTH_TOKEN_5" in log
