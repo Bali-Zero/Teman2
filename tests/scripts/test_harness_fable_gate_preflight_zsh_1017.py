@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,15 +16,20 @@ sys.path.insert(0, str(REPO / "scripts"))
 import harness_fable_gate  # noqa: E402
 
 
-SHELLS = [
-    "/bin/bash",
-    pytest.param(
-        "/bin/zsh",
-        marks=pytest.mark.skipif(
-            not Path("/bin/zsh").exists(), reason="/bin/zsh is not installed"
-        ),
-    ),
-]
+OLD_PREFLIGHT = (
+    'M="$MERGER_STATE_DIR/repo.git"; R=refs/merger/wrapper; '
+    'git -C "$M" cat-file -e "$R:scripts/localci/gate_ledger.py"'
+)
+
+
+def _zsh() -> str:
+    zsh = os.environ.get("ZSH_BIN") or shutil.which("zsh")
+    if zsh and Path(zsh).is_file():
+        return zsh
+    message = "zsh is not installed"
+    if os.environ.get("REQUIRE_ZSH") == "1":
+        pytest.fail(message)
+    pytest.skip(message)
 
 
 def _git(*args: str, cwd: Path | None = None) -> str:
@@ -68,7 +74,7 @@ def _run(shell: str, script: str, state_dir: Path) -> subprocess.CompletedProces
     )
 
 
-@pytest.mark.parametrize("shell", SHELLS)
+@pytest.mark.parametrize("shell", ["/bin/bash", "zsh"])
 def test_preflight_is_shell_agnostic(
     shell: str, tmp_path: Path, merger_repo: tuple[Path, str, str]
 ):
@@ -77,6 +83,7 @@ def test_preflight_is_shell_agnostic(
     wrapper.write_text("#!/bin/sh\n# gate-append\n")
     script = harness_fable_gate.PREFLIGHT.format(w=wrapper)
 
+    shell = _zsh() if shell == "zsh" else shell
     assert _run(shell, script, tmp_path).returncode == 0
     _git("update-ref", "refs/merger/wrapper", without_ledger, cwd=bare)
     assert _run(shell, script, tmp_path).returncode == 11
@@ -84,10 +91,15 @@ def test_preflight_is_shell_agnostic(
     assert _run(shell, script, tmp_path).returncode == 10
 
 
-@pytest.mark.skipif(not Path("/bin/zsh").exists(), reason="/bin/zsh is not installed")
 def test_old_unbraced_ref_expansion_fails_under_zsh(
     tmp_path: Path, merger_repo: tuple[Path, str, str]
 ):
     _, _, _ = merger_repo
-    old_script = 'M="$MERGER_STATE_DIR/repo.git"; R=refs/merger/wrapper; git -C "$M" cat-file -e "$R:scripts/localci/gate_ledger.py"'
-    assert _run("/bin/zsh", old_script, tmp_path).returncode != 0
+    assert _run(_zsh(), OLD_PREFLIGHT, tmp_path).returncode != 0
+
+
+def test_old_unbraced_ref_expansion_passes_under_bash(
+    tmp_path: Path, merger_repo: tuple[Path, str, str]
+):
+    _, _, _ = merger_repo
+    assert _run("/bin/bash", OLD_PREFLIGHT, tmp_path).returncode == 0
