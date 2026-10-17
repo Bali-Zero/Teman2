@@ -73,6 +73,8 @@ if [ -n "${IMM:-}" ]; then
   shot registry-sheet --imm --sheet-open --theme night --lang en --code 43110 --scope 0 --scale-focus Mikro --height 4000 "$OUT/imm/sheet-open-43110-night-en.png"
   for c in 03300 32300; do shot registry-sheet --imm --sheet-open --theme night --lang en --code $c --height 4000 "$OUT/imm/sheet-open-$c-night-en.png"; done
 fi
+# The theme never paints mixed: the window flipped like the toolbar toggle flips it, read in pixels (launch order: real/theme_real_display.sh).
+python3 Tools/design/theme_flip_check.py "$BIN" || fails=$((fails+1))
 [[ -n $CENSUS_IDENTITY ]] && echo "census collector: $same PNGs byte-identical with and without it"
 echo "render_set: $(find "$OUT" -name '*.png' | wc -l | tr -d ' ') PNGs in $OUT, $fails failed"
 exit $(( fails > 0 ))
