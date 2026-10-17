@@ -352,3 +352,81 @@ def test_other_tokens_are_not_noise(m, token):
 @pytest.mark.parametrize("word", ["license", "licence", "sell"])
 def test_generic_licence_and_sale_words_are_noise_words(m, word):
     assert word in m._SEARCH_NOISE_WORDS
+
+
+# --- speed shape (issue #8665 item 1): per-query work is done once, per-row text once ------
+
+
+def _long_message(words: int) -> str:
+    base = (
+        "berapa harga kitas investor pt-pma for the selling prices of alcohol licence tax".split()
+    )
+    return " ".join(base[i % len(base)] + ("" if i % 7 else str(i)) for i in range(words))
+
+
+def test_search_prepares_the_query_and_the_rows_once(pricing_service, m, monkeypatch):
+    """Tokeniser and noise-check calls must not scale with rows x query tokens."""
+    calls = {"row_profile": 0}
+    real_profile = m._row_profile
+
+    def counting_profile(texts):
+        calls["row_profile"] += 1
+        return real_profile(texts)
+
+    monkeypatch.setattr(m, "_row_profile", counting_profile)
+    short, long = "kitas", _long_message(250)
+    per_search = {}
+    for label, query in (("short", short), ("long", long)):
+        calls["row_profile"] = 0
+        m._is_noise.cache_clear()
+        pricing_service.search_service(query)
+        info = m._is_noise.cache_info()
+        per_search[label] = (calls["row_profile"], info.hits + info.misses, len(m._words(query)))
+    # One profile per row, whatever the query length.
+    assert per_search["short"][0] == per_search["long"][0] > 50
+    # Noise checks scale with the QUERY (a few per token), never with rows x tokens
+    # (the 2026-10-17 regression made ~34,000 calls for a 1,500-character message).
+    rows, noise_calls, tokens = per_search["long"]
+    assert noise_calls <= 4 * tokens
+    assert noise_calls < rows * tokens // 10
+
+
+def test_row_profile_is_keyed_by_content_so_a_reload_is_never_stale(pricing_service, m):
+    fresh = type(pricing_service).__new__(type(pricing_service))
+    fresh.loaded = True
+    fresh.prices = {"services": {"company_services": {"Row X": {"name": "Alpha gadget"}}}}
+    assert "company_services" in fresh.search_service("alpha")["results"]
+    assert "results" not in fresh.search_service("omega")
+    # Same service object, same row key, edited text: the next search must see the edit.
+    fresh.prices = {"services": {"company_services": {"Row X": {"name": "Omega gadget"}}}}
+    assert "results" not in fresh.search_service("alpha")
+    assert "company_services" in fresh.search_service("omega")["results"]
+
+
+def test_vocabulary_lookup_equals_the_reference_word_rule(pricing_service, m):
+    words: set[str] = set()
+    for rows in pricing_service.prices["services"].values():
+        blocks = rows.values() if isinstance(rows, dict) and "monthly_tax_basic" in rows else [rows]
+        for block in blocks:
+            for key, row in block.items():
+                if isinstance(row, dict):
+                    words.update(m._words(f"{key} {row.get('name', '')} {row.get('notes', '')}"))
+    vocab = m._Vocabulary(words)
+    tokens = {w[:n] for w in list(words)[:150] for n in (2, 3, 4, 6)} | {
+        w + s for w in list(words)[:60] for s in ("s", "nya", "ing", "x", "an", "")
+    }
+    tokens |= {
+        "kitasnya",
+        "polisi",
+        "igiene",
+        "ke",
+        "e3",
+        "di5",
+        "freelance",
+        "free",
+        "coretax",
+        "core",
+    }
+    for token in tokens:
+        expected = {w for w in words if m._token_matches_words(token, {w})}
+        assert vocab.matching(token) == expected, token
