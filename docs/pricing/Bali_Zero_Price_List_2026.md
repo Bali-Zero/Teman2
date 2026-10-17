@@ -216,7 +216,7 @@ _Passports, identity documents and miscellaneous immigration filings._
 
 | Service                                              | Description                                                                                                                                                     | Price         |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| **Reset Molina**                                     | Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies. _(+ Rp 400.000 for urgent processing)_               | 1.000.000 IDR |
+| **Reset Molina**                                     | Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies.                                                      | 1.000.000 IDR |
 | **Passport 5 Years**                                 | Indonesian standard passport issuance for 5-year validity.                                                                                                      | 1.300.000 IDR |
 | **Passport 10 Years**                                | Indonesian standard passport issuance for 10-year validity.                                                                                                     | 2.200.000 IDR |
 | **Electronic Passport 5 Years**                      | Indonesian electronic passport (e-passport) issuance for 5-year validity.                                                                                       | 2.200.000 IDR |
@@ -224,7 +224,7 @@ _Passports, identity documents and miscellaneous immigration filings._
 | **SKTT**                                             | Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders.                    | 1.500.000 IDR |
 | **SKCK**                                             | Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.                          | 2.000.000 IDR |
 | **Domicilie Letter**                                 | Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.                                                   | 1.500.000 IDR |
-| **Mutation Passport**                                | Update of passport details on existing immigration permits after a passport renewal. _(+ Rp 350.000 for urgent processing)_                                     | 500.000 IDR   |
+| **Mutation Passport**                                | Update of passport details on existing immigration permits after a passport renewal.                                                                            | 500.000 IDR   |
 | **Mutation Address**                                 | Update of registered address on existing immigration permits.                                                                                                   | 500.000 IDR   |
 | **Mutation Address 2 Kanim**                         | Update of registered address requiring inter-Kanim (immigration office) transfer.                                                                               | 1.000.000 IDR |
 | **Lapor Lahir (Under)**                              | Birth report registration for foreign nationals born in Indonesia, filed within the standard window. _(Under 60 days (Kanim NGR) / Under 90 days (Kanim DPS).)_ | 2.000.000 IDR |
@@ -233,8 +233,8 @@ _Passports, identity documents and miscellaneous immigration filings._
 | **Cancel Wajib Lapor**                               | Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.                                                         | 1.000.000 IDR |
 | **Process IMTA &amp; RPTKA Only (12 Months)**        | Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.                                                                            | 3.500.000 IDR |
 | **Process IMTA &amp; RPTKA Only (6 Months or Less)** | Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.                                                                     | 6.000.000 IDR |
-| **EPO (Exit Permit Only)**                           | Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit. _(+ Rp 300.000 for urgent processing)_      | 700.000 IDR   |
-| **ERP (Exit Re-entry Permit)**                       | Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry. _(+ Rp 500.000 for urgent processing)_            | 800.000 IDR   |
+| **EPO (Exit Permit Only)**                           | Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit.                                             | 700.000 IDR   |
+| **ERP (Exit Re-entry Permit)**                       | Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry.                                                   | 800.000 IDR   |
 
 ---
 

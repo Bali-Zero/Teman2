@@ -1,0 +1,187 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-17, direct session order ("togli"): the "+ Rp N for urgent processing" notes
+  still carried by Reset Molina, Mutation Passport, EPO and ERP, and the brochure sentence that
+  urgent handling is quoted separately, go - second wave of the same-day retirement of the
+  Urgent 1/2/3 Hari surcharges (#8658, migration 327).
+mission: >-
+  Remove the urgent-surcharge note from every surface that still carries it: canonical price
+  sheet, public mirror, price list, brochure template and the committed brochure PDF, the CRM
+  catalogue descriptions (migration 328) and the Qdrant pricing payloads.
+lanes:
+  - lane: build
+    role: build
+    seat: Claude Fable 5.1 (owner-opened interactive window), worktree backend-rag-urgent-notes-1017 on Air-M5.
+  - lane: facts-and-tests
+    role: review
+    seat: claude-sonnet-5 subagents (pr-a-facts, pr-a-brochure), read-only fact finding and test runs; pr-a-brochure also ran the brochure generator.
+  - lane: refuter
+    role: review
+    seat: kimi-code/k3 through the kimi CLI, adversarial read of the unified diff.
+  - lane: constructive-width
+    role: review
+    seat: agy-gemini-4-argon (Gemini 4 Argon High, sandbox), second read of the same diff.
+  - lane: owner-ruling-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero, owner order given directly in the interactive session on 2026-10-17 (remove the four
+      urgent notes and the brochure sentence); no regulation is interpreted, only the published
+      catalogue text is edited. The two CRM rows whose description says "Including Urgent"
+      (visa_c7_music_art, kitas_remote_worker_offshore) are NOT in the order and are left alone.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "0c3246ad31e3f045cfa9f86f1751e3fb8704c97267430d07872fc49e02c346d4" # pragma: allowlist secret
+    note: >-
+      query_hash is sha256 of the four other_process rows' (key, notes) pairs after the edit, all
+      notes empty; recomputed and pinned at commit time by the pack's own receipt below.
+pii_scan: clean
+cloud_ok: >-
+  Builder Contract 4: catalogue text, a CRM catalogue table (practice_types, no client rows) and
+  public brochure text only; no client data reached any seat or any cloud.
+seat_fallback_reason: >-
+  agy-gemini-4-argon sat as the second titolare next to kimi-code/k3; codex-gpt-5.6-sol was not
+  dispatched (its network route died on 2026-10-17 in the earlier council of this day and has not
+  been re-proven); tp1-qwen3.8-max has no headless wrapper in this loop.
+bites:
+  consumer: >-
+    Three consumers, one observation each. (1) balizero.com/services/visa details dialog for
+    Reset Molina, Mutation Passport, EPO and ERP (apps/mouth mirror): no "urgent processing"
+    feature line. (2) The CRM catalogue (practice_types via crm_practices routes, deployed by this
+    merge = backend deploy): description NULL on the four codes after migration 328. (3) The
+    brochure PDF served at kita.balizero.com/static/brochure_balizero_en.pdf: no urgent sentence.
+    scripts/ci/observe_pricing_retire_1017.py proves the repo side of all three on every checkout
+    (sheet, mirror, price list, template, PDF through pypdf, migration 328 pairs and spared codes);
+    backend CI's test_brochure_price_parity reads the same PDF; the Qdrant payloads were cleared
+    by hand with a backed-up one-off and verified (receipt below).
+  where: ci
+  observe: python3 scripts/ci/observe_pricing_retire_1017.py
+  expect: "contains:retired rows of 2026-10-17 hold"
+receipts:
+  - claim: Sheet, mirror, price list, brochure template, committed PDF, migration 328 pairs and spared codes all agree on this checkout.
+    cmd: python3 scripts/ci/observe_pricing_retire_1017.py
+    result: "observe_pricing_retire_1017: retired rows of 2026-10-17 hold"
+    exit: 0
+    ts: "2026-10-17T21:40:00+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
+  - claim: >-
+      Guilt case of the PDF check - the observer's reader names the sentence on the PDF committed
+      at HEAD (before regeneration) and returns nothing on the regenerated one.
+    cmd: git show HEAD:apps/mouth/public/static/brochure_balizero_en.pdf > <scratch>/brochure_head.pdf; python3 -c "<import observer>; print(obs._pdf_mentions_urgent(head_pdf), obs._pdf_mentions_urgent(obs.BROCHURE_PDF))"
+    result: "HEAD pdf -> 'urgent handling is quoted separately'; worktree pdf -> None"
+    exit: 0
+    ts: "2026-10-17T21:38:00+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
+  - claim: The mirror is regenerated from the sheet and in sync; migration numbering and rollback-marker lints pass; prettier passes on the md and both JSON files; ruff passes on the observer and the test.
+    cmd: python3 scripts/sync_frontend_prices.py; python3 scripts/sync_frontend_prices.py --check; python3 scripts/lint_migration_numbers.py; python3 scripts/lint_migration_rollback.py; npx --no-install prettier --check <md + 2 json>; ruff check / ruff format --check <2 py>
+    result: "WROTE ... 117 exact rows; OK in sync; 202 files, all unique prefixes; 197 post-cutoff migrations, all have ROLLBACK marker; All matched files use Prettier code style; All checks passed"
+    exit: 0
+    ts: "2026-10-17T21:33:00+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
+  - claim: Backend CI tripwire on the committed PDF passes against the regenerated brochure.
+    cmd: cd apps/backend-rag && .venv/bin/python -m pytest backend/tests/services/crm/test_brochure_price_parity.py -p no:cacheprovider -k urgent
+    result: "1 passed, 18 deselected"
+    exit: 0
+    ts: "2026-10-17T21:41:00+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
+  - claim: >-
+      Qdrant bali_zero_pricing_hybrid: the four points (matched by payload name; ERP's point is
+      named "ERP (Exit Permit Only — Offshore)") carried the note in payload.notes and in the
+      embedded text; a backed-up one-off blanked notes and removed the Notes line from the text
+      only, then re-read the four points: notes '' and no urgent text left.
+    cmd: apps/backend-rag/.venv/bin/python <scratch>/qdrant_clear_urgent_notes.py <worktree> (dry run, then --apply; backup qdrant_urgent_notes_backup.json 2456 bytes)
+    result: "4 update(s) planned; APPLIED x4; VERIFY x4 notes='' urgent_left=False (2026-10-17T13:42:46Z)"
+    exit: 0
+    ts: "2026-10-17T21:42:46+08:00"
+    seat: agent-air-m5-backend-rag-urgent-notes-1017
+council_run: council-journal.jsonl
+dissent:
+  - seat: agy-gemini-4-argon
+    objection: >-
+      The committed brochure PDF (apps/mouth/public/static/brochure_balizero_en.pdf, served on
+      kita.balizero.com) was not regenerated from brochure_en.html and still printed "urgent
+      handling is quoted separately"; the observer never read it.
+    severity: major
+    status: CONFIRMED
+    resolution: >-
+      The PDF is regenerated by apps/backend-rag/scripts/generate_brochure.py in this PR; the
+      observer reads it through pypdf (guilt case receipted on the HEAD PDF) and backend CI's
+      test_brochure_price_parity gains a tripwire that the PDF never mentions urgent handling.
+  - seat: kimi-code/k3
+    objection: >-
+      The Qdrant pricing payloads embed the note in payload.notes and in the semantic text, and
+      scripts/sync_pricing_collection_prices.py only syncs prices, so the live RAG would keep
+      quoting the surcharge while the new observer stays green.
+    severity: major
+    status: CONFIRMED
+    resolution: >-
+      Measured on the live collection: all four points still carried the note (three in the 2025
+      wording "Plus 400k urgent"). A backed-up one-off blanked notes and dropped the Notes line
+      from the text; verified clean. Named as follow-up: the sync script should carry notes/text
+      drift, and three of the four payloads predate the 2026 template (old contact address, no
+      description line).
+  - seat: agy-gemini-4-argon
+    objection: >-
+      Migration 328 matched description ILIKE '%urgent%' instead of the four exact surcharge
+      strings, and the observer walked only two levels, skipping the nested tax_accounting rows.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      The forward UPDATE and its postcondition pair each code with its exact measured text; the
+      observer walks every nested notes field and matches the surcharge shape, not the bare word.
+  - seat: kimi-code/k3
+    objection: >-
+      The observer's price-list check was case-sensitive on one phrase while the other checks
+      lowercased everything (under-match), and the canon/mirror/brochure checks over-matched on
+      any "urgent" (the owner keeps "Including Urgent" on two CRM rows).
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      One surcharge-shaped, case-insensitive pattern ("+ Rp N for urgent", "Plus Nk urgent", the
+      brochure sentence) is used on every text surface; "Including Urgent" is not a hit.
+  - seat: kimi-code/k3
+    objection: >-
+      The rollback restores the surcharge text on any of the four rows whose description is
+      NULL, including one nulled for another reason; not an exact inverse.
+    severity: minor
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted and written into the migration header: a value-clearing step cannot know an
+      earlier NULL from its own; the forward is now exact-text so the pair is symmetric on the
+      measured production state (all four rows carry the surcharge text at writing).
+  - seat: agy-gemini-4-argon
+    objection: The observer did not assert the ROLLBACK marker or that migration 328 spares the two "Including Urgent" codes; a tuple concatenation was dead code; the brochure was read twice.
+    severity: nit
+    status: CONFIRMED
+    resolution: The marker and the spared codes are asserted; the dead concatenation and the duplicate read are gone.
+  - seat: agy-gemini-4-argon
+    objection: The DO-block postcondition cannot fire inside the same transaction unless a trigger rewrites the row.
+    severity: nit
+    status: PLAUSIBLE
+    resolution: Kept as the precedent of migration 327 sets it; it guards exactly the trigger case and costs nothing.
+  - seat: kimi-code/k3
+    objection: The 2025 sheet (bali_zero_official_prices_2025.json) still carries the "Plus 400k urgent" notes; PricingService still emits an empty URGENT PROCESSING heading into LLM context.
+    severity: nit
+    status: PLAUSIBLE
+    resolution: >-
+      The 2025 sheet is historical (referenced only by migration_066's comments) and is left as
+      the record it is; the empty heading in PricingService is named as a follow-up, out of this
+      PR's one concern.
+decisions:
+  - id: D-exact-text-pairs
+    decision: >-
+      Migration 328 names (code, description) pairs measured on production on 2026-10-17 rather
+      than a substring, so the two "Including Urgent" rows and any edited description are
+      untouchable by construction.
+  - id: D-pdf-is-a-surface
+    decision: >-
+      The committed brochure PDF is treated as its own surface: regenerated in the PR, read by the
+      observer and by a backend tripwire test, because the template alone is not what clients
+      download.
+  - id: D-qdrant-by-hand-once
+    decision: >-
+      The Qdrant payloads are cleared by a backed-up one-off (notes blanked, Notes line removed
+      from the text, nothing else rewritten) instead of widening the price sync script in this PR;
+      carrying notes/text drift in the sync is a named follow-up.
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

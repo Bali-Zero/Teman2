@@ -1092,7 +1092,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "+ Rp 400.000 for urgent processing",
+        "notes": "",
         "description_en": "Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies.",
         "icon_id": "other-molina"
       },
@@ -1172,7 +1172,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "+ Rp 350.000 for urgent processing",
+        "notes": "",
         "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
         "icon_id": "other-mutation"
       },
@@ -1262,7 +1262,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "+ Rp 300.000 for urgent processing",
+        "notes": "",
         "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit (onshore — filed from within Indonesia).",
         "icon_id": "other-epo"
       },
@@ -1272,7 +1272,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "+ Rp 500.000 for urgent processing",
+        "notes": "",
         "description_en": "Exit Permit Only (Offshore) for KITAS/KITAP holders who are already abroad and will not return to Indonesia, terminating their stay permit remotely (offshore). Distinct from EPO (onshore). Note: re-entry is now automatically included in the KITAS/KITAP per UU 63/2024 — no separate re-entry product.",
         "icon_id": "other-erp"
       }
