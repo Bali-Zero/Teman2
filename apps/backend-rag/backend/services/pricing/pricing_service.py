@@ -67,16 +67,35 @@ def _words(text: Any) -> list[str]:
 
 
 def _token_matches_words(token: str, words: set[str]) -> bool:
-    """A query token matches a row by WORD, never by arbitrary substring.
+    """A query token matches a row's descriptive text by WORD.
 
-    Equal to a row word, or a prefix of one when it is at least 4 characters
-    long or contains a digit ("visa" ~ "visas", "e33" ~ "e33g"; "ke" !~ "keras").
+    True when the token equals a row word; is a prefix of one (at least 3 characters
+    or containing a digit: "ext" ~ "extension", "e33" ~ "e33g"); has a row word of at
+    least 4 characters as its prefix (light suffixes: "kitasnya" ~ "kitas"); or is at
+    least 5 characters and occurs inside a word (Indonesian circumfixes and roots:
+    "polisi" ~ "kepolisian", "igiene" ~ "higiene"). 1-2 character tokens match whole
+    words only ("ke" !~ "keras").
     """
     if token in words:
         return True
-    if len(token) >= 4 or any(ch.isdigit() for ch in token):
-        return any(w.startswith(token) for w in words)
+    long_enough_for_prefix = len(token) >= 3 or any(ch.isdigit() for ch in token)
+    for w in words:
+        if long_enough_for_prefix and w.startswith(token):
+            return True
+        if len(w) >= 4 and token.startswith(w):
+            return True
+        if len(token) >= 5 and token in w:
+            return True
     return False
+
+
+def _token_matches_keyword(token: str, keyword: str) -> bool:
+    """A query token against a curated SINGLE-word keyword: never inside the word."""
+    if token == keyword:
+        return True
+    if len(keyword) >= 4 and token.startswith(keyword):
+        return True
+    return len(token) >= 4 and keyword.startswith(token)
 
 
 def _contains_phrase(sequence: list[str], phrase: list[str]) -> bool:
@@ -94,10 +113,13 @@ def _count_search_matches(
     """How many query terms a catalogue row answers (0 = not a hit).
 
     ``descriptive_text`` (key, name, notes, description, legacy names) matches
-    by word. ``keywords`` are curated phrases: one counts only when the whole
-    phrase appears, contiguous, in the query, and then credits the terms it
-    contains. ``whole_query`` (every word was noise) requires the raw query as
-    one contiguous word sequence.
+    by word (``_token_matches_words``). ``keywords`` are curated terms that never
+    match by a word they merely share with the query: a multi-word keyword counts
+    only when the whole phrase appears, contiguous, in the query (also once noise
+    words are removed from it: "minuman yang beralkohol"); a single-word keyword
+    counts for a query term it equals or prefixes (``_token_matches_keyword``).
+    ``whole_query`` (every word was noise) requires the raw query as one
+    contiguous word sequence.
     """
     row_list = [w for part in descriptive_text for w in _words(part)]
     row_words = set(row_list)
@@ -107,9 +129,12 @@ def _count_search_matches(
         return int(_contains_phrase(row_list, terms))
     matched = {t for t in terms if _token_matches_words(t, row_words)}
     if isinstance(keywords, list):
+        stripped = [t for t in query_tokens if t not in _SEARCH_NOISE_WORDS]
         for keyword in keywords:
             phrase = _words(keyword)
-            if _contains_phrase(query_tokens, phrase):
+            if len(phrase) == 1:
+                matched.update(t for t in terms if _token_matches_keyword(t, phrase[0]))
+            elif _contains_phrase(query_tokens, phrase) or _contains_phrase(stripped, phrase):
                 credited = [t for t in terms if t in phrase]
                 matched.update(credited or [" ".join(phrase)])
     return len(matched)

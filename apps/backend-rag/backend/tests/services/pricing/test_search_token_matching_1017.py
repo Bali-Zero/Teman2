@@ -94,12 +94,21 @@ def _count(m, query: str, text: list, keywords=None) -> int:
 @pytest.mark.parametrize(
     ("token", "text"),
     [
-        ("kitas", "Working KITAS (Offshore)"),  # exact word
-        ("visa", "Tourist visas"),  # >= 4 chars: prefix
+        ("kitas", "Working KITAS (Offshore)"),  # equal to a word
+        ("visa", "Tourist visas"),  # prefix, 4+ chars
+        ("kit", "Working KITAS"),  # prefix, 3 chars
+        ("ext", "Visa on Arrival Extension"),
         ("e33", "E33G Remote Worker"),  # digit: prefix of a code
-        ("c1", "C10 Speaker Visa"),
+        ("c1", "C10 Speaker Visa"),  # 2 chars but a digit
         ("pt", "New Company (PT PMA)"),  # short but equal to a word
         ("c7a", "C7A,B,C — Music/Art"),  # punctuation separates words
+        ("kitasnya", "Working KITAS"),  # light suffix: word (4+) prefixes the token
+        ("visas", "Tourist visa"),
+        ("alcoholic", "Alcohol License"),
+        ("polisi", "Surat Keterangan Catatan Kepolisian"),  # 5+ chars inside a word
+        ("sehat", "BPJS Kesehatan"),
+        ("igiene", "Sertifikat Laik Higiene Sanitasi"),
+        ("kerja", "Cancel Ketenagakerjaan"),
     ],
 )
 def test_token_matches_a_word(m, token, text):
@@ -109,34 +118,74 @@ def test_token_matches_a_word(m, token, text):
 @pytest.mark.parametrize(
     ("token", "text"),
     [
-        ("ke", "keras"),  # 2-char token is not a prefix
+        ("ke", "keras"),  # 2-char token: whole words only
         ("mi", "miras"),
-        ("man", "minuman"),  # 3 chars, no digit: exact only
-        ("ber", "beralkohol"),
-        ("tax", "Coretax Activation"),  # never a substring
+        ("as", "alas"),
+        ("ma", "minuman"),
+        ("tax", "Coretax Activation"),  # 3 chars: prefix, never inside
         ("erp", "Investor KITAP + MERP"),
-        ("kerja", "ketenagakerjaan"),
+        ("ber", "ibu"),
+        ("ika", "Kepolisian"),  # 3 chars inside a word
+        ("kit", "Akit"),
+        ("sip", "Ketentuan"),
+        ("visa", "visit"),
+        ("kesehatan", "Sehat"),  # a SHORTER row word 'sehat' is not a prefix of it
     ],
 )
-def test_token_does_not_match_inside_a_word(m, token, text):
+def test_token_does_not_match_where_no_clause_applies(m, token, text):
     assert _count(m, token, [text]) == 0
 
 
+def test_inside_word_needs_five_characters(m):
+    assert _count(m, "olis", ["Kepolisian"]) == 0  # 4 chars inside
+    assert _count(m, "polis", ["Kepolisian"]) == 1  # 5 chars inside
+
+
+def test_word_prefix_of_token_needs_a_four_character_word(m):
+    assert _count(m, "kitasnya", ["Working KITAS"]) == 1
+    assert _count(m, "ptnya", ["PT PMA"]) == 0  # 'pt' is too short to stem a token
+
+
 @pytest.mark.parametrize(
-    ("query", "expected"),
+    ("query", "keywords", "expected"),
     [
-        ("izin minuman beralkohol", 1),
-        ("harga izin minuman beralkohol", 1),
-        ("harga miras", 1),
-        ("minuman ringan", 0),  # shares one word with the phrase: not a match
-        ("izin usaha minuman ringan", 0),
-        ("izin", 0),
-        ("beralkohol", 0),  # a fragment of the phrase is not the phrase
+        ("izin minuman beralkohol", ["minuman beralkohol"], True),
+        ("harga izin minuman beralkohol", ["minuman beralkohol"], True),
+        ("minuman yang beralkohol", ["minuman beralkohol"], True),  # noise word between
+        ("minuman untuk di beralkohol", ["minuman beralkohol"], True),
+        ("harga miras", ["miras"], True),
+        ("minuman ringan", ["minuman beralkohol"], False),  # shares one word only
+        ("izin usaha minuman ringan", ["minuman beralkohol"], False),
+        ("izin", ["izin minuman"], False),
+        ("beralkohol minuman", ["minuman beralkohol"], False),  # order matters
+        ("minuman izin beralkohol", ["minuman beralkohol"], False),  # not contiguous
+        ("mi", ["miras"], False),  # 2-char token, keyword prefix
+        ("mira", ["miras"], True),  # 4-char token prefixes the keyword
+        ("mir", ["miras"], False),  # 3 chars do not
+        ("miras", ["miras"], True),
+        ("mirasan", ["miras"], True),  # keyword (4+) prefixes the token
+        ("beralkoholnya", ["beralkohol"], True),
+        ("ber", ["beralkohol"], False),
+        ("bera", ["beralkohol"], True),  # 4+ chars is enough ("ber" is not)
+        ("beralk", ["beralkohol"], True),
+        ("pensi", ["pensiun"], True),
+        ("pensiunan", ["pensiun"], True),
+        ("pen", ["pensiun"], False),
+        ("kerja", ["tenagakerja"], False),  # never inside a keyword
+        ("kolhol", ["alkohol"], False),
+        ("alkohol", ["alkohol", "beralkohol"], True),
+        ("alk", ["alkohol"], False),
     ],
 )
-def test_keyword_phrase_must_be_contained_in_the_query(m, query, expected):
-    keywords = ["minuman beralkohol", "miras"]
-    assert (_count(m, query, ["Alcohol License"], keywords) > 0) == bool(expected)
+def test_keyword_matching(m, query, keywords, expected):
+    assert (_count(m, query, ["Alcohol License"], keywords) > 0) == expected
+
+
+def test_a_keyword_with_a_noise_word_still_matches_the_raw_query(m):
+    # No catalogue phrase has one today; if one appears it must keep working.
+    tokens = m._words("minuman di beralkohol")
+    keywords = ["minuman di beralkohol"]
+    assert m._count_search_matches(["minuman", "beralkohol"], tokens, ["x"], keywords) > 0
 
 
 def test_keyword_words_do_not_leak_into_descriptive_matching(m):

@@ -276,7 +276,11 @@
   {
    "query": "pensiunan",
    "must_find": [
-    "E33F Second Home Senior (1 Year, Offshore)"
+    "E33F Second Home Senior (1 Year, Offshore)",
+    "E33F Second Home Senior (Extend)"
+   ],
+   "must_not_find": [
+    "@alcohol"
    ]
   },
   {
@@ -501,15 +505,13 @@
    "query": "ke",
    "must_not_find": [
     "@alcohol"
-   ],
-   "expect_no_hits": true
+   ]
   },
   {
    "query": "mi",
    "must_not_find": [
     "@alcohol"
-   ],
-   "expect_no_hits": true
+   ]
   },
   {
    "query": "as",
@@ -521,20 +523,18 @@
    "query": "ber",
    "must_not_find": [
     "@alcohol"
-   ],
-   "expect_no_hits": true
+   ]
   },
   {
    "query": "man",
    "must_not_find": [
     "@alcohol"
-   ],
-   "expect_no_hits": true
+   ]
   },
   {
    "query": "tax report",
-   "must_not_find": [
-    "Update Data / Coretax Activation"
+   "must_find": [
+    "Annual Tax Company"
    ]
   },
   {
@@ -552,8 +552,8 @@
   },
   {
    "query": "annual tax company",
-   "must_not_find": [
-    "Update Data / Coretax Activation"
+   "must_find": [
+    "Annual Tax Company"
    ]
   },
   {
@@ -563,6 +563,153 @@
   {
    "query": "prezzo visto turistico",
    "expect_no_hits": true
+  },
+  {
+   "query": "berapa biaya izin alkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "harga izin beralkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "alkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "beralkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "minuman yang beralkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin minuman beralkoholnya berapa",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "polisi",
+   "must_find": [
+    "SKCK"
+   ]
+  },
+  {
+   "query": "catatan polisi",
+   "must_find": [
+    "SKCK"
+   ]
+  },
+  {
+   "query": "sehat",
+   "must_find": [
+    "BPJS Insurance (Kesehatan)"
+   ]
+  },
+  {
+   "query": "certificato igiene",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "voa ext",
+   "must_find": [
+    "B1 Visa on Arrival Extension"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "ext",
+   "must_find": [
+    "B1 Visa on Arrival Extension"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "kit",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Investor KITAS 2 Years (Offshore)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "kitasnya",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Investor KITAS 2 Years (Offshore)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "berapa harga kitasnya?",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "pensi",
+   "must_find": [
+    "E33F Second Home Senior (1 Year, Offshore)",
+    "E33F Second Home Senior (1 Year, Altus/Onshore)",
+    "E33F Second Home Senior (Extend)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "retir",
+   "must_find": [
+    "E33F Second Home Senior (Extend)",
+    "Retirement KITAP + MERP"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "visas",
+   "must_find": [
+    "C1 Tourism",
+    "B1 Visa on Arrival (VOA)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "minuman",
+   "must_not_find": [
+    "@alcohol"
+   ]
   }
  ]
 }

@@ -169,3 +169,12 @@ def test_alcohol_rows_carry_no_generic_izin_keyword():
     for name in ALCOHOL_NAMES:
         for kw in rows[name].get("keywords", []):
             assert not kw.lower().startswith("izin "), (name, kw)
+
+
+def test_alcohol_keywords_are_distinctive_and_never_generic_words():
+    rows = _company_rows()
+    generic = {"izin", "minuman", "harga", "biaya"}
+    for name in ALCOHOL_NAMES:
+        keywords = [kw.lower() for kw in rows[name].get("keywords", [])]
+        assert {"alkohol", "beralkohol"} <= set(keywords), (name, keywords)
+        assert not generic & set(keywords), (name, keywords)
