@@ -5,7 +5,7 @@ gear: 2
 gear_reason: >-
   Visible app change on every theme path (launch seed, the toolbar toggle, the window chrome under an override) with a committed offscreen
   guard, shipped under the fresh-gate lane. No fact, verdict, layout or content changes: the diff touches the theme seed, an environment value
-  and `.id` over four state-owning views. Stacked on H1d (64ad9c30bc), opens after it merges.
+  and `.id` over four state-owning views. Based on main after H1d (#8660).
 l_level: L1
 gate_class: opus
 objective: >-
@@ -15,20 +15,32 @@ objective: >-
 constraints:
   - The selected code (AppState) survives a toggle; the state a struct owns (filters, sheetExpanded, the chat draft) survives it too.
   - The PDF viewer takes no id (a rebuild reloads a 49 MB document; PDFKit paints no token).
-  - No real-display launch anywhere in the check (owner rule, 2026-10-17: a launch takes the owner's focus).
+  - No real-display launch anywhere in the check (owner rule, 2026-10-17, a launch takes the owner's focus).
 acceptance:
-  - text: A1. A mode flip after the first render (the toolbar toggle) leaves no stale token, both directions.
-    probe: "Pro offscreen: theme_flip_check.py PASS 4/4 on the head; the head minus `.id(themeEpoch)` FAILs flip day>night and night>day (chip fill and title 1.05:1 / 1.16:1)"
-  - text: A2. The instrument is itself guilty and innocent.
-    probe: "theme_flip_check.py --selftest 4/4 (a day render judged as night fails surface+chip; judged as day passes; and back)"
-  - text: A3. No render of the forced-theme set changes.
-    probe: "render_set IMM=1 head vs H1d 64ad9c30bc: 141 of 141 PNGs byte-identical"
-  - text: A5. The launch seed is guarded: a launch seeded in the wrong mode fails.
-    probe: "Pro offscreen: theme_flip_check.py PASS 8/8 (4 seeded launches from -themeOverride/-AppleInterfaceStyle on the harness command line, judged on the seed and the pixels); the seed reverted to .dark FAILs the two light-ending launches"
-  - text: A4. The harness still takes no focus.
-    probe: "no_focus_check.sh PASS 4/4 on the head binary"
+  - text: >-
+      A1. A mode flip after the first render (the toolbar toggle) leaves no stale token, both directions.
+    probe: >-
+      Pro offscreen: theme_flip_check.py PASS 8/8 on the head; the head minus `.id(themeEpoch)` FAILs flip day>night and night>day (chip fill and title 1.05:1 / 1.16:1)
+  - text: >-
+      A2. The instrument is itself guilty and innocent.
+    probe: >-
+      theme_flip_check.py --selftest 4/4 (a day render judged as night fails surface+chip; judged as day passes; and back)
+  - text: >-
+      A3. No render of the forced-theme set changes.
+    probe: >-
+      render_set IMM=1 head vs main: 141 of 141 PNGs byte-identical
+  - text: >-
+      A5. The launch seed is guarded: a launch seeded in the wrong mode fails.
+    probe: >-
+      Pro offscreen: theme_flip_check.py PASS 8/8 (4 seeded launches from -themeOverride/-AppleInterfaceStyle on the harness command line, judged on the seed and the pixels); the seed reverted to .dark FAILs the two light-ending launches
+  - text: >-
+      A4. The harness still takes no focus.
+    probe: >-
+      no_focus_check.sh PASS 4/4 on the head binary
 deferred:
   - id: app-seed-line
     to: none
-    text: The harness executes ThemeManager.launchMode(override:system:) but not the App's own line that calls it; a launch built in the wrong mode paints correctly offscreen once settled, so the guard reads the seed (seedMode) beside the pixels. Measured on a real display before the owner's no-launch rule (origin/main 5/5 launches defective, 0/5 with the seed); no real-display check is committed.
-base: stacked on H1d 64ad9c30bc; re-based onto main after #8660 merges.
+    text: >-
+      The harness executes ThemeManager.launchMode(override:system:) but not the App's own line that calls it; a launch built in the wrong mode paints correctly offscreen once settled, so the guard reads the seed (seedMode) beside the pixels. Measured on a real display before the owner's no-launch rule (origin/main 5/5 launches defective, 0/5 with the seed); no real-display check is committed.
+base: >-
+  main after H1d (#8660).
