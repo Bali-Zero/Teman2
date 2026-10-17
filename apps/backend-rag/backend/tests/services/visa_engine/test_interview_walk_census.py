@@ -1689,7 +1689,7 @@ _EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
 #: the field and by value in `test_seq29_pack.py`.
 _EXPECTED_REASONS_ON_SEQ29: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ28)
 _EXPECTED_REASONS_ON_SEQ30: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ29)
-# seq-31 moves two candidate lists and no reason: both walks stay SUPPORTED_CANDIDATES.
+# seq-31 moves one candidate list and no reason: the walk stays SUPPORTED_CANDIDATES.
 _EXPECTED_REASONS_ON_SEQ31: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ30)
 EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
     27: _EXPECTED_REASONS_ON_SEQ27,

@@ -234,7 +234,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
     ).toHaveLength(4);
     expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(4);
-    expect(replay.pack.file).toBe("rulepack-prod-030.signed.json");
+    expect(replay.pack.file).toBe("rulepack-prod-031.signed.json");
   });
 
   for (const walk of replay.walks.filter(
