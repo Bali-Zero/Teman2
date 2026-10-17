@@ -26,11 +26,10 @@ struct KBLINavigatorApp: App {
     /// D4 "Anima Indonesiana" (2026-08-11): opens the custom About window (see `AboutView.swift`)
     /// from the `CommandGroup(replacing: .appInfo)` button below, replacing the system panel.
     @Environment(\.openWindow) private var openWindow
-    // D3a (2026-08-11): the app now follows SYSTEM appearance (no more forced Night) — RootView
-    // observes @Environment(\.colorScheme) and syncs ThemeManager.mode on first render via
-    // .onChange(..., initial: true), before the user ever sees a frame. This seed value is just a
-    // safe placeholder for the brief instant before that sync runs; it is not a design choice.
-    @StateObject private var theme = ThemeManager(.dark)
+    // D3a (2026-08-11): the app follows SYSTEM appearance unless `themeOverride` says otherwise.
+    // The first frame is built in that mode already (`launchMode`): a seed that RootView's first-render
+    // sync then flipped left every view that does not observe the theme holding the seed's colours.
+    @StateObject private var theme = ThemeManager(ThemeManager.launchMode())
     /// Same UserDefaults key as every other `@AppStorage("rowDensity")` read site (SearchListView,
     /// RootView's toolbar icon) — SwiftUI keeps independently-declared AppStorage properties bound
     /// to one key in sync, so ⌘⇧D here doesn't need a shared object to reach the list.

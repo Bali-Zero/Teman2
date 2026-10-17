@@ -202,7 +202,7 @@ enum Snapshot {
             h = args.count > idx + 4 ? CGFloat(Double(args[idx + 4]) ?? 800) : 800
             UserDefaults.pinThemeOverride(Theme.mode)   // RootView re-syncs its theme from the stored override: pin the one KBLI_THEME names
             view = AnyView(RootView()
-                .environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+                .environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(ThemeManager.launchMode()))
                 .frame(width: w, height: h))
         } else if let k = state.store.code(code) {
             view = AnyView(KBLIDetailView(kbli: k).environmentObject(state).environmentObject(lang))
@@ -335,7 +335,7 @@ extension Snapshot {
                 state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
                 state.selected = k
                 UserDefaults.pinThemeOverride(Theme.mode)
-                content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+                content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(ThemeManager.launchMode()))
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
         case "root-browse":
@@ -343,7 +343,7 @@ extension Snapshot {
             state.browsedSector = nil
             state.selected = nil
             UserDefaults.pinThemeOverride(Theme.mode)
-            content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+            content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(ThemeManager.launchMode()))
                 .frame(width: w, height: h, alignment: .top))
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono

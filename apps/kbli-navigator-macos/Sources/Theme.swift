@@ -531,6 +531,15 @@ final class ThemeManager: ObservableObject {
         self.mode = initial
         Theme.mode = initial
     }
+    /// The mode the first frame is built in: the persisted override, else the system appearance. The app and the
+    /// census/render host both seed `ThemeManager` from this, so a render and a launch start in the same mode.
+    static func launchMode(_ d: UserDefaults = .standard) -> Theme.Mode {
+        switch d.string(forKey: "themeOverride") {
+        case "dark": return .dark
+        case "light": return .light
+        default: return d.string(forKey: "AppleInterfaceStyle") == "Dark" ? .dark : .light
+        }
+    }
 }
 
 extension Color {
