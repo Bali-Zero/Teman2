@@ -1364,6 +1364,51 @@ def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, langu
     return f"version sentinel: {got['reason']}: {(got.get('log') or '').strip()[-300:]}"
 
 
+def _squashed(d) -> dict:
+    return {str(k): " ".join(str(v).split()) for k, v in (d or {}).items()}
+
+
+PIN_REF = re.compile(r"^[^@\s]+@[0-9a-f]{40}$")
+
+
+def candidate_pin_follow(wt: Path, base: str, cand: str, wf: str, local: dict, ctx_job: str | None) -> str | None:
+    """The plan reads BASE's workflow and matrix, so a bump merged without its matrix pin leaves main with a workflow the matrix does not
+    follow and every later PR BLOCKED, the fix included (it is judged by that BASE matrix). Here the candidate's own workflow and matrix are read
+    as data: for every step BASE's matrix pins, the candidate's matrix must still pin it and agree with the candidate's workflow, and a pin the
+    candidate changes must be an immutable `<action>@<40 hex>`. Nothing of the candidate runs; the plan stays BASE's. None when they agree, when
+    BASE pins nothing, or when neither file differs from BASE; else the reason."""
+    mrel = "scripts/localci/contexts_matrix.yaml"
+    base_pins = {(jl.get("job_id"), ms.get("workflow_step")): ms for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx_job}]
+                 for ms in jl.get("steps") or [] if isinstance(ms.get("uses_pin"), str) or isinstance(ms.get("with_pin"), dict)}
+    blobs = {r: (_extract_base_file(wt, base, r), _extract_base_file(wt, cand, r)) for r in (wf, mrel)}
+    if not base_pins or all(a == b for a, b in blobs.values()):
+        return None
+    try:
+        import yaml
+
+        wdoc, mdoc = (yaml.safe_load(blobs[r][1] or b"") for r in (wf, mrel))
+        cl = next(c["local"] for c in mdoc["contexts"] if (c.get("local") or {}).get("check") == local.get("check"))
+        cms = {(jl.get("job_id"), ms.get("workflow_step")): ms for jl in [*(cl.get("jobs") or []), {**cl, "job_id": ctx_job}] for ms in jl.get("steps") or []}
+        for (jid, step), bms in base_pins.items():
+            ms, lab = cms.get((jid, step)) or {}, f"job {jid}: step {step!r}"
+            ws = next((x for x in ((wdoc["jobs"].get(jid) or {}).get("steps") or []) if isinstance(x, dict) and x.get("name") == step), {})
+            if isinstance(bms.get("uses_pin"), str):
+                if not isinstance(ms.get("uses_pin"), str):
+                    return f"{lab}: the candidate matrix no longer pins the action"
+                if ws.get("uses") != ms["uses_pin"]:
+                    return f"{lab}: the candidate workflow uses {ws.get('uses')!r} but the candidate matrix transcribes {ms['uses_pin']!r} — a bump carries its matrix pin"
+                if ms["uses_pin"] != bms["uses_pin"] and not PIN_REF.match(ms["uses_pin"]):
+                    return f"{lab}: the candidate's new pin {ms['uses_pin']!r} is not an immutable <action>@<40 hex sha> ref"
+            if isinstance(bms.get("with_pin"), dict):
+                if not isinstance(ms.get("with_pin"), dict):
+                    return f"{lab}: the candidate matrix no longer pins the action inputs"
+                if _squashed(ws.get("with")) != _squashed(ms["with_pin"]):
+                    return f"{lab}: the candidate workflow's inputs differ from the candidate matrix's with_pin — a changed input carries its matrix pin"
+    except Exception as e:  # noqa: BLE001
+        return f"candidate workflow/matrix unreadable as data ({type(e).__name__}): its pins cannot be compared"
+    return None
+
+
 def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: str, ctx: dict, changed: list, pyv: dict, iso: dict, cm: dict,
                          run_dir: Path, pr_number: int | None, trusted_sha: dict | None = None,
                          gate_ledger: Path | str | None = DEFAULT_GATE_LEDGER, head_sha: str | None = None) -> dict:
@@ -1402,6 +1447,8 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
                                                                   else "unreadable: fail-open, both flags true")
         stood_in[str(local["classifier"]["job"])] = got
         classifier_off = got["result"] == "success" and all(v == "false" for v in (got.get("outputs") or {}).values())
+    if (why := candidate_pin_follow(wt, base, cand, wf, local, ctx.get("job_id"))):
+        return _blocked(why)
     upstream, planned = set(stood_in), []
     for jl in [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}]:
         jid, job = jl.get("job_id"), jobs_doc.get(jl.get("job_id"))

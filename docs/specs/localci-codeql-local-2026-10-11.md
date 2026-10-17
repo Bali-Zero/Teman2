@@ -104,7 +104,7 @@ needs.changes.outputs.run_codeql_python != 'false') || (javascript && needs.chan
    with an `if:` that was skipped any other way makes the leg ERROR.
 
    The leg is hardened where it takes inputs: its test seams (`CODEQL_BIN`, `CODEQL_SOURCE_ROOT`, `LOCALCI_CODEQL_WORK`, `CODEQL_BASE_CONFIG`) in a
-   composed step env BLOCK the plan; the action refs are `uses_pin`ned (BASE's `uses` differing BLOCKS); at init the leg compares `codeql version
+   composed step env BLOCK the plan; the action refs are `uses_pin`ned (BASE's `uses` differing BLOCKS, and a candidate whose workflow and matrix pins disagree, drop a pin, or move one to a non-`@<40 hex>` ref BLOCKS: a bump carries its matrix pin); at init the leg compares `codeql version
 --format=terse` with `CODEQL_PIN` (the matrix passes the recipe's one literal; the deps image build asserts the same pin, `runner.py` `DEPS_CODEQL`)
    and gives no verdict, by dying of a signal, on a difference; a `queries:` block the config rewriter cannot read as text is no verdict too.
 

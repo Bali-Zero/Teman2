@@ -22,6 +22,7 @@ pytestmark = pytest.mark.usefixtures("fake_env")
 REAL = fr.REAL_REPO
 MATRIX = REAL / "scripts" / "localci" / "contexts_matrix.yaml"
 SECURITY, CONFIG = ".github/workflows/security.yml", ".github/codeql-config.yml"
+MATRIX_REL = "scripts/localci/contexts_matrix.yaml"
 LEG_SH, READER = "scripts/localci/codeql_leg.sh", "scripts/localci/codeql_version_read.py"
 SARIF_CHECK = "scripts/localci/codeql_sarif_check.py"
 RING_SH = "scripts/ci/ring_gating_override.sh"
@@ -152,7 +153,7 @@ else:
 
 
 def base_files(extra: dict | None = None) -> dict:
-    files = {p: (REAL / p).read_text() for p in (SECURITY, CONFIG, LEG_SH, READER, SARIF_CHECK, RING_SH)}
+    files = {p: (REAL / p).read_text() for p in (SECURITY, CONFIG, LEG_SH, READER, SARIF_CHECK, RING_SH, MATRIX_REL)}
     return {**files, **(extra or {})}
 
 
@@ -945,6 +946,68 @@ def test_a_bumped_codeql_action_in_the_base_workflow_blocks_until_the_matrix_fol
     assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and f"step {step!r}" in spec["reason"] and "an action bump is not emulated" in spec["reason"]
     spec, _ = plan_codeql(tmp_path / "ok", monkeypatch, "python", PY_CHANGE)
     assert spec["kind"] == "contained_jobs"
+
+
+# ------------------------------------------------------------------------------------------------ a bump carries its own matrix pin
+OLD_SHA, NEW_SHA = "2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2", "f" * 40
+
+
+def dependabot_bump(text: str, new: str = NEW_SHA, version: str = "v4.38.3") -> str:
+    """The group bump's shape (#7614): the three sha-pinned steps get the new sha and its version comment, the tag-pinned upload-sarif the new tag."""
+    assert text.count(OLD_SHA + " # v4.38.2") == 3 and text.count("upload-sarif@v4.38.2") == 2
+    return text.replace(OLD_SHA + " # v4.38.2", new + " # " + version).replace("upload-sarif@v4.38.2", "upload-sarif@" + version)
+
+
+def bumped(tmp_path, monkeypatch, wf: str | None, matrix: str | None, lang: str = "python") -> dict:
+    cand = {**({SECURITY: wf} if wf is not None else {}), **({MATRIX_REL: matrix} if matrix is not None else {})}
+    return plan_codeql(tmp_path, monkeypatch, lang, cand)[0]
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_a_dependabot_bump_that_carries_its_matrix_pin_is_planned(tmp_path, monkeypatch, lang):
+    wf, mx = (REAL / SECURITY).read_text(), (REAL / MATRIX_REL).read_text()
+    spec = bumped(tmp_path, monkeypatch, dependabot_bump(wf), mx.replace(OLD_SHA, NEW_SHA), lang)
+    assert spec["kind"] == "contained_jobs" and SECURITY in spec["judge_modified"]   # still BASE's plan; the rewritten workflow stays the ledger gate's
+
+
+def test_a_bump_without_its_matrix_pin_is_refused_so_main_never_diverges_from_the_matrix(tmp_path, monkeypatch):
+    spec = bumped(tmp_path, monkeypatch, dependabot_bump((REAL / SECURITY).read_text()), None)
+    assert spec["kind"] == "record" and spec["status"] == "BLOCKED" and "a bump carries its matrix pin" in spec["reason"]
+
+
+def test_a_matrix_pin_without_the_workflow_following_is_refused(tmp_path, monkeypatch):
+    spec = bumped(tmp_path, monkeypatch, None, (REAL / MATRIX_REL).read_text().replace(OLD_SHA, NEW_SHA))
+    assert spec["status"] == "BLOCKED" and "a bump carries its matrix pin" in spec["reason"]
+
+
+@pytest.mark.parametrize("ref", ["v4.38.3", "ffff", "f" * 39, "f" * 40 + "x"])
+def test_a_new_pin_that_is_a_movable_tag_is_refused_even_when_both_files_agree(tmp_path, monkeypatch, ref):
+    wf, mx = (REAL / SECURITY).read_text(), (REAL / MATRIX_REL).read_text()
+    spec = bumped(tmp_path, monkeypatch, dependabot_bump(wf, ref, "v4.38.3"), mx.replace(OLD_SHA, ref))
+    assert spec["status"] == "BLOCKED" and "not an immutable" in spec["reason"]
+
+
+def test_a_changed_action_input_without_the_matrix_with_pin_is_refused(tmp_path, monkeypatch):
+    wf = (REAL / SECURITY).read_text()
+    assert wf.count("security-extended,security-and-quality") >= 1
+    spec = bumped(tmp_path, monkeypatch, wf.replace("security-extended,security-and-quality", "security-extended", 1), None)
+    assert spec["status"] == "BLOCKED" and "inputs differ" in spec["reason"]
+
+
+def test_a_candidate_matrix_that_drops_a_pin_is_refused(tmp_path, monkeypatch):
+    mx = (REAL / MATRIX_REL).read_text()
+    assert mx.count("          uses_pin: github/codeql-action/init@" + OLD_SHA + "\n") == 2
+    spec = bumped(tmp_path, monkeypatch, None, mx.replace("          uses_pin: github/codeql-action/init@" + OLD_SHA + "\n", ""))
+    assert spec["status"] == "BLOCKED" and "no longer pins the action" in spec["reason"]
+
+
+def test_an_unreadable_candidate_matrix_cannot_have_its_pins_compared(tmp_path, monkeypatch):
+    spec = bumped(tmp_path, monkeypatch, dependabot_bump((REAL / SECURITY).read_text()), "contexts: [unclosed\n")
+    assert spec["status"] == "BLOCKED" and "unreadable as data" in spec["reason"]
+
+
+def test_a_candidate_that_touches_neither_file_is_not_compared(tmp_path, monkeypatch):
+    assert bumped(tmp_path, monkeypatch, None, None)["kind"] == "contained_jobs"
 
 
 # ------------------------------------------------------------------------------------------------ the leg's test seams are not inputs
