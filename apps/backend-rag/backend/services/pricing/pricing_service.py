@@ -60,6 +60,30 @@ _SEARCH_NOISE_WORDS = frozenset(
 
 _WORD_RE = re.compile(r"\w+")
 
+# The only remainders that let a row word (or curated keyword) of 4+ characters stand for a
+# longer query token: plural/inflection/derivation endings (EN, ID, IT). "kitasnya" ~ "kitas",
+# "pensionati" ~ "pension"; "freelance" !~ "free", "coretax" !~ "core".
+_LIGHT_SUFFIXES = frozenset(
+    {
+        "s",
+        "es",
+        "ing",
+        "ed",
+        "er",
+        "ers",
+        "ic",
+        "nya",
+        "an",
+        "kan",
+        "i",
+        "ku",
+        "mu",
+        "lah",
+        "e",
+        "ati",
+    }
+)
+
 
 def _words(text: Any) -> list[str]:
     """Lower-cased Unicode word tokens; punctuation and symbols separate words."""
@@ -71,7 +95,7 @@ def _token_matches_words(token: str, words: set[str]) -> bool:
 
     True when the token equals a row word; is a prefix of one (at least 3 characters
     or containing a digit: "ext" ~ "extension", "e33" ~ "e33g"); has a row word of at
-    least 4 characters as its prefix (light suffixes: "kitasnya" ~ "kitas"); or is at
+    least 4 characters as its prefix plus a light suffix ("kitasnya" ~ "kitas"); or is at
     least 5 characters and occurs inside a word (Indonesian circumfixes and roots:
     "polisi" ~ "kepolisian", "igiene" ~ "higiene"). 1-2 character tokens match whole
     words only ("ke" !~ "keras").
@@ -82,7 +106,7 @@ def _token_matches_words(token: str, words: set[str]) -> bool:
     for w in words:
         if long_enough_for_prefix and w.startswith(token):
             return True
-        if len(w) >= 4 and token.startswith(w):
+        if len(w) >= 4 and token.startswith(w) and token[len(w) :] in _LIGHT_SUFFIXES:
             return True
         if len(token) >= 5 and token in w:
             return True
@@ -93,7 +117,7 @@ def _token_matches_keyword(token: str, keyword: str) -> bool:
     """A query token against a curated SINGLE-word keyword: never inside the word."""
     if token == keyword:
         return True
-    if len(keyword) >= 4 and token.startswith(keyword):
+    if len(keyword) >= 4 and token.startswith(keyword) and token[len(keyword) :] in _LIGHT_SUFFIXES:
         return True
     return len(token) >= 4 and keyword.startswith(token)
 

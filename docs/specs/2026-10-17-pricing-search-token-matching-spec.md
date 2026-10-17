@@ -31,8 +31,9 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
    - it equals the word; or
    - it is a PREFIX of the word and has at least 3 characters or contains a digit ("ext" →
      "extension", "kit" → "kitas", "visa" → "visas", "e33" → "e33g"; "ke" no longer → "keras");
-   - the word is a PREFIX of the token and the word has at least 4 characters (light suffix
-     stemming: "kitasnya" → "kitas", "visas" → "visa", "alcoholic" → "alcohol"); or
+   - the word is a PREFIX of the token, has at least 4 characters, and the remainder of the token
+     is one of a small closed set of light suffixes (`_LIGHT_SUFFIXES`, EN/ID/IT: "kitasnya" →
+     "kitas", "visas" → "visa", "alcoholic" → "alcohol"; "freelance" does NOT → "free"); or
    - it occurs INSIDE the word and has at least 5 characters (Indonesian circumfixes and
      cross-language roots: "polisi" → "kepolisian", "sehat" → "kesehatan", "igiene" → "higiene").
      Tokens of 1-2 characters therefore match whole words only.
@@ -40,7 +41,8 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
    - a MULTI-WORD keyword matches only as a contiguous word sequence contained in the query
      ("minuman ringan" does not match "minuman beralkohol"; "izin minuman beralkohol" does);
    - a SINGLE-WORD keyword matches a query token that equals it, that it prefixes (keyword of 4+
-     characters: "pensiunan" → "pensiun", "beralkoholnya" → "beralkohol"), or that prefixes it
+     characters, remainder in the same closed suffix set: "pensiunan" → "pensiun",
+     "beralkoholnya" → "beralkohol"), or that prefixes it
      with at least 4 characters ("pensi" → "pensiun"; "ber" does NOT → "beralkohol"); never by
      the inside-the-word clause.
      Curated keywords must therefore carry the distinctive single words a client actually types

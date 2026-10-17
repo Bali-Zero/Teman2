@@ -136,6 +136,31 @@ def test_token_does_not_match_where_no_clause_applies(m, token, text):
     assert _count(m, token, [text]) == 0
 
 
+@pytest.mark.parametrize(
+    ("token", "text", "expected"),
+    [
+        ("kitasnya", "KITAS", 1),
+        ("visas", "visa", 1),
+        ("alcoholic", "Alcohol", 1),
+        ("pensionati", "pension", 1),
+        ("working", "work", 1),  # ing is a light suffix; 'work' as a word is legitimate
+        ("freelance", "Visa-Free", 0),  # 'lance' is not a light suffix
+        ("coretax", "core", 0),
+        ("internship", "intern", 0),
+        ("kitasxyz", "KITAS", 0),
+        ("kitaszz", "KITAS", 0),
+    ],
+)
+def test_word_prefix_of_token_needs_a_light_suffix(m, token, text, expected):
+    assert _count(m, token, [text]) == expected
+
+
+def test_light_suffixes_are_a_small_closed_set(m):
+    assert {"nya", "an", "s", "ing", "ati"} <= m._LIGHT_SUFFIXES
+    assert "" not in m._LIGHT_SUFFIXES
+    assert len(m._LIGHT_SUFFIXES) <= 20
+
+
 def test_inside_word_needs_five_characters(m):
     assert _count(m, "olis", ["Kepolisian"]) == 0  # 4 chars inside
     assert _count(m, "polis", ["Kepolisian"]) == 1  # 5 chars inside
@@ -163,7 +188,8 @@ def test_word_prefix_of_token_needs_a_four_character_word(m):
         ("mira", ["miras"], True),  # 4-char token prefixes the keyword
         ("mir", ["miras"], False),  # 3 chars do not
         ("miras", ["miras"], True),
-        ("mirasan", ["miras"], True),  # keyword (4+) prefixes the token
+        ("mirasan", ["miras"], True),  # keyword (4+) prefixes the token + light suffix
+        ("mirasxyz", ["miras"], False),  # ... but not with any remainder
         ("beralkoholnya", ["beralkohol"], True),
         ("ber", ["beralkohol"], False),
         ("bera", ["beralkohol"], True),  # 4+ chars is enough ("ber" is not)

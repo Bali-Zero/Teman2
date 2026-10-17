@@ -710,6 +710,30 @@
    "must_not_find": [
     "@alcohol"
    ]
+  },
+  {
+   "query": "freelance",
+   "must_not_find": [
+    "A1 Visa-Free Tourism"
+   ]
+  },
+  {
+   "query": "coretax",
+   "must_not_find": [
+    "compliance_employer_retainer_monthly"
+   ]
+  },
+  {
+   "query": "internship",
+   "must_not_find": [
+    "Mutation Address 2 Kanim"
+   ]
+  },
+  {
+   "query": "pensionati",
+   "must_find": [
+    "E33F Second Home Senior (Extend)"
+   ]
   }
  ]
 }
