@@ -38,11 +38,11 @@ import uuid
 from dataclasses import asdict
 from datetime import date
 from functools import lru_cache
-from typing import Any
+from typing import Annotated, Any
 
 import asyncpg
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, StringConstraints, field_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.utils.crm_utils import is_crm_admin
@@ -171,6 +171,24 @@ class ApproveOut(BaseModel):
 
 class RejectBody(BaseModel):
     reason: str = Field(..., min_length=1)
+
+
+class CompleteBody(BaseModel):
+    evidence_ref: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)
+    ]
+    declaration: StrictBool
+
+    @field_validator("declaration")
+    @classmethod
+    def require_declaration(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("Completion must be explicitly confirmed")
+        return value
+
+
+class CompleteOut(ApproveOut):
+    outcome_id: int
 
 
 # --------------------------------------------------------------------------- #
@@ -586,6 +604,76 @@ async def approve_obligation(
         alert.alert_id,
     )
     return ApproveOut(obligation=_to_out(alerted), alert_id=alert.alert_id)
+
+
+# --------------------------------------------------------------------------- #
+# POST /{id}/complete — alerted -> done with evidence and a linked alert outcome
+# --------------------------------------------------------------------------- #
+@router.post("/{obligation_id}/complete")
+async def complete_obligation(
+    body: CompleteBody,
+    obligation_id: int = Path(..., ge=1),
+    user: dict[str, Any] = Depends(get_current_user),
+    pool: asyncpg.Pool = Depends(get_database_pool),
+) -> CompleteOut:
+    """Record a staff-confirmed completion, its evidence reference and alert outcome.
+
+    This records the declaration; it does not verify a filing or contact a client.
+    Lock order is obligation then alert. Retries cannot append another completion.
+    """
+    _require_admin(user)
+    actor = _reviewer_email(user)
+    async with pool.acquire() as conn, conn.transaction():
+        repo = ObligationsRepository.with_connection(conn)
+        obligation = await repo.get(obligation_id, for_update=True)
+        if obligation is None:
+            raise HTTPException(status_code=404, detail="Obligation not found")
+        if obligation.status != "alerted" or not obligation.alert_id:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Obligation must be alerted (status={obligation.status}).",
+            )
+        alert = await conn.fetchrow(
+            "SELECT client_id, category, dedup_key, status FROM compliance_alerts "
+            "WHERE alert_id = $1 FOR UPDATE",
+            obligation.alert_id,
+        )
+        expected_key = _obligation_dedup_key(
+            obligation.client_id, obligation.rule_id, obligation.period_key
+        )
+        if (
+            alert is None
+            or alert["client_id"] != obligation.client_id
+            or alert["category"] != "obligation"
+            or alert["dedup_key"] != expected_key
+        ):
+            raise HTTPException(status_code=409, detail="Linked obligation alert is inconsistent.")
+
+        completed = await repo.mark_done(obligation_id)
+        if completed is None:
+            raise HTTPException(status_code=409, detail="Obligation is no longer alerted.")
+        if alert["status"] != "resolved":
+            await AlertRepository.with_connection(conn).update_status(
+                obligation.alert_id, new_status="resolved"
+            )
+        outcome_id = await conn.fetchval(
+            "INSERT INTO alert_outcomes (alert_id, outcome, actioned_by, note, metadata) "
+            "VALUES ($1, 'acted', $2, $3, $4::jsonb) RETURNING outcome_id",
+            obligation.alert_id,
+            actor,
+            body.evidence_ref,
+            to_jsonb({"kind": "obligation_completed", "obligation_id": obligation_id}),
+        )
+    logger.info(
+        "compliance.obligations.complete id=%s actor=%s alert_id=%s outcome_id=%s",
+        obligation_id,
+        actor,
+        obligation.alert_id,
+        outcome_id,
+    )
+    return CompleteOut(
+        obligation=_to_out(completed), alert_id=obligation.alert_id, outcome_id=outcome_id
+    )
 
 
 # --------------------------------------------------------------------------- #

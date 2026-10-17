@@ -18,9 +18,9 @@ export type StatusCounts = Partial<Record<CounterStatus, number>>;
  *
  * The list endpoint already returns `total` for whatever filter it is given,
  * so one `limit=1` read per status is the whole implementation — no new
- * backend route, and the four reads go out in parallel. `clientId` is the
+ * backend route, and the reads go out in parallel. `clientId` is the
  * trimmed client filter ("" = all clients); `refreshTick` is bumped by the
- * page after a generate / approve / reject so the strip follows the register.
+ * page after a write so the strip follows the register, including completion.
  */
 export function useStatusCounters(
   clientId: string,

@@ -117,10 +117,13 @@ def _read_migration(path: Path) -> tuple[str, str]:
 # Postgres install ships, and the one CI's ``test`` role (superuser, per
 # the official Docker postgres image's POSTGRES_USER contract) can always
 # CREATE DATABASE / DROP DATABASE against.
-_ADMIN_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql://nuzantara@localhost:5432/nuzantara_test",
-).rsplit("/", 1)[0] + "/postgres"
+_ADMIN_URL = (
+    os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql://nuzantara@localhost:5432/nuzantara_test",
+    ).rsplit("/", 1)[0]
+    + "/postgres"
+)
 
 
 def _db_url_for(db_name: str) -> str:
@@ -361,7 +364,11 @@ async def _insert_decision_payload(
     ciphertext = ciphertext if ciphertext is not None else b"opaque-ciphertext-bytes-only"
     aad = aad if aad is not None else b"decision-id-binding-context"
     ciphertext_sha256 = ciphertext_sha256 or hashlib.sha256(ciphertext).digest()
-    purge_after = purge_after or (GOLD_EVALUATED_AT + timedelta(days=90))
+    if purge_after is None:
+        # The immutable golden decision date must not make retention expire.
+        # Use the same clock as the database guard; explicit past dates remain
+        # available to the purge and legal-hold tests below.
+        purge_after = await conn.fetchval("SELECT clock_timestamp() + interval '90 days'")
     await conn.execute(
         """
         INSERT INTO visa_decision_payloads (
@@ -799,7 +806,9 @@ async def test_source_record_exclude_disjoint_legal_period_innocence(
     # only fires when source_key AND legal_period AND recorded_period all
     # overlap simultaneously, so a disjoint legal_period alone is enough to
     # prove innocence even with everything else identical.
-    await _insert_source_record(w6b_conn, source_key=shared_key, version=1, legal_period=first_legal)
+    await _insert_source_record(
+        w6b_conn, source_key=shared_key, version=1, legal_period=first_legal
+    )
     second_id = await _insert_source_record(
         w6b_conn, source_key=shared_key, version=2, legal_period=second_legal
     )
@@ -835,8 +844,12 @@ async def test_payload_same_key_different_nonce_innocence(
     rule_pack_id = await _insert_rule_pack(w6b_pool)
     decision_id_1 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
     decision_id_2 = await _insert_decision(w6b_conn, rule_pack_id=rule_pack_id)
-    await _insert_decision_payload(w6b_conn, decision_id=decision_id_1, encryption_key_id="shared-kek-2")
-    await _insert_decision_payload(w6b_conn, decision_id=decision_id_2, encryption_key_id="shared-kek-2")
+    await _insert_decision_payload(
+        w6b_conn, decision_id=decision_id_1, encryption_key_id="shared-kek-2"
+    )
+    await _insert_decision_payload(
+        w6b_conn, decision_id=decision_id_2, encryption_key_id="shared-kek-2"
+    )
     count = await w6b_conn.fetchval(
         "SELECT count(*) FROM visa_decision_payloads WHERE encryption_key_id = 'shared-kek-2'"
     )
@@ -1244,7 +1257,9 @@ async def test_source_record_shift_recorded_period_lower_bound_guilt(
 async def test_source_record_supersedes_self_reference_guilt(w6b_conn: asyncpg.Connection) -> None:
     self_id = uuid.uuid4()
     with pytest.raises(asyncpg.exceptions.RaiseError, match="cannot reference its own row"):
-        await _insert_source_record(w6b_conn, source_id=self_id, supersedes_source_record_id=self_id)
+        await _insert_source_record(
+            w6b_conn, source_id=self_id, supersedes_source_record_id=self_id
+        )
 
 
 async def test_source_record_supersedes_missing_referent_guilt(

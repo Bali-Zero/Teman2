@@ -188,9 +188,20 @@ class ObligationsRepository(BaseRepository):
         value = await self._exec("fetchval", _COUNT_FILTERED_SQL, client_id, status)
         return int(value or 0)
 
-    async def get(self, obligation_id: int) -> ObligationRow | None:
+    async def get(self, obligation_id: int, *, for_update: bool = False) -> ObligationRow | None:
+        lock = " FOR UPDATE" if for_update else ""
         record = await self._exec(
-            "fetchrow", "SELECT * FROM client_obligations WHERE id = $1", obligation_id
+            "fetchrow", "SELECT * FROM client_obligations WHERE id = $1" + lock, obligation_id
+        )
+        return _to_row(record) if record else None
+
+    async def mark_done(self, obligation_id: int) -> ObligationRow | None:
+        """Record completion without replacing the original approval provenance."""
+        record = await self._exec(
+            "fetchrow",
+            "UPDATE client_obligations SET status = 'done', updated_at = NOW() "
+            "WHERE id = $1 AND status = 'alerted' RETURNING *",
+            obligation_id,
         )
         return _to_row(record) if record else None
 

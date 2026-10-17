@@ -1,0 +1,9 @@
+task_id: ros-obligation-prod-1017
+colour: BLUE
+gear: 2
+summary: Record an obligation completion and its alert outcome atomically from the existing desk.
+base: cba18d2
+spec: docs/plans/2026-10-17-ros-obligation-closure.md
+consumer: The compliance team using Kita's obligations register.
+bites: A recorded completion appears as done and resolves the exact linked alert with one audit outcome.
+pii_scope: Synthetic tests only; no live client rows or evidence references in artifacts.
