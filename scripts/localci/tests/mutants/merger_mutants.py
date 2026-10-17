@@ -1241,7 +1241,8 @@ def copy_tree(dest: Path) -> None:
     (dest / "scripts" / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "scripts" / "tests" / "test_ban_predicates.py", dest / "scripts" / "tests" / "test_ban_predicates.py")
     for rel in ("scripts/signal_merge_intent.sh", "scripts/merge_queue_rule.sh", "scripts/docs_guardian.sh", "scripts/tests/test_signal_merge_intent.sh",
-                "scripts/harness_fable_gate.py", "scripts/tests/test_harness_gate_read.py"):   # B31 + B25-prime P4
+                "scripts/harness_fable_gate.py", "scripts/tests/test_harness_gate_read.py",
+                "scripts/tests/test_localci_flip_carryover_selection.sh"):   # B31 + B25-prime P4; B42 follow-up
         shutil.copy2(ROOT / rel, dest / rel)
     (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
     shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")

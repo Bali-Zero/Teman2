@@ -11,6 +11,7 @@ printf '#!/usr/bin/env bash\necho "CARRY $1"\n' > "$work/scripts/signal_merge_in
 chmod +x "$work/scripts/signal_merge_intent.sh"
 cat > "$work/bin/gh" <<'GH'
 #!/usr/bin/env bash
+# gh api returns the legacy `permission` (maintain reads as write) beside `role_name`; the fake applies the caller's --jq to both.
 jq_arg() { while [ $# -gt 0 ]; do [ "$1" = --jq ] && { printf '%s' "$2"; return; }; shift; done; }
 f=$(jq_arg "$@")
 case "$1 $2" in
@@ -18,7 +19,11 @@ case "$1 $2" in
   "api repos/Bali-Zero/Teman2/collaborators/"*)
     login=${2#repos/Bali-Zero/Teman2/collaborators/}; login=${login%/permission}
     [ "$login" = flaky ] && exit 1
-    grep -m1 "^$login " "$ROLES" | cut -d' ' -f2 ;;
+    role=$(grep -m1 "^$login " "$ROLES" | cut -d' ' -f2)
+    case "$role" in maintain) legacy=write ;; triage) legacy=read ;; *) legacy=$role ;; esac
+    command -v jq >/dev/null || { echo "fake gh: jq is required" >&2; exit 9; }
+    [ -n "$f" ] || { echo "fake gh: api called without --jq" >&2; exit 9; }
+    printf '{"permission":"%s","role_name":"%s"}' "$legacy" "$role" | jq -r "$f" ;;
   *) exit 9 ;;
 esac
 GH
