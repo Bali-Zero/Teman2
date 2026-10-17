@@ -556,3 +556,18 @@ nav.backdrop-blur-xl:is(.kbli-r19, .kbli-r19 *) {
   border-color: var(--kbli-border) !important;
   color: var(--kbli-text-primary) !important;
 }
+/*
+ * The shared CTAHandoff bar is sticky to the viewport bottom: inside R19 it sat over the persona
+ * cards, the stat pills and the last lines of every page. It stays in the flow, at the end of the page.
+ */
+[role="group"][aria-label="Next actions"]:is(.kbli-r19, .kbli-r19 *) {
+  position: static !important;
+}
+/*
+ * The page canvas behind the wrapper is the global dark body: an overscroll bounce or a short page showed it
+ * as a dark band under the paper. The canvas takes Direction A's paper while an R19 wrapper is mounted.
+ */
+html:has(.kbli-r19),
+body:has(.kbli-r19) {
+  background-color: #f7f4ee;
+}
