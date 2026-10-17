@@ -290,6 +290,12 @@
    ]
   },
   {
+   "query": "driving license",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
    "query": "SKCK",
    "must_find": [
     "SKCK"
@@ -780,6 +786,79 @@
     "A1 Visa-Free Tourism",
     "B1 Visa on Arrival (VOA)",
     "C1 Tourism"
+   ]
+  },
+  {
+   "query": "Which licenses do I need for a restaurant",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenses for a villa rental business",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "I am selling food online, which permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "we sell coffee, what permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "restaurant licenses",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "alcohol licence",
+   "must_find": [
+    "@alcohol"
+   ],
+   "must_not_find": [
+    "Driving License"
+   ]
+  },
+  {
+   "query": "license",
+   "must_find": [
+    "@alcohol",
+    "Driving License"
+   ]
+  },
+  {
+   "query": "prices for KITAS",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Born KITAS"
+   ],
+   "must_not_find": [
+    "@alcohol",
+    "B1 Visa on Arrival (VOA)",
+    "B1 Visa on Arrival Extension"
+   ]
+  },
+  {
+   "query": "work permit",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ]
+  },
+  {
+   "query": "stay permit",
+   "must_find": [
+    "Working KITAS (Offshore)"
    ]
   },
   {
