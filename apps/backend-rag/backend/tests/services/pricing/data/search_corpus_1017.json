@@ -290,6 +290,12 @@
    ]
   },
   {
+   "query": "driving license",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
    "query": "SKCK",
    "must_find": [
     "SKCK"
@@ -780,6 +786,159 @@
     "A1 Visa-Free Tourism",
     "B1 Visa on Arrival (VOA)",
     "C1 Tourism"
+   ]
+  },
+  {
+   "query": "Which licenses do I need for a restaurant",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenses for a villa rental business",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "I am selling food online, which permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "we sell coffee, what permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "restaurant licenses",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "alcohol licence",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "prices for KITAS",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Born KITAS"
+   ],
+   "must_not_find": [
+    "@alcohol",
+    "B1 Visa on Arrival (VOA)",
+    "B1 Visa on Arrival Extension"
+   ]
+  },
+  {
+   "query": "work permit",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ]
+  },
+  {
+   "query": "stay permit",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ]
+  },
+  {
+   "query": "liquor license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "beer licence",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "wine license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "liquor store permit",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenza alcolici",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin jual bir",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "how much for a liquor license in Bali",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "Bali spirit festival visa",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "birth certificate for my baby",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "birthday party permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "winery tour visa",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "beerhouse",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "spirits license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "spirits licence for my bar",
+   "must_find": [
+    "@alcohol"
    ]
   },
   {

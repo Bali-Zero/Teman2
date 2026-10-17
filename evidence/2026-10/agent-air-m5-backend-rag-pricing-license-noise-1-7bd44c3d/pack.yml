@@ -1,0 +1,144 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17 alcohol licence ruling (quoted verbatim in the pack of the mouth
+  article-licence-prices PR): only the three alcohol licence prices exist, and a question that is
+  not about alcohol must not price one. PR 8655's gate (PASS-WITH-CONDITIONS) made this HIGH
+  follow-up its condition 2: ordinary messages with "licenses", "selling" or "seller" reached the
+  three Alcohol License rows through the light-suffix rule.
+mission: >-
+  A client who asks which licences a restaurant needs, or says they sell coffee, gets no alcohol
+  licence price; a client who asks for a liquor, beer, wine or spirits licence, in English,
+  Italian or Indonesian, still gets the three rows.
+lanes:
+  - lane: pricing-license-noise
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented the task written by the orchestrator, then the council cure)
+  - lane: pricing-license-noise
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; reviewed the diff and the 4+ character noise words against the light suffixes)
+  - lane: pricing-license-noise
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, round 1 on 025e2ee9c9, review only by instruction; sandbox workspace-write, git status clean after, diff_stat empty)
+  - lane: pricing-license-noise
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, round 1 on 025e2ee9c9, review only)
+  - lane: pricing-license-noise-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner ruling of 2026-10-17 on the alcohol licence (the ruling field above) and the
+      catalogue rows of PR 8629 (three Alcohol License rows, golongan A, B + C, A + B + C).
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: PricingService.search_service on nuzantara-rag (production, nuzantara-rag.fly.dev),
+  behind GET /api/pricing/search, Zantara's PricingTool and the WhatsApp bot's price context
+  (wa_package_builder). The route is authenticated (backend/app/routers/dynamic_pricing.py), so
+  the probe uses the service API key from the environment, never printed. Observation after the
+  deploy (a merge to apps/backend-rag is the deploy; /health build_sha must contain this PR):
+  ?q=Which%20licenses%20do%20I%20need%20for%20a%20restaurant returns no Alcohol License row;
+  ?q=driving%20license returns no Alcohol License row (PR 8658 retired the Driving License row); ?q=liquor%20license
+  returns the three Alcohol License rows. Not yet observed: nothing is merged or deployed.
+receipts:
+  - claim: The pricing suite (142+ query corpus incl. the licence/sale, alcohol-keyword and over-match probes, matcher unit cases, existing pricing tests) passes on HEAD 26f5240aee (rebased onto origin/main b68797826d, PR 8658).
+    cmd: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    result: "378 passed in 2.27s"
+    exit: 0
+    ts: "2026-10-17T10:53:03Z"
+    seat: this session
+  - claim: The catalogue decision pins pass.
+    cmd: PYTHONPATH=apps/backend-rag python -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py
+    result: "57 passed in 0.15s"
+    exit: 0
+    ts: "2026-10-17T10:53:03Z"
+    seat: this session
+  - claim: Lint and format are clean on the changed python files, and the frontend price mirror is in sync with the catalogue (keywords are not mirrored).
+    cmd: ruff check and ruff format --check on pricing_service.py and test_search_token_matching_1017.py; python3 scripts/sync_frontend_prices.py --check
+    result: "All checks passed!; 2 files already formatted; OK in sync"
+    exit: 0
+    ts: "2026-10-17T10:53:03Z"
+    seat: this session
+  - claim: Before/after of origin/main (b68797826d) vs HEAD over 170 queries; no corpus query of the previous corpus gains an unrelated row; rows lost matched only through license, sell or price; the alcohol keywords add the three Alcohol License rows to alcohol queries only (the five over-match probes are unchanged).
+    cmd: scratch comparison old code and catalogue (git show origin/main) vs HEAD, search-after-D.json in the session scratchpad
+    result: "losses: Alcohol License x3 on licence/sale sentences and on driving license, 7 price-only rows on prices for KITAS; gains: Alcohol License x3 on licenza alcolici, liquor store permit, izin jual bir, bir and the inflected alcohol words"
+    exit: 0
+    ts: "2026-10-17T10:39:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutants killed (noise stemming off 13 red; license removed from noise 7 red; sell removed 7 red; liquor removed from the rows 3 red; file restored byte-identical each time).
+    cmd: cp backup, scripted edit, pytest, cp back + cmp
+    result: "13 / 7 / 7 / 3 red; restored"
+    exit: 0
+    ts: "2026-10-17T10:38:00Z"
+    seat: claude-sonnet-5 implementer
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol and kimi-code/k3, round 1 on 025e2ee9c9, dispatched
+  2026-10-17T10:31Z (logs seat-build-codex-20261017T103102Z-36230 and
+  seat-build-kimi-20261017T103104Z-36468 under /Users/balizero/nuzantara/.worktrees/); the
+  journal lines were written after the runs. Both returned CONCERNS on the same regression,
+  cured afterwards by catalogue keywords and corpus pins; the cure was not shown to the seats
+  again, it is covered by the corpus, a mutant and the fresh gate.
+decisions:
+  - id: D-noise-stems
+    text: >-
+      A query token is noise when it equals a noise word or a noise word of 4+ characters plus a
+      light suffix of the closed set row matching uses; the 24 noise words of 4+ characters were
+      checked against the suffix set (selling, years, licensee, balian become noise; none is a
+      distinctive catalogue word).
+  - id: D-license-sell-noise
+    text: >-
+      license, licence, licensing and sell join the noise list; permit and izin do not (work
+      permit, stay permit, re-entry permit and permit keep their counts).
+  - id: D-alcohol-keywords
+    text: >-
+      The three Alcohol License rows carry the words a client types for the product in English,
+      Italian and Indonesian (liquor, beer, wine, alcol, alcolici, alcolico, bir, and the phrases
+      spirits license / spirits licence); keywords only, no price, name or note changed. spirit
+      alone and vodka are deliberately absent (vodka license goes from 3 to 0, accepted).
+  - id: D-noise-only-fallback
+    text: >-
+      A query made only of noise words keeps the raw-query fallback, so license, licenses, prices
+      or selling alone still return the rows carrying that word; documented in the spec.
+  - id: D-rebase-8658
+    text: >-
+      Rebased onto origin/main b68797826d (PR 8658, Zero 2026-10-17: Driving License, Urgent 1/2/3
+      Hari and Created Molina Express retired). The corpus keeps 8658's deletions; no expectation
+      names a retired row (26f5240aee); the council ran on the pre-rebase 025e2ee9c9, whose matcher
+      code is unchanged by the rebase.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1, VERDICT CONCERNS: liquor license and beer licence regress from the three Alcohol
+      License rows to zero.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by 3ec4c38538, ffd554b8b5 and 94d64f17a0 (rebased SHAs): liquor license, wine license, beer
+      licence, liquor store permit, spirits license, licenza alcolici and izin jual bir find the
+      three rows; the corpus pins them and a mutant removing liquor turns three cases red.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 1, VERDICT CONCERNS: liquor/beer/wine/spirits license regressed to zero hits and the
+      corpus pins none.
+    status: CONFIRMED
+    resolution: >-
+      Same cure and pins as above.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 1 DISSENT: noise-marking license treats the symptom; the catalogue's English keyword
+      poverty is the cause, and permit would die the same way if it ever became noise.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted in part: the alcohol rows now carry English and Italian keywords (the cause for
+      this row family); permit is deliberately not noise and its counts are unchanged.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1: prices for KITAS drops the E33E/E33F Extend rows that do not carry the word KITAS;
+      licensee/licensees become noise.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted: those rows matched only through price, and prices for KITAS now returns exactly
+      the rows kitas alone returns; licensee names no service.
+spend:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1

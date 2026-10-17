@@ -315,3 +315,40 @@ def test_empty_query_returns_no_rows(pricing_service, query):
     # no caller relies on that (/api/pricing/search needs min_length=1, the tools and the
     # WhatsApp builder only search a non-empty client message; get_all_prices lists all rows).
     assert _hit_keys(pricing_service.search_service(query)) == set()
+
+
+# --- after #8655's gate: noise words stem like row words; generic licence/sale words ----------
+
+
+@pytest.mark.parametrize(
+    "token",
+    ["price", "prices", "biayanya", "harganya", "years", "license", "licenses", "licences",
+     "licensing", "sell", "sells", "selling", "seller"],
+)  # fmt: skip
+def test_inflected_noise_words_are_noise(m, token):
+    assert m._is_noise(token)
+    assert m._query_terms(f"{token} kitas")[1] == ["kitas"]
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        "kitas",
+        "alcohol",
+        "visa",
+        "pricey",
+        "costume",
+        "sellx",
+        "yearly",
+        "di5",
+        "kitasnya",
+        "alkohol",
+    ],
+)
+def test_other_tokens_are_not_noise(m, token):
+    assert not m._is_noise(token)
+
+
+@pytest.mark.parametrize("word", ["license", "licence", "sell"])
+def test_generic_licence_and_sale_words_are_noise_words(m, word):
+    assert word in m._SEARCH_NOISE_WORDS
