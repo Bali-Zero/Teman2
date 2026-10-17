@@ -1,38 +1,89 @@
 task_id: kbli-r19-w2e-1017
-gear: 2
+gear: 3
 l_level: L1
 gate_class: opus
-objective: |
-  Mission kbli-nav-design-loop, lot W2'''' (Track W, BLUE), successor cure for the two browser
-  states that blocked PR #8627. Keep content frozen while making the /kbli hero primary-action
-  hover retain elevated text on copper and making /kbli-explorer Sonner richColors controls use
-  only R19 surface, border and ink tokens. Add real-browser innocence and mutant-guilt tests.
+objective:
+  "Mission kbli-nav-design-loop, lot W2'''' (Track W, BLUE). This PR carries two things:\n(1) the replay\
+  \ of W2''' (#8627, commit 187f9702a7, unchanged), whose objective was:\n    Mission kbli-nav-design-loop, lot\
+  \ W2''' (Track W, BLUE), successor of the closed #8161 (W2'', gate\n    BLOCK), #8139 and #8118, replayed on top\
+  \ of the merged W0d-3b-2b-i''' (#8583) and W0d-3b-2b-ii'\n    (#8620) census instruments. Put all 9 /kbli* routes\
+  \ (/kbli, /kbli/55203, /kbli/51101, /kbli/56101,\n    /kbli-explorer, /kbli/sectors, /kbli/sectors/[id], /kbli/builder,\
+  \ /kbli/decoder) and all 51 opened\n    surfaces onto the R19 wrapper token contract (Direction A + PMA triad):\n\
+  \    - every opened surface renders inside .kbli-r19 and paints its section 8.1 ground opaque (or translucent\
+  \ ink scrim);\n    - the re-cut transparent explorer logo (/images/logo-zantara-transparent.png) ships and passes\
+  \ section 8.3's five proofs;\n    - zantara-pending mobile/system-dark gets solid plates on its badge and bubble,\
+  \ leaves NOT_JUDGEABLE, returns to the walks (51 opened walks, 147 scenarios) and passes at min 5.64:1;\n    -\
+  \ every page ground at rest and every opened ground reads 0 off-contract and 0 resolver disagreement;\n    - all\
+  \ 24 shared-component walks outside /kbli* hold 0 drift against the origin/main pin;\n    - r19-wrapper-census-tests\
+  \ asserts all 15 lines of the section 8.8 exit block in wrapper-census-states and 48/48 captures in wrapper-census-live.\n\
+  (2) the cure of the two states #8627's gate blocked: the /kbli hero primary-action hover keeps\nelevated text\
+  \ on copper, and /kbli-explorer Sonner richColors controls use only R19 surface,\nborder and ink tokens, with\
+  \ real-browser innocence and mutant-guilt tests.\n#8627's evidence directory (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c)\
+  \ is folded into this one\nso the PR has exactly one brief and one pack; its original receipts stay readable on\
+  \ PR #8627.\n"
 constraints:
+  - Contract is the authority, row by row, sections 5, 7, 8 and 9 included.
+  - No shared file outside the pin matrix is mutated; packages/core/components/NavShell.tsx is untouched and its glass
+    shadow is suppressed inside .kbli-r19 via kbli-r19-wrapper.css per the contract row component NavShell { shadow
+    } = not painted on this surface.
+  - No npm install or npm ci.
   - "Content is frozen: no copy, string, aria, alt, title, placeholder, href or data change."
-  - "Do not change scripts/mouth/r19_wrapper_token_census.py."
+  - Do not change scripts/mouth/r19_wrapper_token_census.py.
   - "External builder seat prepares only: no commit, push, merge, arm or deploy."
-  - "Wrapper selectors follow :is(.kbli-r19, .kbli-r19 *) and escaped Tailwind conventions."
+  - Wrapper selectors follow :is(.kbli-r19, .kbli-r19 *) and escaped Tailwind conventions.
 acceptance:
-  - text: "WHEN the real CTA is pointer-hovered, THEN its computed elevated text over copper rounds to at least 5.64:1; deleting the cure reproduces about 2.47:1."
-    probe: "python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover or sonner_rich_controls'"
-  - text: "WHEN success and error richColors toasts render, THEN close glyphs are at least 4.5:1 on a contract surface and action/cancel controls remain on contract; deleting the cure reproduces about 1.23:1 and 1.29:1."
-    probe: "python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover or sonner_rich_controls'"
-  - text: "WHEN the offline mouth census tests run, THEN they remain green."
-    probe: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
+  - text:
+      WHEN the 4 census parts (rest, kbli, explorer, shared) run live and replay together, THEN all 15 lines of
+      the section 8.8 exit block print 0 (with 54/54 captures ok and 51/51 opened-surfaces ok).
+    probe:
+      python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl
+      --diff-base origin/main
+  - text:
+      WHEN the W1 test runs on the 8 fixed routes x 6 states, THEN palette-outside-direction-a (r19 scope, 48/48
+      captures) prints 0.
+    probe: cd apps/mouth && R19_WRAPPER_LIVE=1 npx vitest run src/test/r19-wrapper.test.ts
+  - text:
+      WHEN the offline and browser e2e census test suites run against the re-pinned W2''' fixture, THEN every
+      test passes.
+    probe: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider
+  - text:
+      WHEN the real CTA is pointer-hovered, THEN its computed elevated text over copper rounds to at least 5.64:1;
+      deleting the cure reproduces about 2.47:1.
+    probe:
+      python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover
+      or sonner_rich_controls'
+  - text:
+      WHEN success and error richColors toasts render, THEN close glyphs are at least 4.5:1 on a contract surface
+      and action/cancel controls remain on contract; deleting the cure reproduces about 1.23:1 and 1.29:1.
+    probe:
+      python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover
+      or sonner_rich_controls'
+  - text: WHEN the offline mouth census tests run, THEN they remain green.
+    probe: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'
 consumer_map:
-  - "r19-wrapper-census-tests / Browser guilt and innocence of the opened-surface walk selects both new test_e2e_ tests with -k e2e."
-  - "The /kbli hero CTA and /kbli-explorer Sonner toasts consume the wrapper rules in real Chrome."
+  - r19-wrapper-census-tests / wrapper-census-states runs on every apps/mouth PR and gates all 15 lines of the section
+    8.8 exit block.
+  - "r19-wrapper-census-tests / wrapper-census-live gates palette-outside-direction-a (r19 scope, 48/48 captures):
+    0."
+  - r19-wrapper-census-tests / Browser guilt and innocence of the opened-surface walk selects both new test_e2e_ tests
+    with -k e2e.
+  - The /kbli hero CTA and /kbli-explorer Sonner toasts consume the wrapper rules in real Chrome.
 risks:
-  - "A source-only assertion can miss cascade or richColors specificity; the browser tests load both real stylesheets and read computed colours."
-grader: |
-  A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
+  - "Parts of one aggregate must come from one machine kind (section 9 note 2): CI runs all four parts in one workflow
+    run."
+  - A source-only assertion can miss cascade or richColors specificity; the browser tests load both real stylesheets
+    and read computed colours.
+grader:
+  "A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
+
+  "
 brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2e-1017-8d1a34f8/brief.yml
-plan_ref: >-
-  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1;
-  PR #8627 gate findings supplied in the W2'''' mandate.
+plan_ref:
+  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR #8627 gate findings supplied
+  in the W2'''' mandate."
 lanes:
   - lane: mouth-kbli-r19-w2e-1017
     role: build
-    seat: "Codex external builder"
+    seat: Codex external builder
 pii_scan: clean
-pii_scan_note: "Public UI CSS and synthetic browser fixtures only; no client data."
+pii_scan_note: Public UI CSS and synthetic browser fixtures only; no client data.

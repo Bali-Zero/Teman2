@@ -1,59 +1,85 @@
 brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2e-1017-8d1a34f8/brief.yml
-seat_override: >-
+seat_override:
   BLUE mission, external builder prepare-only. A Claude session performs live browser verification,
   ships if green, and a fresh gate judges the final candidate.
-plan_ref: >-
-  docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1;
-  PR #8627 gate findings supplied in the W2'''' mandate.
+plan_ref:
+  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR #8627 gate findings supplied
+  in the W2'''' mandate."
 lanes:
   - lane: mouth-kbli-r19-w2e-1017
     role: build
-    seat: "Codex external builder"
+    seat: Codex external builder
 pii_scan: clean
-pii_scan_note: "Public UI CSS and synthetic browser fixtures only; no client data."
-provenance: >-
-  Fresh origin/main plus 187f9702a7, the exact replay of PR #8627. This lot changes only the R19
-  wrapper stylesheet, its browser regression tests, and this evidence pack.
+pii_scan_note: Public UI CSS and synthetic browser fixtures only; no client data.
+provenance:
+  "Fresh origin/main plus 187f9702a7, the exact replay of PR #8627. This lot changes only the R19 wrapper
+  stylesheet, its browser regression tests, and this evidence pack. The W2''' evidence of #8627 (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c)
+  is folded into this directory; its receipts are on PR #8627 and are re-measured below on this head."
 diff:
-  net_lines: >-
-    Minimal wrapper overrides for one Tailwind hover state and Sonner controls, plus two static-page
-    Playwright tests that exercise the real wrapper and Sonner CSS and delete each cure as a mutant.
-  behaviour_change: >-
+  net_lines:
+    Minimal wrapper overrides for one Tailwind hover state and Sonner controls, plus two static-page Playwright
+    tests that exercise the real wrapper and Sonner CSS and delete each cure as a mutant.
+  behaviour_change:
     The /kbli hero CTA keeps elevated text over its copper hover. Sonner success/error close buttons
-    and action/cancel controls use the R19 surface and border/ink tokens; icon and description remain
-    transparent with inherited ink.
+    and action/cancel controls use the R19 surface and border/ink tokens; icon and description remain transparent
+    with inherited ink.
 receipts:
-  - claim: "The CTA and Sonner innocence/mutant-guilt tests pass in a real Chrome process."
-    cmd: "python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover or sonner_rich_controls'"
-    result: "2 passed, 302 deselected"
+  - claim:
+      All 4 census parts (rest, kbli, explorer, shared) run live on this head and replay together with all 15
+      lines of the section 8.8 exit block at 0.
+    cmd: python3 scripts/mouth/r19_wrapper_token_census.py --replay <the 4 live parts concatenated> --diff-base origin/main
+    result:
+      "all 15 exit lines 0, no INCOMPLETE; captures: 54 ok, 0 failed; opened-surfaces: 51 ok, 0 failed (rest
+      part rerun after a page-walk flake); cmp vs the committed fixture's replay differs only on line 5, the /kbli/51101
+      element count [644] vs [624, 644]"
+    exit: 0
+    ts: "2026-10-17T11:16:43Z"
+    seat: Claude live verifier (Air-M5)
+  - claim: W1 live palette guard passes on 48/48 r19 captures.
+    cmd: cd apps/mouth && R19_WRAPPER_LIVE=1 npx vitest run src/test/r19-wrapper.test.ts
+    result: "6 passed (6); palette-outside-direction-a (r19 scope, 48/48 captures): 0"
+    exit: 0
+    ts: "2026-10-17T10:53:07Z"
+    seat: Claude live verifier (Air-M5)
+  - claim: The CTA and Sonner innocence/mutant-guilt tests pass in a real Chrome process.
+    cmd:
+      python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover
+      or sonner_rich_controls'
+    result: 2 passed, 302 deselected
     exit: 0
     ts: "2026-10-17T10:57:08Z"
-    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
-  - claim: "The required offline mouth census suite remains green."
-    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
-    result: "189 passed, 115 deselected"
+    seat: Claude lead session (Air-M5, unrestricted headless Chrome)
+  - claim: The required offline mouth census suite remains green.
+    cmd: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'
+    result: 189 passed, 115 deselected
     exit: 0
     ts: "2026-10-17T10:57:17Z"
-    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
-  - claim: "The full e2e selection includes and passes the two new tests."
-    cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'e2e'"
-    result: "115 passed, 189 deselected (both new test_e2e_ tests included)"
+    seat: Claude lead session (Air-M5, unrestricted headless Chrome)
+  - claim: The full e2e selection includes and passes the two new tests.
+    cmd: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'e2e'
+    result: 115 passed, 189 deselected (both new test_e2e_ tests included)
     exit: 0
     ts: "2026-10-17T11:02:12Z"
-    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
-  - claim: "Every test that is genuinely offline in the Air-M5 managed sandbox passes."
-    cmd: "CHROME_HEADLESS=/nonexistent python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e and not sector_route_is_the_first_card_the_server_links'"
-    result: "187 passed, 1 skipped, 116 deselected"
+    seat: Claude lead session (Air-M5, unrestricted headless Chrome)
+  - claim: Every test that is genuinely offline in the Air-M5 managed sandbox passes.
+    cmd:
+      CHROME_HEADLESS=/nonexistent python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e and
+      not sector_route_is_the_first_card_the_server_links'
+    result: 187 passed, 1 skipped, 116 deselected
     exit: 0
     ts: "2026-10-16T22:40:03Z"
-    seat: "Codex external builder"
+    seat: Codex external builder
 dissent:
-  - seat: "Codex external builder"
-    objection: >-
-      Air-M5's managed sandbox denied Chromium's MachPort rendezvous and denied loopback socket bind.
-      The local required command reached 187 passes but two pre-existing environment-dependent tests
-      failed for those restrictions; the new e2e tests could not execute here.
+  - seat: Codex external builder
+    objection:
+      Air-M5's managed sandbox denied Chromium's MachPort rendezvous and denied loopback socket bind. The
+      local required command reached 187 passes but two pre-existing environment-dependent tests failed for those
+      restrictions; the new e2e tests could not execute here.
     status: CONFIRMED
-    resolution: "Resolved 2026-10-17: the three receipts above were rerun by the Claude lead in an unrestricted headless Chrome on Air-M5 and pass; the live verifier also measured 304 passed, 0 skipped, 0 failed for the whole suite."
-grader: |
-  A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
+    resolution:
+      "Resolved 2026-10-17: the three receipts above were rerun by the Claude lead in an unrestricted headless
+      Chrome on Air-M5 and pass; the live verifier also measured 304 passed, 0 skipped, 0 failed for the whole suite."
+grader:
+  "A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
+
+  "
