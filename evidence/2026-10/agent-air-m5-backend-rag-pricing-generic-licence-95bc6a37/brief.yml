@@ -1,0 +1,32 @@
+task_id: pricing-generic-licence-1017
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner ruling of 2026-10-17 on the alcohol licence search (issue 8665 item 2 and the keyword
+  question). A query made only of noise words drops the generic trade words (license, licence,
+  licensing, sell and their light-suffix forms) before the whole-query fallback, so "license",
+  "licenses" or "selling" alone match no row; mixed queries and every other all-noise query are
+  unchanged. The three Alcohol License rows gain the keywords bar, birra, vino and minol (keywords
+  only). Spec rules 2 and 4 record it.
+acceptance:
+  - text: >-
+      Bare licence/sale words ("license", "licenses", "licences", "selling", "sells", "seller",
+      "license license", "berapa harga license") return no Alcohol License row; "bar license", "I
+      want to open a bar in Canggu", "licenza birra", "licenza per vendita vino", "izin minol" and
+      "izin minolnya berapa" find the three rows; "barang impor", "barista training visa", "vinod"
+      and "minimal order" do not.
+    probe: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+  - text: >-
+      Every other all-noise query ("prices", "bali", "years", "how much does it cost", "berapa
+      harga") returns the same rows as origin/main; only queries inside the ruling change.
+    probe: scratch before/after of origin/main vs HEAD over 235 queries (search-after-F.json)
+assumptions:
+  - text: >-
+      A no-match result carries message and suggestion and no error key, so /api/pricing/search
+      answers 200 (dynamic_pricing.py raises 503 only on error).
+    status: verified
+    probe: result-shape assertion in test_search_token_matching_1017.py
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
