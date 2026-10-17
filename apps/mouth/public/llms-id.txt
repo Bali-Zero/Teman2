@@ -4612,63 +4612,46 @@ Indonesia's immigration architecture underwent its most significant restructurin
 KONTEN:
 ## TL;DR
 
-<InfoCard
-  title="Ringkasan Cepat"
-  items={[
-    { label: "Haruskah Saya Khawatir?", value: "Tergantung" },
-    { label: "Tingkat Risiko", value: "Sedang" },
-    { label: "Siapa yang Terdampak", value: "Warga asing dan investor di Indonesia" },
-    { label: "Kapan", value: "Periksa artikel untuk tanggal spesifik" },
-  ]}
-/>
-
-**Arsitektur imigrasi Indonesia mengalami restrukturisasi terbesar dalam lebih dari satu dekade antara 2023 dan 2025, mengubah perhitungan praktis**
+**Arsitektur imigrasi Indonesia mengalami restrukturisasi paling signifikan dalam lebih dari satu dekade antara 2023 dan 2025, mengubah perhitungan praktis bagi setiap warga negara AS yang mempertimbangkan pindah ke Bali.**
 
 ---
 
-## Fakta
+## Fakta-fakta
 
-Arsitektur imigrasi Indonesia mengalami restrukturisasi terbesar dalam lebih dari satu dekade antara 2023 dan 2025, mengubah perhitungan praktis bagi setiap warga Amerika yang mempertimbangkan pindah ke Bali. Perubahan ini mencakup empat peraturan hukum yang berbeda dan memperkenalkan indeks visa baru, struktur biaya yang direvisi, serta kewajiban sponsor yang diubah yang menggantikan kerangka kerja yang menjadi dasar panduan relokasi sebelumnya.
+Arsitektur imigrasi Indonesia mengalami restrukturisasi paling signifikan dalam lebih dari satu dekade antara 2023 dan 2025, mengubah pertimbangan praktis bagi setiap warga negara AS yang mempertimbangkan pindah ke Bali. Perubahan ini mencakup empat undang-undang berbeda dan memperkenalkan indeks visa baru, struktur biaya yang direvisi, serta kewajiban penjamin yang telah diperbarui yang menggantikan kerangka kerja yang menjadi dasar sebagian besar panduan relokasi.
 
-Perubahan paling langsung berdampak bagi siapa pun yang memegang atau merencanakan untuk memegang KITAS atau KITAP adalah penghapusan proses Multiple Exit Re-entry Permit (MERP) yang terpisah. Berdasarkan UU Nomor 63 Tahun 2024—sebuah amandemen terhadap undang-undang imigrasi dasar UU 6/2011—MERP sekarang secara otomatis terintegrasi dalam setiap izin tinggal elektronik tanpa biaya tambahan sejak tanggal penerbitan. Pemegang izin kerja (E23), izin digital nomad (E33G), izin pensiunan (E33E dan E33F), dan izin investor (E28) tidak perlu lagi mengajukan secara terpisah atau membayar biaya MERP yang terpisah.
+Perubahan paling berdampak segera bagi siapa pun yang memegang atau berencana memegang KITAS atau KITAP adalah penghapusan proses izin keluar-masuk ganda terpisah (Multiple Exit Re-entry Permit/MERP). Di bawah UU Nomor 63 Tahun 2024—amandemen terhadap undang-undang imigrasi dasar UU 6/2011—MERP sekarang secara otomatis tertanam dalam setiap izin tinggal elektronik tanpa biaya tambahan sejak tanggal penerbitan. Pemegang izin kerja (E23), izin digital nomad (E33G), izin pensiun (E33E dan E33F), serta izin investor (E28) tidak lagi perlu mengajukan permohonan terpisah atau membayar biaya MERP mandiri.
 
-Bagi warga Amerika yang tiba tanpa rencana jangka panjang yang tetap, Visa Kunjungan C1—dulunya dikenal sebagai B211A—sekarang menawarkan masa tinggal 180 hari dan, yang lebih penting, dapat diubah di dalam negeri menjadi KITAS tanpa meninggalkan Indonesia. Proses konversi formal ini, yang disebut Alih Status berdasarkan Permenkumham 22/2023, menghilangkan beban logistik dan finansial dari perjalanan ke perbatasan yang diwajibkan oleh hukum sebelumnya. Visa on Arrival (berindeks B1) tetap berupa masuk 30 hari yang dapat diperpanjang sekali hingga 60 hari, tetapi tidak memiliki hak konversi di dalam negeri.
+Bagi warga negara AS yang tiba tanpa rencana jangka panjang yang tetap, Visit Visa C1—dahulu dikenal sebagai B211A—sekarang menawarkan tinggal selama 180 hari dan, secara kritis, dapat dikonversi di dalam negeri menjadi KITAS tanpa meninggalkan Indonesia. Proses konversi formal ini, disebut Alih Status di bawah Permenkumham 22/2023, menghilangkan beban logistik dan finansial dari perjalanan lintas batas yang sebelumnya diwajibkan oleh hukum. Visa on Arrival (indeks B1) tetap merupakan masuk selama 30 hari yang dapat diperpanjang sekali hingga 60 hari, namun tidak memiliki hak konversi di dalam negeri.
 
-Kategori digital nomad, yang diklasifikasikan sebagai E33G, menetapkan lantai pendapatan yang konkret: pekerja jarak jauh harus menunjukkan pendapatan tahunan minimum USD 60.000 dan harus memiliki kontrak dengan pemberi kerja yang berbasis di luar wilayah Indonesia. Izin ini tidak dapat digunakan untuk memberikan layanan kepada entitas Indonesia. Perbedaan ini diterapkan secara aktif, dan pelanggaran atau penyalahgunaan dapat berakibat deportasi.
+Kategori digital nomad, diklasifikasikan sebagai E33G, menetapkan lantai pendapatan konkret: pekerja jarak jauh harus mendemonstrasikan pendapatan tahunan minimum USD 60.000 dan harus memegang kontrak dengan pemberi kerja yang berbasis di luar wilayah Indonesia. Izin ini tidak dapat digunakan untuk memberikan layanan kepada entitas Indonesia. Distingsi ini secara aktif ditegakkan dan keterlambatan atau penyalahgunaan membawa konsekuensi deportasi.
 
-Bagi warga Amerika yang lebih kaya, Visa Emas di bawah seri E28B memerlukan investasi sebesar USD 2.500.000 untuk izin lima tahun atau USD 5.000.000 untuk izin sepuluh tahun. Visa Emas menghilangkan keharusan memiliki sponsor fisik Indonesia (Penjamin), menggantinya dengan mekanisme jaminan finansial yang disebut Jaminan Keimigrasian. Kerangka sponsor di semua kategori visa lainnya secara bersamaan diubah oleh Permenimipas Nomor 5 Tahun 2025, yang berlaku mulai 7 Maret 2025, menggantikan Permenkumham 36/2021 sebelumnya dan secara material memperluas tanggung jawab hukum dan sipil warga negara Indonesia atau perusahaan yang bertindak sebagai sponsor bagi warga asing.
+Bagi warga negara AS yang lebih kaya, Golden Visa di bawah seri E28B memerlukan investasi USD 2.500.000 untuk izin lima tahun atau USD 5.000.000 untuk izin sepuluh tahun. Golden Visa menghilangkan persyaratan penjamin fisik Indonesia (Penjamin), menggantikan dengan mekanisme jaminan keuangan yang disebut Jaminan Keimigrasian. Kerangka kerja penjamin di semua kategori visa lainnya secara bersamaan diperbarui oleh Permenimipas Nomor 5 Tahun 2025, yang mulai berlaku pada 7 Maret 2025, menggantikan Permenkumham 36/2021 sebelumnya dan secara substansial memperluas tanggung jawab sipil dan hukum warga negara Indonesia atau perusahaan yang bertindak sebagai penjamin bagi penduduk asing.
 
-Denda pelanggaran masa tinggal, yang diatur dalam PP Nomor 45 Tahun 2024 yang mengatur pendapatan negara bukan pajak (PNBP), berada di Rp 1.000.000 per hari. Denda ini bertambah setiap hari sejak hari pertama pelanggaran tanpa masa tenggang, dan peraturan ini memberlakukan konsekuensi tambahan di luar denda harian untuk masa tinggal yang melebihi 60 hari setelah izin berakhir.
+Denda keterlambatan, yang dikodifikasi di bawah PP Nomor 45 Tahun 2024 yang mengatur biaya PNBP (pendapatan negara bukan pajak), sebesar Rp 1.000.000 per hari. Denda ini terakumulasi setiap hari sejak hari pertama keterlambatan tanpa periode toleransi, dan peraturan tersebut membebankan konsekuensi tambahan di luar hukuman harian bagi tinggal yang melampaui 60 hari setelah kedaluwarsa izin.
 
 ---
 
 ## Bali Zero Take
 
-### Insight Tersembunyi
+### Wawasan Tersembunyi
 
-Gelombang regulasi 2024-2025, secara keseluruhan, membawa kabar baik bagi sebagian besar profil klien Amerika—tetapi menciptakan jebakan dokumentasi bagi siapa pun yang bergantung pada panduan yang ditulis sebelum pertengahan 2024. Integrasi MERP otomatis
+Gelombang regulasi 2024-2025 secara keseluruhan merupakan kabar baik bagi sebagian besar profil klien AS—namun menciptakan jebakan dokumentasi bagi siapa pun yang mengandalkan panduan yang ditulis sebelum pertengahan 2024. Integrasi MERP otomatis di bawah UU 63/2024 adalah kemenangan bersih: satu langkah lebih sedikit, satu biaya lebih sedikit, tanpa kerugian. Jalur konversi Visit Visa C1 menghilangkan persyaratan perjalanan lintas batas yang sebelumnya menjadi ketidaknyamanan utama bagi tinggal jangka panjang eksploratif.
 
 ### Analisis Kami
 
-berdasarkan UU 63/2024 adalah kemenangan yang bersih: satu langkah lebih sedikit, satu biaya lebih sedikit, tanpa kerugian. Jalur konversi Visa Kunjungan C1 menghilangkan keharusan perjalanan ke perbatasan yang dulu menjadi hambatan utama
+Tambang pendapatan digital nomad E33G di USD 60.000 lebih tinggi dari yang diharapkan banyak freelancer, dan pembatasan pekerjaan di luar Indonesia ditegakkan lebih ketat dibandingkan pendahulunya. Kami telah menangani kasus di mana klien menganggap pengaturan LLC AS memenuhi syarat secara otomatis—itu tidak selalu bertahan dalam interpretasi penegakan saat ini, terutama ketika aktivitas utama LLC melibatkan klien Indonesia. Beban pembuktian berada pada pemohon.
 
-### Saran Kami
-
-dalam tinggal jangka panjang eksploratif.
-
-Ambang batas digital nomad E33G di USD 60.000 lebih tinggi dari yang diharapkan banyak freelancer, dan pembatasan kerja di luar Indonesia diterapkan lebih ketat daripada pendahulunya. Kami telah menangani kasus di mana klien mengasumsikan bahwa pengaturan LLC AS secara otomatis memenuhi syarat—itulah tidak selalu bertahan dalam interpretasi penegakan hukum saat ini, khususnya ketika aktivitas utama LLC melibatkan klien Indonesia. Beban pembuktian ada di tangan pendaftar.
-
-Angka Visa Emas—USD 2,5 juta dan USD 5 juta—menempatkan Bali sebagai tujuan premium bagi warga Amerika berkekayaan tinggi yang mencari kewarganegaraan tanpa sponsor, bukan alat relokasi berbiaya rendah. Ini adalah segmen klien yang sama sekali berbeda dari pensiunan atau pekerja jarak jauh. Permenimipas 5/2025 tentang perubahan tanggung jawab sponsor layak mendapat perhatian lebih dari panduan berbahasa Inggris biasanya berikan: sponsor Indonesia sekarang membawa paparan hukum yang jauh lebih besar untuk klien asing mereka, dan ini mengubah perhitungan risiko untuk setiap pengaturan KITAS yang didukung perusahaan.
+Angka Golden Visa—USD 2,5 juta dan USD 5 juta—menempatkan Bali sebagai jangkar premium bagi warga negara AS berkecayaan tinggi yang mencari tinggal bebas penjamin, bukan alat relokasi anggaran. Ini adalah segmen klien yang sama sekali berbeda dari pensiunan atau pekerja jarak jauh. Perombakan tanggung jawab penjamin Permenimipas 5/2025 layak mendapat lebih banyak perhatian daripada yang biasanya diberikan oleh panduan berbahasa Inggris: penjamin Indonesia sekarang menanggung paparan hukum yang secara substansial lebih besar bagi tanggungan asing mereka, dan ini mengubah perhitungan risiko bagi setiap pengaturan KITAS berbasis perusahaan.
 
 ---
 
 ## Langkah Selanjutnya
 
 <Checklist
-  title="Tindakan yang Perlu Dilakukan"
+  title="Action Items"
   items={[
-    { text: "Bagi Warga Asing", subItems: ["Periksa artikel untuk tindakan spesifik"] },
-    { text: "Bagi Investor", subItems: ["yang mendekati ambang batas Visa Emas USD 2,5 juta harus memperoleh penilaian hukum mengenai proses jaminan finansial Jaminan Keimigrasian sebelum mengucurkan modal. Siapa pun yang memegang KITAS yang diterbitkan sebelum UU 63/2024 harus memverifikasi bahwa MERP muncul di izin mereka atau meminta konfirmasi tertulis dari agen imigrasi mereka. Jangan pernah melanggar masa tinggal: denda harian Rp 1.000.000 tidak memiliki masa tenggang."] },
+    { text: "Tindakan Direkomendasikan", subItems: ["Warga negara AS yang merencanakan relokasi ke Bali harus menetapkan niat utama mereka—wisata, kerja jarak jauh, pensiun, atau investasi—sebelum memilih titik masuk visa, karena dokumen masuk menentukan opsi konversi apa yang tersedia di dalam negeri. Mereka yang tiba dalam 90 hari: masuklah dengan Visit Visa C1 daripada Visa on Arrival jika ada kemungkinan memperpanjang lebih dari 60 hari. Digital nomad harus menyiapkan dokumentasi pendapatan 12 bulan yang mengonfirmasi ambang USD 60.000 dan memperoleh konfirmasi tertulis tentang domisili pemberi kerja non-Indonesia mereka. Investor yang mendekati ambang Golden Visa USD 2,5 juta harus memperoleh penilaian hukum tentang proses jaminan keuangan Jaminan Keimigrasian sebelum berkomitmen modal. Siapa pun yang memegang KITAS yang diterbitkan sebelum UU 63/2024 harus memverifikasi apakah MERP muncul pada izin mereka atau meminta konfirmasi tertulis dari agen imigrasi mereka. Jangan pernah keterlambatan: denda harian Rp 1.000.000 tidak memiliki periode toleransi."] },
   ]}
 />
 
@@ -4676,7 +4659,7 @@ Angka Visa Emas—USD 2,5 juta dan USD 5 juta—menempatkan Bali sebagai tujuan 
 
 <AskZantara
   question="Memiliki pertanyaan tentang topik ini?"
-  placeholder="Tanyakan ke Zantara AI untuk saran yang dipersonalisasi..."
+  placeholder="Tanyakan kepada Zantara AI untuk saran yang dipersonalisasi..."
 />
 
 ---
@@ -16775,34 +16758,21 @@ Indonesia has formalized its legal pathway for foreign digital nomads through th
 KONTEN:
 ## TL;DR
 
-<InfoCard
-  title="Ringkasan Cepat"
-  items={[
-    { label: "Apakah Saya Harus Khawatir?", value: "Tergantung" },
-    { label: "Tingkat Risiko", value: "Sedang" },
-    {
-      label: "Siapa yang Terpengaruh",
-      value: "Warga Negara Asing dan Investor di Indonesia",
-    },
-    { label: "Kapan", value: "Periksa artikel untuk tanggal spesifik" },
-  ]}
-/>
-
-**Indonesia telah menormalisasi jalur hukumnya bagi digital nomad asing melalui E33G KITAS, klasifikasi izin yang berada di bawah kategori visa Rumah Kedua (rumah kedua) yang lebih luas**
+**Indonesia telah menormalisasi jalur hukumnya bagi digital nomad asing melalui E33G KITAS, sebuah klasifikasi izin yang berada di bawah kategori visa Rumah Kedua (rumah kedua) yang lebih luas.**
 
 ---
 
-## Fakta-Fakta
+## Fakta-fakta
 
-Indonesia telah menormalisasi jalur hukumnya bagi digital nomad asing melalui E33G KITAS, klasifikasi izin yang berada di bawah kategori visa Rumah Kedua (rumah kedua) yang lebih luas. Regulasi dasar — Peraturan Pemerintah PP No. 40/2023 dan PP No. 63/2023 — telah menetapkan arsitektur hukum, yang kemudian dioperasionalkan melalui Peraturan Menteri Permenkumham No. 22 Tahun 2023 dan penggantinya pada 2024, Permenkumham No. 11 Tahun 2024.
+Indonesia telah menormalisasi jalur hukumnya bagi digital nomad asing melalui E33G KITAS, sebuah klasifikasi izin yang berada di bawah kategori visa Rumah Kedua (rumah kedua). Regulasi dasar — Peraturan Pemerintah PP No. 40/2023 dan PP No. 63/2023 — telah menetapkan arsitektur hukum, yang kemudian dioperasionalkan melalui Peraturan Menteri Hukum dan HAM Permenkumham No. 22 Tahun 2023 dan penggantinya pada tahun 2024, yaitu Permenkumham No. 11 Tahun 2024.
 
-Untuk memenuhi syarat, pemohon harus memegang kontrak kerja yang sah dengan perusahaan yang terdaftar di luar Indonesia dan menunjukkan pendapatan tahunan minimum USD 60.000 yang berasal sepenuhnya dari sumber asing. Izin tersebut berlaku selama maksimum 12 bulan, tanpa ketentuan untuk penerbitan multi-tahun di bawah hukum saat ini. Secara kritis, pemegang E33G KITAS secara tegas dilarang menghasilkan pendapatan dari entitas Indonesia, baik sebagai karyawan, kontraktor, maupun penyedia layanan bagi bisnis lokal.
+Untuk memenuhi syarat, pemohon harus memiliki kontrak kerja yang sah dengan perusahaan yang terdaftar di luar Indonesia dan menunjukkan penghasilan tahunan minimum sebesar USD 60.000 yang berasal sepenuhnya dari sumber asing. Izin tersebut berlaku selama maksimum 12 bulan, tanpa ketentuan untuk penerbitan multi-tahun di bawah hukum saat ini. Secara kritis, pemegang E33G KITAS secara tegas dilarang menghasilkan pendapatan dari entitas Indonesia, baik sebagai karyawan, kontraktor, maupun penyedia jasa bagi bisnis lokal.
 
-Satu reformasi signifikan yang diperkenalkan oleh Permenkumham No. 11 Tahun 2024 (Pasal 191) dan Permenimipas No. 5 Tahun 2025 menghilangkan persyaratan tradisional untuk penjamin perorangan atau korporasi Indonesia (Penjamin). Sebagai gantinya, pendapatan asing yang ditunjukkan oleh pemohon berfungsi sebagai jaminan imigrasi — perubahan yang secara substansial mengurangi gesekan administratif bagi pemohon yang tidak memiliki kontak institusional di Indonesia.
+Satu reformasi signifikan yang diperkenalkan oleh Permenkumham No. 11 Tahun 2024 (Pasal 191) dan Permenimipas No. 5 Tahun 2025 menghapus persyaratan tradisional untuk penjamin perorangan atau korporasi Indonesia (Penjamin). Sebagai gantinya, penghasilan asing yang ditunjukkan oleh pemohon berfungsi sebagai jaminan imigrasi — sebuah perubahan yang secara substansial mengurangi gesekan administratif bagi pemohon yang tidak memiliki kontak institusional di Indonesia.
 
-Pembaruan legislatif lebih lanjut di bawah UU No. 63 Tahun 2024 mengintegrasikan Izin Keluar-Masuk Berulang (MERP) langsung ke dalam E33G KITAS pada saat penerbitan. Ini menghilangkan persyaratan yang secara historis rumit untuk mengajukan izin keluar-masuk secara terpisah setiap kali seorang nomad bepergian ke luar negeri — peningkatan kualitas hidup praktis bagi para pelancong yang sering bepergian.
+Pembaruan legislatif lebih lanjut di bawah UU No. 63 Tahun 2024 mengintegrasikan Izin Keluar-Masuk Berulang (MERP) langsung ke dalam E33G KITAS pada saat penerbitan. Hal ini menghilangkan persyaratan yang secara historis rumit untuk mengajukan izin keluar-masuk secara terpisah setiap kali seorang nomad bepergian ke luar negeri — sebuah peningkatan kualitas hidup praktis bagi para pelancong sering bepergian.
 
-Di Bali khususnya, penegakan hukum telah diperketat di bawah kerangka kerja pengawasan imigrasi antar-lembaga TIMPORA. Pemantauan berbasis intelijen menargetkan warga negara asing yang melakukan pekerjaan digital pada visa wisata (kelas C1) atau status Visa on Arrival. Pelanggaran memicu razia gabungan (Sidak), pencabutan izin segera, deportasi paksa, dan penempatan dalam daftar hitam imigrasi nasional Indonesia (Cekal). Secara terpisah, pemegang E33G KITAS aktif dibebaskan dari Pajak Wisatawan Bali Rp 150.000 yang diperkenalkan di bawah Perda Provinsi Bali No. 2 Tahun 2025, asalkan mereka mendaftar melalui portal pengecualian regional.
+Di Bali khususnya, penegakan hukum telah diperketat di bawah kerangka pengawasan imigrasi antar-lembaga TIMPORA. Pemantauan yang dipimpin oleh intelijen menargetkan orang asing yang melakukan pekerjaan digital pada visa wisata (kelas C1) atau status Visa on Arrival. Pelanggaran memicu operasi gabungan (Sidak), pencabutan izin segera, deportasi paksa, dan penempatan dalam daftar hitam imigrasi nasional Indonesia (Cekal). Secara terpisah, pemegang E33G KITAS aktif dibebaskan dari Bea Wisata Bali Rp 150.000 yang diperkenalkan di bawah Perda Provinsi Bali No. 2 Tahun 2025, asalkan mereka mendaftarkan diri melalui portal pengecualian daerah.
 
 ---
 
@@ -16810,31 +16780,23 @@ Di Bali khususnya, penegakan hukum telah diperketat di bawah kerangka kerja peng
 
 ### Wawasan Tersembunyi
 
-Kerangka kerja E33G KITAS mewakili upaya paling serius Indonesia untuk melegitimasi ekonomi digital nomad sambil melindungi pasar tenaga kerja domestik. Ambang batas pendapatan tahunan USD 60.000 secara sengaja dikalibrasi — cukup tinggi untuk menyaring wisatawan berpenghasilan rendah yang menyalahgunakan izin tinggal, namun dapat diakses oleh sebagian besar profesional yang bekerja untuk perusahaan Barat.
+Kerangka kerja E33G KITAS mewakili upaya paling serius Indonesia untuk melegitimasi ekonomi digital nomad sambil melindungi pasar tenaga kerja domestik. Ambang batas penghasilan tahunan USD 60.000 sengaja dikalibrasikan — cukup tinggi untuk menyaring wisatawan berpenghasilan rendah yang menyalahgunakan izin tinggal, namun dapat diakses oleh sebagian besar profesional yang bekerja bagi perusahaan Barat.
 
-Yang paling mengkhawatirkan kami untuk klien kami adalah
+Yang paling kami khawatirkan untuk klien kami adalah celah penegakan hukum. Banyak digital nomad tiba dengan VOA atau perpanjangan visa wisata yang secara tulus tidak menyadari bahwa pekerjaan jarak jauh mereka — bahkan untuk perusahaan sepuluh zona waktu jauhnya — merupakan eksposur hukum di Indonesia. Kapasitas pengawasan TIMPORA di Bali telah meningkat secara materiil sejak 2024, dan kami melihat tindakan penegakan hukum yang sebelumnya merupakan risiko teoritis dua tahun lalu kini menjadi realitas operasional.
 
-### Analisis Kami
-
-celah penegakan hukum. Banyak digital nomad tiba dengan VOA atau perpanjangan visa wisata yang sebenarnya tidak menyadari bahwa pekerjaan jarak jauh mereka — bahkan untuk perusahaan yang berada sepuluh zona waktu jauh — merupakan eksposur hukum di Indonesia. Kapasitas pengawasan TIMPORA di Bali telah meningkat secara material sejak 2024, dan kami melihat tindakan penegakan hukum yang sebelumnya merupakan risiko teoritis dua tahun lalu kini menjadi realitas operasional.
-
-Penghapusan persyaratan Penjamin adalah kemenangan sejati. Sebelumnya, pemohon memerlukan sponsor Indonesia, yang menciptakan hambatan birokrasi bagi mereka yang tidak memiliki jaringan lokal yang mapan. Model jaminan berbasis pendapatan sejalan dengan cara kerja yurisdiksi yang setara dan menghilangkan hambatan berarti bagi kepatuhan hukum.
+Penghapusan persyaratan Penjamin adalah kemenangan sejati. Sebelumnya, pemohon membutuhkan sponsor Indonesia, yang menciptakan hambatan birokrasi bagi mereka yang tidak memiliki jaringan lokal yang mapan. Model jaminan berbasis penghasilan selaras dengan cara kerja yurisdiksi yang setara dan menghilangkan penghalang berarti bagi kepatuhan hukum.
 
 ---
 
 ## Langkah Selanjutnya
 
 <Checklist
-  title="Item Tindakan"
+  title="Action Items"
   items={[
     {
-      text: "Untuk Warga Negara Asing",
-      subItems: ["Periksa artikel untuk tindakan spesifik"],
-    },
-    {
-      text: "Untuk Investor",
+      text: "Bagi Investor",
       subItems: [
-        "Jika Anda saat ini bekerja secara jarak jauh di Bali dengan visa wisata atau VOA, mulailah proses aplikasi E33G KITAS segera — jangan menunggu kontak penegakan hukum. Kumpulkan kontrak kerja asing Anda dan dokumentasi pendapatan tahunan dari sumber asing yang melebihi USD 60.000 sebelum mendekati imigrasi.\n\nJika Anda memegang E33G KITAS yang ada, daftar untuk pengecualian Pajak Wisatawan Bali melalui portal regional untuk menghindari membayar biaya Rp 150.000 secara keliru. Konfirmasi bahwa MERP Anda terintegrasi ke dalam dokumen izin saat ini — izin yang diterbitkan sebelum UU No. 63/2024 mungkin memerlukan penerbitan ulang.\n\nJika Anda memiliki pendapatan dari sumber Indonesia bersama dengan pekerjaan asing Anda, bicaralah dengan konsultan imigrasi Indonesia berlisensi sebelum mengajukan permohonan. Kategori E33G secara eksplisit mengecualikan situasi pendapatan campuran — aplikasi yang salah dapat memicu pemeriksaan alih-alih melindungi Anda.",
+        "Jika Anda saat ini bekerja secara jarak jauh di Bali dengan visa wisata atau VOA, mulailah proses aplikasi E33G KITAS segera — jangan menunggu kontak penegakan hukum. Kumpulkan kontrak kerja asing Anda dan dokumentasi penghasilan tahunan dari sumber asing yang melebihi USD 60.000 sebelum mendekati imigrasi.\n\nJika Anda memegang E33G KITAS yang ada, daftarkan diri untuk pengecualian Bea Wisata Bali melalui portal daerah untuk menghindari membayar biaya Rp 150.000 secara keliru. Konfirmasi bahwa MERP telah terintegrasi ke dalam dokumen izin Anda saat ini — izin yang diterbitkan sebelum UU No. 63/2024 mungkin memerlukan penerbitan ulang.\n\nJika Anda memiliki penghasilan dari sumber Indonesia bersama dengan pekerjaan asing Anda, berbicaralah dengan konsultan imigrasi Indonesia berlisensi sebelum mengajukan aplikasi. Kategori E33G secara eksplisit mengecualikan situasi pendapatan campuran — aplikasi yang salah dapat memicu pemeriksaan alih-alih melindungi Anda.",
       ],
     },
   ]}
@@ -16843,8 +16805,8 @@ Penghapusan persyaratan Penjamin adalah kemenangan sejati. Sebelumnya, pemohon m
 ---
 
 <AskZantara
-  question="Memiliki pertanyaan tentang topik ini?"
-  placeholder="Tanyakan kepada Zantara AI untuk saran yang dipersonalisasi..."
+  question="Have questions about this topic?"
+  placeholder="Ask Zantara AI for personalized advice..."
 />
 
 ---
@@ -98800,22 +98762,15 @@ PUBLISHED: 2026-01-15
 Punya KITAS dan perlu bepergian ke luar negeri? Inilah yang perlu Anda ketahui tentang izin perjalanan (MERP, SERP, EPO).
 
 KONTEN:
-import {
-  ComparisonTable,
-  Checklist,
-  InfoCard,
-  AskZantara,
-} from "@/components/insights/interactive";
-
 # Izin Keluar & Masuk Kembali Indonesia 2026: Panduan Pemegang KITAS
 
-Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami aturan izin keluar dan masuk kembali agar status tinggal Anda tetap aman.
+Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda perlu memahami aturan izin keluar dan masuk kembali. Berikut adalah panduan Anda.
 
-## Jenis-Jenis Izin
+## Jenis Izin
 
 <ComparisonTable
-  title="Tipe Izin Keluar/Masuk Kembali"
-  description="Mana yang Anda butuhkan?"
+  title="Jenis Izin Keluar/Masuk Kembali"
+  description="Yang mana yang Anda butuhkan?"
   items={[
     {
       name: "MERP",
@@ -98832,20 +98787,20 @@ Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami
       name: "SERP",
       subtitle: "Single Exit Re-Entry",
       values: {
-        Perjalanan: "Satu Kali",
-        Durasi: "Periode Tertentu",
-        Biaya: "~Rp 500 Ribu",
-        "Cocok untuk": "Sekali jalan",
+        Trips: "Satu perjalanan",
+        Duration: "Periode tertentu",
+        Cost: "~IDR 500K",
+        "Best for": "Perjalanan sekali waktu",
       },
     },
     {
       name: "EPO",
       subtitle: "Exit Permit Only",
       values: {
-        Perjalanan: "Keluar Saja",
-        Durasi: "N/A",
-        Biaya: "~Rp 500 Ribu",
-        "Cocok untuk": "Pulang selamanya",
+        Trips: "Keluar saja (tanpa kembali)",
+        Duration: "N/A",
+        Cost: "~IDR 500K",
+        "Best for": "Meninggal secara permanen",
       },
     },
   ]}
@@ -98857,15 +98812,102 @@ Jika Anda memegang KITAS dan perlu bepergian ke luar negeri, Anda wajib memahami
 
 ### Apa itu MERP?
 
-<InfoCard variant="note" title="Pilihan Paling Populer">
+<InfoCard variant="note" title="Pilihan Paling Umum">
 **MERP memungkinkan:**
 
-- Keluar dan masuk Indonesia berkali-kali tanpa batas.
-- Berlaku selama masa aktif KITAS Anda.
-- Tidak perlu mengajukan izin setiap kali akan bepergian.
-- Sangat praktis untuk pebisnis atau traveler.
+- Keluar dan masuk tanpa batas
+- Berlaku selama masa berlaku KITAS
+- Tidak perlu mengajukan setiap kali perjalanan
+- Paling nyaman untuk pelancong bisnis
 
-Sebagian besar pemegang KITAS mendapatkan MERP secara otomatis saat pembuatan KITAS.
+Sebagian besar pemegang KITAS mendapatkan MERP sejak awal.
+
+</InfoCard>
+
+### Detail MERP
+
+| Fitur       | Detail                       |
+| ------------- | ----------------------------- |
+| Berlaku      | Sama dengan masa berlaku KITAS        |
+| Perjalanan diizinkan | Tak terbatas                     |
+| Pengajuan   | Biasanya bersamaan dengan pemrosesan KITAS |
+| Biaya          | Atas permintaan              |
+| Pemrosesan    | 3-5 hari kerja              |
+
+### Mengajukan MERP
+
+<Checklist
+  title="Pengajuan MERP"
+  description="Yang Anda butuhkan"
+  persistKey="merp-checklist"
+  items={[
+    {
+      id: "kitas",
+      label: "KITAS yang valid",
+      description: "Kartu/stiker KITAS saat ini",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "passport",
+      label: "Paspor",
+      description: "Asli + fotokopi",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "form",
+      label: "Formulir pengajuan",
+      description: "Formulir imigrasi",
+      required: true,
+      category: "application",
+    },
+    {
+      id: "photo",
+      label: "Foto paspor",
+      description: "Foto terbaru",
+      required: true,
+      category: "documents",
+    },
+    {
+      id: "fee",
+      label: "Pembayaran",
+      description: "Biaya pemerintah",
+      required: true,
+      category: "payment",
+    },
+  ]}
+  categories={[
+    { id: "documents", label: "Dokumen", color: "blue" },
+    { id: "application", label: "Pengajuan", color: "green" },
+    { id: "payment", label: "Pembayaran", color: "amber" },
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## SERP (Single Exit Re-Entry Permit)
+
+### Kapan Digunakan
+
+| Kasus Penggunaan         | SERP Masuk Akal     |
+| ---------------- | -------------------- |
+| Satu perjalanan yang direncanakan | Masa berlaku KITAS singkat |
+| Hemat anggaran | Menghemat uang vs MERP  |
+| Perjalanan jarang      | Tidak sering bepergian   |
+
+### Keterbatasan SERP
+
+<InfoCard variant="warning" title="Satu Perjalanan Saja">
+**SERP hanya mengizinkan SATU keluar dan masuk kembali:**
+
+- Digunakan habis setelah satu perjalanan
+- Harus mengajukan lagi untuk perjalanan berikutnya
+- Kurang nyaman dibanding MERP
+- Pertimbangkan MERP jika Anda mungkin bepergian lebih banyak
+
+Jika Anda kemungkinan akan bepergian beberapa kali, MERP lebih bernilai.
 
 </InfoCard>
 
@@ -98875,23 +98917,90 @@ Sebagian besar pemegang KITAS mendapatkan MERP secara otomatis saat pembuatan KI
 
 ### Apa itu EPO?
 
-| Tujuan              | Detail                                       |
-| ------------------- | -------------------------------------------- |
-| Keberangkatan Final | Meninggalkan Indonesia selamanya             |
-| Pembatalan KITAS    | Wajib dilakukan saat kontrak habis           |
-| Tidak Bisa Kembali  | Tidak bisa masuk lagi dengan KITAS yang sama |
+| Tujuan           | Detail                         |
+| ----------------- | ------------------------------- |
+| Keberangkatan akhir   | Meninggalkan Indonesia secara permanen   |
+| Pembatalan KITAS | Biasanya menyertai pembatalan |
+| Tidak kembali         | Tidak dapat masuk kembali dengan KITAS yang sama   |
 
-### Kapan EPO Dibutuhkan?
+### Kapan EPO Diperlukan
 
 <InfoCard variant="warning" title="Keluar Permanen">
-**EPO diperlukan saat:**
+**EPO diperlukan ketika:**
 
-- Berhenti bekerja di Indonesia.
-- Tidak memperpanjang KITAS.
-- Ganti ke jenis visa lain (misal: dari KITAS ke B211).
-- Pindah domisili ke luar negeri secara permanen.
+- Mengakhiri pekerjaan di Indonesia
+- Tidak memperpanjang KITAS
+- Beralih ke jenis visa berbeda
+- Meninggalkan Indonesia secara permanen
 
-EPO secara efektif menghapus status KITAS Anda dari sistem.
+EPO secara efektif membatalkan KITAS Anda.
+
+</InfoCard>
+
+### Proses EPO
+
+| Langkah | Aksi                       |
+| ---- | ---------------------------- |
+| 1    | Ajukan pembatalan KITAS |
+| 2    | Ajukan EPO                |
+| 3    | Bayar biaya                     |
+| 4    | Terima EPO                  |
+| 5    | Harus keberangkatan dalam 7 hari    |
+
+---
+
+## Pertimbangan Praktis
+
+### Sebelum Berpergian
+
+| Periksa                | Aksi                   |
+| -------------------- | ------------------------ |
+| Berlaku MERP        | Pastikan masih valid       |
+| Berlaku KITAS       | Harus mencakup periode perjalanan |
+| Berlaku paspor    | Biasanya 6+ bulan        |
+| Kembali dalam izin   | Jangan melebihi waktu di luar negeri    |
+
+### Di Imigrasi
+
+| Keberangkatan        | Masuk Kembali            |
+| ---------------- | ----------------- |
+| Tampilkan paspor    | Tampilkan paspor     |
+| KITAS discan    | KITAS discan     |
+| MERP diverifikasi    | MERP diverifikasi     |
+| Cap keluar diberikan | Cap masuk diberikan |
+
+### Masalah Umum
+
+| Masalah                   | Solusi                    |
+| ----------------------- | --------------------------- |
+| Tidak ada MERP                 | Ajukan sebelum bepergian         |
+| MERP kadaluarsa            | Perbarui atau dapatkan SERP           |
+| KITAS hilang di luar negeri       | Hubungi kedutaan segera |
+| Kelebihan waktu KITAS di luar negeri | Hubungi imigrasi/agen   |
+
+---
+
+## Ringkasan Biaya
+
+| Izin | Biaya Pemerintah | Biaya Agen    | Total       |
+| ------ | -------------- | ------------ | ----------- |
+| MERP   | IDR 800K-1M    | Atas permintaan | Atas permintaan |
+| SERP   | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+| EPO    | IDR 300-500K   | IDR 300-500K | IDR 600K-1M |
+
+---
+
+## Pemegang KITAP
+
+<InfoCard variant="note" title="KITAP Berbeda">
+**Pemegang KITAP:**
+
+- MERP biasanya sudah termasuk secara otomatis
+- Berlaku lebih lama (5 tahun)
+- Beban administratif lebih sedikit
+- Kebebasan perjalanan yang sama
+
+KITAP lebih nyaman untuk pelancong sering.
 
 </InfoCard>
 
@@ -98901,25 +99010,51 @@ EPO secara efektif menghapus status KITAS Anda dari sistem.
 
 ### Untuk Pemegang KITAS
 
-| Tip                  | Mengapa                         |
-| -------------------- | ------------------------------- |
-| Urus MERP Sejak Awal | Agar bisa berangkat mendadak    |
-| Simpan Salinan       | Paspor, KITAS, dan MERP         |
-| Cek Masa Berlaku     | Paspor minimal 6 bulan          |
-| Gunakan Agen         | Untuk proses perpanjangan cepat |
+| Tips               | Mengapa                     |
+| ----------------- | ----------------------- |
+| Dapatkan MERP lebih awal    | Jangan tunggu sampai perjalanan   |
+| Simpan salinan       | Paspor, KITAS, MERP   |
+| Pantau berlakunya    | Atur pengingat kalender  |
+| Gunakan agen         | Untuk perbaruan            |
+| Kenali sponsor Anda | Mungkin perlu persetujuan mereka |
+
+### Situasi Darurat
+
+| Situasi                  | Aksi                        |
+| -------------------------- | ----------------------------- |
+| Paspor hilang di luar negeri       | Kedutaan Indonesia            |
+| KITAS kadaluarsa saat di luar negeri | Hubungi sponsor/agen         |
+| Darurat medis          | Bantuan kedutaan            |
+| Darurat keluarga           | Dapat bepergian, urus izin nanti |
+
+---
+
+## Perubahan 2024/2026
+
+<InfoCard variant="note" title="Pembaruan Terbaru">
+**Perubahan terbaru:**
+
+- MERP digital semakin umum
+- Beberapa integrasi dengan sistem visa
+- Pemrosesan mungkin lebih cepat
+- Selalu periksa persyaratan saat ini
+
+Persyaratan dapat berubah - verifikasi sebelum bepergian.
+
+</InfoCard>
 
 ---
 
 ## Pertanyaan Umum
 
 <AskZantara
-  context="Exit permit, re-entry permit, MERP, KITAS travel, EPO Indonesia"
-  placeholder="Tanya tentang izin keluar/masuk..."
+  context="Izin keluar, izin masuk kembali, MERP, perjalanan KITAS, EPO Indonesia"
+  placeholder="Tanya tentang izin keluar/masuk kembali..."
   suggestedQuestions={[
     "Apakah saya butuh MERP untuk setiap perjalanan?",
-    "Bagaimana jika KITAS saya habis saat saya di luar negeri?",
-    "Berapa lama proses pembuatan MERP?",
-    "Bisakah saya membatalkan EPO?",
+    "Bagaimana jika KITAS saya kadaluarsa saat di luar negeri?",
+    "Berapa lama proses MERP?",
+    "Bisakah saya membatalkan EPO dan tinggal?",
   ]}
 />
 
@@ -98927,9 +99062,9 @@ EPO secara efektif menghapus status KITAS Anda dari sistem.
 
 ## Artikel Terkait
 
-- [Panduan KITAS Kerja](/insights/immigration/kitas-work-permit-guide)
-- [Grafik Perbandingan Visa](/insights/immigration/visa-comparison-chart)
-- [Sanksi Overstay](/insights/immigration/overstay-penalties)
+- [Panduan Izin Kerja KITAS](/visas/working-kitas-e23-indonesias-revised-legal-framework-explained)
+- [Grafik Perbandingan Visa](/visas/indonesia-visa-timeline-comparison)
+- [Sanksi Kelebihan Waktu](/visas/visa-overstay-penalties-indonesia-guide)
 
 ---
 TITLE: Panduan KITAS Investor: Tinggal di Indonesia sebagai Investor 2026
