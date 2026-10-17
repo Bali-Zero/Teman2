@@ -26,14 +26,18 @@ build() { # fresh fake world: $ROOT, $H (HOME), $FB (stub dir), $FX (fixtures)
 #!/bin/bash
 { printf 'CALL'; printf ' [%s]' "$@"; printf '\n'; } | tr '\n' ' ' >> "$MJ_ROOT/docker.log"; echo >> "$MJ_ROOT/docker.log"
 case "$1" in
-  inspect) cat "$MJ_FX/running" 2>/dev/null || echo true; exit 0 ;;
+  inspect)
+    case "$(cat "$MJ_FX/inspect_mode" 2>/dev/null)" in
+      absent) echo "Error: No such object: zero-runner-1" >&2; exit 1 ;;
+      fail) echo "Cannot connect to the Docker daemon" >&2; exit 1 ;;
+    esac
+    cat "$MJ_FX/running" 2>/dev/null || echo true; exit 0 ;;
   exec)
     if [ "$3" = df ]; then
       [ -e "$MJ_FX/ctr_fail" ] && exit 1
       printf 'Filesystem 1024-blocks Used Available Capacity Mounted\noverlay 61000000 1 %s %s%% /\n' "$(cat "$MJ_FX/ctr_kb")" "$(cat "$MJ_FX/ctr_pct")"; exit 0
     fi
     if [ "$3" = sh ] && [ "$4" = -c ]; then
-      case "$5" in *"exit 76"*) [ -e "$MJ_FX/tool_absent" ] && { n=$(ls "$MJ_ROOT/scripts" | wc -l | tr -d ' '); printf '%s' "$5" > "$MJ_ROOT/scripts/$n.sh"; exit 76; } ;; esac
       case "$5" in
         *"exit 75"*) n=$(ls "$MJ_ROOT/scripts" | wc -l | tr -d ' '); printf '%s' "$5" > "$MJ_ROOT/scripts/$n.sh"
                      exit "$(cat "$MJ_FX/exec_rc" 2>/dev/null || echo 0)" ;;
@@ -86,7 +90,6 @@ tree() { (cd "$H" && find Library -print | LC_ALL=C sort); }
 receipt() { tail -1 "$ROOT/journal.jsonl" 2>/dev/null; }
 step_status() { receipt | "$REAL_PY" -c 'import json,sys; d=json.loads(sys.stdin.read()); s=[x for x in d["steps"] if x["step"]==sys.argv[1]]; print(s[0]["status"]+":"+s[0]["reason"] if s else "none")' "$1" 2>/dev/null; }
 clean_script() { for f in "$ROOT"/scripts/*.sh; do [ -f "$f" ] && grep -q 'cache/pip' "$f" && cat "$f"; done; }
-tool_script() { for f in "$ROOT"/scripts/*.sh; do [ -f "$f" ] && grep -q '_work/_tool' "$f" && cat "$f"; done; }
 
 echo "== T1 dry-run mutates nothing =="
 build; echo 10000000 > "$FX/host_kb"; BEFORE=$(tree); runp
@@ -135,25 +138,33 @@ done
 { printf '%s' "$S" | grep -q 'tmp\*' && printf '%s' "$S" | grep -q -- '-mtime +0'; } && ok "tmp* only when older than a day" || no "tmp* age guard"
 { ! printf '%s' "$S" | grep -E '(^|[|;] *)find ' | grep -qv -- '-mindepth 1'; } && ok "every /tmp find is mindepth 1 (never /tmp itself)" || no "mindepth missing"
 if printf '%s' "$S" | grep -Eq '_work/|_actions|rm -rf /( |$)|volume|[[:space:]]-a[[:space:]]'; then no "forbidden token in clean script"; else ok "no _work / _actions / rm of / / volume / -a"; fi
-printf '%s' "$S" | head -1 | grep -qF '[R]unner' && ok "idle re-check is the first line of the exec script" || no "idle re-check not first"
-[ -z "$(tool_script)" ] && ok "_tool untouched below the threshold" || no "_tool removed at 40%"
-build; echo 80 > "$FX/ctr_pct"; runp --apply; T="$(tool_script)"
-[ -n "$T" ] && ok "_tool cleared at >= threshold" || no "_tool not cleared at 80%"
-if printf '%s' "$T" | grep -Eq '_work/zero|_actions|rm -rf /( |$)'; then no "tool script reaches beyond _tool"; else ok "tool script confined to _tool contents"; fi
-printf '%s' "$T" | head -1 | grep -qF '[R]unner' && ok "tool script re-checks idle first" || no "tool script lacks re-check"
+{ printf '%s' "$S" | head -1 | grep -qF 'ps -eo args' && printf '%s' "$S" | head -3 | grep -q 'exit 74' && printf '%s' "$S" | head -3 | grep -q 'exit 75'; } && ok "fail-closed idle re-check is the first thing the exec script does" || no "idle re-check not first"
+{ ! cat "$ROOT"/scripts/*.sh "$ROOT/docker.log" | grep -q '_work'; } && ok "no exec script or docker call mentions _work" || no "_work mentioned"
+IC="$(printf '%s' "$S" | head -3)"
+for m in "fail:74" "empty:74" "worker:75" "idle:0"; do
+  mkdir -p "$ROOT/ps-${m%%:*}"
+  case "${m%%:*}" in
+    fail) printf '#!/bin/sh\nexit 1\n' ;;
+    empty) printf '#!/bin/sh\nexit 0\n' ;;
+    worker) printf '#!/bin/sh\necho "/bin/bash"\necho "/home/runner/bin/Runner.Worker spawnclient 1 2"\n' ;;
+    idle) printf '#!/bin/sh\necho "/bin/bash"\necho "sleep 5"\n' ;;
+  esac > "$ROOT/ps-${m%%:*}/ps"; chmod +x "$ROOT/ps-${m%%:*}/ps"
+  PATH="$ROOT/ps-${m%%:*}:$SYS_PATH" sh -c "$IC
+:"; r=$?
+  [ "$r" -eq "${m##*:}" ] && ok "in-container ps ${m%%:*} -> idle re-check rc ${m##*:}" || no "idle re-check ${m%%:*}: rc=$r want ${m##*:}"
+done
+build; echo 74 > "$FX/exec_rc"; runp --apply
+{ [ "$(step_status runner_cache)" = "error:idle-recheck-failed" ] && [ "$RC" -eq 1 ]; } && ok "exec rc 74 -> step error idle-recheck-failed" || no "rc74 mapping: $(step_status runner_cache) rc=$RC"
 grep -Eq '^CALL \[(rm|stop|restart|kill|volume|system)\]' "$ROOT/docker.log" && no "forbidden docker verb" || ok "no docker rm/stop/restart/volume/system"
 
 echo "== T4b rename-then-delete =="
-build; echo 80 > "$FX/ctr_pct"; runp --apply; S="$(clean_script)"; T="$(tool_script)"
+build; runp --apply; S="$(clean_script)"
 for t in "/home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-" "/home/runner/.cache/uv /home/runner/.cache/.janitor-trash-uv-" "/tmp/pytest-of-runner /tmp/.janitor-trash-pytest-"; do
   printf '%s' "$S" | grep -qF "mv $t" && ok "atomic mv to trash: ${t%% *}" || no "no mv for ${t%% *}"
 done
-printf '%s' "$T" | grep -qF 'mv /home/runner/_work/_tool /home/runner/_work/.janitor-trash-tool-' && ok "atomic mv to trash: _work/_tool" || no "no mv for _tool"
-{ ! printf '%s\n%s\n' "$S" "$T" | grep 'rm -rf' | grep -qv 'janitor-trash-'; } && ok "every rm -rf names only .janitor-trash-* (no direct delete of a target)" || no "direct rm -rf of a target"
+{ ! printf '%s\n' "$S" | grep 'rm -rf' | grep -qv 'janitor-trash-'; } && ok "every rm -rf names only .janitor-trash-* (no direct delete of a target)" || no "direct rm -rf of a target"
 { printf '%s' "$S" | grep -n 'rm -rf' | head -1 | cut -d: -f1 | { read a; [ "$a" -lt "$(printf '%s' "$S" | grep -n 'mv /home/runner/.cache/pip' | cut -d: -f1)" ]; }; } && ok "leftover-trash sweep runs before the new renames" || no "sweep order"
 printf '%s' "$S" | grep -E 'rm -rf' | grep -qF -- '-mindepth 1 -maxdepth 1 -name ".janitor-trash-*"' && ok "sweep is bounded (mindepth 1, maxdepth 1, exact prefix)" || no "sweep unbounded"
-build; touch "$FX/tool_absent"; echo 80 > "$FX/ctr_pct"; runp --apply
-{ [ "$(step_status runner_cache)" = "done:tool-absent" ] && [ "$RC" -eq 0 ]; } && ok "_tool absent above threshold -> no-op, not an error" || no "tool-absent: $(step_status runner_cache) rc=$RC"
 
 echo "== T5 docker / colima / npm / uv argv =="
 build; runp --apply
@@ -172,6 +183,11 @@ build; echo 1 > "$FX/colima_rc"; runp --apply
 { [ "$(step_status vm_trim)" = "error:fstrim-failed" ] && [ "$RC" -eq 1 ]; } && ok "failed fstrim -> error, exit 1" || no "fstrim failure handling"
 build; echo false > "$FX/running"; runp --apply
 [ "$(step_status runner_cache)" = "skipped:container-not-running" ] && ok "stopped container -> skipped" || no "container-not-running"
+build; echo absent > "$FX/inspect_mode"; runp --apply
+{ [ "$(step_status runner_cache)" = "skipped:container-not-running" ] && grep -q 'runner_pct=na' "$ROOT/out.txt" && [ "$RC" -eq 0 ]; } && ok "inspect: no such object -> container absent, skipped, runner_pct na, exit 0" || no "inspect absent: $(step_status runner_cache) rc=$RC"
+build; echo fail > "$FX/inspect_mode"; runp --apply
+{ [ "$(step_status runner_cache)" = "error:inspect-failed" ] && [ "$(step_status floor)" = "error:inspect-failed" ] && tail -1 "$ROOT/out.txt" | grep -q '^level=unknown$' && [ "$RC" -eq 1 ]; } && ok "inspect: any other failure -> runner_cache error, floor level unknown" || no "inspect fail: $(step_status runner_cache) $(step_status floor) rc=$RC"
+! grep -q 'rm -rf' "$ROOT/docker.log" && ok "nothing deleted when inspect failed" || no "deleted despite inspect failure"
 build; mkdir "$ROOT/nodocker"
 for u in bash sh perl find sed awk grep rm cat date tail head tr ls wc env stat touch dirname mkdir hostname sleep printf df; do ln -s "$(command -v $u)" "$ROOT/nodocker/$u" 2>/dev/null; done
 HOME="$H" PATH="$ROOT/nodocker" MINI_DISK_JANITOR_JOURNAL="$ROOT/journal.jsonl" MINI_DISK_JANITOR_DF_PATH=/ bash "$PAYLOAD" --apply >/dev/null 2>&1
@@ -246,10 +262,23 @@ HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$PAYLOAD" MIN
 { [ "$(hbstatus)" = ok ] && grep -q 'previous-run-active' "$HB"; } && ok "live pidfile -> heartbeat ok, note previous-run-active, payload not run" || no "single-instance: $(cat "$HB")"
 rm -f "$ROOT/w.pid"
 rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"
-printf '#!/bin/bash\nkill -TERM "$(ps -o ppid= -p $PPID | tr -d " ")"\nsleep 1\n' > "$ROOT/payload-term.sh"
+printf '#!/bin/bash\nkill -TERM $PPID\nsleep 1\n' > "$ROOT/payload-term.sh"
 HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$ROOT/payload-term.sh" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" /bin/bash "$WRAPPER" >/dev/null 2>&1
 { [ "$(hbstatus)" = error ] && [ ! -e "$ROOT/w.pid" ]; } && ok "signal mid-run -> EXIT trap writes error heartbeat and frees the lock" || no "abnormal exit: $(hbstatus)"
 grep -q 'KeepAlive' "$HERE/infra/launchagents/com.nuzantara.mini-disk-janitor.plist" && no "plist has KeepAlive" || ok "plist is one-shot (no KeepAlive)"
+
+echo "== T9b stale lock and deadline =="
+build; WENV=""; rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"
+printf '#!/bin/bash\nprintf "summary freed_kb=0 host_free_gb=50 runner_pct=40 busy=0 errors=0\\nlevel=ok\\n"\n' > "$ROOT/payload-ok.sh"
+sleep 30 & SP=$!; echo $SP > "$ROOT/w.pid"; touch -t 202001010000 "$ROOT/w.pid"
+HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$ROOT/payload-ok.sh" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" /bin/bash "$WRAPPER" >/dev/null 2>&1; kill $SP 2>/dev/null; wait $SP 2>/dev/null
+HB="$ROOT/home2/.organism/last_seen/mini.disk_janitor.json"
+{ [ "$(hbstatus)" = ok ] && grep -q 'level=ok' "$HB" && ! grep -q 'previous-run-active' "$HB"; } && ok "live pid on an OLD pidfile -> stale lock removed, run proceeds" || no "stale lock: $(cat "$HB")"
+rm -f "$ROOT/w.pid"; rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"
+printf '#!/bin/bash\nexec sleep 30\n' > "$ROOT/payload-hang.sh"
+T0=$(date +%s)
+HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$ROOT/payload-hang.sh" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" MINI_DISK_JANITOR_DEADLINE_S=1 /bin/bash "$WRAPPER" >/dev/null 2>&1; WRC=$?
+{ [ "$(hbstatus)" = error ] && grep -q 'deadline' "$HB" && [ "$WRC" -eq 0 ] && [ $(( $(date +%s) - T0 )) -lt 15 ]; } && ok "payload past the deadline -> killed, heartbeat error note deadline" || no "deadline: $(cat "$HB") rc=$WRC"
 
 echo "== T10 wrapper robustness, floor, journal, plist =="
 build; rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"; : > "$ROOT/afile"
