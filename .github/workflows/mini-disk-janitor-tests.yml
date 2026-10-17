@@ -33,8 +33,13 @@ concurrency:
 
 jobs:
   mini-disk-janitor-tests:
-    name: Mini disk janitor tests
-    runs-on: ubuntu-latest
+    name: Mini disk janitor tests (${{ matrix.os }})
+    # The Mini runs macOS (BSD find/stat, bash 3.2) and CI Linux is GNU: the corpus must hold on both.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7

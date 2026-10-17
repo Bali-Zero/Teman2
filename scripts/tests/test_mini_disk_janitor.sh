@@ -29,9 +29,11 @@ case "$1" in
   inspect) cat "$MJ_FX/running" 2>/dev/null || echo true; exit 0 ;;
   exec)
     if [ "$3" = df ]; then
+      [ -e "$MJ_FX/ctr_fail" ] && exit 1
       printf 'Filesystem 1024-blocks Used Available Capacity Mounted\noverlay 61000000 1 %s %s%% /\n' "$(cat "$MJ_FX/ctr_kb")" "$(cat "$MJ_FX/ctr_pct")"; exit 0
     fi
     if [ "$3" = sh ] && [ "$4" = -c ]; then
+      case "$5" in *"exit 76"*) [ -e "$MJ_FX/tool_absent" ] && { n=$(ls "$MJ_ROOT/scripts" | wc -l | tr -d ' '); printf '%s' "$5" > "$MJ_ROOT/scripts/$n.sh"; exit 76; } ;; esac
       case "$5" in
         *"exit 75"*) n=$(ls "$MJ_ROOT/scripts" | wc -l | tr -d ' '); printf '%s' "$5" > "$MJ_ROOT/scripts/$n.sh"
                      exit "$(cat "$MJ_FX/exec_rc" 2>/dev/null || echo 0)" ;;
@@ -60,6 +62,7 @@ echo "CALL $*" >> "$MJ_ROOT/notify.log"; exit "$(cat "$MJ_FX/notify_rc" 2>/dev/n
 STUB
   cat > "$FB/df" <<'STUB'
 #!/bin/sh
+[ -e "$MJ_FX/df_fail" ] && exit 1
 printf 'Filesystem 1024-blocks Used Available Capacity Mounted\n/dev/x 900000000 1 %s 50%% /\n' "$(cat "$MJ_FX/host_kb")"
 STUB
   printf '#!/bin/sh\necho Mini-Pro2\n' > "$FB/hostname"
@@ -130,8 +133,8 @@ for p in /home/runner/.cache/pip /home/runner/.cache/uv /tmp/pytest-of-runner 'p
   printf '%s' "$S" | grep -Eq -- "$p" && ok "clean script removes $p" || no "clean script lacks $p"
 done
 { printf '%s' "$S" | grep -q 'tmp\*' && printf '%s' "$S" | grep -q -- '-mtime +0'; } && ok "tmp* only when older than a day" || no "tmp* age guard"
-[ "$(printf '%s' "$S" | grep -c -- '-mindepth 1')" -eq 2 ] && ok "every /tmp find is mindepth 1 (never /tmp itself)" || no "mindepth missing"
-if printf '%s' "$S" | grep -Eq '_work|_actions|rm -rf /( |$)|volume|[[:space:]]-a[[:space:]]'; then no "forbidden token in clean script"; else ok "no _work / _actions / rm of / / volume / -a"; fi
+{ ! printf '%s' "$S" | grep -E '(^|[|;] *)find ' | grep -qv -- '-mindepth 1'; } && ok "every /tmp find is mindepth 1 (never /tmp itself)" || no "mindepth missing"
+if printf '%s' "$S" | grep -Eq '_work/|_actions|rm -rf /( |$)|volume|[[:space:]]-a[[:space:]]'; then no "forbidden token in clean script"; else ok "no _work / _actions / rm of / / volume / -a"; fi
 printf '%s' "$S" | head -1 | grep -qF '[R]unner' && ok "idle re-check is the first line of the exec script" || no "idle re-check not first"
 [ -z "$(tool_script)" ] && ok "_tool untouched below the threshold" || no "_tool removed at 40%"
 build; echo 80 > "$FX/ctr_pct"; runp --apply; T="$(tool_script)"
@@ -139,6 +142,18 @@ build; echo 80 > "$FX/ctr_pct"; runp --apply; T="$(tool_script)"
 if printf '%s' "$T" | grep -Eq '_work/zero|_actions|rm -rf /( |$)'; then no "tool script reaches beyond _tool"; else ok "tool script confined to _tool contents"; fi
 printf '%s' "$T" | head -1 | grep -qF '[R]unner' && ok "tool script re-checks idle first" || no "tool script lacks re-check"
 grep -Eq '^CALL \[(rm|stop|restart|kill|volume|system)\]' "$ROOT/docker.log" && no "forbidden docker verb" || ok "no docker rm/stop/restart/volume/system"
+
+echo "== T4b rename-then-delete =="
+build; echo 80 > "$FX/ctr_pct"; runp --apply; S="$(clean_script)"; T="$(tool_script)"
+for t in "/home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-" "/home/runner/.cache/uv /home/runner/.cache/.janitor-trash-uv-" "/tmp/pytest-of-runner /tmp/.janitor-trash-pytest-"; do
+  printf '%s' "$S" | grep -qF "mv $t" && ok "atomic mv to trash: ${t%% *}" || no "no mv for ${t%% *}"
+done
+printf '%s' "$T" | grep -qF 'mv /home/runner/_work/_tool /home/runner/_work/.janitor-trash-tool-' && ok "atomic mv to trash: _work/_tool" || no "no mv for _tool"
+{ ! printf '%s\n%s\n' "$S" "$T" | grep 'rm -rf' | grep -qv 'janitor-trash-'; } && ok "every rm -rf names only .janitor-trash-* (no direct delete of a target)" || no "direct rm -rf of a target"
+{ printf '%s' "$S" | grep -n 'rm -rf' | head -1 | cut -d: -f1 | { read a; [ "$a" -lt "$(printf '%s' "$S" | grep -n 'mv /home/runner/.cache/pip' | cut -d: -f1)" ]; }; } && ok "leftover-trash sweep runs before the new renames" || no "sweep order"
+printf '%s' "$S" | grep -E 'rm -rf' | grep -qF -- '-mindepth 1 -maxdepth 1 -name ".janitor-trash-*"' && ok "sweep is bounded (mindepth 1, maxdepth 1, exact prefix)" || no "sweep unbounded"
+build; touch "$FX/tool_absent"; echo 80 > "$FX/ctr_pct"; runp --apply
+{ [ "$(step_status runner_cache)" = "done:tool-absent" ] && [ "$RC" -eq 0 ]; } && ok "_tool absent above threshold -> no-op, not an error" || no "tool-absent: $(step_status runner_cache) rc=$RC"
 
 echo "== T5 docker / colima / npm / uv argv =="
 build; runp --apply
@@ -164,14 +179,15 @@ HOME="$H" PATH="$ROOT/nodocker" MINI_DISK_JANITOR_JOURNAL="$ROOT/journal.jsonl" 
 
 echo "== T7 floor =="
 build; echo 30000000 > "$FX/host_kb"; runp --apply
-{ tail -1 "$ROOT/out.txt" | grep -q '^level=warning$' && [ ! -s "$ROOT/notify.log" ]; } && ok "host free < warn -> warning, no page" || no "warning level"
+{ tail -1 "$ROOT/out.txt" | grep -q '^level=warning$' && [ "$(wc -l < "$ROOT/notify.log" | tr -d ' ')" = 1 ] \
+  && grep -q -- '--tier digest --source mini.disk_janitor --dedup-key mini-disk-warn-host' "$ROOT/notify.log" && ! grep -q -- '--tier p0' "$ROOT/notify.log"; } && ok "host free < warn -> warning, ONE digest notify, no p0" || no "warning level: $(cat "$ROOT/notify.log" 2>/dev/null)"
 build; echo 10000000 > "$FX/host_kb"; runp --apply
 { tail -1 "$ROOT/out.txt" | grep -q '^level=critical$' && [ "$(wc -l < "$ROOT/notify.log" | tr -d ' ')" = 1 ] \
   && grep -q -- '--tier p0 --source mini.disk_janitor --dedup-key mini-disk-host' "$ROOT/notify.log"; } && ok "host critical -> level critical, ONE p0 page" || no "critical level: $(cat "$ROOT/notify.log" 2>/dev/null)"
 build; echo 10000000 > "$FX/host_kb"; echo 1 > "$FX/notify_rc"; runp --apply
 [ "$RC" -eq 0 ] && ok "notifier failure does not change the exit code" || no "notifier failure rc=$RC"
 build; echo 90 > "$FX/ctr_pct"; runp --apply
-tail -1 "$ROOT/out.txt" | grep -q '^level=warning$' && ok "runner >= 85 -> warning" || no "runner warning"
+{ tail -1 "$ROOT/out.txt" | grep -q '^level=warning$' && grep -q 'dedup-key mini-disk-warn-runner' "$ROOT/notify.log"; } && ok "runner >= 85 -> warning + runner digest" || no "runner warning"
 build; echo 97 > "$FX/ctr_pct"; runp --apply
 { grep -q 'dedup-key mini-disk-runner' "$ROOT/notify.log" && tail -1 "$ROOT/out.txt" | grep -q '^level=critical$'; } && ok "runner >= 95 -> critical + runner page" || no "runner critical"
 build; runp --apply
@@ -204,13 +220,17 @@ build; WENV=""
 wrap 'summary freed_kb=10485760 host_free_gb=50 runner_pct=40 busy=0 errors=0\nlevel=ok\n' 0
 { [ "$(hbstatus)" = ok ] && grep -q 'freed 10GiB host_free 50GiB runner 40%' "$HB"; } && ok "level ok -> heartbeat ok, note carries freed/host/runner" || no "ok mapping: $(cat "$HB" 2>/dev/null)"
 wrap 'summary freed_kb=0 host_free_gb=30 runner_pct=40 busy=0 errors=0\nlevel=warning\n' 0
-[ "$(hbstatus)" = warning ] && ok "level warning -> heartbeat warning" || no "warning mapping"
+{ [ "$(hbstatus)" = ok ] && grep -q 'level=warning' "$HB"; } && ok "level warning -> heartbeat ok, note level=warning" || no "warning mapping: $(cat "$HB")"
 wrap 'summary freed_kb=0 host_free_gb=50 runner_pct=40 busy=1 errors=0\nlevel=ok\n' 0
-[ "$(hbstatus)" = warning ] && ok "runner-busy skip -> heartbeat warning" || no "busy mapping"
+{ [ "$(hbstatus)" = ok ] && grep -q 'runner-busy' "$HB"; } && ok "runner-busy skip -> heartbeat ok, note runner-busy" || no "busy mapping: $(cat "$HB")"
 wrap 'summary freed_kb=0 host_free_gb=5 runner_pct=40 busy=0 errors=0\nlevel=critical\n' 0
 [ "$(hbstatus)" = error ] && ok "level critical -> heartbeat error" || no "critical mapping"
 wrap 'summary freed_kb=0 host_free_gb=50 runner_pct=40 busy=0 errors=1\nlevel=ok\n' 1
 [ "$(hbstatus)" = error ] && ok "payload exit 1 -> heartbeat error" || no "rc1 mapping"
+wrap 'summary freed_kb=0 host_free_gb=0 runner_pct=na busy=0 errors=1\nlevel=unknown\n' 0
+[ "$(hbstatus)" = error ] && ok "level unknown -> heartbeat error" || no "unknown mapping"
+wrap 'summary freed_kb=0 host_free_gb=5 runner_pct=40 busy=0 errors=0\nlevel=bogus\n' 0
+[ "$(hbstatus)" = error ] && ok "unrecognised level -> heartbeat error" || no "bogus level mapping"
 wrap '' 0
 [ "$(hbstatus)" = error ] && ok "silent payload -> heartbeat error (no level proves nothing)" || no "silent payload"
 WENV="MINI_DISK_JANITOR_ENABLED=false"; wrap 'level=ok\n' 0
@@ -223,13 +243,34 @@ HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$ROOT/none.sh
 { [ "$(hbstatus)" = error ] && grep -q 'payload missing' "$HB"; } && ok "missing payload -> heartbeat error" || no "missing payload"
 rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"; sleep 30 & SP=$!; echo $SP > "$ROOT/w.pid"
 HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$PAYLOAD" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" /bin/bash "$WRAPPER" >/dev/null 2>&1; kill $SP 2>/dev/null; wait $SP 2>/dev/null
-[ "$(hbstatus)" = warn ] && ok "live pidfile -> heartbeat warn, payload not run" || no "single-instance"
+{ [ "$(hbstatus)" = ok ] && grep -q 'previous-run-active' "$HB"; } && ok "live pidfile -> heartbeat ok, note previous-run-active, payload not run" || no "single-instance: $(cat "$HB")"
 rm -f "$ROOT/w.pid"
 rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"
 printf '#!/bin/bash\nkill -TERM "$(ps -o ppid= -p $PPID | tr -d " ")"\nsleep 1\n' > "$ROOT/payload-term.sh"
 HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_PAYLOAD="$ROOT/payload-term.sh" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" /bin/bash "$WRAPPER" >/dev/null 2>&1
 { [ "$(hbstatus)" = error ] && [ ! -e "$ROOT/w.pid" ]; } && ok "signal mid-run -> EXIT trap writes error heartbeat and frees the lock" || no "abnormal exit: $(hbstatus)"
 grep -q 'KeepAlive' "$HERE/infra/launchagents/com.nuzantara.mini-disk-janitor.plist" && no "plist has KeepAlive" || ok "plist is one-shot (no KeepAlive)"
+
+echo "== T10 wrapper robustness, floor, journal, plist =="
+build; rm -rf "$ROOT/home2"; mkdir -p "$ROOT/home2"; : > "$ROOT/afile"
+HOME="$ROOT/home2" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_SIDECAR_DIR="$ROOT/afile/sub" MINI_DISK_JANITOR_PAYLOAD="$PAYLOAD" MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" MINI_DISK_JANITOR_ENABLED=false /bin/bash "$WRAPPER" >/dev/null 2>"$ROOT/we.txt"; WRC=$?
+{ [ "$WRC" -eq 1 ] && grep -q 'heartbeat write FAILED' "$ROOT/we.txt"; } && ok "sidecar write failure -> wrapper exit 1 (stderr names it)" || no "HB_FAIL rc=$WRC"
+env -i PATH="$FB:$SYS_PATH" /bin/bash "$WRAPPER" >/dev/null 2>"$ROOT/we.txt"; WRC=$?
+{ [ "$WRC" -eq 1 ] && grep -q 'HOME is unset' "$ROOT/we.txt"; } && ok "HOME unset -> visible exit 1, no set -u crash" || no "HOME unset rc=$WRC $(cat "$ROOT/we.txt")"
+rm -rf "$ROOT/sc"; env -i PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_SIDECAR_DIR="$ROOT/sc" MINI_DISK_JANITOR_ENABLED=false MINI_DISK_JANITOR_PIDFILE="$ROOT/w.pid" /bin/bash "$WRAPPER" >/dev/null 2>&1; HB="$ROOT/sc/mini.disk_janitor.json"
+[ "$(hbstatus)" = disabled ] && ok "HOME unset with an injected sidecar dir still writes the heartbeat" || no "HOME-less heartbeat"
+build; echo 1 > "$FX/df_fail"; runp --apply
+{ [ "$(step_status floor)" = "error:host-df-failed" ] && tail -1 "$ROOT/out.txt" | grep -q '^level=unknown$' && [ "$RC" -eq 1 ]; } && ok "host df failure -> floor error, level unknown, exit 1" || no "df failure: $(step_status floor) rc=$RC"
+build; echo false > "$FX/running"; runp --apply
+{ grep -q 'runner_pct=na' "$ROOT/out.txt" && receipt | grep -q '"runner_pct_after":null' && tail -1 "$ROOT/out.txt" | grep -q '^level=ok$' && [ "$RC" -eq 0 ]; } && ok "container not running -> runner_pct na (never 0), level from host alone" || no "not-running floor: $(cat "$ROOT/out.txt")"
+build; touch "$FX/ctr_fail"; runp --apply
+{ [ "$(step_status floor)" = "error:runner-df-failed" ] && tail -1 "$ROOT/out.txt" | grep -q '^level=unknown$'; } && ok "running container with failing df probe -> floor error, level unknown" || no "runner df failure: $(step_status floor)"
+build; mkdir "$ROOT/trip"
+for u in find rm; do printf '#!/bin/sh\necho "%s $*" >> "%s/trip.log"\nexit 1\n' "$u" "$ROOT" > "$ROOT/trip/$u"; chmod +x "$ROOT/trip/$u"; done
+env -u MINI_DISK_JANITOR_JOURNAL HOME=/ PATH="$ROOT/trip:$FB:$SYS_PATH" MINI_DISK_JANITOR_DF_PATH=/ MINI_DISK_JANITOR_BUSY_WAIT_MIN=0 bash "$PAYLOAD" --apply >/dev/null 2>"$ROOT/err.txt"; RC=$?
+{ [ "$RC" -eq 1 ] && grep -q 'receipt REFUSED' "$ROOT/err.txt" && [ ! -e /logs ]; } && ok "HOME=/ -> default journal refused (error), /logs never written" || no "journal guard rc=$RC"
+PL="$HERE/infra/launchagents/com.nuzantara.mini-disk-janitor.plist"
+"$REAL_PY" -c 'import plistlib,sys; d=plistlib.load(open(sys.argv[1],"rb")); c=d.get("StartCalendarInterval"); sys.exit(0 if c=={"Hour":3,"Minute":30} and "StartInterval" not in d and "KeepAlive" not in d and d.get("RunAtLoad") is False else 1)' "$PL" && ok "plist: StartCalendarInterval 03:30, RunAtLoad false, no StartInterval/KeepAlive" || no "plist schedule"
 
 echo
 echo "mini_disk_janitor: $PASS passed, $FAIL failed"
