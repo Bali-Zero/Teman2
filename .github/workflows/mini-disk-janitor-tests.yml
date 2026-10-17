@@ -1,0 +1,48 @@
+name: Mini disk janitor tests
+
+# Executor for the corpus that proves the mini.disk_janitor organ (daily bounded disk hygiene on the
+# Mini: runner caches while idle, docker dangling prune, Colima fstrim, ~/Library/Caches ageing, npm/uv
+# GC, host/runner floor receptor). Offline: docker, colima, npm, uv, df, hostname and the notifier are
+# stubs that record their argv. Without this file the corpus is collected by nothing that gates
+# (superscar #2) and the first scheduled DELETER on the Mini ships unproven.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/mini_disk_janitor.sh"
+      - "scripts/tests/test_mini_disk_janitor.sh"
+      - "infra/launchagents/wrappers/mini-disk-janitor.sh"
+      - "infra/launchagents/com.nuzantara.mini-disk-janitor.plist"
+      - ".github/workflows/mini-disk-janitor-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ops/mini_disk_janitor.sh"
+      - "scripts/tests/test_mini_disk_janitor.sh"
+      - "infra/launchagents/wrappers/mini-disk-janitor.sh"
+      - "infra/launchagents/com.nuzantara.mini-disk-janitor.plist"
+      - ".github/workflows/mini-disk-janitor-tests.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mini-disk-janitor-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  mini-disk-janitor-tests:
+    name: Mini disk janitor tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Janitor prunes only its allowlist, wrapper maps outcomes to heartbeats
+        run: bash scripts/tests/test_mini_disk_janitor.sh
+
+      - name: Payload and wrapper still parse (a syntax error is a silent dead organ)
+        run: |
+          bash -n scripts/ops/mini_disk_janitor.sh
+          bash -n infra/launchagents/wrappers/mini-disk-janitor.sh
