@@ -25,22 +25,22 @@ diff:
 receipts:
   - claim: "The CTA and Sonner innocence/mutant-guilt tests pass in a real Chrome process."
     cmd: "python3 -m pytest scripts/mouth/tests/test_r19_wrapper_token_census.py -q -p no:cacheprovider -k 'cta_hover or sonner_rich_controls'"
-    result: TODO-live
-    exit: TODO-live
-    ts: TODO-live
-    seat: verifier
+    result: "2 passed, 302 deselected"
+    exit: 0
+    ts: "2026-10-17T10:57:08Z"
+    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
   - claim: "The required offline mouth census suite remains green."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e'"
-    result: TODO-live
-    exit: TODO-live
-    ts: TODO-live
-    seat: verifier
+    result: "189 passed, 115 deselected"
+    exit: 0
+    ts: "2026-10-17T10:57:17Z"
+    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
   - claim: "The full e2e selection includes and passes the two new tests."
     cmd: "python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'e2e'"
-    result: TODO-live
-    exit: TODO-live
-    ts: TODO-live
-    seat: verifier
+    result: "115 passed, 189 deselected (both new test_e2e_ tests included)"
+    exit: 0
+    ts: "2026-10-17T11:02:12Z"
+    seat: "Claude lead session (Air-M5, unrestricted headless Chrome)"
   - claim: "Every test that is genuinely offline in the Air-M5 managed sandbox passes."
     cmd: "CHROME_HEADLESS=/nonexistent python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'not e2e and not sector_route_is_the_first_card_the_server_links'"
     result: "187 passed, 1 skipped, 116 deselected"
@@ -54,6 +54,6 @@ dissent:
       The local required command reached 187 passes but two pre-existing environment-dependent tests
       failed for those restrictions; the new e2e tests could not execute here.
     status: CONFIRMED
-    resolution: "TODO-live: rerun all three receipts in the verifier's unrestricted browser environment."
+    resolution: "Resolved 2026-10-17: the three receipts above were rerun by the Claude lead in an unrestricted headless Chrome on Air-M5 and pass; the live verifier also measured 304 passed, 0 skipped, 0 failed for the whole suite."
 grader: |
   A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
