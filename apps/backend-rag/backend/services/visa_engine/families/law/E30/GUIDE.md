@@ -15,12 +15,14 @@ Q3  Who will sponsor your studies in Indonesia?
     Other / none ........................... NEEDS_SPONSOR
 
 Q4  How many months do you need to study? (positive whole number)
-    E30A: ≤12 → 1 YEAR; ≤24 → 2 YEAR; >24 → STAY_TOO_LONG
-    E30B: ≤12 → 1 YEAR; ≤24 → 2 YEAR; ≤48 → 4 YEAR; >48 → STAY_TOO_LONG
+    E30A: ≤12 → 1 YEAR; ≤24 → 2 YEAR; >24 → OK_WITH_EXTENSION (largest option)
+    E30B: ≤12 → 1 YEAR; ≤24 → 2 YEAR; ≤48 → 4 YEAR; >48 → OK_WITH_EXTENSION (largest option)
     Fitting choice → OK + stay_option {value, unit}, in the original YEAR unit
+    Over the largest option → OK_WITH_EXTENSION + stay_option = largest option + total_max_known: false
+    (the Law says "dapat diperpanjang" but publishes no cumulative total; STAY_TOO_LONG only if not extendable)
 ```
 
-One fact per question; no path asks more than four questions. Invalid or missing answers ask the same question again. YEAR means exactly 12 MONTHS in the Guide comparison (coordinator ruling, 2026-10-18). DAY options are not compared with months. These are initial-stay choices, not cumulative extension limits; no `OK_WITH_EXTENSION` is inferred.
+One fact per question; no path asks more than four questions. Invalid or missing answers ask the same question again. YEAR means exactly 12 MONTHS in the Guide comparison (coordinator ruling, 2026-10-18). DAY options are not compared with months. These are initial-stay choices, not cumulative extension limits. Above the largest option the verdict is `OK_WITH_EXTENSION` with `total_max_known: false`, because the cumulative total is not published.
 
 | Question    | Verbatim condition in each code's Law card                                                                                                                                                                |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

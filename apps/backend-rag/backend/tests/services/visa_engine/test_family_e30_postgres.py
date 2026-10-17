@@ -210,6 +210,28 @@ def test_forward_twice_rollback_and_reapply_preserve_all_legacy_columns(pg: Clus
     )
 
 
+@pytest.fixture
+def e30a(pg: Cluster) -> Cluster:
+    """Ensure the E30A row and stay_options column exist, independent of test order."""
+    parts = [(MIGRATIONS / name).read_text().split("-- === ROLLBACK ===", 1)[0] for name in FILES]
+    if pg.sql("SELECT to_regclass('public.visa_types') IS NOT NULL;") == "f":
+        pg.sql(parts[0].split("ALTER TABLE visa_types", 1)[0])
+        for forward in parts:
+            pg.sql(forward)
+    elif (
+        pg.sql(
+            "SELECT count(*) FROM information_schema.columns "
+            "WHERE table_name='visa_types' AND column_name='stay_options';"
+        )
+        == "0"
+    ):
+        pg.sql(parts[2])
+        pg.sql(parts[3])
+    elif pg.sql("SELECT count(*) FROM visa_types WHERE code='E30A';") == "0":
+        pg.sql(parts[3])
+    return pg
+
+
 @pytest.mark.parametrize(
     "options",
     [
@@ -219,7 +241,8 @@ def test_forward_twice_rollback_and_reapply_preserve_all_legacy_columns(pg: Clus
         None,
     ],
 )
-def test_stay_options_accepts_valid_shapes(pg: Cluster, options: object) -> None:
+def test_stay_options_accepts_valid_shapes(e30a: Cluster, options: object) -> None:
+    pg = e30a
     value = "NULL" if options is None else "'" + json.dumps(options) + "'::jsonb"
     pg.sql(f"UPDATE visa_types SET stay_options={value} WHERE code='E30A';")
     stored = pg.sql(
@@ -255,7 +278,8 @@ def test_stay_options_accepts_valid_shapes(pg: Cluster, options: object) -> None
         [{"value": 1, "unit": "YEAR"}, {"value": 0, "unit": "YEAR"}],
     ],
 )
-def test_stay_options_rejects_invalid_shapes(pg: Cluster, options: object) -> None:
+def test_stay_options_rejects_invalid_shapes(e30a: Cluster, options: object) -> None:
+    pg = e30a
     value = "'null'::jsonb" if options == "null" else "'" + json.dumps(options) + "'::jsonb"
     assert "vt_stay_options_chk" in pg.sql(
         f"UPDATE visa_types SET stay_options={value} WHERE code='E30A';", succeeds=False

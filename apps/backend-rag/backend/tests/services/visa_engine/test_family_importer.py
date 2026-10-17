@@ -120,7 +120,8 @@ E30_MIGRATION = MIGRATIONS_DIR / "333_visa_types_law_family_e30.sql"
 @pytest.mark.parametrize("row", E30_ROWS, ids=lambda r: r["code"])
 def test_e30_row_satisfies_330_rules(row: dict) -> None:
     assert row["family"] == "E30"
-    assert row["permit_class"] == "ITAS"
+    not_found = row["code"] in {"E30", "E30E", "E30F"}
+    assert row["permit_class"] == (None if not_found else "ITAS")
     assert row["category"] == "KITAS/Limited Stay"
     assert row["entry_type"] in {None, "MULTIPLE"}
     assert row["sponsor"] in {None, "REQUIRED"}

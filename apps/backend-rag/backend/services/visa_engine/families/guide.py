@@ -72,7 +72,7 @@ def resolve(family: str, answers: dict) -> dict:
             return {"ask": "sponsor", "code": code}
         if not questions["sponsor"]["options"][answers["sponsor"]]:
             return {"code": code, "verdict": NEEDS_SPONSOR}
-    if "stay_options" in visa:
+    if visa.get("stay_options"):
         months = _positive_int(answers.get("stay_months"))
         if months is None:
             return {"ask": "stay_months", "code": code}
@@ -84,6 +84,14 @@ def resolve(family: str, answers: dict) -> dict:
         for option in options:
             if months <= option["value"] * (12 if option["unit"] == "YEAR" else 1):
                 return {"code": code, "verdict": OK, "stay_option": option}
+        if visa["extendable"]:
+            # The Law says the stay "dapat diperpanjang" but publishes no cumulative maximum.
+            return {
+                "code": code,
+                "verdict": OK_WITH_EXTENSION,
+                "stay_option": options[-1],
+                "total_max_known": False,
+            }
         return {"code": code, "verdict": STAY_TOO_LONG}
     days = _positive_int(answers.get("stay_days"))
     if days is None:

@@ -11,6 +11,7 @@ from backend.services.visa_engine.families.guide import (
     NEEDS_SPONSOR,
     NOT_COVERED,
     OK,
+    OK_WITH_EXTENSION,
     STAY_TOO_LONG,
     resolve,
 )
@@ -94,9 +95,12 @@ def test_every_initial_stay_month(level: str, code: str, sponsor: str) -> None:
             "stay_option": {"value": year, "unit": "YEAR"},
         }
     for months in (YEARS[code][-1] * 12 + 1, 1200):
+        # Extendable, but the Law publishes no total maximum: largest option, total_max_known false.
         assert resolve("E30", answers(level, sponsor=sponsor, stay_months=months)) == {
             "code": code,
-            "verdict": STAY_TOO_LONG,
+            "verdict": OK_WITH_EXTENSION,
+            "stay_option": {"value": YEARS[code][-1], "unit": "YEAR"},
+            "total_max_known": False,
         }
 
 
@@ -151,7 +155,32 @@ def test_month_choices_are_exact_and_day_choices_ignored(monkeypatch: pytest.Mon
         "value": 1,
         "unit": "YEAR",
     }
-    assert resolve("E30", answers("undergraduate", stay_months=49))["verdict"] == STAY_TOO_LONG
+    assert resolve("E30", answers("undergraduate", stay_months=49))["verdict"] == OK_WITH_EXTENSION
+
+
+def test_over_max_not_extendable_is_stay_too_long(monkeypatch: pytest.MonkeyPatch) -> None:
+    data = json.loads(json.dumps(DATA))
+    data["visas"]["E30B"]["extendable"] = False
+    monkeypatch.setattr(guide, "load_family", lambda family: data)
+    assert resolve("E30", answers("undergraduate", stay_months=49)) == {
+        "code": "E30B",
+        "verdict": STAY_TOO_LONG,
+    }
+
+
+@pytest.mark.parametrize("stay_days", [None, 30])
+def test_null_stay_options_falls_through_to_stay_days(
+    monkeypatch: pytest.MonkeyPatch, stay_days: int | None
+) -> None:
+    data = json.loads(json.dumps(DATA))
+    data["visas"]["E30B"]["stay_options"] = None
+    data["visas"]["E30B"]["stay_days"] = 60
+    data["visas"]["E30B"]["extendable"] = False
+    monkeypatch.setattr(guide, "load_family", lambda family: data)
+    a = answers("undergraduate")
+    assert resolve("E30", a) == {"ask": "stay_days", "code": "E30B"}
+    a["stay_days"] = 60 if stay_days is None else stay_days
+    assert resolve("E30", a) == {"code": "E30B", "verdict": OK}
 
 
 def test_itap_stays_unknown_for_every_code() -> None:

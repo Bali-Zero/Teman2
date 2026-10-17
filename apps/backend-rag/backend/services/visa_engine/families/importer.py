@@ -89,7 +89,7 @@ def build_rows(family: str) -> list[dict]:
                 "category": data["category"],
                 "family": fam,
                 "official_name_id": card["official_name_id"],
-                "permit_class": data["permit_class"],
+                "permit_class": None if card.get("status") == "NOT_FOUND" else data["permit_class"],
                 "is_sold": guide.get("is_sold", True),
                 "price_keys": price_keys,
                 "entry_type": guide.get("entry_type", data["entry_type"]),
