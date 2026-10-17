@@ -18,6 +18,12 @@
 #                 than a day (all maxdepth 1 / mindepth 1). If the container / is still >= TOOL_PCT
 #                 after that, also the CONTENTS of /home/runner/_work/_tool. Never anything else under
 #                 _work (not _work/zero, not _work/_actions); never docker rm / stop / restart / volumes.
+#                 Race: inside each exec script, after the idle re-check, every target is first renamed
+#                 (atomic mv, same filesystem) to a `.janitor-trash-*` sibling and only then deleted, so a
+#                 job that starts mid-run finds an empty cache that pip/uv/setup actions recreate. The
+#                 residual window is the rename instant, not the delete. Leftover `.janitor-trash-*` from
+#                 an interrupted run are swept at the start of every script (maxdepth 1, exact prefix).
+#                 An absent `_work/_tool` is a no-op (tool-absent), never an error.
 #   docker        `docker image prune -f` and `docker builder prune -f` (dangling images, build cache).
 #                 Never -a, never volume / container / system prune.
 #   vm_trim       `colima ssh -- sudo fstrim -av`: hands the freed guest blocks back to the host.
@@ -31,7 +37,11 @@
 #   npm           `npm cache verify` (garbage-collects its own cache).
 #   uv            `uv cache prune` (a timeout means another uv holds the lock: skipped uv-lock-busy).
 #   floor         receptor, always runs (also in dry-run): host free GiB + runner container / use%
-#                 -> level ok | warning | critical; critical in apply mode pages via tg_notify (p0).
+#                 -> level ok | warning | critical | unknown. Apply mode notifies via tg_notify: warning ->
+#                 tier digest (key mini-disk-warn-<host|runner>), critical -> tier p0 (key mini-disk-<host|runner>).
+#                 A failed host df -> floor error + level unknown; a running container whose df probe fails ->
+#                 floor error + level unknown; a container that is not running -> runner_pct na (never 0)
+#                 and the level comes from the host alone.
 #
 # Deliberately absent: `brew cleanup` / `brew autoremove` / any brew command (a brew autoremove killed
 # node on this Mini, lesson 2026-09-26; the Homebrew download cache is covered by user_caches), and
@@ -42,7 +52,8 @@
 # OSINT data, Docker volumes, git worktrees (the broker owns them) and backups. `uv cache clean` is
 # never used either (prune only).
 #
-# DRY-RUN by default: probes and reports, mutates nothing. `--apply` acts. Every external command runs
+# DRY-RUN by default: deletes nothing and runs no mutating command, but it DOES append its receipt to
+# the journal (that is what makes a dry-run auditable). `--apply` acts. Every external command runs
 # through bounded() (a real deadline). Exit 0 when no step errored, 1 otherwise; the last stdout line is
 # `level=ok|warning|critical` for the wrapper (the line before it: `summary ...`). Test:
 # scripts/tests/test_mini_disk_janitor.sh. /bin/bash 3.2 compatible.
@@ -71,7 +82,11 @@ CACHE_TOOL_TIMEOUT="${MINI_DISK_JANITOR_TOOL_TIMEOUT:-300}"
 REPO="${MINI_DISK_JANITOR_REPO:-$(cd "$(dirname "$0")/../.." && pwd)}"
 NOTIFY="${MINI_DISK_JANITOR_NOTIFY:-$REPO/scripts/tg_notify.py}"
 DF_PATH="${MINI_DISK_JANITOR_DF_PATH:-/System/Volumes/Data}"; [ -d "$DF_PATH" ] || DF_PATH=/
-JOURNAL="${MINI_DISK_JANITOR_JOURNAL:-$H/logs/mini-disk-janitor.receipts.jsonl}"
+JOURNAL="${MINI_DISK_JANITOR_JOURNAL:-}"
+JOURNAL_REFUSED=false
+if [ -z "$JOURNAL" ]; then
+  if [ -n "$H" ]; then JOURNAL="$H/logs/mini-disk-janitor.receipts.jsonl"; else JOURNAL_REFUSED=true; fi   # HOME empty or /: never write /logs
+fi
 
 log() { echo "[$(date +%Y-%m-%dT%H:%M:%S%z)] mini-disk-janitor[$MODE] $*" >&2; }
 for knob in BUSY_WAIT_MIN BUSY_POLL_S TOOL_PCT CACHE_DAYS HOST_WARN_GB HOST_CRIT_GB RUNNER_WARN_PCT \
@@ -124,13 +139,23 @@ KB_BEFORE=$(host_free_kb); PCT_BEFORE=""; $RUNNING && PCT_BEFORE=$(ctr_df | awk 
 
 # ── runner_cache ────────────────────────────────────────────────────────────
 # The exec script re-checks idleness itself: the runner can pick up a job between probe and rm.
+SWEEP='find /home/runner/.cache /tmp /home/runner/_work -mindepth 1 -maxdepth 1 -name ".janitor-trash-*" -exec rm -rf {} + 2>/dev/null'
 CLEAN_SCRIPT='ps -eo args 2>/dev/null | grep -q "[R]unner\.Worker" && exit 75
-rm -rf /home/runner/.cache/pip /home/runner/.cache/uv /tmp/pytest-of-runner
-find /tmp -mindepth 1 -maxdepth 1 -name "pip-unpack-*" -exec rm -rf {} +
-find /tmp -mindepth 1 -maxdepth 1 -name "tmp*" -mtime +0 -exec rm -rf {} +
+'"$SWEEP"'
+mv /home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-$$ 2>/dev/null
+mv /home/runner/.cache/uv /home/runner/.cache/.janitor-trash-uv-$$ 2>/dev/null
+mv /tmp/pytest-of-runner /tmp/.janitor-trash-pytest-$$ 2>/dev/null
+find /tmp -mindepth 1 -maxdepth 1 \( -name "pip-unpack-*" -o \( -name "tmp*" -mtime +0 \) \) 2>/dev/null | while IFS= read -r e; do
+  mv "$e" "/tmp/.janitor-trash-e-$$-${e##*/}" 2>/dev/null
+done
+'"$SWEEP"'
 exit 0'
 TOOL_SCRIPT='ps -eo args 2>/dev/null | grep -q "[R]unner\.Worker" && exit 75
-find /home/runner/_work/_tool -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+[ -d /home/runner/_work/_tool ] || exit 76
+'"$SWEEP"'
+mv /home/runner/_work/_tool /home/runner/_work/.janitor-trash-tool-$$ || exit 1
+mkdir -p /home/runner/_work/_tool
+'"$SWEEP"'
 exit 0'
 step_begin
 if ! $HAVE_DOCKER; then step_end runner_cache skipped docker-absent
@@ -157,6 +182,7 @@ else
       if [ -n "$cur" ] && [ "$cur" -ge "$TOOL_PCT" ]; then
         bounded "$EXEC_TIMEOUT" docker exec "$RUNNER" sh -c "$TOOL_SCRIPT" >/dev/null 2>&1; trc=$?
         if [ "$trc" -eq 0 ]; then reason=tool-cleared
+        elif [ "$trc" -eq 76 ]; then reason=tool-absent
         elif [ "$trc" -eq 75 ]; then BUSY=1; reason=tool-skipped-runner-busy
         else reason=tool-clear-failed; fi
       fi
@@ -240,36 +266,52 @@ fi
 
 # ── floor receptor ──────────────────────────────────────────────────────────
 KB_AFTER=$(host_free_kb); PCT_AFTER=""; $RUNNING && PCT_AFTER=$(ctr_df | awk '{print $1}')
+case "$KB_AFTER" in ''|*[!0-9]*) KB_AFTER="" ;; esac
+case "$PCT_AFTER" in ''|*[!0-9]*) PCT_AFTER="" ;; esac
+case "$KB_BEFORE" in ''|*[!0-9]*) KB_BEFORE="" ;; esac
 GB_BEFORE=$(( ${KB_BEFORE:-0} / 1048576 )); GB_AFTER=$(( ${KB_AFTER:-0} / 1048576 ))
-LEVEL=ok; HOST_LV=ok; RUN_LV=ok
-if [ -n "$KB_AFTER" ]; then
-  if [ "$KB_AFTER" -lt $((HOST_CRIT_GB * 1048576)) ]; then HOST_LV=critical
-  elif [ "$KB_AFTER" -lt $((HOST_WARN_GB * 1048576)) ]; then HOST_LV=warning; fi
-fi
-if [ -n "$PCT_AFTER" ]; then
-  if [ "$PCT_AFTER" -ge "$RUNNER_CRIT_PCT" ]; then RUN_LV=critical
+HOST_LV=ok; RUN_LV=ok; FLOOR_ERR=""
+if [ -z "$KB_AFTER" ]; then HOST_LV=unknown; FLOOR_ERR=host-df-failed
+elif [ "$KB_AFTER" -lt $((HOST_CRIT_GB * 1048576)) ]; then HOST_LV=critical
+elif [ "$KB_AFTER" -lt $((HOST_WARN_GB * 1048576)) ]; then HOST_LV=warning; fi
+if $RUNNING; then   # a stopped container contributes nothing: runner_pct stays na, never 0
+  if [ -z "$PCT_AFTER" ]; then RUN_LV=unknown; FLOOR_ERR="${FLOOR_ERR:-runner-df-failed}"
+  elif [ "$PCT_AFTER" -ge "$RUNNER_CRIT_PCT" ]; then RUN_LV=critical
   elif [ "$PCT_AFTER" -ge "$RUNNER_WARN_PCT" ]; then RUN_LV=warning; fi
 fi
 if [ "$HOST_LV" = critical ] || [ "$RUN_LV" = critical ]; then LEVEL=critical
-elif [ "$HOST_LV" = warning ] || [ "$RUN_LV" = warning ]; then LEVEL=warning; fi
-STEPS="$STEPS${STEPS:+,}{\"step\":\"floor\",\"status\":\"done\",\"reason\":\"$LEVEL\",\"freed_kb\":0}"
-log "floor: level=$LEVEL host_free_gb=$GB_AFTER runner_pct=${PCT_AFTER:-n/a}"
+elif [ "$HOST_LV" = unknown ] || [ "$RUN_LV" = unknown ]; then LEVEL=unknown
+elif [ "$HOST_LV" = warning ] || [ "$RUN_LV" = warning ]; then LEVEL=warning
+else LEVEL=ok; fi
+if [ -n "$FLOOR_ERR" ]; then ERRORS=$((ERRORS + 1)); FSTATUS=error; else FSTATUS="done"; fi
+STEPS="$STEPS${STEPS:+,}{\"step\":\"floor\",\"status\":\"$FSTATUS\",\"reason\":\"${FLOOR_ERR:-$LEVEL}\",\"freed_kb\":0}"
+log "floor: level=$LEVEL host_free_gb=$GB_AFTER runner_pct=${PCT_AFTER:-na}"
 
-notify() { # $1 dedup-key  $2 message; never fails the run
-  bounded 60 python3 "$NOTIFY" --tier p0 --source mini.disk_janitor --dedup-key "$1" -- "$2" >/dev/null 2>&1 \
-    || log "notify FAILED (ignored) key=$1"
+notify() { # $1 tier  $2 dedup-key  $3 message; never fails the run
+  bounded 60 python3 "$NOTIFY" --tier "$1" --source mini.disk_janitor --dedup-key "$2" -- "$3" >/dev/null 2>&1 \
+    || log "notify FAILED (ignored) key=$2"
 }
 if $APPLY; then
-  [ "$HOST_LV" = critical ] && notify mini-disk-host "mini.disk_janitor: Mini host free ${GB_AFTER} GiB is below the critical ${HOST_CRIT_GB} GiB ceiling"
-  [ "$RUN_LV" = critical ] && notify mini-disk-runner "mini.disk_janitor: runner container disk ${PCT_AFTER}% is at or above the critical ${RUNNER_CRIT_PCT}% ceiling"
+  case "$HOST_LV" in
+    critical) notify p0 mini-disk-host "mini.disk_janitor: Mini host free ${GB_AFTER} GiB is below the critical ${HOST_CRIT_GB} GiB ceiling" ;;
+    warning) notify digest mini-disk-warn-host "mini.disk_janitor: Mini host free ${GB_AFTER} GiB is below the ${HOST_WARN_GB} GiB warning line" ;;
+  esac
+  case "$RUN_LV" in
+    critical) notify p0 mini-disk-runner "mini.disk_janitor: runner container disk ${PCT_AFTER}% is at or above the critical ${RUNNER_CRIT_PCT}% ceiling" ;;
+    warning) notify digest mini-disk-warn-runner "mini.disk_janitor: runner container disk ${PCT_AFTER}% is at or above the ${RUNNER_WARN_PCT}% warning line" ;;
+  esac
 fi
 
 # ── receipt ─────────────────────────────────────────────────────────────────
-mkdir -p "$(dirname "$JOURNAL")" 2>/dev/null
-printf '{"ts":"%s","mode":"%s","host":"%s","steps":[%s],"host_free_gb_before":%s,"host_free_gb_after":%s,"runner_pct_before":%s,"runner_pct_after":%s,"errors":%s,"level":"%s"}\n' \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$MODE" "$(hostname -s)" "$STEPS" "$GB_BEFORE" "$GB_AFTER" \
-  "${PCT_BEFORE:-null}" "${PCT_AFTER:-null}" "$ERRORS" "$LEVEL" >> "$JOURNAL" \
-  || { ERRORS=$((ERRORS + 1)); log "receipt append FAILED"; }
+if $JOURNAL_REFUSED; then
+  ERRORS=$((ERRORS + 1)); log "receipt REFUSED: HOME is empty or / and MINI_DISK_JANITOR_JOURNAL is not set (no default journal path)"
+else
+  mkdir -p "$(dirname "$JOURNAL")" 2>/dev/null
+  printf '{"ts":"%s","mode":"%s","host":"%s","steps":[%s],"host_free_gb_before":%s,"host_free_gb_after":%s,"runner_pct_before":%s,"runner_pct_after":%s,"errors":%s,"level":"%s"}\n' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$MODE" "$(hostname -s)" "$STEPS" "$GB_BEFORE" "$GB_AFTER" \
+    "${PCT_BEFORE:-null}" "${PCT_AFTER:-null}" "$ERRORS" "$LEVEL" >> "$JOURNAL" \
+    || { ERRORS=$((ERRORS + 1)); log "receipt append FAILED"; }
+fi
 echo "summary freed_kb=$(( ${KB_AFTER:-0} - ${KB_BEFORE:-0} )) host_free_gb=$GB_AFTER runner_pct=${PCT_AFTER:-na} busy=$BUSY errors=$ERRORS"
 echo "level=$LEVEL"
 [ "$ERRORS" -eq 0 ]
