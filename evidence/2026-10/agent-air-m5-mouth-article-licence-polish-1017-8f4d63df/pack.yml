@@ -1,0 +1,161 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17: "MERP venduto da solo, ACC Mutation e ACC Boarding Pass da far sparire dal
+  sistema; licenza alcolici: solo golongan A 4 jt, solo B+C 10jt, A+B+C 12jt; il resto
+  rimandiamo a contattarci" (the rest = SLHS, Halal, PIRT).
+mission: >-
+  The articles and the llms exports agree with the owner ruling after PR 8631's gate: no
+  standalone MERP price, KITAS budget totals equal to the sum of their components, government
+  fees and market ranges kept as facts, and a guard that recognises the defects it claims to
+  scan for.
+lanes:
+  - lane: article-licence-polish
+    role: build
+    seat: codex gpt-5.6-terra (scripts/seat_build.sh, first draft, "Prepared by codex gpt-5.6-terra, corrected after review")
+  - lane: article-licence-polish
+    role: build
+    seat: claude-sonnet-5 (subagents, same worktree; rework, llms section replacement, guard test, council fixes)
+  - lane: article-licence-polish
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+  - lane: article-licence-polish
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, read-only, VERDICT CONCERNS on b4c739cc9e)
+  - lane: article-licence-polish
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, read-only, VERDICT PASS on b4c739cc9e)
+  - lane: article-licence-polish-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner ruling of 2026-10-17 (the ruling field above, verbatim) and the catalog rows
+      of #8629; the government MERP fee IDR 800K-1M is kept because the exit-reentry table
+      labels it governmental.
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: readers of balizero.com and LLM crawlers of /llms-full.txt and /llms-id.txt.
+  Observation: after the merge and the Vercel production promotion,
+  https://balizero.com/visas/e25b-director-kitas-guide shows "~IDR 54,200,000 (USD 3,388), plus
+  re-entry permit on request", and https://balizero.com/llms-full.txt no longer contains "MERP
+  (IDR 4-5M)" nor "MERP 1 Anno: IDR 4.000.000".
+receipts:
+  - claim: The guard test passes on the corpus and on both llms exports (load 3.6, full run).
+    cmd: cd apps/mouth && /Users/balizero/nuzantara/node_modules/.bin/vitest run src/content/licence-prices-1017.test.ts
+    result: "1 file, 8 passed"
+    exit: 0
+    ts: "2026-10-17T08:29:44Z"
+    seat: claude-sonnet-5 (pack author)
+  - claim: The content and llms suites pass together with the guard.
+    cmd: cd apps/mouth && vitest run src/content/description-fields-integrity.test.ts src/content/pt-pma-setup-price.test.ts src/lib/llms-article-exports.test.ts src/lib/kbli-llms-corpus.test.ts src/lib/llms-public-file-guard.test.ts src/content/licence-prices-1017.test.ts
+    result: "6 files, 79 passed"
+    exit: 0
+    ts: "2026-10-17T08:29:59Z"
+    seat: claude-sonnet-5 (pack author)
+  - claim: Neither export carries the stale MERP strings the codex seat found.
+    cmd: 'grep -c "MERP (IDR 4-5M)\|MERP 1 Anno: IDR 4.000.000" apps/mouth/public/llms-full.txt apps/mouth/public/llms-id.txt'
+    result: "llms-full.txt 0, llms-id.txt 0"
+    exit: 0
+    ts: "2026-10-17T08:31:00Z"
+    seat: claude-sonnet-5 (pack author)
+  - claim: Mutant, restoring the stale line "MERP (IDR 4-5M)" in the llms-full.txt stm-exit-reentry-permit-guide section turns the guard red; file restored.
+    cmd: restore the line, vitest run src/content/licence-prices-1017.test.ts, restore
+    result: "guard red at public/llms-full.txt:245291; restored (recorded by the build session in 637376ebbc, not re-run by the pack author)"
+    exit: 0
+    ts: "2026-10-17T08:23:33Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutant table of the guard fixtures (guilt fails, innocence passes), all kept in the test file.
+    cmd: vitest run src/content/licence-prices-1017.test.ts (fixture tests)
+    result: >-
+      guilt: "| Licenza alcolici (Golongan A) | 5.000.000 |" red; "- MERP — IDR 1,000,000" red;
+      "MERP (IDR 4-5M)" red; MERP price in the same clause red. innocence: KITAP + MERP bundles,
+      "No MERP", "USD 2.5M minimum", government-fee row, "Government PIRT filing fee: IDR 100,000.",
+      market-range lines pass (recorded in the 637376ebbc body; the 8 tests pass at the ts above)
+    exit: 0
+    ts: "2026-10-17T08:29:44Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Eight llms sections that quote MERP next to an amount are byte-identical to a fresh regeneration of this branch.
+    cmd: LLMS_GENERATE_ARTICLES_ONLY=1 tsx scripts/generate-llms-full.ts (scratch copy), section-by-section comparison
+    result: "8 sections replaced (5 llms-full, 3 llms-id), 0 mismatches; earlier 31 sections (27 + 4) in 4eb610585f, 0 mismatches (recorded in the commit bodies)"
+    exit: 0
+    ts: "2026-10-17T08:23:33Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Codex seat run left the worktree untouched (sandbox workspace-write, review-only by instruction).
+    cmd: git status --short after the seat run (diff_stat empty); log /Users/balizero/nuzantara/.worktrees/seat-build-codex-20261017T081445Z-70634.log
+    result: "clean"
+    exit: 0
+    ts: "2026-10-17T08:20:00Z"
+    seat: claude-opus-5-5 orchestrator
+council_run: council-journal.jsonl
+decisions:
+  - id: D-reentry-ranges-kept
+    text: >-
+      e25b and e31e keep "Re-entry permit: IDR 500,000-1,000,000 (if needed)" in their
+      additional-costs lists, read as the government/market range the ruling keeps. Flagged to
+      the owner for confirmation, not changed.
+  - id: D-stale-locale-stamps
+    text: >-
+      Halal fr/ru and exit-reentry fr/ru keep their OLD stamps because they were already stale
+      before this branch (a new stamp would hide that); e31e id/it are abridged unstamped
+      locales reverted to origin/main.
+  - id: D-pii-override
+    text: >-
+      The llms commits used PII_GATE_ENFORCEMENT=false after confirming the only match is the
+      published NPWP format example 01.234.567.8-901.000, already on main.
+  - id: D-backup-push
+    text: >-
+      The branch was pushed once (up to b4c739cc9e) as a backup while freeing M5, with
+      PREFLIGHT_PACK_SKIP=1 because the pre-push pack preflight wanted this brief, written now;
+      no --no-verify.
+  - id: D-gear3-by-size
+    text: >-
+      Gear 3 is size-driven: the llms exports churn thousands of lines, not the risk of the
+      change; the council was run anyway.
+seat_fallback_reason: >-
+  agy-gemini-4-argon and tp1-qwen3.8-max were not dispatched; codex-gpt-5.6-sol (titolare) and
+  kimi-code/k3 were the two cross-family read-only reviewers. No seat unavailability was
+  observed or claimed.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      llms-full.txt keeps a standalone MERP price (MERP (IDR 4-5M) in the
+      stm-exit-reentry-permit-guide section) and the guard lets it pass: the test claims to scan
+      both exports but does not recognise the defect present.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by 7918487eab (8 sections replaced from a fresh regeneration, 0 mismatches) and
+      637376ebbc (parenthesis/clause MERP rule; a mutant restoring the line turns the guard red
+      at public/llms-full.txt:245291).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      False positive: "Government PIRT filing fee: IDR 100,000." is flagged by the PIRT rule.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by 637376ebbc: a government / PNBP / market-range exemption with an innocence
+      fixture.
+  - seat: kimi-code/k3
+    objection: >-
+      Alcohol licence lines without the literal NPBBKC escape with any wrong price.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by 637376ebbc: a licence label accepts only 4M, 10M or 12M; guilt fixture
+      "| Licenza alcolici (Golongan A) | 5.000.000 |".
+  - seat: kimi-code/k3
+    objection: >-
+      "- MERP — IDR 1,000,000" and the PIRT market range would be mis-judged by the MERP and
+      PIRT rules.
+    status: CONFIRMED
+    resolution: >-
+      Resolved: the bullet form is a guilt fixture, the PIRT market range an innocence fixture.
+  - seat: kimi-code/k3
+    objection: >-
+      A government MERP fee written in PROSE would still be flagged.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted residual risk. The ruling's government MERP fact lives in the exit-reentry table
+      row exempted by governmentMerpFact; no prose instance exists in the corpus, so the guard
+      does not block today's truth.
+spend:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
