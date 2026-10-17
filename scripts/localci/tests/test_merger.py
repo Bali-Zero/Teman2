@@ -1341,6 +1341,23 @@ def test_a_github_main_that_moves_after_the_tick_fetch_makes_the_tick_line_not_c
     assert (w["kind"], w["base_current"], w["mirror_main"], w["remote_main"], w["ok"]) == ("would_merge", False, world.base, moved["sha"], False)
 
 
+def test_the_tick_hands_run_gate_the_decided_head_not_the_candidate_nor_the_base(world, monkeypatch):
+    """LOW-3 (gate-b25p4): the sha a host reader pins as $HEAD is the PR head the merger decided, a third sha beside the squash candidate and main."""
+    world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
+    seen = []
+    real = mg.run_gate
+
+    def gate(*a, **kw):
+        seen.append((a, kw))
+        return real(*a, **kw)
+    monkeypatch.setattr(mg, "run_gate", gate)
+    assert world.tick() == 0
+    ((args, kw),) = seen
+    head = kw.get("head_sha") if "head_sha" in kw else args[7]
+    cand_sha = args[5]
+    assert head == world.head1 and head not in (world.base, cand_sha) and args[4] == world.base
+
+
 def test_the_tick_hands_the_stale_judge_the_mirror_and_the_decided_base(world, monkeypatch):
     world.gh.prs = [pr(1, world.head1, armed=False, labels=[mg.ARM_LABEL])]
     seen = []

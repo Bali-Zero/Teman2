@@ -27,8 +27,21 @@ SCRIPTS = REPO / "scripts" / "ci"
 sys.path.insert(0, str(SCRIPTS))
 
 import harness_gate_read as hgr  # noqa: E402
+import pytest  # noqa: E402
+import yaml  # noqa: E402
 
 SCRIPT_SOURCE = (SCRIPTS / "harness_gate_read.py").read_text()
+
+
+def _matrix_no_verdict() -> str:
+    contexts = yaml.safe_load((REPO / "scripts" / "localci" / "contexts_matrix.yaml").read_text())["contexts"]
+    steps = [s for c in contexts for j in (c.get("local") or {}).get("jobs") or [] for s in j.get("steps") or []]
+    steps += [s for c in contexts for s in (c.get("local") or {}).get("steps") or []]
+    (found,) = {s["no_verdict_when"] for s in steps if "harness_gate_read" in str(s.get("no_verdict_when", ""))}
+    return found
+
+
+MATRIX_NO_VERDICT = _matrix_no_verdict()
 
 
 def _code_only(source: str) -> str:
@@ -799,9 +812,9 @@ def test_b25p4_live_head_different_from_decided_head_reads_false_never_pending(t
     assert "PENDING" not in err and "CANNOT-VERIFY" not in err
 
 
-def test_b25p4_ledger_failure_and_unsuperseded_failure_and_corrupt_ledger_all_fail_without_pending(tmp_path, monkeypatch, capsys):
-    """Guilt: a ledger 'failure', an unsuperseded earlier 'failure', or a corrupt/0644 ledger file
-    all return rc=1 and never emit PENDING or CANNOT-VERIFY."""
+def test_b25p4_ledger_failure_and_unsuperseded_failure_both_fail_without_pending(tmp_path, monkeypatch, capsys):
+    """Guilt: a ledger 'failure' or an unsuperseded earlier 'failure' returns rc=1 and never emits PENDING
+    or CANNOT-VERIFY. (An unreadable ledger is no verdict: see test_b25p4fu_*.)"""
     monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
 
     # 1. Newest entry is failure
@@ -823,13 +836,80 @@ def test_b25p4_ledger_failure_and_unsuperseded_failure_and_corrupt_ledger_all_fa
     err = capsys.readouterr().err
     assert "verdict = 'failure'" in err and "PENDING" not in err and "CANNOT-VERIFY" not in err
 
-    # 3. Group-readable ledger (0644) -> LedgerFile error, not PENDING
-    bad_mode = _write_ledger(tmp_path / "badmode.jsonl", [_ledger_entry(VALID_SHA_A, "success")], mode=0o644)
+
+UNREADABLE_LEDGER = [
+    "group-readable 0644", "group-readable 0640", "torn line (no trailing newline)", "junk line", "symlink", "directory",
+]
+
+
+def _make_unreadable_ledger(kind: str, tmp_path: Path) -> Path:
+    import json as _json
+    good = _json.dumps(_ledger_entry(VALID_SHA_A, "success"), separators=(",", ":"))
+    p = tmp_path / ("ledger-" + kind.split()[0])
+    if kind == "group-readable 0644":
+        return _write_ledger(p, [_ledger_entry(VALID_SHA_A, "success")], mode=0o644)
+    if kind == "group-readable 0640":
+        return _write_ledger(p, [_ledger_entry(VALID_SHA_A, "success")], mode=0o640)
+    if kind.startswith("torn"):
+        p.write_text(good, encoding="utf-8")   # a success entry, cut before its newline
+        p.chmod(0o600)
+    elif kind == "junk line":
+        p.write_text("not json at all\n", encoding="utf-8")
+        p.chmod(0o600)
+    elif kind == "symlink":
+        real = _write_ledger(tmp_path / "real.jsonl", [_ledger_entry(VALID_SHA_A, "success")])
+        p.symlink_to(real)
+    else:
+        p.mkdir()
+    return p
+
+
+@pytest.mark.parametrize("kind", UNREADABLE_LEDGER)
+def test_b25p4fu_a_ledger_that_exists_but_cannot_be_read_is_cannot_verify_never_success_never_a_verdict(kind, tmp_path, monkeypatch, capsys):
+    """LOW-1 (gate-b25p4): an existing-but-unreadable ledger is no verdict on the candidate. The reader says so on the
+    runner's own no-verdict line (anchored at the start of a stderr line, rc 1): the Harness floor reads BLOCKED and the
+    key is re-decided, not FAIL. It must still never read success (rc 0), never PENDING (not retried as 'not posted yet')."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
+    ledger = _make_unreadable_ledger(kind, tmp_path)
     capsys.readouterr()
-    assert hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A,
-                     "--ledger", str(bad_mode), "--head", VALID_SHA_A]) == 1
+    rc = hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A,
+                   "--ledger", str(ledger), "--head", VALID_SHA_A])
+    cap = capsys.readouterr()
+    assert rc == 1
+    assert any(ln.startswith(MATRIX_NO_VERDICT) for ln in cap.err.splitlines()), cap.err
+    assert "PENDING" not in cap.err and "verdict = 'success'" not in cap.err + cap.out and "does not pass the gate" not in cap.err
+
+
+def test_b25p4fu_the_cannot_verify_line_is_the_one_the_matrix_maps_to_no_verdict():
+    """The reader's line and the matrix's `no_verdict_when` are two files that must agree: if either drifts the floor
+    silently goes back to reading an unreadable ledger as FAIL."""
+    assert MATRIX_NO_VERDICT == "::error::harness_gate_read: CANNOT-VERIFY"
+
+
+def test_b25p4fu_a_ledger_that_reads_clean_is_still_a_verdict_and_not_cannot_verify(tmp_path, monkeypatch, capsys):
+    """Innocence: only an unreadable ledger changes; a readable failure stays a FAIL verdict and a readable
+    success stays 0, so the reclassification cannot swallow a real red."""
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (VALID_SHA_A, "live PR #42"))
+    fail = _write_ledger(tmp_path / "f.jsonl", [_ledger_entry(VALID_SHA_A, "failure")])
+    ok = _write_ledger(tmp_path / "s.jsonl", [_ledger_entry(VALID_SHA_A, "success")])
+    base = ["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", VALID_SHA_A, "--head", VALID_SHA_A]
+    capsys.readouterr()
+    assert hgr.main([*base, "--ledger", str(fail)]) == 1
+    assert "CANNOT-VERIFY" not in capsys.readouterr().err
+    assert hgr.main([*base, "--ledger", str(ok)]) == 0
+
+
+@pytest.mark.parametrize("live", [VALID_SHA_A[:-1] + "f", "f" + VALID_SHA_A[1:], VALID_SHA_A[:20] + "f" * 20])
+def test_b25p4fu_a_live_head_that_shares_a_prefix_with_the_decided_head_does_not_match(live, tmp_path, monkeypatch, capsys):
+    """LOW-3 (gate-b25p4): the decided head must equal the live head in all 40 hex, not on a prefix of it."""
+    assert live != VALID_SHA_A and len(live) == 40
+    monkeypatch.setattr(hgr, "resolve_real_head_sha", lambda **kw: (live, "live PR #42"))
+    ledger = _write_ledger(tmp_path / "v.jsonl", [_ledger_entry(VALID_SHA_A, "success"), _ledger_entry(live, "success")])
+    capsys.readouterr()
+    rc = hgr.main(["--event-name", "pull_request", "--repo", "acme/example", "--pr-head-sha", live,
+                   "--ledger", str(ledger), "--head", VALID_SHA_A])
     err = capsys.readouterr().err
-    assert "0600" in err and "PENDING" not in err and "CANNOT-VERIFY" not in err
+    assert rc == 1 and f"live head {live} != decided head {VALID_SHA_A}" in err
 
 
 def test_b25p4_ledger_and_head_flags_require_each_other_and_valid_40_hex(tmp_path, monkeypatch, capsys):
