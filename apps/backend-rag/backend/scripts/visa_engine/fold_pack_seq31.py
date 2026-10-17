@@ -174,7 +174,9 @@ def assert_only_expected_changes(restamped: dict[str, Any], out: dict[str, Any])
         _fail("top-level key set changed")
     for key in set(restamped) - _IDENTITY_KEYS - {"rules"}:
         if _canon(restamped[key]) != _canon(out[key]):
-            _fail(f"{key} changed; products, source_records and all other content must be identical")
+            _fail(
+                f"{key} changed; products, source_records and all other content must be identical"
+            )
 
     before_rules = _rules_by_id(restamped)
     after_rules = _rules_by_id(out)

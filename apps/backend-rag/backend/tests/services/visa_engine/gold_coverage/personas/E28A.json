@@ -39,6 +39,10 @@
       "status": "KNOWN",
       "value": true
     },
+    "investment.own_shareholding_idr": {
+      "status": "KNOWN",
+      "value": 10000000000
+    },
     "investment.paid_up_capital_idr": {
       "status": "KNOWN",
       "value": 2500000000
