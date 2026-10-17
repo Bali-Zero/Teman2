@@ -8,7 +8,11 @@
         <string>/bin/bash</string>
         <string>/Users/nuzantara/scripts/mini-disk-janitor.sh</string>
     </array>
-    <key>StartInterval</key><integer>86400</integer>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>3</integer>
+        <key>Minute</key><integer>30</integer>
+    </dict>
     <key>RunAtLoad</key><false/>
     <key>StandardOutPath</key><string>/tmp/com.nuzantara.mini-disk-janitor.out</string>
     <key>StandardErrorPath</key><string>/tmp/com.nuzantara.mini-disk-janitor.err</string>

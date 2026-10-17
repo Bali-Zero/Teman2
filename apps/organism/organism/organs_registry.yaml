@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 9af752aa15b4539161a844c102ca9efb2caeb33f67e166efc3f3bb1f02af3ab6 # pragma: allowlist secret
+checksum: cbf553b9dfdf155182423efaa84fba76935345be41d7e7126c34896dc0f920a1 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3371,7 +3371,7 @@ organs:
     host: mini
     label: com.nuzantara.mini-disk-janitor
   severity_on_silence: warning
-  notes: 'Daily bounded disk hygiene on the Mini (payload scripts/ops/mini_disk_janitor.sh, StartInterval 86400, no KeepAlive): prunes the self-hosted runner pip/uv/tmp caches only while the runner is idle, prunes dangling docker images and build cache, fstrims the Colima VM so freed space returns to the host, ages out ~/Library/Caches files older than 14 days, GCs the npm and uv caches, and alarms (Telegram p0) on host-free or runner-disk ceilings. expected_hb_seconds is 2x the cadence. Kill switch MINI_DISK_JANITOR_ENABLED=false. Born via organ_birth.py.'
+  notes: 'Daily bounded disk hygiene on the Mini (payload scripts/ops/mini_disk_janitor.sh, StartCalendarInterval 03:30 WITA, no KeepAlive): prunes the self-hosted runner pip/uv/tmp caches only while the runner is idle, prunes dangling docker images and build cache, fstrims the Colima VM so freed space returns to the host, ages out files older than 14 days inside an allowlist of ~/Library/Caches entries only, GCs the npm and uv caches, and alarms (Telegram p0) on host-free or runner-disk ceilings. Heartbeat is ok for level ok/warning, a runner-busy skip or a live previous run (the healer reads only ok as alive), error for critical/unknown/payload failure. expected_hb_seconds is 2x the daily cadence. Kill switch MINI_DISK_JANITOR_ENABLED=false. Born via organ_birth.py.'
   cicatrix_refs: []
   bridge_source:
     type: state_file
