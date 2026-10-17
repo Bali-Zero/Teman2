@@ -32,6 +32,7 @@ import {
   D2_PROOF_OF_FUNDS_USD,
   D12_PROOF_OF_FUNDS_USD,
   E28A_OWN_SHAREHOLDING_THRESHOLD_IDR,
+  E28A_PAID_UP_CAPITAL_THRESHOLD_IDR,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   E33F_E33E_DEPOSIT_NOTE_CODE,
@@ -1562,18 +1563,50 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(RETIRED_SUPPORT_REASON_KEYS).not.toContain(
       "E28A_OWN_SHAREHOLDING_BELOW_MIN",
     );
+    expect(RETIRED_REPLAYABLE_SUPPORT_REASON_KEYS).toContain(
+      "E28A_INVESTMENT_ELIGIBLE",
+    );
+    expect(RETIRED_SUPPORT_REASON_KEYS).not.toContain(
+      "E28A_OWN_SHAREHOLDING_ELIGIBLE",
+    );
     expect(RETIRED_FROM_SEQUENCE.E28A_TOTAL_INVESTMENT_BELOW_MIN).toBe(31);
+    expect(RETIRED_FROM_SEQUENCE.E28A_INVESTMENT_ELIGIBLE).toBe(31);
     // Replayable means the copy stays so signed seq-28..30 decisions still render.
-    expect("E28A_TOTAL_INVESTMENT_BELOW_MIN" in SUPPORT_REASON_COPY).toBe(true);
+    for (const key of [
+      "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+      "E28A_INVESTMENT_ELIGIBLE",
+    ]) {
+      expect(key in SUPPORT_REASON_COPY, key).toBe(true);
+    }
     const packs = reasonCodesOfSignedPacksFrom(0);
     for (const [sequence, codes] of packs) {
       if (sequence >= 28 && sequence < 31) {
-        expect(codes.has("E28A_TOTAL_INVESTMENT_BELOW_MIN")).toBe(true);
-        expect(codes.has("E28A_OWN_SHAREHOLDING_BELOW_MIN")).toBe(false);
+        for (const old of [
+          "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+          "E28A_INVESTMENT_ELIGIBLE",
+        ]) {
+          expect(codes.has(old), `seq-${sequence} ${old}`).toBe(true);
+        }
+        for (const fresh of [
+          "E28A_OWN_SHAREHOLDING_BELOW_MIN",
+          "E28A_OWN_SHAREHOLDING_ELIGIBLE",
+        ]) {
+          expect(codes.has(fresh), `seq-${sequence} ${fresh}`).toBe(false);
+        }
       }
       if (sequence >= 31) {
-        expect(codes.has("E28A_TOTAL_INVESTMENT_BELOW_MIN")).toBe(false);
-        expect(codes.has("E28A_OWN_SHAREHOLDING_BELOW_MIN")).toBe(true);
+        for (const old of [
+          "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+          "E28A_INVESTMENT_ELIGIBLE",
+        ]) {
+          expect(codes.has(old), `seq-${sequence} ${old}`).toBe(false);
+        }
+        for (const fresh of [
+          "E28A_OWN_SHAREHOLDING_BELOW_MIN",
+          "E28A_OWN_SHAREHOLDING_ELIGIBLE",
+        ]) {
+          expect(codes.has(fresh), `seq-${sequence} ${fresh}`).toBe(true);
+        }
       }
     }
   });
@@ -1664,11 +1697,19 @@ describe("support reasons are sentences, not machine codes", () => {
     expect(support.id).not.toContain("IDR");
     expect(support.en).toContain("IDR 2.5 billion");
     expect(support.en).toContain("IDR 10 billion");
-    // Seq-31: the IDR 10 billion is the applicant's own shareholding, not company capital.
-    expect(support.en).toContain("you personally own shares");
-    expect(support.en).not.toContain("total investment");
-    expect(support.id).toContain("Anda sendiri memiliki saham");
-    expect(support.id).not.toContain("total modal investasi");
+    // Seq-31 renames the code: the retired sentence keeps its seq-20..30 meaning
+    // (company capital) and the new code states the applicant's OWN shares.
+    expect(support.en).toContain("total investment capital");
+    const own = SUPPORT_REASON_COPY.E28A_OWN_SHAREHOLDING_ELIGIBLE;
+    expect(E28A_PAID_UP_CAPITAL_THRESHOLD_IDR).toBe(2_500_000_000);
+    expect(own.en).toBe(
+      "You personally own shares worth at least IDR 10,000,000,000 in the sponsoring PT PMA, and the company's paid-up capital meets the IDR 2,500,000,000 minimum.",
+    );
+    expect(own.id).toBe(
+      "Anda sendiri memiliki saham senilai minimal Rp 10.000.000.000 di PT PMA penjamin, dan modal disetor perusahaan memenuhi batas minimal Rp 2.500.000.000.",
+    );
+    expect(own.id).not.toContain("IDR");
+    expect(own.en + own.id).not.toMatch(/Pasal|Permenkumham|Permen /);
     // SEQ29-A2 (seq-30): el.e28a.investment drops investment.proposed_role, so
     // E28A_INVESTMENT_ELIGIBLE no longer claims the applicant is a director or commissioner.
     expect(support.en).not.toContain("shareholder-director");
@@ -1690,6 +1731,7 @@ describe("support reasons are sentences, not machine codes", () => {
       "E28A_PAID_CAPITAL_BELOW_MIN",
       "E28A_TOTAL_INVESTMENT_BELOW_MIN",
       "E28A_OWN_SHAREHOLDING_BELOW_MIN",
+      "E28A_OWN_SHAREHOLDING_ELIGIBLE",
     ]) {
       expect(SUPPORT_REASON_COPY[key].id).toMatch(/Rp \d{1,3}(\.\d{3})+/);
     }
@@ -2006,6 +2048,18 @@ describe("support reasons are sentences, not machine codes", () => {
     return Math.round(Number(match[1].replace(",", ".")) * 1_000_000_000);
   }
 
+  function idrFullFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/IDR\s+(\d{1,3}(?:,\d{3})+)/g)][nth];
+    if (!match) throw new Error(`no "IDR n,nnn" figure #${nth} in: ${copy}`);
+    return Number(match[1].replaceAll(",", ""));
+  }
+
+  function rpFullFromProse(copy: string, nth = 0): number {
+    const match = [...copy.matchAll(/Rp\s+(\d{1,3}(?:\.\d{3})+)/g)][nth];
+    if (!match) throw new Error(`no "Rp n.nnn" figure #${nth} in: ${copy}`);
+    return Number(match[1].replaceAll(".", ""));
+  }
+
   const FIGURE_BACKED_BY_RULE: Record<
     string,
     {
@@ -2017,20 +2071,20 @@ describe("support reasons are sentences, not machine codes", () => {
       copyKey?: string;
     }
   > = {
-    E28A_INVESTMENT_ELIGIBLE: {
-      ruleId: "el.e28a.investment",
-      fact: "investment.paid_up_capital_idr",
-      readEn: idrBillionFromProse,
-      readId: rpMiliarFromProse,
-    },
-    // I-M02: the same sentence names the SECOND figure the rule checks — since
-    // seq-31 the applicant's own shareholding, no longer the company's capital.
-    "E28A_INVESTMENT_ELIGIBLE#own_shareholding": {
-      copyKey: "E28A_INVESTMENT_ELIGIBLE",
+    // E28A_INVESTMENT_ELIGIBLE is retired-replayable from seq-31: its backing rule now
+    // emits E28A_OWN_SHAREHOLDING_ELIGIBLE, whose two figures are anchored here.
+    E28A_OWN_SHAREHOLDING_ELIGIBLE: {
       ruleId: "el.e28a.investment",
       fact: "investment.own_shareholding_idr",
-      readEn: (copy: string) => idrBillionFromProse(copy, 1),
-      readId: (copy: string) => rpMiliarFromProse(copy, 1),
+      readEn: (copy: string) => idrFullFromProse(copy, 0),
+      readId: (copy: string) => rpFullFromProse(copy, 0),
+    },
+    "E28A_OWN_SHAREHOLDING_ELIGIBLE#paid_up": {
+      copyKey: "E28A_OWN_SHAREHOLDING_ELIGIBLE",
+      ruleId: "el.e28a.investment",
+      fact: "investment.paid_up_capital_idr",
+      readEn: (copy: string) => idrFullFromProse(copy, 1),
+      readId: (copy: string) => rpFullFromProse(copy, 1),
     },
     E33E_RETIREMENT_ELIGIBLE: {
       ruleId: "el.e33e.retirement",
