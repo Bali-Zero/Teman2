@@ -1,0 +1,84 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-15 (handoff row SEQ29-A1) - the E28A 10 bn test is re-keyed to the applicant's OWN shareholding
+  value in the sponsoring company; the 2.5 bn paid-up bound stays as the PT PMA company prerequisite. Step B
+  is the interview asking and sending the fact.
+mission: >-
+  The Visa Oracle interview asks the applicant's own shareholding in the sponsoring company and sends it as
+  investment.own_shareholding_idr (step B of the E28A own-shareholding chain).
+lanes:
+  - lane: e28a-mouth-question
+    role: build
+    seat: >-
+      claude-sonnet-5.5 implementer, worktree mouth-vo-e28a-own-share-question-1017 on M5, mirroring seq-28 step B
+      (squash 2630e98c70, remote_annual_income_usd).
+  - lane: e28a-ground-truth
+    role: ground_truth
+    seat: >-
+      flow.ts at step A's HEAD before the change: the pt_pma and capital_market branches, and the business
+      explorer, ask the capital questions; the change adds one question after the paid-up capital question.
+    nb: apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/flow.ts
+    query_hash: "8e233b5eb2c1320597eb8bf9735087c474d3889359eeb947c06590dc885d529d" # pragma: allowlist secret
+    note: query_hash = sha256 of flow.ts at step A HEAD 089d9fca48 (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the public Visa Oracle interview (/visa-oracle, PT PMA investor path): it must ask the own-shareholding
+    question after the paid-up capital question, and the /evaluate request must carry
+    investment.own_shareholding_idr as KNOWN whole IDR once answered.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_oracle_own_shareholding_question.py
+  expect: "contains:own shareholding question holds"
+receipts:
+  - claim: "The whole visa-oracle Vitest tree and src/lib/api on the rebased HEAD (interview, mapper, copy, census, corpus determinism, no-path-doors)."
+    cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle" src/lib/api
+    result: "Test Files 100 passed (100); Tests 2360 passed (2360)"
+    exit: 0
+    ts: "2026-10-17T01:12:00Z"
+    seat: this session
+  - claim: "apps/mouth typechecks."
+    cmd: cd apps/mouth && npx tsc --noEmit
+    result: "no output"
+    exit: 0
+    ts: "2026-10-17T01:12:30Z"
+    seat: this session
+  - claim: "Backend census, seq-21 pack, rollout/registry, gold coverage and Sentry PII tests on the rebased HEAD."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/gold_coverage backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/unit/app/setup/test_sentry_pii_redaction.py"
+    result: "377 passed, 14 skipped in 184.56s (the 14 skips are the unsigned-candidate-pack replays)"
+    exit: 0
+    ts: "2026-10-17T01:11:00Z"
+    seat: this session
+  - claim: "The observer passes and its summary parser rejects skipped, failed and reduced counts."
+    cmd: python3 scripts/ci/observe_visa_oracle_own_shareholding_question.py
+    result: "Tests 6 passed (6); own shareholding question holds; parser tests 24 passed"
+    exit: 0
+    ts: "2026-10-17T01:12:40Z"
+    seat: this session
+  - claim: "Mutation: dropping the mapper's investment.own_shareholding_idr mapping (backup restored by cp) turns the tests red."
+    cmd: "replace facts.investment_own_shareholding_idr with undefined in fact-mapper.ts, then vitest own-shareholding-question.test.ts fact-mapper.test.ts"
+    result: "7 failed, 200 passed; after cp restore 207 passed"
+    exit: 1
+    ts: "2026-10-17T01:03:00Z"
+    seat: this session
+decisions:
+  - id: D-no-not-sure
+    decision: >-
+      No not-sure option, as in the seq-28 step B precedent: the seq-31 rule will need the figure and an unknown
+      would only re-ask it. The no-notSure pin in tree.test.ts moves 16 -> 17.
+  - id: D-why-copy
+    decision: >-
+      The why-copy says the Investor visa looks at the shares the applicant holds personally, not only at the
+      company's capital: true before and after the pack reads the figure, and it names no threshold.
+  - id: D-reason-copy-ahead-of-pack
+    decision: >-
+      E28A_OWN_SHAREHOLDING_BELOW_MIN copy lands one step ahead of the seq-31 pack; the I-M01 orphan census
+      carries a one-key PENDING list that step C deletes. The English copy says "personally own" rather than
+      "held by you" because the client-copy jargon guard rejects the word "held".
+  - id: D-no-path-doors-fingerprint
+    decision: >-
+      The no-path-doors replay fixture only changes its corpus fingerprint: walk files gained the NOT_ASKED key,
+      outcomes are unchanged. A full regeneration with the highest pack lists 38 walks against the committed 27
+      before and after this change identically, so the committed fixture predates this step and is carried
+      as is; flagged for the owner of that generator.
+dissent: []
