@@ -1,0 +1,83 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  The fresh Opus gate on PR 8686 (issuecomment-6237380381) passed it with conditions: C1 asks for a
+  follow-up PR from fresh origin/main closing F1 (watcher list), F2 (newline-safe /tmp handling), F3
+  (sweep order) and F4 (mindepth pin). Owner request behind the organ: Zero 2026-10-17, "crea un
+  demon automatico che fa pulizia giornaliera".
+mission: >-
+  A failure of the Mini janitor's tests on main alerts like every other workflow, and no file name in
+  the runner container can steer the janitor outside its declared targets.
+lanes:
+  - lane: mini-janitor-followup
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented F1-F4 from the orchestrator's task, then the council nits)
+  - lane: mini-janitor-followup
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; reviewed the quoting and the deletion patterns, wrote the task)
+  - lane: mini-janitor-followup
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, round 1 on 7c395e87a7, review only; diff_stat empty)
+  - lane: mini-janitor-followup
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, round 1 on 7c395e87a7, review only; diff_stat empty)
+  - lane: mini-janitor-followup-ground-truth
+    role: ground_truth
+    seat: The PR 8686 gate verdict (findings F1-F4 and condition C1) and its reproduction of the newline case in a sandbox.
+    nb: PR 8686 gate comment issuecomment-6237380381
+    query_hash: "f626cbc34504c2171d77e6e278fbf72d1c0713a11ea1858c1cbd17479ccc8047" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumers: (1) main-push-failure-watch.yml, which after the merge lists "Mini disk janitor tests"
+  (check_watcher_coverage.py green on main); (2) the Mini's com.nuzantara.mini-disk-janitor job, whose
+  next run (scheduled 03:30 WITA or a kickstart) executes the reordered, newline-safe exec script from
+  the Mini checkout: heartbeat status ok and a receipt whose runner_cache step is done or skipped with
+  no error. Not yet observed: nothing is merged.
+receipts:
+  - claim: The janitor corpus passes on HEAD ff6d614acd, including T4c (the generated exec script executed with sh against a remapped tree holding pip-unpack and old tmp names with embedded newlines) and T2c (the mindepth pin).
+    cmd: /bin/bash scripts/tests/test_mini_disk_janitor.sh
+    result: "mini_disk_janitor: 102 passed, 0 failed"
+    exit: 0
+    ts: "2026-10-17T17:58:24Z"
+    seat: this session
+  - claim: Syntax and shellcheck are clean and every live workflow is watched.
+    cmd: bash -n scripts/ops/mini_disk_janitor.sh; shellcheck -S warning (payload, test); python3 scripts/check_watcher_coverage.py
+    result: "bash-n-ok; shellcheck-ok; all 132 live workflow(s) covered (one pre-existing stale-entry warning: AI PR review (advisory))"
+    exit: 0
+    ts: "2026-10-17T17:58:24Z"
+    seat: this session
+  - claim: Mutants killed on 7c395e87a7 (line loop restored 3 red; -mindepth 1 dropped from the empty-dir prune 1 red), run on scratchpad copies.
+    cmd: mutated copies of the payload through the corpus
+    result: "both killed"
+    exit: 0
+    ts: "2026-10-17T17:50:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-find-exec-entries
+    text: >-
+      /tmp entries are handled by find itself through -exec sh -c with the paths as arguments, so a
+      name is never re-split or evaluated; each is renamed to a same-parent trash sibling and removed.
+  - id: D-reserved-trash-namespace
+    text: >-
+      Top-level .janitor-trash-* entries under /home/runner/.cache and /tmp in the runner container are
+      a namespace reserved for this janitor and are deleted on sight; nothing else in the fleet writes
+      that prefix. This bounds the leftover sweep, which has no other provenance check.
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol (CONCERNS) and kimi-code/k3 (PASS), round 1 on
+  7c395e87a7. Both points were documentation and test coverage and were closed in ff6d614acd (header
+  order and reserved-namespace contract, an old tmp* newline fixture in T4c) without a second round;
+  the fresh Opus gate grades the final state. Logs under /Users/balizero/nuzantara/.worktrees/:
+  seat-build-codex-20261017T175148Z-17231, seat-build-kimi-20261017T175148Z-17233.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: The leftover sweep deletes any top-level .janitor-trash-* entry without proving it is janitor trash.
+    status: PLAUSIBLE
+    resolution: Resolved by contract in ff6d614acd; the header declares the prefix reserved for the janitor (D-reserved-trash-namespace).
+  - seat: kimi-code/k3
+    objection: The header still described the old order, and T4c covered only a pip-unpack newline name.
+    status: CONFIRMED
+    resolution: Resolved in ff6d614acd (header order corrected; old tmp* newline fixture added; 102 passed).
+spend:
+  wall_clock_hours: 0.6
+  adversarial_rounds: 1
