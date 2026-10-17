@@ -1,0 +1,72 @@
+{
+  "code": "C1",
+  "official_name_id": "C1 Visa Kunjungan Wisata",
+  "source_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C1",
+  "retrieved_at": "2026-10-17T10:08:17Z",
+  "page_sha256": "991bd382237c39d051251a7b61364b6b2de955fa20b59ca4777cbd32c287fdd2",
+  "definition_verbatim": "berkunjung ke Indonesia untuk berwisata, pengembangan pribadi, atau mempelajari keunikan daya tarik wisata, juga melakukan perjalanan dengan kapal pesiar. Anda juga bisa hadir sebagai peserta dalam kegiatan pertemuan, insentif, konvensi, dan pameran serta melakukan diskusi, negosiasi, dan atau penandatanganan perjanjian bisnis pada perkantoran, pabrik, atau tempat produksi barang. Anda juga diizinkan melakukan peninjauan lapangan ke perkantoran, pabrik, tempat produksi barang, tempat yang akan diinvestasikan, dan atau tempat pertambangan; maupun melakukan kegiatan yang berhubungan dengan medis.",
+  "jenis_visa_verbatim": "Visa C1 merupakan Visa Kunjungan untuk satu kali masuk ke Indonesia dengan izin tinggal pertama kali maksimal 60 hari, dihitung sejak tanggal kedatangan. Izin Tinggal ini dapat diperpanjang dan dapat dikonversikan menjadi Izin Tinggal Terbatas.",
+  "stay_days": [
+    "Anda dapat tinggal di Indonesia maksimal 60 hari, dihitung sejak tanggal kedatangan."
+  ],
+  "extendable": [
+    "Anda dapat memperpanjang izin tinggal ini beberapa kali hingga maksimal 180 hari.",
+    "Izin Tinggal ini dapat diperpanjang dan dapat dikonversikan menjadi Izin Tinggal Terbatas."
+  ],
+  "entry": "single",
+  "where_to_apply": null,
+  "sponsor_required": {
+    "as_stated_boolean": false,
+    "verbatim": [
+      "Anda tidak membutuhkan penjamin/sponsor untuk mengajukan visa ini.",
+      "Kecuali anda:",
+      "- Berstatus tanpa kewarganegaraan (stateless); atau",
+      "- Pemegang dokumen perjalanan bukan paspor kebangsaan; atau",
+      "- Warga negara dari negara tertentu yang ada di dalam daftar ini."
+    ],
+    "invitation_requirement_see": "requirements_verbatim (Persyaratan Khusus)"
+  },
+  "requirements_verbatim": [
+    {
+      "n": 1,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "dokumen perjalanan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis,\n(untuk pemegang dokumen perjalanan selain paspor kebangsaan seperti paspor darurat, dokumen identitas, dll harus berlaku selama 12 bulan)"
+    },
+    {
+      "n": 2,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin sebesar minimal USD2000 atau dalam mata uang lain yang setara jumlahnya,"
+    },
+    {
+      "n": 3,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "pasfoto berwarna terbaru (setahun terakhir). Detail"
+    }
+  ],
+  "pengajuan_intro_verbatim": "Orang asing harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa. Setelah memiliki akun, orang asing dapat mengajukan visa setelah login di evisa.imigrasi.go.id dengan menyiapkan berkas elektronik (detail format file) Orang Asing antara lain:",
+  "allowed_activities": "see definition_verbatim",
+  "prohibited_or_conditions_verbatim": [
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia.",
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menjadi mengisi acara sebagai Pembicara."
+  ],
+  "ketentuan_lain_verbatim": [
+    "Orang Asing tanpa kewarganegaraan dan Orang Asing pemegang dokumen perjalanan (bukan paspor kebangsaan) berupa paspor sementara, paspor darurat, titre du voyage, certificate of identity, laissez passer, atau dokumen sejenis lainnya harus melampirkan dokumen Izin Masuk Kembali ke negara tempat Visa Kunjungan diajukan serta tiket kembali/tiket terusan ke negara lain (kecuali bagi awak alat angkut).",
+    "Masa berlaku visa adalah 90 hari sejak diterbitkan. Jika tidak digunakan setelah jangka waktu tersebut, Orang Asing harus mengajukan visa baru untuk dapat masuk ke Indonesia.",
+    "Harap diperhatikan bahwa masa berlaku visa berbeda dengan masa tinggal, silakan periksa visa Anda untuk informasi tentang lama izin tinggal.",
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menjual barang atau jasa atau menerima imbalan, upah, atau sejenisnya atas kerja/usahanya dari perorangan atau korporasi di Indonesia.",
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menjadi mengisi acara sebagai Pembicara."
+  ],
+  "pnbp_verbatim_for_reference_only": [
+    "Masa tinggal 60 hari (dapat diperpanjang) : Rp. 1.000.000",
+    "Komponen biaya:",
+    "- Biaya visa C1 Rp. 1.000.000",
+    "- Biaya Verifikasi I/II Rp 0",
+    "Semua pembayaran (PNBP) dapat dilakukan melalui beberapa bank yang telah ditunjuk. Silakan lihat kode billing yang muncul di sistem setelah pengajuan visa oleh sponsor."
+  ],
+  "notes": [
+    "Persyaratan khusus section states 'Tidak ada persyaratan khusus'. Sponsor exception list includes 'Warga negara dari negara tertentu yang ada di dalam daftar ini' (list is a link, not in page text). Prohibition on speaking: see prohibited.",
+    "Page shows no explicit offshore/onshore statement; where_to_apply is null. Application is via evisa.imigrasi.go.id per page text. Requirements numbered by order of appearance (page uses bullets, not numbers)."
+  ],
+  "status": "VERIFIED_FROM_SOURCE",
+  "persyaratan_khusus_verbatim": "Tidak ada persyaratan khusus"
+}

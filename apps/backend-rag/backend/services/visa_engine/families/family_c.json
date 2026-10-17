@@ -1,0 +1,248 @@
+{
+  "family": "C",
+  "name": "Single-entry visit visas",
+  "law_dir": "law/C",
+  "questions": {
+    "activity": {
+      "text_en": "What will you do in Indonesia?",
+      "options": {
+        "holiday": "C1",
+        "business_meetings": "C2",
+        "explore_investment": "C12",
+        "social_activity": "C6",
+        "music": {
+          "ask": "music_role"
+        },
+        "other_arts": "C7C",
+        "sport": {
+          "ask": "sport_role"
+        },
+        "speaker": "C10",
+        "skill_test": "C18",
+        "internship": {
+          "ask": "internship_type"
+        }
+      }
+    },
+    "music_role": {
+      "text_en": "Are you the performer or part of the crew?",
+      "options": {
+        "performer": "C7A",
+        "crew": "C7B"
+      }
+    },
+    "sport_role": {
+      "text_en": "Are you an athlete or an official?",
+      "options": {
+        "athlete": "C8A",
+        "official": "C8B"
+      }
+    },
+    "sport_non_commercial": {
+      "text_en": "Is the sport activity non-commercial (government invitation, international championship, or an international sports organisation event)?",
+      "options": {
+        "yes": true,
+        "no": false
+      }
+    },
+    "internship_type": {
+      "text_en": "Is the internship for your studies or to build skills?",
+      "options": {
+        "studies": "C22A",
+        "skills": "C22B"
+      }
+    },
+    "travel_document": {
+      "text_en": "Do you hold a national passport, or another travel document (stateless, emergency passport, other non-national document)?",
+      "options": {
+        "national_passport": false,
+        "other_document": true
+      }
+    },
+    "sponsor": {
+      "text_en": "Does an Indonesian organisation sponsor you?",
+      "options": {
+        "yes": true,
+        "no": false
+      }
+    },
+    "stay_days": {
+      "text_en": "How many days do you need to stay?",
+      "kind": "integer"
+    }
+  },
+  "visas": {
+    "C1": {
+      "sponsor_required": false,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C1 Tourism"
+        },
+        {
+          "category": "single_entry_visas",
+          "item_key": "C1 Tourism Extension"
+        }
+      ]
+    },
+    "C2": {
+      "sponsor_required": false,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C2 Business"
+        }
+      ]
+    },
+    "C6": {
+      "sponsor_required": true,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C6 Social Activity"
+        }
+      ]
+    },
+    "C7A": {
+      "sponsor_required": true,
+      "stay_days": 30,
+      "extendable": false,
+      "max_total_days": 30,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C7A,B,C Music/Art"
+        }
+      ]
+    },
+    "C7B": {
+      "sponsor_required": true,
+      "stay_days": 30,
+      "extendable": false,
+      "max_total_days": 30,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C7A,B,C Music/Art"
+        }
+      ]
+    },
+    "C7C": {
+      "sponsor_required": true,
+      "stay_days": 30,
+      "extendable": false,
+      "max_total_days": 30,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C7A,B,C Music/Art"
+        }
+      ]
+    },
+    "C8A": {
+      "sponsor_required": true,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C8A,B"
+        }
+      ],
+      "requires_question": "sport_non_commercial"
+    },
+    "C8B": {
+      "sponsor_required": true,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C8A,B"
+        }
+      ],
+      "requires_question": "sport_non_commercial"
+    },
+    "C10": {
+      "sponsor_required": true,
+      "stay_days": 60,
+      "extendable": true,
+      "max_total_days": 180,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C10 Speaker Visa"
+        }
+      ]
+    },
+    "C12": {
+      "sponsor_required": true,
+      "stay_days": 180,
+      "extendable": true,
+      "max_total_months": 12,
+      "price_keys": []
+    },
+    "C18": {
+      "sponsor_required": true,
+      "stay_days": 90,
+      "extendable": false,
+      "max_total_days": 90,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C18 Work Trial"
+        }
+      ]
+    },
+    "C22A": {
+      "sponsor_required": true,
+      "stay_days": 180,
+      "extendable": true,
+      "max_total_months": 12,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C22A&B Internship (60 Days)"
+        },
+        {
+          "category": "single_entry_visas",
+          "item_key": "C22A&B Internship (180 Days)"
+        }
+      ]
+    },
+    "C22B": {
+      "sponsor_required": true,
+      "stay_days": 180,
+      "extendable": true,
+      "max_total_months": 12,
+      "price_keys": [
+        {
+          "category": "single_entry_visas",
+          "item_key": "C22A&B Internship (60 Days)"
+        },
+        {
+          "category": "single_entry_visas",
+          "item_key": "C22A&B Internship (180 Days)"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "C18 = 90 days, not extendable: Zero ruling 2026-10-17 (the official page also carries a contradicting 60-day sentence).",
+    "C1/C2: no sponsor, except stateless, non-national passport holders and listed countries. The country list is TO VERIFY.",
+    "max_total_months is checked conservatively as months x 30 days.",
+    "C8A/C8B cover non-commercial sport only (definition_verbatim); a commercial sport activity gives verdict NOT_COVERED.",
+    "travel_document: national_passport = no sponsor question for C1/C2; other_document = sponsor question. The 'listed countries' exception list is still TO VERIFY, so a national passport of a listed country is not detected."
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "code": "C7C",
+  "official_name_id": "C7C Visa Kunjungan Penampilan Bakat dan Seni",
+  "source_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/C7C",
+  "retrieved_at": "2026-10-17T10:08:17Z",
+  "page_sha256": "17e503a50cb3a39c8cc9c8857ed03011c0a9e12539320bb1b8cd419ebf72ccd0",
+  "definition_verbatim": "melakukan kegiatan dalam rangka mendukung orang asing yang melakukan seni dan budaya di Indonesia seperti memperlihatkan, menampilkan atau mempertunjukkan (perform) suatu karya yang berhubungan dengan musik. Termasuk dengan visa ini anda dapat berwisata serta mengunjungi teman dan keluarga.",
+  "jenis_visa_verbatim": "Visa C7C merupakan Visa Kunjungan untuk satu kali masuk ke Indonesia dengan izin tinggal maksimal 30 hari, dihitung sejak tanggal kedatangan. Izin Tinggal ini tidak dapat diperpanjang ataupun dialihkan menjadi Izin Tinggal lainnya.",
+  "stay_days": [
+    "Anda dapat tinggal di Indonesia maksimal 30 hari, dihitung sejak tanggal kedatangan."
+  ],
+  "extendable": ["Anda tidak dapat memperpanjang izin tinggal ini."],
+  "entry": "single",
+  "where_to_apply": null,
+  "sponsor_required": {
+    "as_stated_boolean": true,
+    "verbatim": [
+      "Anda membutuhkan penjamin/sponsor untuk mengajukan visa ini."
+    ],
+    "invitation_requirement_see": "requirements_verbatim (Persyaratan Khusus)"
+  },
+  "requirements_verbatim": [
+    {
+      "n": 1,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "surat permohonan dan surat pernyataan penjamin,"
+    },
+    {
+      "n": 2,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "dokumen perjalanan yang sah dan masih berlaku paling singkat 6 bulan sebelum masa berlakunya habis,\n(untuk pemegang dokumen perjalanan selain paspor kebangsaan seperti paspor darurat, dokumen identitas, dll harus berlaku selama 12 bulan);"
+    },
+    {
+      "n": 3,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "bukti memiliki biaya hidup selama berada di wilayah Indonesia berupa rekening koran 3 bulan terakhir atas nama Orang Asing atau penjamin"
+    },
+    {
+      "n": 4,
+      "section": "Pengajuan visa (berkas elektronik)",
+      "text": "pasfoto berwarna terbaru (setahun terakhir). Detail"
+    },
+    {
+      "n": 5,
+      "section": "Persyaratan Khusus",
+      "text": "surat undangan dari penyelenggara kegiatan (bagi pelaku kegiatan seni dan budaya yang bersifat umum); atau"
+    },
+    {
+      "n": 6,
+      "section": "Persyaratan Khusus",
+      "text": "surat permohonan visa dari impresariat dan kontrak kerja sama penampil dengan penyelenggara kegiatan (bagi penampil musik atau pendukung)."
+    }
+  ],
+  "pengajuan_intro_verbatim": "Penjamin (sponsor) harus memiliki akun di evisa.imigrasi.go.id sebelum mengajukan visa bagi Orang Asing yang dia sponsori. Setelah memiliki akun, penjamin dapat mengajukan visa C7C bagi Orang Asing setelah login di evisa.imigrasi.go.id dengan menyiapkan berkas elektronik (detail format file) Orang Asing antara lain:",
+  "allowed_activities": "see definition_verbatim",
+  "prohibited_or_conditions_verbatim": [
+    "Orang Asing dengan izin tinggal dari visa ini diperkenankan menerima imbalan atau fasilitas atas atas aktivitasnya dari perorangan atau korporasi di Indonesia.",
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menampilkan seni, budaya, atau perilaku yang tidak sesuai dengan peraturan atau norma yang berlaku."
+  ],
+  "ketentuan_lain_verbatim": [
+    "Orang Asing tanpa kewarganegaraan dan Orang Asing pemegang dokumen perjalanan (bukan paspor kebangsaan) berupa paspor sementara, paspor darurat, titre du voyage, certificate of identity, laissez passer, atau dokumen sejenis lainnya harus melampirkan dokumen Izin Masuk Kembali ke negara tempat Visa Kunjungan diajukan serta tiket kembali/tiket terusan ke negara lain (kecuali bagi awak alat angkut).",
+    "Masa berlaku visa adalah 90 hari sejak diterbitkan. Jika tidak digunakan setelah jangka waktu tersebut, Orang Asing harus mengajukan visa baru untuk dapat masuk ke Indonesia.",
+    "Harap diperhatikan bahwa masa berlaku visa berbeda dengan masa tinggal, silakan periksa visa Anda untuk informasi tentang lama izin tinggal.",
+    "Orang Asing dengan izin tinggal dari visa ini diperkenankan menerima imbalan atau fasilitas atas atas aktivitasnya dari perorangan atau korporasi di Indonesia.",
+    "Orang Asing dengan izin tinggal dari visa ini dilarang menampilkan seni, budaya, atau perilaku yang tidak sesuai dengan peraturan atau norma yang berlaku."
+  ],
+  "pnbp_verbatim_for_reference_only": [
+    "Masa tinggal 30hari : Rp. 1.500.000",
+    "- Biaya visa C7C Rp 500.000",
+    "- Biaya Verifikasi I Rp 1.000.000",
+    "Semua pembayaran (PNBP) dapat dilakukan melalui beberapa bank yang telah ditunjuk. Silakan lihat kode billing yang muncul di sistem setelah pengajuan visa oleh sponsor."
+  ],
+  "notes": [
+    "Jenis visa says izin tinggal maksimal 30 hari, tidak dapat diperpanjang ataupun dialihkan.",
+    "Bracketed qualifiers in Persyaratan Khusus distinguish general arts/culture participants from music performers/supporters.",
+    "Page shows no explicit offshore/onshore statement; where_to_apply is null. Application is via evisa.imigrasi.go.id per page text. Requirements numbered by order of appearance (page uses bullets, not numbers)."
+  ],
+  "status": "VERIFIED_FROM_SOURCE"
+}
