@@ -915,7 +915,14 @@
           "minuman keras",
           "miras",
           "alkohol",
-          "beralkohol"
+          "beralkohol",
+          "liquor",
+          "beer",
+          "wine",
+          "alcol",
+          "alcolici",
+          "alcolico",
+          "bir"
         ]
       },
       "Alcohol License — Golongan B + C": {
@@ -932,7 +939,14 @@
           "minuman keras",
           "miras",
           "alkohol",
-          "beralkohol"
+          "beralkohol",
+          "liquor",
+          "beer",
+          "wine",
+          "alcol",
+          "alcolici",
+          "alcolico",
+          "bir"
         ]
       },
       "Alcohol License — Golongan A + B + C": {
@@ -949,7 +963,14 @@
           "minuman keras",
           "miras",
           "alkohol",
-          "beralkohol"
+          "beralkohol",
+          "liquor",
+          "beer",
+          "wine",
+          "alcol",
+          "alcolici",
+          "alcolico",
+          "bir"
         ]
       },
       "SLHS (Sertifikat Laik Higiene Sanitasi)": {
