@@ -1,0 +1,23 @@
+task_id: tp1-pii-adopt
+lane: docs
+machine: m5
+date: 2026-10-10
+gear: 2
+gear_reason: measured floor; campaign rule >= 2
+l_level: L1
+gate_class: opus
+objective: >-
+  Adopt, fail-closed, the two scopes the TP1 input-screen spec left as owner decision pending: payment card numbers
+  and IBANs join id_number, and any other personal data becomes the asserted reason pii_other. Decision made
+  2026-10-10 by the imperator session under the owner's explicit delegation; reversible by the owner.
+acceptance:
+  A1:
+    text: >-
+      The spec adopts both scopes fail-closed for every shape a declared grammar recognises (items 6 and 7), records the decision line (item 8), gives PAN and IBAN one entity grammar in National IDs with a closed label list and its remainder, and makes personal data no grammar recognises a declared limit (lim_01, rem_pii_other_label) with a named mitigation.
+    probe: >-
+      python3 -m pytest -q -p no:cacheprovider scripts/tp1max/test_screen_corpus.py
+  A2:
+    text: >-
+      The corpus asserts the adopted rows and their innocence rows (ISBN, Luhn-failing card, bad-checksum IBAN, contiguous timestamp, placeholder birth date, technical address labels); the test computes Luhn, issuer prefix and mod-97 from every PAN/IBAN row, pins the decision line and grammar sentences, and pins 371 rows and 23 limits.
+    probe: >-
+      python3 -m pytest -q scripts/tp1max/test_screen_corpus.py, plus mutants: a PAN guilt row made Luhn-invalid, the innocence card made valid, a wrong IBAN checksum, the ISBN row deleted or given a Visa prefix, the decision line deleted, an adopted row or a remainder re-marked, a remainder's table line deleted — each red.
