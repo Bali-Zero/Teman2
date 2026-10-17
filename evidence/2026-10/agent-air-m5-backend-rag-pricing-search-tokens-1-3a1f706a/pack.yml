@@ -1,0 +1,58 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  No new owner ruling: the matching cure the PR 8633 gate asked for (its finding 1-2), written as a
+  spec because the fix-of-a-fix depth on this surface was reached. Catalog content untouched.
+mission: >-
+  A client's price question gets the rows it names, not rows that happen to contain its short
+  words as substrings; curated keywords stop widening unrelated queries.
+lanes:
+  - lane: pricing-search-tokens
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented the spec written by the orchestrator)
+  - lane: pricing-search-tokens
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; checked every lost row against the catalog)
+pii_scan: clean
+bites: >-
+  Consumer: PricingService.search_service on nuzantara-rag, behind /api/pricing/search, Zantara's
+  PricingTool and the WhatsApp bot's price context. Observation after the deploy: live
+  /api/pricing/search for "izin usaha minuman ringan" returns no Alcohol License row and
+  "berapa biaya NIB ke OSS" returns New Company (PT PMA) without the alcohol rows, while
+  "miras" still returns the three alcohol rows.
+receipts:
+  - claim: The corpus, matcher unit cases and existing pricing tests pass.
+    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    result: "225 passed in 9.71s"
+    exit: 0
+    ts: "2026-10-17T01:33:58Z"
+    seat: this session
+  - claim: Catalog decision pins and wider pricing/WhatsApp consumers pass (2 pre-existing order-pollution failures in test_data_invariant_tripwires.py fail identically on the original code and pass alone, 18/18).
+    cmd: tests/scripts/test_catalogue_decisions_1017*.py _1014.py; wa_package_builder, wa_package_router, agentic, zantara_tools, pricing_bridge, price_store_reconciliation, public_pricing_lookup, dynamic_pricing, data_invariant_tripwires
+    result: "56 passed; 2373 passed, 2 failed (pre-existing)"
+    exit: 1
+    ts: "2026-10-17T01:30:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Mutants killed — substring matching restored (18 red), 2-char prefix allowed (7 red), keywords matched by any shared word (8 red); file restored byte-identical.
+    cmd: cp backup, edit, pytest -B, cp back + cmp
+    result: "18 / 7 / 8 red; restored"
+    exit: 0
+    ts: "2026-10-17T01:30:00Z"
+    seat: claude-sonnet-5 implementer
+  - claim: Every row lost on the corpus is a substring-only match.
+    cmd: before/after hit lists (scratch search-before.json / search-after.json) + catalog text check
+    result: "PT PMA lost rows matched 'pt' in 'spt'/'rptka'; ERP lost KITAP + MERP ('erp' in 'merp'); izin kerja lost Cancel Wajib Lapor ('kerja' in 'ketenagakerjaan'); no query gained rows"
+    exit: 0
+    ts: "2026-10-17T01:33:00Z"
+    seat: this session
+decisions:
+  - id: D-word-not-substring
+    text: Descriptive text matches whole words; prefix only for tokens of 4+ characters or containing a digit (keeps e33 -> e33g, visa -> visas).
+  - id: D-keyword-phrase-in-query
+    text: Curated keywords match only as whole phrases contained in the query, so one shared word never widens a query.
+  - id: D-driving-license-out-of-scope
+    text: '"driving license" still returns the alcohol rows through the word "license" in their names; out of scope per the spec, reported.'
+dissent: []
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0
