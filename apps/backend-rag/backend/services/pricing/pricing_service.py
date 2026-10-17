@@ -20,6 +20,7 @@ service has to handle internally:
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,76 @@ _FLAT_CATEGORIES = (
 
 # Categories whose value is ``{sub_block: {service_name: entry}}``.
 _NESTED_CATEGORIES = ("tax_accounting",)
+
+# Words that carry no service identity in a price question (EN/ID/IT function and
+# "how much" words, plus the short ones that would still match whole words in
+# descriptions). Dropped from the query before matching.
+_SEARCH_NOISE_WORDS = frozenset(
+    {
+        "berapa", "harga", "biaya", "price", "cost", "how", "much", "is", "the",
+        "quanto", "costa", "what", "untuk", "for", "di", "in", "bali", "un", "una",
+        "il", "la", "anno", "anni", "year", "years", "prezzo", "a", "of", "per",
+        "del", "della", "dei", "delle", "con", "and", "e", "or", "o",
+        "ke", "dan", "yang", "dari", "to", "as", "on", "at", "mi", "ma", "si",
+        "ci", "lo", "che",
+    }
+)  # fmt: skip
+
+_WORD_RE = re.compile(r"\w+")
+
+
+def _words(text: Any) -> list[str]:
+    """Lower-cased Unicode word tokens; punctuation and symbols separate words."""
+    return _WORD_RE.findall(str(text).lower())
+
+
+def _token_matches_words(token: str, words: set[str]) -> bool:
+    """A query token matches a row by WORD, never by arbitrary substring.
+
+    Equal to a row word, or a prefix of one when it is at least 4 characters
+    long or contains a digit ("visa" ~ "visas", "e33" ~ "e33g"; "ke" !~ "keras").
+    """
+    if token in words:
+        return True
+    if len(token) >= 4 or any(ch.isdigit() for ch in token):
+        return any(w.startswith(token) for w in words)
+    return False
+
+
+def _contains_phrase(sequence: list[str], phrase: list[str]) -> bool:
+    n = len(phrase)
+    return bool(n) and any(sequence[i : i + n] == phrase for i in range(len(sequence) - n + 1))
+
+
+def _count_search_matches(
+    terms: list[str],
+    query_tokens: list[str],
+    descriptive_text: list[Any],
+    keywords: Any,
+    whole_query: bool = False,
+) -> int:
+    """How many query terms a catalogue row answers (0 = not a hit).
+
+    ``descriptive_text`` (key, name, notes, description, legacy names) matches
+    by word. ``keywords`` are curated phrases: one counts only when the whole
+    phrase appears, contiguous, in the query, and then credits the terms it
+    contains. ``whole_query`` (every word was noise) requires the raw query as
+    one contiguous word sequence.
+    """
+    row_list = [w for part in descriptive_text for w in _words(part)]
+    row_words = set(row_list)
+    if whole_query:
+        if len(terms) == 1:
+            return int(_token_matches_words(terms[0], row_words))
+        return int(_contains_phrase(row_list, terms))
+    matched = {t for t in terms if _token_matches_words(t, row_words)}
+    if isinstance(keywords, list):
+        for keyword in keywords:
+            phrase = _words(keyword)
+            if _contains_phrase(query_tokens, phrase):
+                credited = [t for t in terms if t in phrase]
+                matched.update(credited or [" ".join(phrase)])
+    return len(matched)
 
 
 def _client_facing_contacts() -> tuple[str, str]:
@@ -409,59 +480,13 @@ class PricingService:
         query_lower = query.lower().strip()
         results: dict[str, Any] = {}
 
-        # Extract keywords from query (remove common words)
-        noise_words = {
-            "berapa",
-            "harga",
-            "biaya",
-            "price",
-            "cost",
-            "how",
-            "much",
-            "is",
-            "the",
-            "quanto",
-            "costa",
-            "what",
-            "untuk",
-            "for",
-            "di",
-            "in",
-            "bali",
-            "un",
-            "una",
-            "il",
-            "la",
-            "anno",
-            "anni",
-            "year",
-            "years",
-            "prezzo",
-            "a",
-            "of",
-            "per",
-            "del",
-            "della",
-            "dei",
-            "delle",
-            "con",
-            "and",
-            "e",
-            "or",
-            "o",
-        }
-
-        # Split query and remove noise words; also remove short numeric tokens
-        query_keywords = query_lower.split()
-        clean_keywords = []
-        for w in query_keywords:
-            w_clean = w.strip("?.,!\"'")
-            if w_clean and w_clean not in noise_words and len(w_clean) > 1:
-                clean_keywords.append(w_clean)
-
-        if not clean_keywords:
-            # If all words were noise, use the raw query
-            clean_keywords = [query_lower]
+        # Words of the query (punctuation-insensitive); noise words and one-character
+        # tokens are dropped. If nothing is left, the raw query is matched as a phrase.
+        query_tokens = _words(query_lower)
+        clean_keywords = [w for w in query_tokens if w not in _SEARCH_NOISE_WORDS and len(w) > 1]
+        whole_query = not clean_keywords
+        if whole_query:
+            clean_keywords = query_tokens
 
         services = self.prices.get("services", {})
 
@@ -473,17 +498,20 @@ class PricingService:
         ) -> None:
             if _is_internal_service(self, service_name, service_data):
                 return
-            service_text = service_name.lower()
-            service_text += " " + str(service_data.get("name", "")).lower()
-            service_text += " " + str(service_data.get("notes", "")).lower()
-            service_text += " " + str(service_data.get("description_en", "")).lower()
             legacy_names = service_data.get("legacy_names", [])
-            if isinstance(legacy_names, list):
-                service_text += " " + " ".join(n.lower() for n in legacy_names)
-            keywords = service_data.get("keywords", [])
-            if isinstance(keywords, list):
-                service_text += " " + " ".join(str(k).lower() for k in keywords)
-            match_count = sum(1 for term in clean_keywords if term in service_text)
+            match_count = _count_search_matches(
+                clean_keywords,
+                query_tokens,
+                [
+                    service_name,
+                    service_data.get("name", ""),
+                    service_data.get("notes", ""),
+                    service_data.get("description_en", ""),
+                    *(legacy_names if isinstance(legacy_names, list) else []),
+                ],
+                service_data.get("keywords", []),
+                whole_query,
+            )
             if match_count > 0:
                 target = container if container is not None else results
                 target.setdefault(category_name, {})[service_name] = service_data
@@ -496,20 +524,20 @@ class PricingService:
                         continue
                     if _is_internal_service(self, str(service_item.get("name", "")), service_item):
                         continue
-                    code = str(service_item.get("code", "")).lower()
-                    name = str(service_item.get("name", "")).lower()
-                    notes = str(service_item.get("notes", "")).lower()
-                    description = str(service_item.get("description_en", "")).lower()
-                    service_text = f"{code} {name} {notes} {description}"
-
                     legacy_names = service_item.get("legacy_names", [])
-                    if isinstance(legacy_names, list):
-                        service_text += " " + " ".join(n.lower() for n in legacy_names)
-                    keywords = service_item.get("keywords", [])
-                    if isinstance(keywords, list):
-                        service_text += " " + " ".join(str(k).lower() for k in keywords)
-
-                    match_count = sum(1 for term in clean_keywords if term in service_text)
+                    match_count = _count_search_matches(
+                        clean_keywords,
+                        query_tokens,
+                        [
+                            service_item.get("code", ""),
+                            service_item.get("name", ""),
+                            service_item.get("notes", ""),
+                            service_item.get("description_en", ""),
+                            *(legacy_names if isinstance(legacy_names, list) else []),
+                        ],
+                        service_item.get("keywords", []),
+                        whole_query,
+                    )
                     if match_count > 0:
                         results.setdefault(category_name, []).append(
                             (match_count, service_item),

@@ -1,0 +1,568 @@
+{
+ "_doc": "Query corpus for PricingService.search_service word/phrase matching (spec 2026-10-17). Entries are catalogue row keys; '@alcohol' expands to the three Alcohol License rows. must_find: all listed rows appear; must_not_find: none appear; expect_no_hits: zero rows. Languages: EN, ID, IT.",
+ "groups": {
+  "@alcohol": [
+   "Alcohol License — Golongan A",
+   "Alcohol License — Golongan B + C",
+   "Alcohol License — Golongan A + B + C"
+  ]
+ },
+ "queries": [
+  {
+   "query": "alcohol license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin minuman beralkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "harga izin minuman beralkohol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "miras",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "minuman keras",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "harga miras",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "cost of alcohol licence golongan B",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "golongan A",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "SLHS",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ]
+  },
+  {
+   "query": "SLHS as a restaurant",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "laik higiene sanitasi",
+   "must_find": [
+    "SLHS (Sertifikat Laik Higiene Sanitasi)"
+   ]
+  },
+  {
+   "query": "halal certificate",
+   "must_find": [
+    "Halal Certificate"
+   ]
+  },
+  {
+   "query": "halal",
+   "must_find": [
+    "Halal Certificate"
+   ]
+  },
+  {
+   "query": "quanto costa il certificato halal",
+   "must_find": [
+    "Halal Certificate"
+   ]
+  },
+  {
+   "query": "PIRT",
+   "must_find": [
+    "PIRT (Home Industry Food)"
+   ]
+  },
+  {
+   "query": "PIRT minuman",
+   "must_find": [
+    "PIRT (Home Industry Food)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "kitas",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Born KITAS"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "how much is a working KITAS",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ]
+  },
+  {
+   "query": "quanto costa il KITAS lavoro",
+   "must_find": [
+    "Working KITAS (Offshore)"
+   ]
+  },
+  {
+   "query": "berapa harga KITAS investor",
+   "must_find": [
+    "Investor KITAS 2 Years (Offshore)"
+   ]
+  },
+  {
+   "query": "spouse kitas",
+   "must_find": [
+    "Spouse 1 Year (Offshore)"
+   ]
+  },
+  {
+   "query": "kitap",
+   "must_find": [
+    "Investor KITAP + MERP"
+   ]
+  },
+  {
+   "query": "investor kitap",
+   "must_find": [
+    "Investor KITAP + MERP"
+   ]
+  },
+  {
+   "query": "e33",
+   "must_find": [
+    "E33 Second Home (5 Years)",
+    "E33G Remote Worker (Offshore)"
+   ]
+  },
+  {
+   "query": "E33G",
+   "must_find": [
+    "E33G Remote Worker (Offshore)"
+   ]
+  },
+  {
+   "query": "e33f",
+   "must_find": [
+    "E33F Second Home Senior (1 Year, Offshore)"
+   ]
+  },
+  {
+   "query": "second home",
+   "must_find": [
+    "E33 Second Home (5 Years)"
+   ]
+  },
+  {
+   "query": "c1",
+   "must_find": [
+    "C1 Tourism"
+   ]
+  },
+  {
+   "query": "B1 voa",
+   "must_find": [
+    "B1 Visa on Arrival (VOA)"
+   ]
+  },
+  {
+   "query": "visa on arrival extension",
+   "must_find": [
+    "B1 Visa on Arrival Extension"
+   ]
+  },
+  {
+   "query": "harga visa ke bali",
+   "must_find": [
+    "C1 Tourism",
+    "B1 Visa on Arrival (VOA)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "D2 business",
+   "must_find": [
+    "D2 Business (1 Year)"
+   ]
+  },
+  {
+   "query": "C22 internship",
+   "must_find": [
+    "C22A&B Internship (60 Days)"
+   ]
+  },
+  {
+   "query": "PT PMA",
+   "must_find": [
+    "New Company (PT PMA)"
+   ],
+   "must_not_find": [
+    "@alcohol",
+    "Cancel RPTKA"
+   ]
+  },
+  {
+   "query": "ma quanto costa una PT PMA?",
+   "must_find": [
+    "New Company (PT PMA)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "berapa biaya PT PMA di bali",
+   "must_find": [
+    "New Company (PT PMA)"
+   ]
+  },
+  {
+   "query": "berapa biaya NIB ke OSS",
+   "must_find": [
+    "New Company (PT PMA)"
+   ],
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "virtual office",
+   "must_find": [
+    "Virtual Office"
+   ]
+  },
+  {
+   "query": "biaya virtual office",
+   "must_find": [
+    "Virtual Office"
+   ]
+  },
+  {
+   "query": "pensiun",
+   "must_find": [
+    "E33F Second Home Senior (1 Year, Offshore)"
+   ]
+  },
+  {
+   "query": "pensiunan",
+   "must_find": [
+    "E33F Second Home Senior (1 Year, Offshore)"
+   ]
+  },
+  {
+   "query": "retirement",
+   "must_find": [
+    "E33F Second Home Senior (1 Year, Offshore)"
+   ]
+  },
+  {
+   "query": "driving license",
+   "must_find": [
+    "Driving License"
+   ]
+  },
+  {
+   "query": "SIM",
+   "must_find": [
+    "Driving License"
+   ]
+  },
+  {
+   "query": "SKCK",
+   "must_find": [
+    "SKCK"
+   ]
+  },
+  {
+   "query": "SKTT",
+   "must_find": [
+    "SKTT"
+   ]
+  },
+  {
+   "query": "passport",
+   "must_find": [
+    "Passport 5 Years"
+   ]
+  },
+  {
+   "query": "lapor lahir",
+   "must_find": [
+    "Lapor Lahir (Under)"
+   ]
+  },
+  {
+   "query": "imta rptka",
+   "must_find": [
+    "Cancel RPTKA"
+   ]
+  },
+  {
+   "query": "ERP",
+   "must_find": [
+    "ERP (Exit Re-entry Permit)"
+   ],
+   "must_not_find": [
+    "Investor KITAP + MERP"
+   ]
+  },
+  {
+   "query": "EPO",
+   "must_find": [
+    "EPO (Exit Permit Only)"
+   ],
+   "must_not_find": [
+    "Lapor Lahir (Up)"
+   ]
+  },
+  {
+   "query": "urgent 1 hari",
+   "must_find": [
+    "Urgent 1 Hari"
+   ]
+  },
+  {
+   "query": "efin",
+   "must_find": [
+    "EFIN Application"
+   ]
+  },
+  {
+   "query": "BPJS",
+   "must_find": [
+    "BPJS Employee (Tenaga Kerja)"
+   ]
+  },
+  {
+   "query": "npwp",
+   "must_find": [
+    "NPWPD Registration"
+   ]
+  },
+  {
+   "query": "akta perubahan",
+   "must_find": [
+    "Akta Perubahan (Revision Company)"
+   ]
+  },
+  {
+   "query": "close pma",
+   "must_find": [
+    "Close PMA Company"
+   ]
+  },
+  {
+   "query": "LKPM",
+   "must_find": [
+    "LKPM Yearly Report"
+   ]
+  },
+  {
+   "query": "pse registration",
+   "must_find": [
+    "pse_registration_fixed"
+   ]
+  },
+  {
+   "query": "vat assessment",
+   "must_find": [
+    "pmse_vat_assessment"
+   ],
+   "must_not_find": [
+    "NPWP Personal + Coretax Activation"
+   ]
+  },
+  {
+   "query": "coretax",
+   "must_find": [
+    "Update Data / Coretax Activation"
+   ]
+  },
+  {
+   "query": "pajak tahunan pribadi",
+   "must_find": [
+    "Annual Tax Personal"
+   ]
+  },
+  {
+   "query": "compliance retainer",
+   "must_find": [
+    "compliance_core_retainer_monthly"
+   ]
+  },
+  {
+   "query": "freelance e23",
+   "must_find": [
+    "Freelance E23 (Offshore)"
+   ]
+  },
+  {
+   "query": "mutation address",
+   "must_find": [
+    "Mutation Address"
+   ]
+  },
+  {
+   "query": "domicile letter",
+   "must_find": [
+    "Domicilie Letter"
+   ]
+  },
+  {
+   "query": "bridging visa",
+   "must_find": [
+    "Bridging Visa"
+   ]
+  },
+  {
+   "query": "izin tinggal",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin kerja",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin usaha",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "izin edar",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "izin",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "berapa biaya izin usaha restoran?",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "izin usaha minuman ringan",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "mi serve un visto, quanto costa?",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "ke",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "mi",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "as",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "ber",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "man",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "tax report",
+   "must_not_find": [
+    "Update Data / Coretax Activation"
+   ]
+  },
+  {
+   "query": "minuman ringan",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "passport 10 years",
+   "must_not_find": [
+    "C10 Speaker Visa"
+   ]
+  },
+  {
+   "query": "annual tax company",
+   "must_not_find": [
+    "Update Data / Coretax Activation"
+   ]
+  },
+  {
+   "query": "hello",
+   "expect_no_hits": true
+  },
+  {
+   "query": "prezzo visto turistico",
+   "expect_no_hits": true
+  }
+ ]
+}
