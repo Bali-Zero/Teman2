@@ -507,6 +507,26 @@ enum Theme {
     static let radiusXl: CGFloat = 20
 }
 
+/// What every token-reading view must be rebuilt on: the theme mode and Increase Contrast. Theme tokens are static computed values,
+/// and SwiftUI skips the body of a child whose inputs did not change, so a mode change alone repaints only the views that observe it.
+/// A view that paints tokens reads this from the environment (RootView sets it) and puts it as `.id` over its children: a change
+/// rebuilds them, and the state its own struct owns (filters, the open sheet, a chat draft) is kept.
+struct ThemeEpoch: Hashable {
+    let mode: Theme.Mode
+    let contrast: Bool
+}
+
+private struct ThemeEpochKey: EnvironmentKey {
+    static let defaultValue = ThemeEpoch(mode: .dark, contrast: false)
+}
+
+extension EnvironmentValues {
+    var themeEpoch: ThemeEpoch {
+        get { self[ThemeEpochKey.self] }
+        set { self[ThemeEpochKey.self] = newValue }
+    }
+}
+
 /// Holds the live light/dark mode. Setting `mode` mutates the static `Theme.mode` (so the
 /// computed color tokens re-resolve) AND publishes, so every SwiftUI view that observes it
 /// redraws. D3a (2026-08-11): `mode` is driven from system appearance (RootView observes
@@ -530,6 +550,14 @@ final class ThemeManager: ObservableObject {
     init(_ initial: Theme.Mode = .dark) {
         self.mode = initial
         Theme.mode = initial
+    }
+    var epoch: ThemeEpoch { ThemeEpoch(mode: mode, contrast: contrastIncreased) }
+    /// The window chrome (sidebar material, toolbar, controls) follows an explicit override too, not only the content: an override
+    /// that differs from the system appearance used to leave the sidebar in the system's, beside content in the app's.
+    /// `system` leaves the app on the system appearance (nil).
+    static func chromeAppearance(override: String?, mode: Theme.Mode) -> NSAppearance? {
+        guard let o = override, o == "dark" || o == "light" else { return nil }
+        return NSAppearance(named: mode == .dark ? .darkAqua : .aqua)
     }
     /// The mode the first frame is built in: the persisted override, else the system appearance. The app and the
     /// census/render host both seed `ThemeManager` from this, so a render and a launch start in the same mode.

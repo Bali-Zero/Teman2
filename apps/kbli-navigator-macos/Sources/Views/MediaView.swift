@@ -13,6 +13,7 @@ struct MediaView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var lang: LanguageManager
     private let lib = MediaLibrary()
+    @Environment(\.themeEpoch) private var themeEpoch
 
     var body: some View {
         List {
@@ -43,6 +44,7 @@ struct MediaView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .id(themeEpoch)
         .background(Theme.antracite)
     }
 
@@ -80,6 +82,7 @@ struct MediaView: View {
 struct MediaDetailHost: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var lang: LanguageManager
+    @Environment(\.themeEpoch) private var themeEpoch
 
     var body: some View {
         switch state.mediaSelection {
@@ -89,11 +92,12 @@ struct MediaDetailHost: View {
                     .padding(24).frame(maxWidth: 760, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .id(themeEpoch)
             .background(Theme.antracite)
         case .book(let b):
-            PDFViewer(url: b.url)
+            PDFViewer(url: b.url)   // no .id: a rebuild would reload a 49 MB PDF, and PDFKit paints no token
         case nil:
-            EmptyDetail(text: lang.t("search.pick"), kind: .mediaEmpty)
+            EmptyDetail(text: lang.t("search.pick"), kind: .mediaEmpty).id(themeEpoch)
         }
     }
 }
