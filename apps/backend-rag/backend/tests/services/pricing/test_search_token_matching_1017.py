@@ -315,3 +315,155 @@ def test_empty_query_returns_no_rows(pricing_service, query):
     # no caller relies on that (/api/pricing/search needs min_length=1, the tools and the
     # WhatsApp builder only search a non-empty client message; get_all_prices lists all rows).
     assert _hit_keys(pricing_service.search_service(query)) == set()
+
+
+# --- after #8655's gate: noise words stem like row words; generic licence/sale words ----------
+
+
+@pytest.mark.parametrize(
+    "token",
+    ["price", "prices", "biayanya", "harganya", "years", "license", "licenses", "licences",
+     "licensing", "sell", "sells", "selling", "seller"],
+)  # fmt: skip
+def test_inflected_noise_words_are_noise(m, token):
+    assert m._is_noise(token)
+    assert m._query_terms(f"{token} kitas")[1] == ["kitas"]
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        "kitas",
+        "alcohol",
+        "visa",
+        "pricey",
+        "costume",
+        "sellx",
+        "yearly",
+        "di5",
+        "kitasnya",
+        "alkohol",
+    ],
+)
+def test_other_tokens_are_not_noise(m, token):
+    assert not m._is_noise(token)
+
+
+@pytest.mark.parametrize("word", ["license", "licence", "sell"])
+def test_generic_licence_and_sale_words_are_noise_words(m, word):
+    assert word in m._SEARCH_NOISE_WORDS
+
+
+# --- speed shape (issue #8665 item 1): per-query work is done once, per-row text once ------
+
+
+def _long_message(words: int) -> str:
+    base = (
+        "berapa harga kitas investor pt-pma for the selling prices of alcohol licence tax".split()
+    )
+    return " ".join(base[i % len(base)] + ("" if i % 7 else str(i)) for i in range(words))
+
+
+def test_search_prepares_the_query_and_the_rows_once(pricing_service, m, monkeypatch):
+    """Tokeniser and noise-check calls must not scale with rows x query tokens."""
+    calls = {"row_profile": 0, "noise": 0}
+    real_profile = m._row_profile
+    real_noise = m._is_noise
+
+    def counting_noise(token):
+        calls["noise"] += 1
+        return real_noise(token)
+
+    monkeypatch.setattr(m, "_is_noise", counting_noise)
+
+    def counting_profile(texts):
+        calls["row_profile"] += 1
+        return real_profile(texts)
+
+    monkeypatch.setattr(m, "_row_profile", counting_profile)
+    short, long = "kitas", _long_message(250)
+    per_search = {}
+    for label, query in (("short", short), ("long", long)):
+        calls["row_profile"] = 0
+        calls["noise"] = 0
+        pricing_service.search_service(query)
+        per_search[label] = (calls["row_profile"], calls["noise"], len(m._words(query)))
+    # One profile per row, whatever the query length.
+    assert per_search["short"][0] == per_search["long"][0] > 50
+    # Noise checks scale with the QUERY (a few per token), never with rows x tokens
+    # (the 2026-10-17 regression made ~34,000 calls for a 1,500-character message).
+    rows, noise_calls, tokens = per_search["long"]
+    assert noise_calls <= 4 * tokens
+    assert noise_calls < rows * tokens // 10
+
+
+def test_row_profile_is_keyed_by_content_so_a_reload_is_never_stale(pricing_service, m):
+    fresh = type(pricing_service).__new__(type(pricing_service))
+    fresh.loaded = True
+    fresh.prices = {"services": {"company_services": {"Row X": {"name": "Alpha gadget"}}}}
+    assert "company_services" in fresh.search_service("alpha")["results"]
+    assert "results" not in fresh.search_service("omega")
+    # Same service object, same row key, edited text: the next search must see the edit.
+    fresh.prices = {"services": {"company_services": {"Row X": {"name": "Omega gadget"}}}}
+    assert "results" not in fresh.search_service("alpha")
+    assert "company_services" in fresh.search_service("omega")["results"]
+
+
+def test_vocabulary_lookup_equals_the_reference_word_rule(pricing_service, m):
+    words: set[str] = set()
+    for rows in pricing_service.prices["services"].values():
+        blocks = rows.values() if isinstance(rows, dict) and "monthly_tax_basic" in rows else [rows]
+        for block in blocks:
+            for key, row in block.items():
+                if isinstance(row, dict):
+                    words.update(m._words(f"{key} {row.get('name', '')} {row.get('notes', '')}"))
+    vocab = m._Vocabulary(words)
+    tokens = {w[:n] for w in list(words)[:150] for n in (2, 3, 4, 6)} | {
+        w + s for w in list(words)[:60] for s in ("s", "nya", "ing", "x", "an", "")
+    }
+    tokens |= {
+        "kitasnya",
+        "polisi",
+        "igiene",
+        "ke",
+        "e3",
+        "di5",
+        "freelance",
+        "free",
+        "coretax",
+        "core",
+    }
+    for token in tokens:
+        expected = {w for w in words if m._token_matches_words(token, {w})}
+        assert vocab.matching(token) == expected, token
+
+
+def test_noise_predicate_equals_the_reference_definition(m):
+    def reference(token: str) -> bool:
+        if token in m._SEARCH_NOISE_WORDS:
+            return True
+        return any(
+            len(w) >= 4 and token.startswith(w) and token[len(w) :] in m._LIGHT_SUFFIXES
+            for w in m._SEARCH_NOISE_WORDS
+        )
+
+    noise = sorted(m._SEARCH_NOISE_WORDS)
+    suffixed = [w + s for w in noise for s in [*sorted(m._LIGHT_SUFFIXES), "x", "xyz"]]
+    short_plus_suffix = [w + s for w in noise if len(w) <= 3 for s in m._LIGHT_SUFFIXES]
+    assert short_plus_suffix  # 3-char noise words + suffix are NOT noise
+    others = [f"{w[:n]}{k}" for k, w in enumerate(noise * 6) for n in (1, 2, 3, 4)]
+    others += ["kitas", "alcohol", "visa", "pricey", "costume", "yearly", "kitasnya", "di5", ""]
+    for token in {*noise, *suffixed, *short_plus_suffix, *others}:
+        assert m._is_noise(token) == reference(token), token
+    assert not any(
+        m._is_noise(t)
+        for t in short_plus_suffix
+        if t not in m._SEARCH_NOISE_WORDS and not reference(t)
+    )
+
+
+def test_vocabulary_falls_back_to_the_reference_rule_for_non_word_tokens(m):
+    vocab = m._Vocabulary({"kitas", "alkohol", "extension"})
+    for token in ("kit\nas", "kit as", "ext-ension", "alk\n", "kitas\n", "e*t", "\nkitas"):
+        expected = {w for w in vocab.words if m._token_matches_words(token, {w})}
+        assert vocab.matching(token) == expected, repr(token)

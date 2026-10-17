@@ -21,8 +21,10 @@ service has to handle internally:
 import json
 import logging
 import re
+from collections.abc import Iterable
+from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,7 @@ _SEARCH_NOISE_WORDS = frozenset(
         "del", "della", "dei", "delle", "con", "and", "e", "or", "o",
         "ke", "dan", "yang", "dari", "to", "as", "on", "at", "mi", "ma", "si",
         "ci", "lo", "che",
+        "license", "licence", "licensing", "sell",
     }
 )  # fmt: skip
 
@@ -83,6 +86,20 @@ _LIGHT_SUFFIXES = frozenset(
         "ati",
     }
 )
+
+
+# Every form ``_is_noise`` accepts, precomputed: a noise word, or a noise word of 4+
+# characters plus a light suffix ("prices" = "price" + "s", "biayanya" = "biaya" + "nya",
+# "selling" = "sell" + "ing"). A set, not a cache: its size does not depend on the query.
+_NOISE_FORMS = _SEARCH_NOISE_WORDS | {
+    w + suffix for w in _SEARCH_NOISE_WORDS if len(w) >= 4 for suffix in _LIGHT_SUFFIXES
+}
+
+
+def _is_noise(token: str) -> bool:
+    """A noise word, or a noise word of 4+ characters plus a light suffix."""
+    return token in _NOISE_FORMS
+
 
 # Domain acronyms a client types that are not a prefix/infix of the catalogue word any more
 # (the old substring match found "itas" inside "kitas"): query token -> extra target words.
@@ -127,7 +144,7 @@ def _query_terms(query: str) -> tuple[list[str], list[str]]:
         if first in _NEGATORS:
             continue
         tokens.extend(item.split(" "))
-        if item not in _SEARCH_NOISE_WORDS and len(item) > 1:
+        if not _is_noise(item) and len(item) > 1:
             terms.append(item)
     return (tokens, terms) if terms else (flat, [])
 
@@ -135,19 +152,6 @@ def _query_terms(query: str) -> tuple[list[str], list[str]]:
 def _words(text: Any) -> list[str]:
     """Lower-cased Unicode word tokens; punctuation and symbols separate words."""
     return _WORD_RE.findall(str(text).lower())
-
-
-def _term_matches_row(term: str, row_list: list[str], row_words: set[str]) -> bool:
-    """A term (single word, alias-expanded, or space-joined hyphen compound) against a row."""
-    if " " in term:
-        parts = term.split(" ")
-        n = len(parts)
-        return any(
-            row_list[i : i + n - 1] == parts[:-1]
-            and _token_matches_words(parts[-1], {row_list[i + n - 1]})
-            for i in range(len(row_list) - n + 1)
-        )
-    return any(_token_matches_words(t, row_words) for t in (term, *_TOKEN_ALIASES.get(term, ())))
 
 
 def _token_matches_words(token: str, words: set[str]) -> bool:
@@ -187,6 +191,157 @@ def _contains_phrase(sequence: list[str], phrase: list[str]) -> bool:
     return bool(n) and any(sequence[i : i + n] == phrase for i in range(len(sequence) - n + 1))
 
 
+class _RowProfile(NamedTuple):
+    """A row's normalised descriptive words: in order, and as a set."""
+
+    words: list[str]
+    word_set: frozenset[str]
+
+
+@lru_cache(maxsize=4096)
+def _row_profile(texts: tuple[str, ...]) -> _RowProfile:
+    """Tokenise a row's descriptive text once. Keyed by CONTENT, so a reloaded or edited
+    catalogue row can never be served a stale entry."""
+    words = [w for part in texts for w in _words(part)]
+    return _RowProfile(words, frozenset(words))
+
+
+@lru_cache(maxsize=4096)
+def _keyword_phrases(keywords: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    return tuple(tuple(_words(keyword)) for keyword in keywords)
+
+
+class _Vocabulary:
+    """The distinct row words of one search. ``matching(token)`` is the set of those words
+    that ``_token_matches_words`` would accept for ``token``, found with set lookups and
+    one substring probe of a joined blob instead of a scan of every word."""
+
+    __slots__ = ("_blob", "_memo", "words")
+
+    def __init__(self, words: Iterable[str]) -> None:
+        self.words = frozenset(words)
+        self._blob = "\n" + "\n".join(self.words)
+        self._memo: dict[str, frozenset[str]] = {}
+
+    def matching(self, token: str) -> frozenset[str]:
+        hit = self._memo.get(token)
+        if hit is not None:
+            return hit
+        if not _WORD_RE.fullmatch(token):
+            # The blob probe assumes a plain \w+ token; anything else takes the reference rule.
+            result = self._memo[token] = frozenset(
+                w for w in self.words if _token_matches_words(token, {w})
+            )
+            return result
+        words = self.words
+        found: set[str] = set()
+        if token in words:
+            found.add(token)
+        if (len(token) >= 3 or any(ch.isdigit() for ch in token)) and ("\n" + token) in self._blob:
+            found.update(w for w in words if w.startswith(token))
+        for cut in range(4, len(token)):
+            if token[:cut] in words and token[cut:] in _LIGHT_SUFFIXES:
+                found.add(token[:cut])
+        if len(token) >= 5 and token in self._blob:
+            found.update(w for w in words if token in w)
+        result = self._memo[token] = frozenset(found)
+        return result
+
+
+class _PreparedQuery:
+    """Everything about a query that does not depend on the row, computed once per search."""
+
+    def __init__(
+        self,
+        terms: list[str],
+        query_tokens: list[str],
+        whole_query: bool,
+        vocabulary: _Vocabulary,
+    ) -> None:
+        self.whole_query = whole_query
+        self.query_tokens = query_tokens
+        self.single_hits: frozenset[str] = frozenset()
+        self.word_terms: dict[str, list[str]] = {}
+        self.compounds: list[tuple[str, list[str], frozenset[str]]] = []
+        self._expansion_terms: dict[str, list[str]] = {}
+        self._single_keyword: dict[str, frozenset[str]] = {}
+        self._phrase_credit: dict[tuple[str, ...], frozenset[str]] = {}
+        if whole_query:
+            self.terms = terms
+            if len(terms) == 1:
+                self.single_hits = vocabulary.matching(terms[0])
+            return
+        self.terms = list(dict.fromkeys(terms))
+        self.stripped = [t for t in query_tokens if not _is_noise(t)]
+        for term in self.terms:
+            if " " in term:
+                parts = term.split(" ")
+                self.compounds.append((term, parts[:-1], vocabulary.matching(parts[-1])))
+                continue
+            for expansion in (term, *_TOKEN_ALIASES.get(term, ())):
+                self._expansion_terms.setdefault(expansion, []).append(term)
+                for word in vocabulary.matching(expansion):
+                    self.word_terms.setdefault(word, []).append(term)
+
+    def keyword_terms(self, keyword: str) -> frozenset[str]:
+        """Terms a curated single-word keyword answers (``_token_matches_keyword``)."""
+        found = self._single_keyword.get(keyword)
+        if found is None:
+            expansions = self._expansion_terms
+            hit: set[str] = set()
+            candidates = [keyword]
+            if len(keyword) >= 4:
+                candidates += [keyword + suffix for suffix in _LIGHT_SUFFIXES]
+                candidates += [keyword[:cut] for cut in range(4, len(keyword) + 1)]
+            for candidate in candidates:
+                hit.update(expansions.get(candidate, ()))
+            found = self._single_keyword[keyword] = frozenset(hit)
+        return found
+
+    def phrase_credit(self, phrase: tuple[str, ...]) -> frozenset[str]:
+        """Credit of a multi-word keyword phrase: empty unless it sits in the query."""
+        found = self._phrase_credit.get(phrase)
+        if found is None:
+            words = list(phrase)
+            if _contains_phrase(self.query_tokens, words) or _contains_phrase(self.stripped, words):
+                found = frozenset([t for t in self.terms if t in phrase] or [" ".join(phrase)])
+            else:
+                found = frozenset()
+            self._phrase_credit[phrase] = found
+        return found
+
+
+def _score_row(query: _PreparedQuery, profile: _RowProfile, keywords: Any) -> int:
+    row_list, row_words = profile
+    if query.whole_query:
+        if len(query.terms) == 1:
+            return int(not query.single_hits.isdisjoint(row_words))
+        return int(_contains_phrase(row_list, query.terms))
+    matched: set[str] = set()
+    word_terms = query.word_terms
+    for word in row_words:
+        if word in word_terms:
+            matched.update(word_terms[word])
+    for term, head, last_hits in query.compounds:
+        n = len(head) + 1
+        if any(
+            row_list[i : i + n - 1] == head and row_list[i + n - 1] in last_hits
+            for i in range(len(row_list) - n + 1)
+        ):
+            matched.add(term)
+    if isinstance(keywords, list):
+        for phrase in _keyword_phrases(tuple(str(k) for k in keywords)):
+            if len(phrase) == 1:
+                matched.update(query.keyword_terms(phrase[0]))
+            else:
+                matched.update(query.phrase_credit(phrase))
+    return len(matched)
+
+
+def _row_texts(parts: list[Any]) -> tuple[str, ...]:
+    return tuple(str(part) for part in parts)
+
+
 def _count_search_matches(
     terms: list[str],
     query_tokens: list[str],
@@ -204,32 +359,13 @@ def _count_search_matches(
     counts for a query term it equals or prefixes (``_token_matches_keyword``).
     ``whole_query`` (every word was noise) requires the raw query as one
     contiguous word sequence.
+
+    Single-row form of the search; ``PricingService.search_service`` prepares the
+    query once and scores every row against it.
     """
-    row_list = [w for part in descriptive_text for w in _words(part)]
-    row_words = set(row_list)
-    if whole_query:
-        if len(terms) == 1:
-            return int(_token_matches_words(terms[0], row_words))
-        return int(_contains_phrase(row_list, terms))
-    matched = {t for t in terms if _term_matches_row(t, row_list, row_words)}
-    if isinstance(keywords, list):
-        stripped = [t for t in query_tokens if t not in _SEARCH_NOISE_WORDS]
-        for keyword in keywords:
-            phrase = _words(keyword)
-            if len(phrase) == 1:
-                matched.update(
-                    t
-                    for t in terms
-                    if " " not in t
-                    and any(
-                        _token_matches_keyword(x, phrase[0])
-                        for x in (t, *_TOKEN_ALIASES.get(t, ()))
-                    )
-                )
-            elif _contains_phrase(query_tokens, phrase) or _contains_phrase(stripped, phrase):
-                credited = [t for t in terms if t in phrase]
-                matched.update(credited or [" ".join(phrase)])
-    return len(matched)
+    profile = _row_profile(_row_texts(descriptive_text))
+    query = _PreparedQuery(terms, query_tokens, whole_query, _Vocabulary(profile.word_set))
+    return _score_row(query, profile, keywords)
 
 
 def _client_facing_contacts() -> tuple[str, str]:
@@ -606,31 +742,31 @@ class PricingService:
 
         services = self.prices.get("services", {})
 
-        def _score_dict_entry(
-            category_name: str,
-            service_name: str,
-            service_data: dict[str, Any],
-            container: dict[str, Any] | None = None,
+        # Pass 1: gather the rows that can be hit, tokenising each row's text once.
+        # (category, is_legacy_list_row, key, payload, profile, keywords)
+        candidates: list[tuple[str, bool, str, dict[str, Any], _RowProfile, Any]] = []
+
+        def _gather_dict_entry(
+            category_name: str, service_name: str, service_data: dict[str, Any]
         ) -> None:
             if _is_internal_service(self, service_name, service_data):
                 return
             legacy_names = service_data.get("legacy_names", [])
-            match_count = _count_search_matches(
-                clean_keywords,
-                query_tokens,
-                [
-                    service_name,
-                    service_data.get("name", ""),
-                    service_data.get("notes", ""),
-                    service_data.get("description_en", ""),
-                    *(legacy_names if isinstance(legacy_names, list) else []),
-                ],
-                service_data.get("keywords", []),
-                whole_query,
+            profile = _row_profile(
+                _row_texts(
+                    [
+                        service_name,
+                        service_data.get("name", ""),
+                        service_data.get("notes", ""),
+                        service_data.get("description_en", ""),
+                        *(legacy_names if isinstance(legacy_names, list) else []),
+                    ]
+                )
             )
-            if match_count > 0:
-                target = container if container is not None else results
-                target.setdefault(category_name, {})[service_name] = service_data
+            candidates.append(
+                (category_name, False, service_name, service_data, profile,
+                 service_data.get("keywords", []))
+            )  # fmt: skip
 
         for category_name, category_services in services.items():
             # Handle LIST format (legacy fixtures only — no 2026 category uses this)
@@ -641,23 +777,21 @@ class PricingService:
                     if _is_internal_service(self, str(service_item.get("name", "")), service_item):
                         continue
                     legacy_names = service_item.get("legacy_names", [])
-                    match_count = _count_search_matches(
-                        clean_keywords,
-                        query_tokens,
-                        [
-                            service_item.get("code", ""),
-                            service_item.get("name", ""),
-                            service_item.get("notes", ""),
-                            service_item.get("description_en", ""),
-                            *(legacy_names if isinstance(legacy_names, list) else []),
-                        ],
-                        service_item.get("keywords", []),
-                        whole_query,
-                    )
-                    if match_count > 0:
-                        results.setdefault(category_name, []).append(
-                            (match_count, service_item),
+                    profile = _row_profile(
+                        _row_texts(
+                            [
+                                service_item.get("code", ""),
+                                service_item.get("name", ""),
+                                service_item.get("notes", ""),
+                                service_item.get("description_en", ""),
+                                *(legacy_names if isinstance(legacy_names, list) else []),
+                            ]
                         )
+                    )
+                    candidates.append(
+                        (category_name, True, "", service_item, profile,
+                         service_item.get("keywords", []))
+                    )  # fmt: skip
                 continue
 
             if not isinstance(category_services, dict):
@@ -675,14 +809,27 @@ class PricingService:
                         # (UI, MCP, prompt builder) can preserve the
                         # tier hierarchy without us flattening it.
                         annotated = {**service_data, "_sub_block": sub_block_name}
-                        _score_dict_entry(category_name, service_name, annotated)
+                        _gather_dict_entry(category_name, service_name, annotated)
                 continue
 
             # Flat dict (single_entry_visas, kitas_permits, …, urgent_processing).
             for service_name, service_data in category_services.items():
                 if not isinstance(service_data, dict):
                     continue
-                _score_dict_entry(category_name, service_name, service_data)
+                _gather_dict_entry(category_name, service_name, service_data)
+
+        # Pass 2: prepare the query once against the vocabulary of the gathered rows,
+        # then score every row with it.
+        vocabulary = _Vocabulary(w for *_head, profile, _kw in candidates for w in profile.word_set)
+        prepared = _PreparedQuery(clean_keywords, query_tokens, whole_query, vocabulary)
+        for category_name, is_list_row, service_name, payload, profile, keywords in candidates:
+            match_count = _score_row(prepared, profile, keywords)
+            if match_count <= 0:
+                continue
+            if is_list_row:
+                results.setdefault(category_name, []).append((match_count, payload))
+            else:
+                results.setdefault(category_name, {})[service_name] = payload
 
         # For list results, sort by match_count descending, keep top results
         filtered_results: dict[str, Any] = {}

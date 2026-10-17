@@ -40,6 +40,9 @@ FAMILIES = {9001: ("log_injection", {"Logging"}), 6302: ("stack_trace_exposure",
             5011: ("path_injection", {"FileSystem_ReadWrite"}), 6060: ("path_injection", {"FileSystem_Other"}),
             5012: ("ssrf", {"HTTPClientRequest", "HTTPClientRequest_URI", "HTTPClientRequest_METADATA", "HTTPClientRequest_DATA"}),
             5018: ("redirect", {"Redirect"}), 5008: ("xss", {"XSS"})}
+# the rules of `string_combine_rules` in stubs/taint/core_privacy_security/taint.config (lines 176-292 of the pinned stubs): the only ones whose sinks are
+# "Triggered" partial sinks, and the only ones measured to vary between runs of one tree (62 sides). Every other pysa_<code> keeps its per-line identity.
+PARTIAL_SINK_CODES = {5051, 5052, 5053, 5351, 5352}
 ROUTE = {"get", "post", "put", "delete", "patch", "options", "head", "trace", "api_route", "route", "websocket"}
 REGISTER = {"add_api_route", "add_route", "add_websocket_route", "add_api_websocket_route"}   # imperative registration: router.add_api_route("/p", fn)
 FRAMEWORK_TYPES = {"Request", "Response", "WebSocket", "BackgroundTasks", "StreamingResponse", "HTMLResponse", "JSONResponse"}
@@ -510,6 +513,17 @@ class Leaves:
 _stmt_cache: dict = {}
 
 
+def _best_stmt(idx: list, line: int):
+    return min((s for s in idx if s[0] <= line <= s[1]), key=lambda s: s[1] - s[0], default=None)
+
+
+def stmt_start(app_dir: Path, rel: str, line: int) -> int:
+    """First line of the statement holding `line` (the line itself when none does): one identity for every argument line of a multi-line call."""
+    stmt_of(app_dir, rel, line)
+    best = _best_stmt(_stmt_cache[(str(app_dir), rel)][0], line)
+    return best[0] if best else line
+
+
 def stmt_of(app_dir: Path, rel: str, line: int) -> tuple[str, str]:
     """(enclosing function name, normalised statement text) for a line — the line-shift-proof part of the key."""
     ck = (str(app_dir), rel)                 # keyed by TREE too: base and candidate scans share this process
@@ -536,7 +550,7 @@ def stmt_of(app_dir: Path, rel: str, line: int) -> tuple[str, str]:
             pass
         _stmt_cache[ck] = (idx, funcs)
     idx, funcs = _stmt_cache[ck]
-    best = min((s for s in idx if s[0] <= line <= s[1]), key=lambda s: s[1] - s[0], default=None)
+    best = _best_stmt(idx, line)
     fn = min((f for f in funcs if f[0] <= line <= f[1]), key=lambda f: f[1] - f[0], default=None)
     return (fn[2] if fn else "<module>", re.sub(r"\s+", " ", best[2]) if best else f"<line {line}>")
 
@@ -553,7 +567,7 @@ def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int
             models[o["data"]["callable"]] = o["data"]
         elif o.get("kind") == "issue":
             issues.append(o["data"])
-    lv, out, seen = Leaves(models), [], {}
+    lv, out, seen, stmts = Leaves(models), [], {}, set()
     for d in issues:
         family, kinds = FAMILIES.get(d["code"], (f"pysa_{d['code']}", set()))   # an unlisted rule (RCE 5001, SQLi 5005, ...) is still a flow, never dropped
         leaves: set = set()
@@ -565,6 +579,11 @@ def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int
                     leaves |= lv.hop(d["filename"], r, kinds, 0)
         for lf, ll, localised in sorted(leaves or {(d["filename"], d["line"], True)}):
             fn, text = stmt_of(app_dir, lf, ll)
+            if d["code"] in PARTIAL_SINK_CODES:   # one issue per argument line of a call, and which lines Pysa triggers varies run to run: the flow is (rule, source, statement)
+                anchor = (family, d["callable"], lf, stmt_start(app_dir, lf, ll))
+                if anchor in stmts:
+                    continue
+                stmts.add(anchor)
             ident = "|".join([family, d["callable"], lf, fn, text])
             n_th = seen.get(ident, 0) + 1                      # multiset: a SECOND identical sink statement fed by a new flow is a new flow
             seen[ident] = n_th

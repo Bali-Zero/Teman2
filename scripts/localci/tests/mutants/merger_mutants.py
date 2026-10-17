@@ -1251,6 +1251,7 @@ def copy_tree(dest: Path) -> None:
                 ".github/workflows/scripts-tests-sweep.yml"):   # read by: the CodeQL, harness-floor and matrix-mapping tests (security, harness-floor, guard-conformance); test_pyenv.py pins the sweep's install lines to the last
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
+    shutil.copytree(ROOT / ".github/workflows", dest / ".github/workflows", dirs_exist_ok=True)   # test_matrix_parity.py: every workflow an executed context names
     for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)

@@ -38,9 +38,15 @@ struct SearchListView: View {
     /// has no way to click the grabber, so `KBLI_SHEET_EXPANDED=1` opens the dossier under the
     /// verdict for the render. Unset in every normal launch.
     @State private var sheetExpanded = ProcessInfo.processInfo.environment["KBLI_SHEET_EXPANDED"] == "1"
-    /// The collapsed sheet's height to its verdict band (`SheetFit`): the detent grows to it when the default is short, up to three quarters
-    /// of the window and always leaving the list a peek (`collapsedMin`).
-    @State private var sheetFit: CGFloat = 0
+    /// What the collapsed sheet measures of its head (`SheetFit`): the sheet is exactly as tall as the last whole row it draws and the margin
+    /// under it, up to three quarters of the window and always leaving the list a peek (`fitCap`).
+    @State private var sheetFit = SheetFitValue()
+    /// The last collapsed measure: the expanded sheet draws no collapsed rows to measure, and it is never shorter than the sheet it opens from
+    /// (E6: expanding 56306 at 1040x648 took it from 498 pt to 269 pt, under its own verdict band).
+    @State private var collapsedFit = SheetFitValue()
+    /// Bumped when the strip above the sheet changes (the sheet settling, the window, the sheet opening): the list follows its selection.
+    @State private var followTick = 0
+    @State private var followTask: Task<Void, Never>?
 
     private var isID: Bool { lang.lang == .id }
     private var listHasFocus: Bool { focusedField.wrappedValue == .list }
@@ -145,20 +151,24 @@ struct SearchListView: View {
         VStack(spacing: 0) {
             if searching {
                 queryLayout
-                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 132 : .infinity)
+                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? expandedPeek(132, pane, windowBottom) : .infinity)
             } else {
                 // Expanded, the sheet takes the pane and the table keeps a peek: a dossier
                 // squeezed under a full-height table was a strip nobody could read (render of
                 // 68112 at 1440x1400, K2 2026-09-14). Collapse gives the table its height back.
                 // Browse mode keeps 300 pt (the header block alone is ~150 pt of it).
                 browseLayout
-                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? 300 : .infinity)
+                    .frame(maxHeight: (sheetExpanded && state.selected != nil) ? expandedPeek(300, pane, windowBottom) : .infinity)
             }
             sheetLayer(pane, windowBottom: windowBottom)
         }
         .background(Theme.antracite)
         .censusFrame("pane")
-        .onPreferenceChange(SheetFitKey.self) { sheetFit = $0 }
+        .onPreferenceChange(SheetFitKey.self) { sheetFit = $0; if !sheetExpanded, $0.band > 0 { collapsedFit = $0 } }
+        .onChange(of: state.censusExpand) { _, on in if CensusFrame.collecting { sheetExpanded = on } }
+        .onChange(of: sheetFit) { _, _ in followTick &+= 1 }
+        .onChange(of: pane) { _, _ in followTick &+= 1 }
+        .onChange(of: sheetExpanded) { _, _ in followTick &+= 1 }
         // A filter, a sector or a query that hides the selected code closes its sheet: a verdict
         // sheet over a table that no longer holds the code was an open-code answer sitting over an
         // all-blocked list (council K2 round 1, both seats).
@@ -211,42 +221,61 @@ struct SearchListView: View {
     /// off-screen snapshot path (`Snapshot.swift` → `NSHostingView.cacheDisplay`), where a real
     /// `List` never materialises its lazy rows — the app's only headless QA camera. A table whose
     /// honesty cannot be photographed is a table nobody can check.
-    @ViewBuilder private var tableBody: some View {
+    private var tableBody: some View { tableList(inset: 0) { EmptyView() } }
+
+    /// Never set in the app or in a `--fold-census` / snapshot run: only the text census dump of the chrome (`Tests/encensus`).
+    private static var flatDump: Bool { ProcessInfo.processInfo.environment["KBLI_DUMP_FLAT"] != nil }
+
+    /// `masthead` scrolls WITH the rows (H1d O2): a masthead standing above the scroll view starved it, and under a tall sheet the strip held
+    /// no row at all (56306 at 1040x648: the filters and the masthead took the whole strip). The scroll view is then the strip above the
+    /// sheet, and the selected row is scrolled whole into it.
+    @ViewBuilder private func tableList<M: View>(inset: CGFloat, @ViewBuilder masthead: @escaping () -> M) -> some View {
         if state.store.all.isEmpty {
-            banner(lang.t("data.missing"))
+            VStack(spacing: 0) { masthead(); banner(lang.t("data.missing")) }
         } else if visibleRows.isEmpty {
-            EmptyDetail(text: lang.t("search.empty"), kind: .noResults)
+            VStack(spacing: 0) { masthead(); EmptyDetail(text: lang.t("search.empty"), kind: .noResults) }
+        } else if Self.flatDump {
+            // The en-census dump only (Tests/encensus sets KBLI_DUMP_FLAT around its chrome dumps): a ScrollView's content is not in the
+            // text the dump reads, and the masthead and the narrow filter bar are in the ScrollView since H1d (they stood above it). The dump
+            // reads them again, as before; the rows stay unread here, they are censused per code (registry-row, search-row, search-peak).
+            masthead()
         } else {
             ScrollViewReader { proxy in
                 ScrollView {
                     let firstID = visibleRows.first?.id
                     let groupStarts = searching ? [] : groupStartIDs
-                    LazyVStack(spacing: 0) {
-                        ForEach(visibleRows) { k in
-                            // Group headers are not rows: no id of their own, outside the tap
-                            // target, so selection ids, arrow order and `scrollTo` never see them.
-                            VStack(spacing: 0) {
-                                if groupStarts.contains(k.id) { groupHeader(k) }
-                                tableRow(k, firstID: firstID)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        state.selected = k
-                                        focusedField.wrappedValue = .list
-                                    }
+                    VStack(spacing: 0) {
+                        masthead()
+                        LazyVStack(spacing: 0) {
+                            // A lazy stack resolves `scrollTo` on the identity of its ForEach elements: the group header and the row are two
+                            // elements, so a code's id is its row's own (an id on a header-and-row pair put a selected row 40 pt under the
+                            // centre it was scrolled to). Headers are outside the tap target and carry their own id.
+                            ForEach(listEntries(groupStarts: groupStarts)) { e in
+                                switch e {
+                                case .group(let k): groupHeader(k)
+                                case .row(let k): listRow(k, firstID: firstID)
+                                }
                             }
-                            .id(k.id)
                         }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, inset)
+                        // Room under the last row while a sheet is up: a lazy stack under-estimates the length it has not built, and a last row
+                        // whose centre lies past the end of the content stopped 6 pt under the strip (09900 at 1040x700, sidebar 300).
+                        .padding(.bottom, state.selected != nil ? 40 : 0)
                     }
-                    .padding(.vertical, 4)
                 }
-                // A `List` scrolled its selection into view for free; a LazyVStack does not, so
-                // arrow-key navigation used to continue invisibly past the viewport (council
-                // round 1, codex-gpt-5.6-sol).
-                .onChange(of: state.selected?.id) { _, id in
-                    guard let id else { return }
-                    withAnimation(Theme.motion(reduceMotion)) { proxy.scrollTo(id, anchor: .center) }
-                }
+                .censusFrame("strip")
+                // A `List` scrolled its selection into view for free; a LazyVStack does not, so arrow-key navigation used to continue
+                // invisibly past the viewport (council round 1, codex-gpt-5.6-sol). The same scroll runs whenever the strip changes under
+                // the selection: the mount (a code selected before the list exists), the sheet settling at its height, a window resize,
+                // the sheet opening, a filter or a query.
+                .onChange(of: state.selected?.id, initial: true) { old, new in followSelection(proxy, animated: old != new) }   // the mount is not a move: it never animates
+                .onChange(of: followTick) { _, _ in followSelection(proxy, animated: false) }
             }
+            // A new list is a new scroll view: one that kept its offset across a change of sector, filter or query stood past the end of a
+            // shorter list and built none of its rows (96900 -> 97000, the last long sector to the first short one). The mount then
+            // centres the selection, as it does for a code selected before the list exists.
+            .id(ListKey(sector: state.browsedSector, query: state.query, bali: baliFilter, risk: riskFilter))
             .background(Theme.antracite)
             .focusable()
             .focused(focusedField, equals: .list)
@@ -259,6 +288,60 @@ struct SearchListView: View {
                 guard state.selected != nil else { return .ignored }
                 sheetExpanded = true
                 return .handled
+            }
+        }
+    }
+
+    private enum ListEntry: Identifiable {
+        case group(KBLI), row(KBLI)
+        var id: String { switch self { case .group(let k): return "group-\(k.id)"; case .row(let k): return k.id } }
+    }
+
+    private func listEntries(groupStarts: Set<String>) -> [ListEntry] {
+        var out: [ListEntry] = []
+        out.reserveCapacity(visibleRows.count + groupStarts.count)
+        for k in visibleRows {
+            if groupStarts.contains(k.id) { out.append(.group(k)) }
+            out.append(.row(k))
+        }
+        return out
+    }
+
+    private func listRow(_ k: KBLI, firstID: String?) -> some View {
+        tableRow(k, firstID: firstID)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                state.selected = k
+                focusedField.wrappedValue = .list
+            }
+            .censusFrame("row.selected", when: state.selected?.id == k.id)
+    }
+
+    private struct ListKey: Hashable {
+        let sector: String?
+        let query: String
+        let bali: BaliFilter
+        let risk: RiskFilter
+    }
+
+    /// The selected row, centred in the scroll view (the strip above the sheet). A lazy stack estimates the offset of rows it has not
+    /// built, so the second pass, a turn later, centres the row it has now built and measured.
+    private func followSelection(_ proxy: ScrollViewProxy, animated: Bool) {
+        guard let id = state.selected?.id else { return }
+        followTask?.cancel()
+        if animated, !CensusFrame.collecting, let anim = Theme.motion(reduceMotion) {
+            withAnimation(anim) { proxy.scrollTo(id, anchor: .center) }
+        } else {
+            proxy.scrollTo(id, anchor: .center)
+        }
+        // A lazy stack estimates the offset of rows it has not built and corrects it as it builds them: a long jump (the full census reaches
+        // 1,559 codes) left the row 12 pt off or not built yet after one pass. Four short passes more, each on the row's own, current id.
+        followTask = Task { @MainActor in
+            for _ in 0..<4 {
+                try? await Task.sleep(nanoseconds: 15_000_000)
+                if Task.isCancelled { return }
+                guard let now = state.selected?.id else { return }
+                proxy.scrollTo(now, anchor: .center)
             }
         }
     }
@@ -340,7 +423,7 @@ struct SearchListView: View {
     private var browseLayout: some View {
         GeometryReader { geo in
             if geo.size.width >= Self.browseBreakpoint {
-                HStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 0) {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 24) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -359,16 +442,19 @@ struct SearchListView: View {
                     .frame(width: 248).frame(maxHeight: .infinity)
                     .background(Theme.wash)
 
-                    VStack(alignment: .leading, spacing: 0) {
-                        browseHeader.frame(height: 92)
-                        browseRule
-                        columnHeader
-                        tableBody
+                    tableList(inset: 0) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            browseHeader.frame(height: 92)
+                            browseRule
+                            columnHeader
+                        }
+                        .padding(.top, 24)
                     }
-                    .padding(.top, 24).padding(.trailing, 32).padding(.leading, 40)
+                    .padding(.trailing, 32).padding(.leading, 40)
                 }
             } else {
-                VStack(spacing: 0) {
+                // The filter bar scrolls away with the masthead: under a tall sheet it left the strip less than a row.
+                tableList(inset: 16) {
                     filterBar
                     VStack(alignment: .leading, spacing: 0) {
                         browseHeader.frame(minHeight: 92)
@@ -376,7 +462,6 @@ struct SearchListView: View {
                         PadiLine(width: 200).padding(.top, 12)
                         PadiLine(width: 120).padding(.top, 12)
                         columnHeader
-                        tableBody
                     }
                     .padding(.top, 16).padding(.horizontal, 16)
                 }
@@ -559,23 +644,37 @@ struct SearchListView: View {
 
     // MARK: the sheet over the table
 
-    /// The least height the collapsed sheet takes: what its head needs down to the verdict band (and the 12 pt below it), no more than
-    /// 80% of the window and no more than the pane less a 64 pt peek of the list (one row stays on the screen).
-    private func collapsedMin(_ pane: CGSize, windowBottom: CGFloat) -> CGFloat {
-        guard sheetFit > 0, pane.height > 0 else { return 0 }
-        let cap = min(0.8 * max(windowBottom, pane.height), pane.height - 64)
-        return min(sheetFit, max(cap, 0))
+    /// The most the collapsed sheet takes: 80% of the window and no more than the pane less a 64 pt peek of the list (one row stays on
+    /// the screen).
+    private func fitCap(_ pane: CGSize, windowBottom: CGFloat) -> CGFloat {
+        max(min(0.8 * max(windowBottom, pane.height), pane.height - 64), 0)
     }
 
+    /// The list's peek above an expanded sheet: its own (132 / 300 pt) but never more than what the sheet leaves it when the sheet is no
+    /// shorter than the cap, the most the collapsed one takes (E6: expanding must never shrink the sheet; 6 + 10 pt are the layer's padding).
+    private func expandedPeek(_ own: CGFloat, _ pane: CGSize, _ windowBottom: CGFloat) -> CGFloat {
+        max(min(own, pane.height - expandedFloor(pane, windowBottom) - 16), 0)
+    }
+
+    /// The expanded sheet's least height: the collapsed sheet's own (measured when it was collapsed), the cap when it was never collapsed.
+    private func expandedFloor(_ pane: CGSize, _ windowBottom: CGFloat) -> CGFloat {
+        let cap = fitCap(pane, windowBottom: windowBottom)
+        let h = collapsedFit.height(cap: cap)
+        return h > 0 ? h : cap
+    }
+
+    /// The collapsed sheet is EXACTLY as tall as its last whole row and the margin under it (H1d O1): no slack for the next row to show
+    /// in. Until the band is measured it may take the cap.
     @ViewBuilder private func sheetLayer(_ pane: CGSize, windowBottom: CGFloat) -> some View {
         if let k = state.selected, state.section == .search {
-            RegistryVerdictSheet(kbli: k, expanded: $sheetExpanded) {
+            let cap = fitCap(pane, windowBottom: windowBottom)
+            let h = pane.height > 0 ? sheetFit.height(cap: cap) : 0
+            RegistryVerdictSheet(kbli: k, expanded: $sheetExpanded, onClose: {
                 state.selected = nil
                 sheetExpanded = false
-            }
+            }, collapsedRows: sheetFit.rows(cap: cap))
             .immersiveHost()
-            .frame(minHeight: sheetExpanded ? nil : collapsedMin(pane, windowBottom: windowBottom),
-                   maxHeight: sheetExpanded ? .infinity : max(470, collapsedMin(pane, windowBottom: windowBottom)))
+            .frame(minHeight: sheetExpanded ? expandedFloor(pane, windowBottom) : h, maxHeight: sheetExpanded ? .infinity : (h > 0 ? h : cap))
             .padding(.horizontal, 12).padding(.bottom, 10).padding(.top, 6)
         }
     }

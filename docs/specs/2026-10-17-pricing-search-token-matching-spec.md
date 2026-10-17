@@ -47,6 +47,11 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
      the inside-the-word clause.
      Curated keywords must therefore carry the distinctive single words a client actually types
      (for the alcohol rows: "alkohol", "beralkohol"), never a generic one ("izin", "minuman").
+     The three Alcohol License rows also carry the English, Italian and Indonesian distinctive words
+     `liquor`, `beer`, `wine`, `alcol`, `alcolici`, `alcolico`, `bir` (after #8655's gate, council of the
+     licence-noise PR: "liquor license" lost its only bridge once `license` became noise); `spirit` is
+     deliberately absent ("spirit festival" would over-match); the multi-word keywords
+     `spirits license` and `spirits licence` cover that phrase only as a contiguous phrase.
      Revised 2026-10-17 after the council (codex-gpt-5.6-sol, agy-gemini-4-argon) measured recall
      losses of the first draft: "berapa biaya izin alkohol", "harga izin beralkohol", "alkohol",
      "polisi", "sehat", "certificato igiene", "voa ext", "kit", "pensi", "kitasnya".
@@ -54,7 +59,11 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
    would still let through as whole words in English/Indonesian/Italian descriptions (at least:
    `ke`, `di`, `dan`, `yang`, `untuk`, `dari`, `the`, `to`, `in`, `for`, `as`, `is`, `on`, `at`,
    `mi`, `ma`, `si`, `ci`, `lo`, `che`, `quanto`, `costa`, `berapa`, `biaya`, `harga`, `price`,
-   `cost`, `how`, `much`). The implementation measures before adding each one (rule 5) and does not
+   `cost`, `how`, `much`) and the generic licence/sale words `license`, `licence`, `licensing`,
+   `sell` (they sit in the Alcohol License row names and would otherwise let "licenses" or "selling"
+   pull them). A query token is noise when it equals a noise word, or a noise word of 4+ characters
+   plus a light suffix of rule 2 ("prices", "biayanya", "selling"), so inflected noise follows the
+   same rule as row matching. `permit` and `izin` are NOT noise. The implementation measures before adding each one (rule 5) and does not
    add a word that is the only token of a legitimate single-word query in the corpus.
 4. The one-character-token drop and the "all tokens were noise → use the raw query" fallback stay;
    the fallback uses the same matcher. The legacy LIST-format branch uses the same matcher.
@@ -94,17 +103,23 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
 ## Out of scope
 
 Ranking/scoring of results, the Qdrant semantic search (`bali_zero_pricing_hybrid`), catalog
-content, the English "license" over-match (e.g. "driving license" → alcohol) unless rule 1/2
-cures it for free — report it either way.
+content, the English "license" over-match (e.g. "driving license" → alcohol), which rule 3's
+noise words now cure ("driving license" → no Alcohol License row; the Driving License row itself
+was retired by #8658).
 
 Accepted and documented, not fixed (council 2026-10-17, v4):
 
 - Plural stemming hits that are semantically right but contextually off ("send your addresses",
   "Chrome extensions").
-- The license family ("restaurant licenses" → Driving License).
+- A query whose every word is noise falls back to the raw-query path, so "license", "licenses",
+  "prices" or "selling" ALONE still return the rows that carry that word (for "license": the three
+  Alcohol License rows).
 - "toko minuman" / "jualan minuman ringan" no longer return the alcohol rows: "minuman" alone is
   generic, by design.
 - Typos such as "seha" do not match.
 
 Revised 2026-10-17 (v4) after the council on `ea6a7c52bf` (codex-gpt-5.6-sol: CONCERNS on
 ITAS/ITAP/TKA recall, hyphen compounds and negation; kimi-code/k3: PASS).
+
+Revised 2026-10-17 after #8655's gate: noise words stem like row words; `license`, `licence`,
+`licensing`, `sell` joined the noise list (rule 3).
