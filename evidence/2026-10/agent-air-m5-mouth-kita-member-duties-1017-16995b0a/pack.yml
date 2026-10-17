@@ -1,5 +1,6 @@
 brief_ref: evidence/2026-10/agent-air-m5-mouth-kita-member-duties-1017-16995b0a/brief.yml
 plan_ref: docs/plans/2026-10-17-kita-member-obligations.md
+council_run: journal.jsonl
 lanes:
   - lane: implementation
     role: build
@@ -7,6 +8,12 @@ lanes:
   - lane: independent-review
     role: review
     seat: claude-opus-5-5
+  - lane: bounded-codex-review
+    role: review
+    seat: codex-gpt-5.6-sol
+  - lane: bounded-kimi-review
+    role: review
+    seat: kimi-code/k3
 pii_scan: clean
 pii_scan_note: >-
   Source-only review and synthetic fixtures. Live probes return aggregate counts
@@ -26,6 +33,22 @@ operator_only: >-
   No operator-only action is needed for this release. The authorized supervisor
   grant is staged by the BLUE release owner without exposing its value.
 dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      Existing case-sensitive client-owner and creator predicates can hide a
+      process link when stored ownership differs in case from the token email.
+    status: CONFIRMED
+    resolution: >-
+      Accepted existing fail-closed behavior; the new link flag deliberately
+      matches the unchanged columns and normalization of the detail endpoint.
+  - seat: kimi-code/k3
+    objection: >-
+      Verify client detail access and whether practices have a deleted_at column.
+    status: RETRACTED
+    resolution: >-
+      verify_client_access already allows staff reads with allow_assigned=True;
+      this grant does not change that rule. Read-only metadata inspection of the
+      real test schema confirms practices has no deleted_at column.
   - seat: claude-opus-5-5
     objection: >-
       The relocated register test triggers token lint under default rename
@@ -47,6 +70,18 @@ dissent:
       Uses the existing database convention and a strict fourteen-day boundary.
       No migration or automatic failure transition is added.
 receipts:
+  - claim: Post-rebase authorization fixtures and generated-contract parity pass.
+    cmd: PYTHONPATH=.:../crm-cell SKIP_SENTRY_INIT=1 pytest backend/tests/app/routers/test_member_obligations.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py backend/tests/app/routers/test_garuda_voa_openapi_parity.py
+    result: 71 passed.
+    exit: 0
+    ts: "2026-10-17T09:30:00Z"
+    seat: codex-gpt-6
+  - claim: Post-rebase personal and register frontend behavior passes.
+    cmd: npx vitest run src/app/\(workspace\)/obligations/page.test.tsx src/app/\(workspace\)/obligations/register/page.test.tsx
+    result: 40 passed; navigation and desk color guard separately passed 18 tests.
+    exit: 0
+    ts: "2026-10-17T09:30:00Z"
+    seat: codex-gpt-6
   - claim: Independent gate exercised the new PostgreSQL authorization fixtures.
     cmd: PYTHONPATH=.:../crm-cell SKIP_SENTRY_INIT=1 pytest backend/tests/app/routers/test_member_obligations.py
     result: 19 passed; original gate blocked only the token-lint false positive.

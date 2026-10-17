@@ -41,6 +41,13 @@ A read-only preflight found exactly one active intended supervisor account. The
 release owner must stage the narrow setting before deployment; its value is never
 included in evidence. `flyctl secrets import --stage` explicitly skips deployment.
 
+After rebasing onto `1b743cb60a`, the generated API types preserve the intervening
+main change. The new PostgreSQL fixtures and OpenAPI parity checks passed again
+(71 tests); all 58 frontend checks passed again. Default committed-diff token
+lint is clean. The enforced Gear-3 evidence floor adds the independent Codex and
+Kimi review receipts in `journal.jsonl`; both reviews passed. Their bounded
+findings and dispositions are recorded in `review.md` and `pack.yml`.
+
 The M5 became heavily overloaded by unrelated simulator processes during final
 checks. They were left untouched. The remaining checks ran in an isolated Pro
 worktree based on the same commit and candidate files.

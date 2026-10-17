@@ -1,7 +1,7 @@
 mission: kita-member-duties-1017
 colour: BLUE
 gear: 3
-base: 7f670dcde0
+base: origin/main
 scope: Personal obligations derived from assigned clients and active practices
 consumer: Kita team members and authorized supervisors
 bites: Source record updates remove the matching duty without a second completion click

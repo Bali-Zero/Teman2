@@ -94,8 +94,10 @@ manager is required.
 BLUE, Gear 3: the settings module and measured diff trigger the enforced floor.
 Council is not triggered: this is one bounded derived view, with no parallel
 research breadth or divergent architecture priors requiring a council.
+The enforced Gear-3 evidence floor separately requires two independent review
+receipts; Codex and Kimi supplied those bounded reviews.
 Codex prepares implementation; Claude Opus 5.5 xhigh
 owns design review and release. A distinct fresh Opus 5.5 xhigh session grades
 the final candidate. Worktree: `.worktrees/mouth-kita-member-duties-1017`.
-Base refreshed from `d9546c7` to `7f670dcde0` before release; generated contracts
+Base refreshed from `d9546c7` to `1b743cb60a` before release; generated contracts
 include the intervening main changes. Other sessions' workspaces remain untouched.
