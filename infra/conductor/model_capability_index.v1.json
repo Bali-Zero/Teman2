@@ -271,7 +271,7 @@
       "model_card_id": "deepseek-v4-pro",
       "family": "deepseek-v4",
       "kind": "language",
-      "routing_status": "probation",
+      "routing_status": "eligible",
       "automated_routing": false,
       "evidence": [
         {
