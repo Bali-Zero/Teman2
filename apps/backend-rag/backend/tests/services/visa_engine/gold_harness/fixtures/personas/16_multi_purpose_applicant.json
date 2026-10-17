@@ -234,6 +234,10 @@
     "investment.meets_published_threshold": {
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
+    },
+    "investment.own_shareholding_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
     }
   },
   "expected": {

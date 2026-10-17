@@ -172,6 +172,8 @@ class TestSponsorTypeRolloutDefault:
             "person_guardian_consent",
             # Seq-28 Step A, 2026-10-11.
             "work_annual_foreign_income_usd",
+            # E28A own-shareholding Step A, 2026-10-17.
+            "investment_own_shareholding_idr",
         }, (
             "ApplicantFactsData's optional-field set changed. If you added a "
             "field with a default, don't: every fact is required so that an "
@@ -460,6 +462,76 @@ class TestFactVocabularyExtensionRolloutDefaultE33G:
     def test_the_annual_income_fact_is_sensitive(self) -> None:
         spec = DEFAULT_FACT_REGISTRY.spec(enums.FactPath.WORK_ANNUAL_FOREIGN_INCOME_USD)
         assert spec.pii_class is enums.PiiClass.SENSITIVE
+
+
+class TestFactVocabularyExtensionRolloutDefaultE28A:
+    """The E28A own-shareholding Step A wire seam (2026-10-17).
+
+    ``investment.own_shareholding_idr`` is the applicant's OWN shareholding
+    value in the sponsoring company (Permenkumham 22/2023 jo 11/2024 Pasal
+    38(2)(a)) — a different fact from the company-level paid-up and
+    investment capital paths. The engine learns it before any pack rule or
+    mouth question reads it.
+    """
+
+    _WIRE_KEY = "investment.own_shareholding_idr"
+
+    def test_the_path_is_in_the_vocabulary_and_the_registry(self) -> None:
+        path = enums.FactPath.INVESTMENT_OWN_SHAREHOLDING_IDR
+        assert path.value == self._WIRE_KEY
+        assert path in enums.APPLICANT_FACT_PATHS
+        spec = DEFAULT_FACT_REGISTRY.spec(path)
+        assert spec.value_type == "money_idr"
+        assert spec.pii_class is enums.PiiClass.SENSITIVE
+
+    def test_a_body_omitting_the_key_still_validates(self) -> None:
+        body = _all_unknown_facts()
+        del body[self._WIRE_KEY]
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert isinstance(facts.investment_own_shareholding_idr, M.UnknownFact)
+        assert facts.investment_own_shareholding_idr.status == "UNKNOWN"
+        assert facts.investment_own_shareholding_idr.reason == enums.UnknownReason.NOT_ASKED
+
+    def test_the_default_asserts_unknown_and_never_a_value(self) -> None:
+        default = M._OWN_SHAREHOLDING_ROLLOUT_DEFAULT
+        assert isinstance(default, M.UnknownFact)
+        assert default.status == "UNKNOWN"
+        assert not hasattr(default, "value")
+
+    def test_the_field_factory_yields_the_unknown_default(self) -> None:
+        field = M.ApplicantFactsData.model_fields["investment_own_shareholding_idr"]
+        produced = field.default_factory()  # type: ignore[misc]
+        assert produced == M._OWN_SHAREHOLDING_ROLLOUT_DEFAULT
+        assert produced.status == "UNKNOWN"
+
+    @pytest.mark.parametrize("value", [0, 10_000_000_000])
+    def test_a_supplied_value_is_honoured(self, value: int) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": value}
+
+        facts = M.ApplicantFactsData.model_validate(body)
+
+        assert facts.investment_own_shareholding_idr.status == "KNOWN"
+        assert facts.investment_own_shareholding_idr.value == value
+
+    @pytest.mark.parametrize("value", [-1, "10000000000", 1.5, True])
+    def test_invalid_values_are_rejected(self, value: object) -> None:
+        body = _all_unknown_facts()
+        body[self._WIRE_KEY] = {"status": "KNOWN", "value": value}
+
+        with pytest.raises(ValidationError):
+            M.ApplicantFactsData.model_validate(body)
+
+    def test_near_miss_key_still_bites_with_extra_forbidden(self) -> None:
+        body = _all_unknown_facts()
+        body["investment.own_shareholding_idrx"] = dict(_UNKNOWN)
+
+        with pytest.raises(ValidationError) as exc_info:
+            M.ApplicantFactsData.model_validate(body)
+
+        assert any(error["type"] == "extra_forbidden" for error in exc_info.value.errors())
 
 
 class TestInvestmentAmountUsdIsRequiredAndTyped:

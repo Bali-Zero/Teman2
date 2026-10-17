@@ -19274,7 +19274,8 @@ export interface components {
      *     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
      *     qualification facts (2026-09-13) and ``person_guardian_consent``
      *     (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
-     *     (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
+     *     (2026-10-11, seq-28 Step A) and ``investment_own_shareholding_idr``
+     *     (2026-10-17, E28A Step A) below — all the same rollout mechanism.
      *     Field order mirrors ``enums.FactPath``'s
      *     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
      *     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -19461,6 +19462,10 @@ export interface components {
       "investment.meets_published_threshold":
         | components["schemas"]["UnknownFact"]
         | components["schemas"]["KnownBoolean"];
+      /** Investment.Own Shareholding Idr */
+      "investment.own_shareholding_idr"?:
+        | components["schemas"]["UnknownFact"]
+        | components["schemas"]["KnownMoney"];
       /** Investment.Paid Up Capital Idr */
       "investment.paid_up_capital_idr":
         | components["schemas"]["UnknownFact"]
@@ -22125,7 +22130,7 @@ export interface components {
     };
     /**
      * FactPath
-     * @description Every fact path the engine may ever reference — 58 applicant-collected
+     * @description Every fact path the engine may ever reference — 59 applicant-collected
      *     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
      *     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
      *     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -22145,7 +22150,10 @@ export interface components {
      *     comment for the grounding), and last by ``work.annual_foreign_income_usd``
      *     (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
      *     with a NOT_ASKED rollout default; the mouth question is step B and the
-     *     pack rule step C).
+     *     pack rule step C), and last by ``investment.own_shareholding_idr``
+     *     (2026-10-17, E28A own-shareholding Step A — contract-only: the engine
+     *     accepts the fact with a NOT_ASKED rollout default; no pack rule and no
+     *     mouth question read it yet).
      *
      *     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
      *     ``required_facts`` array are both typed against this enum, so a rule
@@ -22188,6 +22196,7 @@ export interface components {
       | "investment.foreign_branch_or_subsidiary"
       | "investment.ikn_subsidiary"
       | "investment.meets_published_threshold"
+      | "investment.own_shareholding_idr"
       | "family.relation_to_sponsor"
       | "family.sponsor_nationalities"
       | "family.sponsor_status_code"

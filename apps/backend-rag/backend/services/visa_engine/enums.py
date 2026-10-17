@@ -507,12 +507,12 @@ class Environment(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# FactPath — the closed 62-path fact vocabulary (58 applicant + 4 derived; spec §2 ``FactPath``)
+# FactPath — the closed 63-path fact vocabulary (59 applicant + 4 derived; spec §2 ``FactPath``)
 # ---------------------------------------------------------------------------
 
 
 class FactPath(str, Enum):
-    """Every fact path the engine may ever reference — 58 applicant-collected
+    """Every fact path the engine may ever reference — 59 applicant-collected
     + 4 derived (spec §2 ``ApplicantFactPath`` + ``FactPath``, extended by the
     ``secondhome.*`` group for the E33 Second Home vertical, 2026-07-23, by
     ``sponsor.type`` for the sponsor-category question, 2026-08-10, by the
@@ -532,7 +532,10 @@ class FactPath(str, Enum):
     comment for the grounding), and last by ``work.annual_foreign_income_usd``
     (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
     with a NOT_ASKED rollout default; the mouth question is step B and the
-    pack rule step C).
+    pack rule step C), and last by ``investment.own_shareholding_idr``
+    (2026-10-17, E28A own-shareholding Step A — contract-only: the engine
+    accepts the fact with a NOT_ASKED rollout default; no pack rule and no
+    mouth question read it yet).
 
     Closed by design (spec §5.2): a Condition's ``fact`` field and a Rule's
     ``required_facts`` array are both typed against this enum, so a rule
@@ -641,6 +644,14 @@ class FactPath(str, Enum):
     # rule's explanation cites the source record the figure must be read
     # from. A figure arrives in the pack the day a source record states it.
     INVESTMENT_MEETS_PUBLISHED_THRESHOLD = "investment.meets_published_threshold"
+    # investment.own_shareholding_idr — the APPLICANT'S OWN shareholding value
+    # in the sponsoring company, in whole IDR (Permenkumham 22/2023 jo 11/2024
+    # Pasal 38(2)(a): "Bukti kepemilikan saham paling sedikit
+    # Rp10.000.000.000,00 ... pada perusahaan penjamin"). It is a different
+    # fact from ``investment.paid_up_capital_idr`` / ``investment_capital_idr``,
+    # which describe the COMPANY, not the applicant. The threshold lives only
+    # in the pack rule, never in code.
+    INVESTMENT_OWN_SHAREHOLDING_IDR = "investment.own_shareholding_idr"
     # family.*
     FAMILY_RELATION_TO_SPONSOR = "family.relation_to_sponsor"
     FAMILY_SPONSOR_NATIONALITIES = "family.sponsor_nationalities"
@@ -780,7 +791,7 @@ class FactPath(str, Enum):
     DERIVED_HAS_ACTIVE_STAY_PERMIT = "derived.has_active_stay_permit"
 
 
-#: The 58 applicant-collected paths (everything except ``derived.*``).
+#: The 59 applicant-collected paths (everything except ``derived.*``).
 APPLICANT_FACT_PATHS: frozenset[FactPath] = frozenset(
     path for path in FactPath if not path.value.startswith("derived.")
 )

@@ -119,11 +119,17 @@ def test_trace_golden_vector_and_observed_clock_invariance() -> None:
     # unchanged; only the whole-snapshot `facts_hmac` input gained the new
     # UNKNOWN/NOT_ASKED fact.
     #
+    # Moved an eighth time 2026-10-17 (`3d5dde06…` -> `4861ae4d…`) when the
+    # E28A own-shareholding Step A registered `investment.own_shareholding_idr`.
+    # No pack rule reads it, the trace node count is still 84 and decisions
+    # are unchanged; only the whole-snapshot `facts_hmac` input gained the
+    # new UNKNOWN/NOT_ASKED fact.
+    #
     # If this literal ever moves again while the node set or a persona's
     # decision ALSO changed, that is a behaviour change wearing a fixture's
     # clothes — do not update the number, find out what evaluated differently.
     assert (
-        first.trace.sha256() == "3d5dde0631fea23ff31c8ffee1df2ec228922da89ffbe736444fc9f03aa9233c"
+        first.trace.sha256() == "4861ae4d47ec233680637d53b9a1d77021c7cae758c9f3823d3cb753420626aa"
     )
     assert first.decision.trace_sha256 == first.trace.sha256()
     assert second.trace == first.trace

@@ -437,6 +437,33 @@ class TestRequiredFactNotInRegistry:
         assert any(e.code == "REQUIRED_FACT_NOT_IN_REGISTRY" for e in report.errors)
 
 
+class TestOwnShareholdingFactIsCompilable:
+    def test_rule_requiring_own_shareholding_compiles_against_default_registry(
+        self, source_record: M.SourceRecord
+    ) -> None:
+        product_id = uuid.uuid4()
+        product = make_product(
+            product_version_id=product_id, source_refs=[source_record.source_record_id]
+        )
+        rule = make_support_rule(
+            rule_id="rule.own.shareholding.compiles",
+            product_version_ids=[product_id],
+            source_refs=[source_record.source_record_id],
+            when={
+                "op": "gte",
+                "fact": "investment.own_shareholding_idr",
+                "value": 10_000_000_000,
+            },
+            required_facts=("investment.own_shareholding_idr",),
+        )
+        payload = make_rule_pack_payload(
+            rules=[rule], products=[product], source_records=[source_record]
+        )
+        report = C.compile_rule_pack(make_rule_pack(payload))
+        assert not any(e.code == "REQUIRED_FACT_NOT_IN_REGISTRY" for e in report.errors)
+        assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
+
+
 # ---------------------------------------------------------------------------
 # Codex finding 5 — corrected fact-literal-kind semantics
 # ---------------------------------------------------------------------------

@@ -683,6 +683,41 @@ async def test_payload_with_or_without_annual_foreign_income_is_200(
     assert response.status_code == 200, response.text
 
 
+@pytest.mark.parametrize("include_shareholding", [True, False])
+async def test_payload_with_or_without_own_shareholding_is_200(
+    include_shareholding: bool,
+) -> None:
+    """E28A Step A Bites: old and new callers both cross the HTTP boundary."""
+
+    payload = _wire_payload(_facts_with_purposes(["INVESTMENT"]))
+    if include_shareholding:
+        payload["facts"]["investment.own_shareholding_idr"] = {
+            "status": "KNOWN",
+            "value": 10_000_000_000,
+        }
+    else:
+        payload["facts"].pop("investment.own_shareholding_idr", None)
+
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
+
+    assert response.status_code == 200, response.text
+
+
+@pytest.mark.parametrize("bad_value", [-1, 1.5, "10000000000"])
+async def test_own_shareholding_invalid_value_is_422(bad_value: object) -> None:
+    payload = _wire_payload(_facts_with_purposes(["INVESTMENT"]))
+    payload["facts"]["investment.own_shareholding_idr"] = {
+        "status": "KNOWN",
+        "value": bad_value,
+    }
+
+    async with _client(_build_app(_UntouchedPool())) as client:
+        response = await client.post(_REAL_EVALUATE_URL, json=payload)
+
+    assert response.status_code == 422
+
+
 async def test_extra_top_level_key_is_422() -> None:
     payload = _wire_payload(_facts_with_purposes(["TOURISM"]))
     payload["bogus"] = 1
