@@ -256,7 +256,7 @@ export const VISA_LEDGER_SPEC: ChapterSpec[] = [
                 cells: ["E33F Second Home Senior (1 Year, Offshore)", null],
               },
               {
-                label: "1 year, Altus / Onshore",
+                label: "1 year, Onshore",
                 cells: [
                   "E33F Second Home Senior (1 Year, Altus/Onshore)",
                   "E33F Second Home Senior (Extend)",

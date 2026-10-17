@@ -152,7 +152,29 @@ describe("the visa price ledger places the live catalogue", () => {
     ).toEqual([
       ["5 years"],
       ["5 years"],
-      ["1 year, Offshore", "1 year, Altus / Onshore"],
+      ["1 year, Offshore", "1 year, Onshore"],
+    ]);
+    expect(
+      secondHome.rows.map((row) =>
+        row.variants?.map((variant) =>
+          variant.cells.map((cell) => cell?.livePriceKey ?? null),
+        ),
+      ),
+    ).toEqual([
+      [["E33 Second Home (5 Years)", null]],
+      [
+        [
+          "E33E Second Home Senior (5 Years)",
+          "E33E Second Home Senior (Extend)",
+        ],
+      ],
+      [
+        ["E33F Second Home Senior (1 Year, Offshore)", null],
+        [
+          "E33F Second Home Senior (1 Year, Altus/Onshore)",
+          "E33F Second Home Senior (Extend)",
+        ],
+      ],
     ]);
   });
 });

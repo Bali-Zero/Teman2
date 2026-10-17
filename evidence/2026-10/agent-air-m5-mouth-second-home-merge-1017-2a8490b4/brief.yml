@@ -10,8 +10,7 @@ mission: >-
 objective: >-
   1) The KITAS chapter of /services/visa reads the three Second Home permits (E33, E33E senior,
   E33F senior income-only) as ONE "Second Home" family with columns New permit / Extension.
-  2) Each permit stays one row; its duration and, for E33F, its channel (Offshore vs Altus /
-  Onshore) read as variant lines under the row name - never as separate rows (owner rule of
+  2) Each permit stays one row; its duration and, for E33F, its channel (Offshore vs Onshore) read as variant lines under the row name - never as separate rows (owner rule of
   2026-10-17). 3) The duration caption under a row name renders only for rows without variants,
   because a variant label already carries the duration. 4) Every one of the 79 catalogue rows is
   still placed exactly once (unit test + scripts/ci/observe_visa_price_ledger.py), the

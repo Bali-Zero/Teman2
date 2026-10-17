@@ -51,13 +51,39 @@ receipts:
   - claim: >-
       Rendered proof on a local webpack dev server (port 3518): one family heading "Second Home" in
       the KITAS chapter, the E33 / E33E / E33F rows with "5 years", "5 years" and "1 year, Offshore"
-      + "1 year, Altus / Onshore" variant lines, 79 price cards, zero horizontal overflow and zero
+      + "1 year, Onshore" variant lines, 79 price cards, zero horizontal overflow and zero
       console errors at 1440px and 390px; screenshots of the family at both widths reviewed.
     cmd: npx next dev --webpack -p 3518; node <scratch>/shoot_second_home.mjs http://localhost:3518 (Playwright chromium)
     result: "desktop: cards=79 overflowPx=0 consoleErrors=0; mobile: cards=79 overflowPx=0 consoleErrors=0; families=14, kitas -> family-second-home:Second Home only"
     exit: 0
     ts: "2026-10-17T21:14:00+08:00"
     seat: agent-air-m5-mouth-second-home-merge-1017
+council_run: council-journal.jsonl
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      "1 year, Altus / Onshore" was the first reader-facing "Altus" on the page: every other
+      (Altus/Onshore) catalogue key reads as the plain column word "Onshore" (CHANNEL).
+    severity: minor
+    status: CONFIRMED
+    resolution: The variant label is "1 year, Onshore"; the catalogue key underneath is unchanged.
+  - seat: kimi-code/k3
+    objection: >-
+      The new placement test asserted variant labels only, never the cells-to-keys wiring, so
+      swapping the E33F extension into the offshore line would have passed every test.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      The test now pins every Second Home cell by livePriceKey, including the null cells and the
+      extension sitting on the onshore line.
+  - seat: kimi-code/k3
+    objection: The only runtime change (caption suppression on variant rows) had no test.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      VisaPriceLedger.test.tsx renders the Second Home region and asserts "5 years" appears exactly
+      twice (the two variant labels, no caption) and that the plain-row Work region shows no
+      duration caption either.
 decisions:
   - id: D-one-family-new-permit-extension
     decision: >-
