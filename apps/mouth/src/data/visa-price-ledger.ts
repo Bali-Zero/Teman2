@@ -224,34 +224,44 @@ export const VISA_LEDGER_SPEC: ChapterSpec[] = [
       {
         kind: "matrix",
         id: "second-home",
-        name: "Second Home, 5 years",
+        name: "Second Home",
         columns: ["New permit", "Extension"],
         rows: [
           {
             name: "E33 Second Home",
-            cells: ["E33 Second Home (5 Years)", null],
+            variants: [
+              {
+                label: "5 years",
+                cells: ["E33 Second Home (5 Years)", null],
+              },
+            ],
           },
           {
             name: "E33E Second Home Senior",
-            cells: [
-              "E33E Second Home Senior (5 Years)",
-              "E33E Second Home Senior (Extend)",
+            variants: [
+              {
+                label: "5 years",
+                cells: [
+                  "E33E Second Home Senior (5 Years)",
+                  "E33E Second Home Senior (Extend)",
+                ],
+              },
             ],
           },
-        ],
-      },
-      {
-        kind: "matrix",
-        id: "second-home-senior-1y",
-        name: "Second Home Senior, 1 year",
-        columns: CHANNEL,
-        rows: [
           {
             name: "E33F Second Home Senior",
-            cells: [
-              "E33F Second Home Senior (1 Year, Offshore)",
-              "E33F Second Home Senior (1 Year, Altus/Onshore)",
-              "E33F Second Home Senior (Extend)",
+            variants: [
+              {
+                label: "1 year, Offshore",
+                cells: ["E33F Second Home Senior (1 Year, Offshore)", null],
+              },
+              {
+                label: "1 year, Altus / Onshore",
+                cells: [
+                  "E33F Second Home Senior (1 Year, Altus/Onshore)",
+                  "E33F Second Home Senior (Extend)",
+                ],
+              },
             ],
           },
         ],

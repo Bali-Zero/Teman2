@@ -1,0 +1,81 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-17, direct session order: E33 Second Home (5 years) and E33F Second Home Senior
+  (1 year) are kin on the price ledger ("per l'index sono affini... e ha senso") and belong in one
+  family.
+mission: >-
+  Merge the two Second Home families of /services/visa into one, keeping every permit one row
+  with its durations and channels as variant lines, without touching a single figure.
+lanes:
+  - lane: build
+    role: build
+    seat: Claude Fable 5.1 (owner-opened interactive window), worktree mouth-second-home-merge-1017 on Air-M5.
+  - lane: mouth-tests
+    role: review
+    seat: claude-sonnet-5 subagent, read-only test runner (shared node_modules symlink, no install).
+  - lane: refuter
+    role: review
+    seat: kimi-code/k3 through the kimi CLI, adversarial read of the unified diff.
+pii_scan: clean
+bites:
+  consumer: >-
+    balizero.com/services/visa (served by Vercel from apps/mouth): the KITAS chapter now renders one
+    "Second Home" family (columns New permit / Extension) with E33, E33E Senior and E33F Senior as
+    rows and their durations / channels as variant lines; the former "Second Home Senior, 1 year"
+    family is gone. The unit test pins the family shape and that every catalogue row is still
+    placed exactly once; scripts/ci/observe_visa_price_ledger.py is the Python twin of the
+    placement invariant for the harness job, which the merge could break and does not.
+  where: ci
+  observe: python3 scripts/ci/observe_visa_price_ledger.py
+  expect: "contains:public visa rows placed exactly once"
+receipts:
+  - claim: Ledger placement (incl. the new Second Home case), ledger render, ServicePricing dialog, R19 skin guard, snapshot parity and services data suites pass.
+    cmd: cd apps/mouth && npx vitest run src/data/visa-price-ledger.test.ts src/components/services/VisaPriceLedger.test.tsx src/components/services/ServicePricing.test.tsx src/components/services/r19-skin.guard.test.ts src/lib/pricing-snapshot.test.ts src/data
+    result: "7 files, 52 passed"
+    exit: 0
+    ts: "2026-10-17T21:23:30+08:00"
+    seat: mouth-tests (claude-sonnet-5)
+  - claim: Sitewide R19 colour guard, Prettier, ESLint and tsc clean on the three changed files.
+    cmd: cd apps/mouth && npx vitest run src/test/r19-colour-guard.test.ts; npx prettier --check <3 files>; npx eslint <2 source files>; npx tsc --noEmit -p tsconfig.json
+    result: "812 passed; All matched files use Prettier code style; 0 errors; tsc silent"
+    exit: 0
+    ts: "2026-10-17T21:23:40+08:00"
+    seat: mouth-tests (claude-sonnet-5)
+  - claim: Every one of the 79 public visa rows is still placed exactly once by the spec.
+    cmd: python3 scripts/ci/observe_visa_price_ledger.py
+    result: "observe_visa_price_ledger: 79 public visa rows placed exactly once"
+    exit: 0
+    ts: "2026-10-17T21:10:00+08:00"
+    seat: agent-air-m5-mouth-second-home-merge-1017
+  - claim: >-
+      Rendered proof on a local webpack dev server (port 3518): one family heading "Second Home" in
+      the KITAS chapter, the E33 / E33E / E33F rows with "5 years", "5 years" and "1 year, Offshore"
+      + "1 year, Altus / Onshore" variant lines, 79 price cards, zero horizontal overflow and zero
+      console errors at 1440px and 390px; screenshots of the family at both widths reviewed.
+    cmd: npx next dev --webpack -p 3518; node <scratch>/shoot_second_home.mjs http://localhost:3518 (Playwright chromium)
+    result: "desktop: cards=79 overflowPx=0 consoleErrors=0; mobile: cards=79 overflowPx=0 consoleErrors=0; families=14, kitas -> family-second-home:Second Home only"
+    exit: 0
+    ts: "2026-10-17T21:14:00+08:00"
+    seat: agent-air-m5-mouth-second-home-merge-1017
+decisions:
+  - id: D-one-family-new-permit-extension
+    decision: >-
+      The merged family keeps the columns New permit / Extension of the former 5-year family
+      rather than the Offshore / Onshore / Extension channel columns: the catalogue prices E33 and
+      E33E by permit, not by channel, and only E33F has channel-specific figures, which read as
+      its two variant lines.
+  - id: D-variants-carry-the-duration
+    decision: >-
+      Every Second Home row uses variant lines ("5 years", "1 year, Offshore", "1 year, Altus /
+      Onshore") so the three permits read alike; the component therefore renders the duration
+      caption only for rows without variants, which changes nothing elsewhere (no variant row on
+      the ledger shared a single duration across its cells).
+  - id: D-offshore-has-no-extension-cell
+    decision: >-
+      The E33F offshore line leaves the Extension cell empty and the onshore line carries
+      "E33F Second Home Senior (Extend)", because the catalogue describes that row as an onshore
+      annual extension; placing it twice is forbidden by the placement test.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
