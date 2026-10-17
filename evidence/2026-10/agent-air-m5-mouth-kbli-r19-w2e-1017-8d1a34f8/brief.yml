@@ -2,25 +2,24 @@ task_id: kbli-r19-w2e-1017
 gear: 3
 l_level: L1
 gate_class: opus
-objective:
-  "Mission kbli-nav-design-loop, lot W2'''' (Track W, BLUE). This PR carries two things:\n(1) the replay\
-  \ of W2''' (#8627, commit 187f9702a7, unchanged), whose objective was:\n    Mission kbli-nav-design-loop, lot\
-  \ W2''' (Track W, BLUE), successor of the closed #8161 (W2'', gate\n    BLOCK), #8139 and #8118, replayed on top\
-  \ of the merged W0d-3b-2b-i''' (#8583) and W0d-3b-2b-ii'\n    (#8620) census instruments. Put all 9 /kbli* routes\
-  \ (/kbli, /kbli/55203, /kbli/51101, /kbli/56101,\n    /kbli-explorer, /kbli/sectors, /kbli/sectors/[id], /kbli/builder,\
-  \ /kbli/decoder) and all 51 opened\n    surfaces onto the R19 wrapper token contract (Direction A + PMA triad):\n\
-  \    - every opened surface renders inside .kbli-r19 and paints its section 8.1 ground opaque (or translucent\
-  \ ink scrim);\n    - the re-cut transparent explorer logo (/images/logo-zantara-transparent.png) ships and passes\
-  \ section 8.3's five proofs;\n    - zantara-pending mobile/system-dark gets solid plates on its badge and bubble,\
-  \ leaves NOT_JUDGEABLE, returns to the walks (51 opened walks, 147 scenarios) and passes at min 5.64:1;\n    -\
-  \ every page ground at rest and every opened ground reads 0 off-contract and 0 resolver disagreement;\n    - all\
-  \ 24 shared-component walks outside /kbli* hold 0 drift against the origin/main pin;\n    - r19-wrapper-census-tests\
-  \ asserts all 15 lines of the section 8.8 exit block in wrapper-census-states and 48/48 captures in wrapper-census-live.\n\
-  (2) the cure of the two states #8627's gate blocked: the /kbli hero primary-action hover keeps\nelevated text\
-  \ on copper, and /kbli-explorer Sonner richColors controls use only R19 surface,\nborder and ink tokens, with\
-  \ real-browser innocence and mutant-guilt tests.\n#8627's evidence directory (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c)\
-  \ is folded into this one\nso the PR has exactly one brief and one pack; its original receipts stay readable on\
-  \ PR #8627.\n"
+objective: |
+  Mission kbli-nav-design-loop, lot W2'''' (Track W, BLUE). This PR carries two things.
+  (1) The replay of W2''' (PR 8627, commit 187f9702a7, unchanged), successor of the closed PR 8161
+  (W2'', gate BLOCK), PR 8139 and PR 8118, on top of the merged census instruments PR 8583 and PR 8620.
+  It puts all 9 /kbli* routes (/kbli, /kbli/55203, /kbli/51101, /kbli/56101, /kbli-explorer,
+  /kbli/sectors, /kbli/sectors/[id], /kbli/builder, /kbli/decoder) and all 51 opened surfaces onto the
+  R19 wrapper token contract (Direction A + PMA triad):
+    - every opened surface renders inside .kbli-r19 and paints its section 8.1 ground opaque (or translucent ink scrim);
+    - the re-cut transparent explorer logo (/images/logo-zantara-transparent.png) passes section 8.3's five proofs;
+    - zantara-pending mobile/system-dark gets solid plates, leaves NOT_JUDGEABLE, returns to the walks and passes at min 5.64:1;
+    - every page ground at rest and every opened ground reads 0 off-contract and 0 resolver disagreement;
+    - all 24 shared-component walks outside /kbli* hold 0 drift against the origin/main pin;
+    - r19-wrapper-census-tests asserts all 15 lines of the section 8.8 exit block and 48/48 captures.
+  (2) The cure of the two states PR 8627's gate blocked: the /kbli hero primary-action hover keeps
+  elevated text on copper, and /kbli-explorer Sonner richColors controls use only R19 surface, border
+  and ink tokens, with real-browser innocence and mutant-guilt tests.
+  PR 8627's evidence directory (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c) is folded into this one,
+  so the PR has exactly one brief and one pack; its original receipts stay readable on PR 8627.
 constraints:
   - Contract is the authority, row by row, sections 5, 7, 8 and 9 included.
   - No shared file outside the pin matrix is mutated; packages/core/components/NavShell.tsx is untouched and its glass
@@ -79,7 +78,7 @@ grader:
   "
 brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2e-1017-8d1a34f8/brief.yml
 plan_ref:
-  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR #8627 gate findings supplied
+  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR 8627 gate findings supplied
   in the W2'''' mandate."
 lanes:
   - lane: mouth-kbli-r19-w2e-1017

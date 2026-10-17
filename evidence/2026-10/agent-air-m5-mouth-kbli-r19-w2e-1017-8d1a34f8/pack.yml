@@ -1,9 +1,9 @@
-brief_ref: evidence/2026-10/agent-air-m5-mouth-kbli-r19-w2e-1017-8d1a34f8/brief.yml
+brief_ref: evidence/brief.yml
 seat_override:
   BLUE mission, external builder prepare-only. A Claude session performs live browser verification,
   ships if green, and a fresh gate judges the final candidate.
 plan_ref:
-  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR #8627 gate findings supplied
+  "docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 7.1; PR 8627 gate findings supplied
   in the W2'''' mandate."
 lanes:
   - lane: mouth-kbli-r19-w2e-1017
@@ -11,10 +11,11 @@ lanes:
     seat: Codex external builder
 pii_scan: clean
 pii_scan_note: Public UI CSS and synthetic browser fixtures only; no client data.
-provenance:
-  "Fresh origin/main plus 187f9702a7, the exact replay of PR #8627. This lot changes only the R19 wrapper
-  stylesheet, its browser regression tests, and this evidence pack. The W2''' evidence of #8627 (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c)
-  is folded into this directory; its receipts are on PR #8627 and are re-measured below on this head."
+provenance: >-
+  Fresh origin/main plus 187f9702a7, the exact replay of PR 8627. This lot changes only the R19 wrapper
+  stylesheet, its browser regression tests, and this evidence pack. The W2''' evidence of PR 8627
+  (agent-air-m5-mouth-kbli-r19-w2d-1016-0886045c) is folded into this directory; its receipts are on
+  PR 8627 and are re-measured below on this head.
 diff:
   net_lines:
     Minimal wrapper overrides for one Tailwind hover state and Sonner controls, plus two static-page Playwright
