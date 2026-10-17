@@ -1108,6 +1108,19 @@ _ANNUAL_FOREIGN_INCOME_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
     status="UNKNOWN", reason="NOT_ASKED"
 )
 
+# Same rollout mechanism for the E28A own-shareholding Step A (2026-10-17).
+# The engine must accept ``investment.own_shareholding_idr`` (the applicant's
+# OWN shareholding value in the sponsoring company) before any pack rule or
+# mouth question reads it; until then omission means only that nobody asked.
+# The default MUST be a built ``UnknownFact``, never a dict or zero: zero
+# would fabricate a below-threshold answer for every existing caller.
+# FOLLOW-UP (remove the default): once the mouth question ships and no client
+# omits this key, per ``TestFactVocabularyExtensionRolloutDefaultE28A`` in
+# ``test_sponsor_type_rollout.py``.
+_OWN_SHAREHOLDING_ROLLOUT_DEFAULT: Final[UnknownFact] = UnknownFact(
+    status="UNKNOWN", reason="NOT_ASKED"
+)
+
 
 class ApplicantFactsData(BaseModel):
     """``ApplicantFacts.facts`` (spec §2) — ``additionalProperties: false``
@@ -1117,7 +1130,8 @@ class ApplicantFactsData(BaseModel):
     ``immigration_renewal_paid`` (2026-08-24), the ten seq-21
     qualification facts (2026-09-13) and ``person_guardian_consent``
     (2026-09-21, Slice A7-B), plus ``work_annual_foreign_income_usd``
-    (2026-10-11, seq-28 Step A) below — all the same rollout mechanism.
+    (2026-10-11, seq-28 Step A) and ``investment_own_shareholding_idr``
+    (2026-10-17, E28A Step A) below — all the same rollout mechanism.
     Field order mirrors ``enums.FactPath``'s
     ``person.*``/``immigration.*``/``intent.*``/``work.*``/``investment.*``/
     ``family.*``/``study.*``/``secondhome.*``/``process.*``/``commercial.*``
@@ -1263,6 +1277,16 @@ class ApplicantFactsData(BaseModel):
         Field(
             alias="investment.meets_published_threshold",
             default=_S21_QUALIFICATION_ROLLOUT_DEFAULT,
+        ),
+    ]
+    investment_own_shareholding_idr: Annotated[
+        MoneyFact,
+        Field(
+            alias="investment.own_shareholding_idr",
+            # Factory (not ``default=``) so the generated request key stays
+            # optional for openapi-typescript — same as
+            # ``work_annual_foreign_income_usd``.
+            default_factory=_OWN_SHAREHOLDING_ROLLOUT_DEFAULT.model_copy,
         ),
     ]
     family_relation_to_sponsor: Annotated[RelationFact, Field(alias="family.relation_to_sponsor")]

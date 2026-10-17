@@ -46,6 +46,7 @@ PII_SAMPLES: dict[str, str] = {
     "phone": "+62 812 3456 7890",
     "client_id": "CL-000142",
     "annual_foreign_income_usd": "987654321",
+    "own_shareholding_idr": "10000000000123",
     "name": "Antonello",
     "surname": "Siano",
     # Added 2026-08-02 with the free-text tests below. Deliberately sequential,
@@ -143,7 +144,11 @@ def test_redacts_request_body_json():
                     "work.annual_foreign_income_usd": {
                         "status": "KNOWN",
                         "value": PII_SAMPLES["annual_foreign_income_usd"],
-                    }
+                    },
+                    "investment.own_shareholding_idr": {
+                        "status": "KNOWN",
+                        "value": PII_SAMPLES["own_shareholding_idr"],
+                    },
                 },
             },
         }

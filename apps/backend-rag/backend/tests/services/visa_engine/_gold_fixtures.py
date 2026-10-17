@@ -630,6 +630,7 @@ _BASELINE_FACTS: dict[str, dict[str, Any]] = {
     "investment.pt_pma_committed": {"status": "KNOWN", "value": False},
     "investment.investment_capital_idr": {"status": "KNOWN", "value": 0},
     "investment.paid_up_capital_idr": {"status": "KNOWN", "value": 0},
+    "investment.own_shareholding_idr": _UNKNOWN_NOT_ASKED,
     "investment.proposed_role": {"status": "KNOWN", "value": "NO_OPERATIONAL_ROLE"},
     # investment.investment_amount_usd: no default any more (PR-D4c-1's
     # transitional default was removed once D4c-2's interview question

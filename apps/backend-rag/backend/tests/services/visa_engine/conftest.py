@@ -202,6 +202,7 @@ def make_applicant_facts(*, assessment_id: uuid.UUID | None = None) -> M.Applica
         "investment.pt_pma_committed": unknown,
         "investment.investment_capital_idr": unknown,
         "investment.paid_up_capital_idr": unknown,
+        "investment.own_shareholding_idr": unknown,
         "investment.proposed_role": unknown,
         "investment.investment_amount_usd": unknown,
         "family.relation_to_sponsor": unknown,

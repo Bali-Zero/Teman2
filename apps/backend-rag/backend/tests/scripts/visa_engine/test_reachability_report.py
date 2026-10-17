@@ -170,7 +170,10 @@ def test_unused_fact_paths_is_registry_minus_used(seq7_report) -> None:
     # only against every pack, by construction — not a staleness to fix.
     # Was 25; seq-28 Step A adds `work.annual_foreign_income_usd`, unused by
     # this frozen seq-7 pack until the seq-28 E33G rule ships.
-    assert len(seq7_report.unused_fact_paths) == 26
+    # Was 26; E28A own-shareholding Step A (2026-10-17) adds
+    # `investment.own_shareholding_idr`, unused by this frozen seq-7 pack
+    # until the E28A rule re-keyed on it ships.
+    assert len(seq7_report.unused_fact_paths) == 27
 
 
 def test_required_facts_ast_invariant_holds_on_the_real_pack(seq7_report) -> None:

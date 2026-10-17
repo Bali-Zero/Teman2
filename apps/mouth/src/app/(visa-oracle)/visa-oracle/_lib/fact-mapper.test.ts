@@ -62,7 +62,9 @@ function extractApplicantFactPathsFromModelsPy(): string[] {
 }
 
 function requiredFrontendFactPaths(): string[] {
-  return extractApplicantFactPathsFromModelsPy();
+  return extractApplicantFactPathsFromModelsPy().filter(
+    (factPath) => !ORDERED_ROLLOUT_OPTIONAL_PATHS.has(factPath),
+  );
 }
 
 const ASSESSMENT_ID = "11111111-1111-4111-8111-111111111111";
@@ -119,18 +121,20 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
   const backendPaths = extractApplicantFactPathsFromModelsPy();
   const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: the ordered-rollout exception is empty", () => {
+  it("sanity: only own shareholding is omitted during ordered rollout", () => {
     expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
-    expect(backendPaths.length).toBe(58);
-    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([]);
+    expect(backendPaths.length).toBe(59);
+    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([
+      "investment.own_shareholding_idr",
+    ]);
     expect(
       backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
-    ).toEqual([]);
+    ).toEqual(["investment.own_shareholding_idr"]);
     expect(expectedPaths.length).toBe(58);
     expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
-  it("emits all 58 backend fact-path keys", () => {
+  it("emits the other 58 backend fact-path keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...expectedPaths].sort());

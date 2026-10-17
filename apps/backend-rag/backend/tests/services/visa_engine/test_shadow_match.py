@@ -214,7 +214,9 @@ class TestBuildShadowFacts:
         # 3/53. Widened again 2026-09-21 (Slice A7-B): `person.guardian_
         # consent` joined the same way (57 total then), so 3/53 becomes
         # 3/54. Seq-28 Step A adds `work.annual_foreign_income_usd` with the
-        # same rollout default (58 total now), so 3/54 becomes 3/55.
+        # same rollout default (58 total then), so 3/54 becomes 3/55. E28A Step A
+        # adds `investment.own_shareholding_idr` the same way (59 total now),
+        # so 3/55 becomes 3/56.
         # `build_shadow_facts` still only ever sets nationality,
         # purpose and duration KNOWN; that 3 is the invariant this test is
         # actually about, and a vocabulary extension must never move it.
@@ -223,9 +225,9 @@ class TestBuildShadowFacts:
         )
         assert facts is not None
         statuses = [getattr(facts.facts, name).status for name in type(facts.facts).model_fields]
-        assert len(statuses) == 58
+        assert len(statuses) == 59
         assert statuses.count("KNOWN") == 3
-        assert statuses.count("UNKNOWN") == 55
+        assert statuses.count("UNKNOWN") == 56
 
 
 # ---------------------------------------------------------------------------

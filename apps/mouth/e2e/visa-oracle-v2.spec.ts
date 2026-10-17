@@ -230,8 +230,9 @@ test.describe("Visa Oracle v2 integration — page Page", () => {
         facts?: Record<string, unknown>;
       };
       expect(body.assessment_id).toMatch(/^[0-9a-f-]{36}$/);
-      // The wire carries every backend fact path. Ordered-rollout omissions
-      // are represented by the shared set, which seq-28 Step B empties.
+      // The wire carries every backend fact path except the ordered-rollout
+      // omissions in the shared set (E28A Step A: the engine accepts
+      // `investment.own_shareholding_idr`; the mouth sends it in a later step).
       const sentKeys = Object.keys(body.facts ?? {});
       expect(sentKeys).toHaveLength(FRONTEND_EMITTED_FACT_COUNT);
       for (const rolloutPath of ORDERED_ROLLOUT_OPTIONAL_PATHS) {

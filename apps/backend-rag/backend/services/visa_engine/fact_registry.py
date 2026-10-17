@@ -232,8 +232,10 @@ def _spec(
 #: plus ``person.guardian_consent`` (2026-09-21, Slice A7-B — the minor-hold
 #: guardian consent assertion; see ``enums.FactPath`` for why it is not an
 #: identity fact), plus ``work.annual_foreign_income_usd`` (2026-10-11,
-#: seq-28 Step A — declared annual foreign income for E33G)
-#: — 62 entries total.
+#: seq-28 Step A — declared annual foreign income for E33G), plus
+#: ``investment.own_shareholding_idr`` (2026-10-17, E28A Step A — the
+#: applicant's own shareholding value in the sponsoring company)
+#: — 63 entries total.
 #: PII classification rationale: immigration status/violation history and
 #: investment capital/income amounts are SENSITIVE (UU PDP heightened-treatment
 #: analogues per CLAUDE.md §14 — closest to "criminal"/"financial" data in
@@ -403,6 +405,12 @@ _DEFAULT_SPECS: tuple[FactSpec, ...] = (
     _spec(FactPath.INVESTMENT_FOREIGN_BRANCH_OR_SUBSIDIARY, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.INVESTMENT_IKN_SUBSIDIARY, FactValueKind.BOOLEAN, "boolean"),
     _spec(FactPath.INVESTMENT_MEETS_PUBLISHED_THRESHOLD, FactValueKind.BOOLEAN, "boolean"),
+    _spec(
+        FactPath.INVESTMENT_OWN_SHAREHOLDING_IDR,
+        FactValueKind.INTEGER,
+        "money_idr",
+        pii_class=PiiClass.SENSITIVE,
+    ),
     _spec(
         FactPath.FAMILY_RELATION_TO_SPONSOR,
         FactValueKind.STRING,
