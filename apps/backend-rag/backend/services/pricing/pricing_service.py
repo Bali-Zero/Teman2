@@ -84,10 +84,70 @@ _LIGHT_SUFFIXES = frozenset(
     }
 )
 
+# Domain acronyms a client types that are not a prefix/infix of the catalogue word any more
+# (the old substring match found "itas" inside "kitas"): query token -> extra target words.
+_TOKEN_ALIASES: dict[str, tuple[str, ...]] = {
+    "itas": ("kitas",),
+    "itap": ("kitap",),
+    "tka": ("rptka",),
+}
+
+# A negator drops the single word after it ("non alcoholic", "minuman tanpa alkohol").
+_NEGATORS = frozenset({"non", "tanpa", "senza", "without"})
+
+_QUERY_WORD_RE = re.compile(r"\w+(?:-\w+)*")
+
+
+def _query_terms(query: str) -> tuple[list[str], list[str]]:
+    """Split a query into (flat word tokens, match terms).
+
+    Terms drop noise words, one-character words and negated words. A hyphenated word
+    ("re-entry", "pt-pma") stays ONE term whose parts are joined by a space; it matches
+    only as a contiguous phrase of its parts. A hyphenated word that starts with a
+    negator ("non-alcoholic") is dropped whole. With nothing left, the raw words are
+    used (whole-query phrase match).
+    """
+    flat: list[str] = []
+    items: list[str] = []
+    for match in _QUERY_WORD_RE.findall(query.lower()):
+        parts = _words(match)
+        flat.extend(parts)
+        items.append(" ".join(parts))
+    tokens: list[str] = []
+    terms: list[str] = []
+    skip = False
+    for item in items:
+        first = item.split(" ", 1)[0]
+        if skip:
+            skip = False
+            continue
+        if item in _NEGATORS:
+            skip = True
+            continue
+        if first in _NEGATORS:
+            continue
+        tokens.extend(item.split(" "))
+        if item not in _SEARCH_NOISE_WORDS and len(item) > 1:
+            terms.append(item)
+    return (tokens, terms) if terms else (flat, [])
+
 
 def _words(text: Any) -> list[str]:
     """Lower-cased Unicode word tokens; punctuation and symbols separate words."""
     return _WORD_RE.findall(str(text).lower())
+
+
+def _term_matches_row(term: str, row_list: list[str], row_words: set[str]) -> bool:
+    """A term (single word, alias-expanded, or space-joined hyphen compound) against a row."""
+    if " " in term:
+        parts = term.split(" ")
+        n = len(parts)
+        return any(
+            row_list[i : i + n - 1] == parts[:-1]
+            and _token_matches_words(parts[-1], {row_list[i + n - 1]})
+            for i in range(len(row_list) - n + 1)
+        )
+    return any(_token_matches_words(t, row_words) for t in (term, *_TOKEN_ALIASES.get(term, ())))
 
 
 def _token_matches_words(token: str, words: set[str]) -> bool:
@@ -151,13 +211,21 @@ def _count_search_matches(
         if len(terms) == 1:
             return int(_token_matches_words(terms[0], row_words))
         return int(_contains_phrase(row_list, terms))
-    matched = {t for t in terms if _token_matches_words(t, row_words)}
+    matched = {t for t in terms if _term_matches_row(t, row_list, row_words)}
     if isinstance(keywords, list):
         stripped = [t for t in query_tokens if t not in _SEARCH_NOISE_WORDS]
         for keyword in keywords:
             phrase = _words(keyword)
             if len(phrase) == 1:
-                matched.update(t for t in terms if _token_matches_keyword(t, phrase[0]))
+                matched.update(
+                    t
+                    for t in terms
+                    if " " not in t
+                    and any(
+                        _token_matches_keyword(x, phrase[0])
+                        for x in (t, *_TOKEN_ALIASES.get(t, ()))
+                    )
+                )
             elif _contains_phrase(query_tokens, phrase) or _contains_phrase(stripped, phrase):
                 credited = [t for t in terms if t in phrase]
                 matched.update(credited or [" ".join(phrase)])
@@ -531,8 +599,7 @@ class PricingService:
 
         # Words of the query (punctuation-insensitive); noise words and one-character
         # tokens are dropped. If nothing is left, the raw query is matched as a phrase.
-        query_tokens = _words(query_lower)
-        clean_keywords = [w for w in query_tokens if w not in _SEARCH_NOISE_WORDS and len(w) > 1]
+        query_tokens, clean_keywords = _query_terms(query_lower)
         whole_query = not clean_keywords
         if whole_query:
             clean_keywords = query_tokens

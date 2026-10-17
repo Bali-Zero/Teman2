@@ -246,3 +246,72 @@ def test_legacy_list_shape_uses_the_same_matcher(pricing_service):
     res = legacy.search_service("izin minuman beralkohol")
     assert [r["code"] for r in res["results"]["visa"]] == ["C1"]
     assert "results" not in legacy.search_service("ke")
+
+
+# --- v4: aliases, hyphen phrases, negators, empty query ---------------------------------
+
+
+@pytest.mark.parametrize(
+    ("query", "text", "expected"),
+    [
+        ("itas", "Working KITAS", 1),
+        ("itap", "Investor KITAP + MERP", 1),
+        ("tka", "Cancel RPTKA", 1),
+        ("itas", "Investor KITAP", 0),  # alias is not a wildcard
+        ("tka", "Cancel Wajib Lapor", 0),
+    ],
+)
+def test_domain_alias_expands_the_token(m, query, text, expected):
+    terms = m._query_terms(query)[1]
+    assert m._count_search_matches(terms, terms, [text], []) == expected
+
+
+def test_alias_map_is_small_and_names_real_targets(m):
+    assert set(m._TOKEN_ALIASES) == {"itas", "itap", "tka"}
+    assert len(m._TOKEN_ALIASES) <= 6
+
+
+@pytest.mark.parametrize(
+    ("query", "text", "expected"),
+    [
+        ("re-entry", "ERP (Exit Re-entry Permit)", 1),
+        ("re-entry", "B1 Single entry visa", 0),  # one part ("entry") is not the compound
+        ("re-entry", "entry re", 0),  # order matters
+        ("pt-pma", "New Company (PT PMA)", 1),
+        ("pt-pma", "PT only", 0),
+        ("re-visas", "Re-Visa fee", 1),  # last part may take a light suffix
+    ],
+)
+def test_hyphen_compound_matches_as_a_phrase(m, query, text, expected):
+    tokens, terms = m._query_terms(query)
+    assert terms == [" ".join(m._words(query))]
+    assert m._count_search_matches(terms, tokens, [text], []) == expected
+
+
+@pytest.mark.parametrize(
+    ("query", "terms"),
+    [
+        ("non alcoholic drinks", ["drinks"]),
+        ("non-alcoholic drinks", ["drinks"]),
+        ("minuman tanpa alkohol", ["minuman"]),
+        ("bevande senza alcol", ["bevande"]),
+        ("coffee without sugar", ["coffee"]),
+        ("izin minuman beralkohol", ["izin", "minuman", "beralkohol"]),
+        ("nonna kitas", ["nonna", "kitas"]),  # 'nonna' is not the negator 'non'
+    ],
+)
+def test_negator_drops_the_next_word(m, query, terms):
+    assert m._query_terms(query)[1] == terms
+
+
+def test_negated_query_does_not_hit_the_negated_row(pricing_service):
+    for query in ("non-alcoholic drinks", "minuman tanpa alkohol", "bevande senza alcol"):
+        assert not _hit_keys(pricing_service.search_service(query)) & _expand(["@alcohol"])
+
+
+@pytest.mark.parametrize("query", ["", "   ", "\t"])
+def test_empty_query_returns_no_rows(pricing_service, query):
+    # Pinned: the pre-2026-10-17 substring code returned every row for "";
+    # no caller relies on that (/api/pricing/search needs min_length=1, the tools and the
+    # WhatsApp builder only search a non-empty client message; get_all_prices lists all rows).
+    assert _hit_keys(pricing_service.search_service(query)) == set()

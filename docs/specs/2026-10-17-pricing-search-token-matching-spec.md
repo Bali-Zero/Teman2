@@ -59,6 +59,19 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
 4. The one-character-token drop and the "all tokens were noise → use the raw query" fallback stay;
    the fallback uses the same matcher. The legacy LIST-format branch uses the same matcher.
    Result shape, ordering and the internal-row exclusion are unchanged.
+   **Aliases.** A tiny curated map (`_TOKEN_ALIASES`) expands an acronym a client types into extra
+   target words the old substring match found by accident: itas → kitas, itap → kitap, tka →
+   rptka. Added only for genuine domain variants found by the single-token sweep.
+   **Hyphen compounds.** A hyphenated query word ("re-entry", "pt-pma") is ONE term that matches
+   only as a contiguous phrase of its parts in the row's word sequence (last part may take the
+   usual prefix/light-suffix forms), never part by part.
+   **Negators.** The single word after `non`, `tanpa`, `senza`, `without` is dropped from the
+   query ("minuman tanpa alkohol"); a hyphen compound starting with a negator
+   ("non-alcoholic") is dropped whole.
+   **Empty query.** An empty or whitespace-only query returns no rows (the old code returned
+   every row). No caller relies on all-rows: `/api/pricing/search` requires `min_length=1`, the
+   tools and the WhatsApp builder search a non-empty client message, and `get_all_prices` lists
+   everything; pinned by a test.
 5. **Proof by corpus, both directions.** A committed query corpus (≥ 60 queries: EN, ID, IT;
    single words, codes, whole WhatsApp-style sentences) with, per query, the row names that MUST
    appear and the row names that MUST NOT appear. It includes at least:
@@ -83,3 +96,15 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
 Ranking/scoring of results, the Qdrant semantic search (`bali_zero_pricing_hybrid`), catalog
 content, the English "license" over-match (e.g. "driving license" → alcohol) unless rule 1/2
 cures it for free — report it either way.
+
+Accepted and documented, not fixed (council 2026-10-17, v4):
+
+- Plural stemming hits that are semantically right but contextually off ("send your addresses",
+  "Chrome extensions").
+- The license family ("restaurant licenses" → Driving License).
+- "toko minuman" / "jualan minuman ringan" no longer return the alcohol rows: "minuman" alone is
+  generic, by design.
+- Typos such as "seha" do not match.
+
+Revised 2026-10-17 (v4) after the council on `ea6a7c52bf` (codex-gpt-5.6-sol: CONCERNS on
+ITAS/ITAP/TKA recall, hyphen compounds and negation; kimi-code/k3: PASS).

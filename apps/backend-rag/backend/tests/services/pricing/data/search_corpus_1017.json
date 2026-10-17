@@ -734,6 +734,79 @@
    "must_find": [
     "E33F Second Home Senior (Extend)"
    ]
+  },
+  {
+   "query": "ITAS",
+   "must_find": [
+    "Working KITAS (Offshore)",
+    "Investor KITAS 2 Years (Offshore)"
+   ],
+   "must_not_find": [
+    "Investor KITAP + MERP"
+   ]
+  },
+  {
+   "query": "ITAP",
+   "must_find": [
+    "Investor KITAP + MERP",
+    "Retirement KITAP + MERP"
+   ]
+  },
+  {
+   "query": "TKA",
+   "must_find": [
+    "Cancel RPTKA"
+   ]
+  },
+  {
+   "query": "pt-pma",
+   "must_find": [
+    "New Company (PT PMA)"
+   ]
+  },
+  {
+   "query": "non-alcoholic drinks",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "minuman tanpa alkohol",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "bevande senza alcol",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "non alcoholic",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "re-entry permit",
+   "must_find": [
+    "ERP (Exit Re-entry Permit)",
+    "Investor KITAP + MERP"
+   ],
+   "must_not_find": [
+    "A1 Visa-Free Tourism",
+    "B1 Visa on Arrival (VOA)",
+    "C1 Tourism"
+   ]
+  },
+  {
+   "query": "",
+   "expect_no_hits": true
+  },
+  {
+   "query": "   ",
+   "expect_no_hits": true
   }
  ]
 }
