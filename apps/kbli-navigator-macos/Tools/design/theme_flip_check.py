@@ -14,7 +14,7 @@ and reads pixels in the render, against the tokens parsed from Sources/Theme.swi
   title     the sheet's title vs the sheet fill >= 4.5:1
   activity  the selected row's Activity text vs the row fill >= 4.5:1
 
-  theme_flip_check.py BIN            4 cases (launch day, launch night, day then flip, night then flip); exit 1 on a FAIL
+  theme_flip_check.py BIN            4 cases (offscreen: the launch order of a real window is not reproducible here, see git log) (launch day, launch night, day then flip, night then flip); exit 1 on a FAIL
   theme_flip_check.py BIN --selftest the instrument: a day render judged as night FAILS, judged as day PASSES (and the reverse)
 
 The geometry is the app's own: the row's and the title's frames come from `--layout-json`, the chip sits where KBLIRegistryRow puts it
