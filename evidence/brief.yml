@@ -1,0 +1,52 @@
+task_id: ops-bundle-md-exclude
+gear: 3
+l_level: L3
+gate_class: fable
+objective: |
+  PENDING-ARMS row 2026-08-23: a pure-docs (.md-only) commit inside apps/mouth or
+  packages was read as "bundle-relevant" and became the promote target of
+  scripts/vercel_prod_deploy.py and .github/workflows/frontend-live-sentinel.yml,
+  even though nothing in the built bundle changed — Vercel skips such commits, so
+  production could never reach the target (the 2026-08-10 defect shape, one
+  directory deeper). This PR adds the same two exclude pathspecs to BOTH files
+  (byte-for-byte parity pinned by
+  scripts/tests/test_vercel_prod_deploy_target_rule.py) and adds a guilt/innocence
+  pair: an apps/mouth/README.md-only commit must NOT move the target; a nested
+  apps/mouth/**/*.tsx commit still must. AMENDED 2026-10-06 per owner GO:
+  apps/mouth/public/** files are served verbatim, so the .md exclusion is carved
+  out there — git pathspecs cannot re-include under an excluded glob (verified
+  empirically), so the exclusion is enumerated per doc dir instead.
+constraints:
+  - ".github/workflows/ is a hot zone (Gear 3) — the workflow diff is only the
+    exclude tokens on the existing git log pathspec, nothing else"
+  - "no new dependencies; no behaviour change outside the pathspecs"
+  - "apps/mouth/e2e stays bundle-relevant per the 2026-09-06 contract; only .md
+    files outside apps/mouth/public are excluded"
+  - "generator!=grader: a Claude session verifies; no merge, no arm, no deploy"
+acceptance:
+  - "python3 -m pytest scripts/tests/test_vercel_prod_deploy_target_rule.py -q exits 0 (16 passed: README.md guilt, public-md innocence, tsx innocence)"
+  - "bash scripts/tests/test_vercel_should_build.sh exits 0 (48 passed)"
+  - "actionlint .github/workflows/frontend-live-sentinel.yml exits 0 (pre-push quickcheck verified)"
+  - "python3 scripts/vercel_prod_deploy.py --dry-run names 68a424c6 (#7957, real asset deletion commit), chosen as 'newest bundle-relevant commit on main'"
+  - "real-history replay with the new pathspec: (a) top-level-md-only fdffbdf0 -> target 9882d6fa (skipped); (b) public-md-only 06a11376 -> target IS 06a11376; (c) tsx 3a32d41 -> target IS 3a32d41; (d) nested docs-md-only 51c04e0a -> target 23fa765e (skipped)"
+consumer_map:
+  - "frontend-live-sentinel.yml 'Which commit must production include?' step — now computes the target over the same BUNDLE_PATHS + BUNDLE_EXCLUDE as the cure script"
+  - "vercel_prod_deploy.py --promote / --promote-only / --dry-run — target selection and the FALLBACK_SCAN_DEPTH walk both honour BUNDLE_EXCLUDE"
+  - "scripts/ci/vercel_should_build.sh — unchanged and still green: build/skip decisions for .md commits are a separate concern, deliberately out of scope"
+risks:
+  - "git pathspecs cannot re-include a path under an excluded glob (trailing positive
+    'apps/mouth/public' verified NOT to override; ':(include)' magic invalid on this
+    git) — so the .md exclusion is ENUMERATED per doc dir (top-level, docs/, e2e/,
+    scripts/, src/). A NEW apps/mouth dir carrying .md would silently become
+    bundle-relevant again; .md additions outside public/ belong in BUNDLE_EXCLUDE
+    (the comment at its definition says so)"
+  - "apps/mouth/public/** stays bundle-relevant per the owner-GO carve-out
+    (2026-10-06) — verified by a new innocence test and real-history replay
+    (public-md-only 06a11376 IS the target under the new pathspec)"
+  - ".mdx content files (apps/mouth/src/content/**) are NOT excluded and remain
+    bundle-relevant, as intended"
+grader: claude-verify
+budget:
+  seats: [kimi-k3]
+  fable_gate_est_tokens: 0
+pii: none
