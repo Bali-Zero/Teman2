@@ -251,6 +251,76 @@ def test_unlisted_pysa_rule_codes_are_kept_as_flows(tmp_path):
     assert n_models == 1 and [f["family"] for f in findings] == ["pysa_5001"]
 
 
+_CALL = ("def h(a, b, c, d, e):\n    ok = send(\n        a,\n        b,\n        c,\n        d,\n        e,\n    )\n"
+         "    other = send(a)\n")
+
+
+def _partial_sink_findings(tmp_path: Path, name: str, fired: list[tuple[int, int]], src: str = _CALL, callable_: str = "backend.a.h"):
+    app = tmp_path / name
+    (app / "backend").mkdir(parents=True)
+    (app / "backend" / "a.py").write_text(src)
+    taint = app / "taint-output.json"
+    taint.write_text("\n".join([json.dumps({"kind": "model", "data": {"callable": callable_, "filename": "backend/a.py", "sinks": []}})] + [
+        json.dumps({"kind": "issue", "data": {"code": c, "callable": callable_, "filename": "backend/a.py", "line": ln, "traces": []}}) for c, ln in fired]) + "\n")
+    return pc.extract_findings(taint, app)[0]
+
+
+# real shape of intel.py:1093-1097 (approve_staging_item -> send_approval_notification): Pysa's two runs of the SAME tree
+VARIANT_A = [(5053, ln) for ln in (3, 4, 5, 6, 7)] + [(5052, ln) for ln in (4, 5, 6)]
+VARIANT_B = [(5053, ln) for ln in (3, 4, 5, 6)] + [(5052, ln) for ln in (3, 4, 5, 6, 7)]
+
+
+def test_partial_sink_rule_flip_across_pysa_runs_is_not_a_new_flow(tmp_path):
+    a = _partial_sink_findings(tmp_path, "a", VARIANT_A)
+    b = _partial_sink_findings(tmp_path, "b", VARIANT_B)
+    assert sorted(f["family"] for f in a) == sorted(f["family"] for f in b) == ["pysa_5052", "pysa_5053"]
+    assert pc.diff_findings(a, b)["new"] == [] and pc.diff_findings(b, a)["new"] == []
+
+
+def test_partial_sink_dedupe_still_catches_new_statement_rule_and_source(tmp_path):
+    base = _partial_sink_findings(tmp_path, "base", VARIANT_A)
+    new_stmt = _partial_sink_findings(tmp_path, "stmt", VARIANT_A + [(5053, 9)])                       # `other = send(a)` is a second statement
+    new_rule = _partial_sink_findings(tmp_path, "rule", VARIANT_A + [(5051, 4)])                       # a rule the statement never had
+    new_src = _partial_sink_findings(tmp_path, "src", VARIANT_A + [(5052, 4)], callable_="backend.a.g")
+    assert [f["family"] for f in pc.diff_findings(base, new_stmt)["new"]] == ["pysa_5053"]
+    assert [f["family"] for f in pc.diff_findings(base, new_rule)["new"]] == ["pysa_5051"]
+    assert len(pc.diff_findings(base, new_src)["new"]) == 2                                            # another source reaching the statement is not the old flow
+
+
+def test_partial_sink_identical_statements_stay_a_multiset(tmp_path):
+    src = "def h(a):\n    send(a)\n    send(a)\n"
+    one = _partial_sink_findings(tmp_path, "one", [(5052, 2)], src)
+    two = _partial_sink_findings(tmp_path, "two", [(5052, 2), (5052, 3)], src)
+    assert len(one) == 1 and len(two) == 2 and len(pc.diff_findings(one, two)["new"]) == 1
+
+
+def test_partial_sink_flows_of_two_sources_or_two_files_into_one_shape_stay_apart(tmp_path):
+    app = tmp_path / "app"
+    (app / "backend").mkdir(parents=True)
+    for f in ("a.py", "b.py"):
+        (app / "backend" / f).write_text("def h(x):\n    send(x)\n")
+    models = [{"kind": "model", "data": {"callable": c, "filename": "backend/a.py", "sinks": []}} for c in ("backend.a.h", "backend.a.g")]
+
+    def issue(callable_, filename):
+        return {"kind": "issue", "data": {"code": 5052, "callable": callable_, "filename": filename, "line": 2, "traces": []}}
+
+    taint = tmp_path / "t.json"
+    taint.write_text("\n".join(json.dumps(x) for x in models + [issue("backend.a.h", "backend/a.py"), issue("backend.a.g", "backend/a.py"), issue("backend.a.h", "backend/b.py")]) + "\n")
+    assert len(pc.extract_findings(taint, app)[0]) == 3
+
+
+def test_plain_rule_keeps_per_line_identity_a_second_tainted_argument_is_new(tmp_path):
+    src = "def h(a, b):\n    run(\n        a,\n        b,\n    )\n"
+    one = _partial_sink_findings(tmp_path, "one", [(6064, 3)], src)
+    two = _partial_sink_findings(tmp_path, "two", [(6064, 3), (6064, 4)], src)      # RCE 6064 is not a string-combine rule
+    assert len(one) == 1 and len(two) == 2 and len(pc.diff_findings(one, two)["new"]) == 1
+
+
+@pytest.mark.parametrize("code", [5051, 5052, 5053, 5351, 5352])
+def test_every_string_combine_rule_is_one_flow_per_statement(tmp_path, code):
+    assert len(_partial_sink_findings(tmp_path, "x", [(code, 3), (code, 4), (code, 5)])) == 1
+
+
 def test_unexpected_crash_is_a_tool_error_rc2(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(pc, "cmd_scan", lambda a: (_ for _ in ()).throw(RuntimeError("boom")))
     rc = pc.main(["scan", "--home", str(tmp_path), "--worktree", str(tmp_path), "--out", str(tmp_path / "o")])
