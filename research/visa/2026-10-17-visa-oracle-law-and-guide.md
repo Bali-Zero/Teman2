@@ -64,7 +64,7 @@ Ruled against: Argon's new table + history table + compatibility view (more movi
 Taken from Astra: sponsor is three-valued (C1/C2 are CONDITIONAL), `is_sold` NULL means "to verify".
 Taken from Kimi: plain validity dates, `superseded_by` for retired codes (E28G).
 
-Draft migration: `apps/backend-rag/backend/db/migrations_v2/328_visa_types_law_projection.sql` (additive only; existing columns and readers untouched).
+Draft migration: `apps/backend-rag/backend/db/migrations_v2/330_visa_types_law_projection.sql` and the generated `331_visa_types_law_family_c.sql` (additive only; existing columns and readers untouched).
 Next: one importer `law/<FAMILY>/*.json -> visa_types` with a `--check` mode for CI, then import family C.
 Known simplification kept on purpose: the Guide checks month limits as months x 30 days (can only under-approve, never over-approve).
 

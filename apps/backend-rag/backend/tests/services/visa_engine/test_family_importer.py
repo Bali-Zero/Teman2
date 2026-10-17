@@ -1,4 +1,4 @@
-"""Importer: rows must satisfy migration 328 rules, price keys must exist, and the newest family-C migration must not drift.
+"""Importer: rows must satisfy migration 330 rules, price keys must exist, and the newest family-C migration must not drift.
 
 When a card changes, generate a NEW migration (next free number, same `_visa_types_law_family_c` suffix);
 never edit an applied one (its checksum is in the production ledger).
@@ -27,7 +27,7 @@ def test_thirteen_codes():
 
 
 @pytest.mark.parametrize("row", ROWS, ids=lambda r: r["code"])
-def test_row_satisfies_328_rules(row):
+def test_row_satisfies_330_rules(row):
     assert re.match(r"^(A|B|C|D|F|E[0-9]{2}|BRIDGING|SERVICE)$", row["family"])
     assert row["permit_class"] in {"VISIT_SINGLE"}
     assert row["entry_type"] in {"SINGLE", "MULTIPLE"}

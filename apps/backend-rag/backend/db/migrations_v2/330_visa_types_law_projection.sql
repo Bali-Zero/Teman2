@@ -1,4 +1,4 @@
--- Migration 328: visa_types becomes the single Law table of the Visa Oracle
+-- Migration 330: visa_types becomes the single Law table of the Visa Oracle
 --
 -- Owner model (Zero 2026-10-17): two sides only. LAW = one card per visa code,
 -- verbatim from the official source, mastered in git
@@ -21,7 +21,7 @@
 --   * validity in time is plain dates; the signed engine packs keep their own
 --     bitemporal ledger (migrations 250/252).
 --
--- Numbered 328: main holds 327, open PRs hold 324/325 (checked 2026-10-17).
+-- Numbered 330: main holds 328 (practice_types_clear_urgent_notes), open PRs hold 324/325; 329 left free as margin (checked 2026-10-18).
 
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';

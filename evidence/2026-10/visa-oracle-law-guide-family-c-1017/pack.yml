@@ -1,4 +1,7 @@
-# Gear-3 evidence pack: visa oracle Law + Guide model, family C (migrations 328/329).
+# Gear-3 evidence pack: visa oracle Law + Guide model, family C (migrations 330/331).
+# RENUMBERED 2026-10-18: origin/main took 328 (practice_types_clear_urgent_notes) while this PR was open,
+# so 328_visa_types_law_projection -> 330 and 329_visa_types_law_family_c -> 331 (git mv, content unchanged
+# except the header comment). Receipts below were recorded under the OLD file names and are kept verbatim.
 # Written 2026-10-17T13:50:41Z by the implementer session (Claude Sonnet 5.5). Receipts E1-E3 are earlier commands run by this session, each ts read in the shell call just before the command.
 # Council round (codex, argon, kimi) and fixes: receipts C1-C6, each ts read in the shell call just before the command. The independent gate verdict (E4) is relayed by the coordinator; the gate ran earlier in this session and its exact start time was not recorded.
 gear: 3
@@ -11,8 +14,8 @@ ruling: >-
   Owner ruling (Zero, 2026-10-17): keep the visa oracle simple, two sides only: a Law card per code verbatim from imigrasi.go.id and a Guide per
   family with at most 3 questions. C18 is 90 days, not extendable (owner ruling; the conflicting page sentence is recorded in the card).
 mission: >-
-  Ship the Law + Guide model for family C: 13 sha256-pinned Law cards, the Guide resolver, migration 328 (additive Law columns on visa_types)
-  and migration 329 (generated from the cards), without touching legacy columns or readers.
+  Ship the Law + Guide model for family C: 13 sha256-pinned Law cards, the Guide resolver, migration 330 (additive Law columns on visa_types)
+  and migration 331 (generated from the cards), without touching legacy columns or readers.
 lanes:
   - lane: council-codex
     role: review
@@ -49,14 +52,14 @@ what_changed: |
   (regenerated through the importer); scripts/visa_oracle_family_map.py runs only under __main__; GUIDE.md and tests updated (122 tests in the two files).
   Earlier content:
   apps/backend-rag/backend/services/visa_engine/families/ (importer.py, guide.py, family_c.json, 13 Law cards, GUIDE.md, INDEX.md),
-  migrations_v2/328_visa_types_law_projection.sql and 329_visa_types_law_family_c.sql, two test files, 13 audited false-positive entries in .secrets.baseline,
+  migrations_v2/330_visa_types_law_projection.sql and 331_visa_types_law_family_c.sql, two test files, 13 audited false-positive entries in .secrets.baseline,
   the design doc research/visa/2026-10-17-visa-oracle-law-and-guide.md. Gate fixes: squawk-ignore on the 328 rollback statement, this pack, and a test
   that every non-extendable visa has max_total_days equal to stay_days.
 proof: |
   Gate verdict SHIP-AFTER-FIXES (E4). The throwaway Postgres 16 proof (E2) and the test run (E1) were re-run by this session after the fixes.
 bites:
   consumer: >-
-    apps/backend-rag apply-all on deploy runs 328 and 329; no existing reader imports the new families package.
+    apps/backend-rag apply-all on deploy runs 330 and 331; no existing reader imports the new families package.
   observation: >-
     Owed to the shipping session after merge: 13 family-C rows in visa_types with verification_status VERIFIED and the legacy columns unchanged.
 ground:
