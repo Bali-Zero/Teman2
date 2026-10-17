@@ -25,6 +25,11 @@ from backend.core.legal import (
     LegalMetadataExtractor,
     LegalStructureParser,
 )
+from backend.core.legal.supersession import (
+    annotate_superseded_pasals,
+    identity_triple_to_document_id,
+    parse_amendment_clauses,
+)
 from backend.core.parsers import DocumentParseError, auto_detect_and_parse
 from backend.core.qdrant_db import QdrantClient
 from backend.services.ingestion.ingestion_logger import IngestionStage, ingestion_logger
@@ -1126,6 +1131,36 @@ Return ONLY valid JSON, no markdown."""
                     )
             indexing_duration = time.time() - indexing_start
 
+            # STAGE 6.5: Pasal-level supersession annotation (PENDING-ARMS
+            # 2026-08-25, minimal arm). If THIS instrument rewrites pasals of
+            # another in-force document (UU 63/2024 rewriting UU 6/2011,
+            # Permenkumham 11/2024 rewriting 22/2023), stamp the base
+            # document's affected chunks with supersession metadata so the
+            # retrieval guard can de-rank/annotate the stale wording. The base
+            # document itself stays `current` — an amendment does not repeal
+            # its parent. Annotations are idempotent and recorded on the
+            # result; a failure here does NOT fail the ingest (the amendment's
+            # own chunks are already correctly stored) — it is logged loudly
+            # and re-runnable via the next ingest of the same file or the
+            # scripts/backfill_pasal_supersession.py backfill.
+            supersession_annotation: dict[str, Any] = {"status": "skipped"}
+            if retrieval_scope == CURRENT_RETRIEVAL_SCOPE:
+                supersession_annotation = await self._annotate_superseded_pasals(
+                    request_vector_db,
+                    cleaned_text=cleaned_text,
+                    amendment_metadata=metadata,
+                    amendment_doc_id=doc_id,
+                )
+                logger.info(
+                    "[STAGE 6.5] Supersession annotation: %s",
+                    supersession_annotation.get("status"),
+                    extra={
+                        "document_id": document_id,
+                        "stage": "supersession_annotation",
+                        **supersession_annotation,
+                    },
+                )
+
             # Record chunking and embedding metrics
             metrics_collector.record_chunking_duration(
                 file_type=file_type,
@@ -1272,6 +1307,7 @@ Return ONLY valid JSON, no markdown."""
                 "document_id": document_id,
                 "processing_time_seconds": total_duration,
                 "drive_archive": drive_archive,
+                "supersession_annotation": supersession_annotation,
             }
             if retrieval_scope == HISTORICAL_RETRIEVAL_SCOPE:
                 result["reconciliation_status"] = reconciliation_state
@@ -1361,6 +1397,65 @@ Return ONLY valid JSON, no markdown."""
                     else "UNCHANGED_OR_NOT_APPLICABLE"
                 ),
             }
+
+    async def _annotate_superseded_pasals(
+        self,
+        vector_db: QdrantClient,
+        *,
+        cleaned_text: str,
+        amendment_metadata: dict[str, Any],
+        amendment_doc_id: str,
+    ) -> dict[str, Any]:
+        """Stamp supersession metadata onto chunks this instrument rewrote.
+
+        Parses the instrument's OWN "Pasal X diubah/dicabut/ditambah" clauses
+        (the amendment is the authoritative source of what it rewrote — never
+        inferred from the base text) and delegates the store writes to
+        backend.core.legal.supersession.annotate_superseded_pasals. Never
+        raises: annotation failure leaves the corpus in its previous state and
+        is surfaced in the returned status for the caller's logs and the
+        backfill script to pick up.
+        """
+        try:
+            supersessions = parse_amendment_clauses(cleaned_text)
+            if not supersessions:
+                return {"status": "no_clauses"}
+            amendment_label = (
+                f"{amendment_metadata.get('type_abbrev')} "
+                f"{amendment_metadata.get('number')}/{amendment_metadata.get('year')}"
+            )
+            if (
+                identity_triple_to_document_id(
+                    amendment_metadata.get("type_abbrev"),
+                    amendment_metadata.get("number"),
+                    amendment_metadata.get("year"),
+                )
+                is None
+            ):
+                return {
+                    "status": "skipped",
+                    "reason": "amendment identity is hash-fallback; no citable doc_id",
+                }
+            summary = await annotate_superseded_pasals(
+                vector_db,
+                supersessions,
+                amendment_doc_id=amendment_doc_id,
+                amendment_label=amendment_label,
+            )
+            summary["status"] = (
+                "annotated" if summary["annotated_points"] else "no_matching_base_chunks"
+            )
+            return summary
+        except Exception as e:
+            logger.error(
+                "[STAGE 6.5] Supersession annotation failed (non-blocking): %s",
+                e,
+                extra={
+                    "amendment_doc_id": amendment_doc_id,
+                    "error_type": type(e).__name__,
+                },
+            )
+            return {"status": "error", "error": str(e)}
 
     async def _ensure_drive_folder_exists(
         self,

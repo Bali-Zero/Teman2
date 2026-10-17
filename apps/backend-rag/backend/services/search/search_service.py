@@ -730,6 +730,13 @@ class SearchService:
                 query=query,
                 score_kind=declared_kind,
             )
+            # Pasal-supersession guard (PENDING-ARMS 2026-08-25, minimal arm):
+            # a chunk whose payload says it was superseded by another document
+            # IN THIS RESULT SET is annotated and demoted below current text.
+            # No-op for every chunk without the supersession keys.
+            from backend.services.search.supersession_guard import apply_supersession_guard
+
+            formatted_results = apply_supersession_guard(formatted_results)
 
             # Record query for health monitoring
             avg_score = (
@@ -916,6 +923,9 @@ class SearchService:
             # known here and is declared rather than left to the UNKNOWN default.
             score_kind=score_provenance.DENSE_FORMATTED,
         )
+        from backend.services.search.supersession_guard import apply_supersession_guard
+
+        formatted_results = apply_supersession_guard(formatted_results)
         return {
             "query": query,
             "results": formatted_results,
