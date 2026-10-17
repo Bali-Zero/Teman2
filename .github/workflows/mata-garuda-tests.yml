@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "apps/mata-garuda/**"
+      - "FLEET_TOPOLOGY.json"
       - "packages/cell-core/**"
       - "scripts/pytest_guards/**"
       - "scripts/_redact_pii.py"
@@ -21,6 +22,7 @@ on:
     branches: [main]
     paths:
       - "apps/mata-garuda/**"
+      - "FLEET_TOPOLOGY.json"
       - "packages/cell-core/**"
       - "scripts/pytest_guards/**"
       - "scripts/_redact_pii.py"

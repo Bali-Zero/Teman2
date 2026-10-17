@@ -46,9 +46,10 @@ logger = logging.getLogger("mata_garuda.runtime")
 # Timeout default per subprocess (5 minuti)
 DEFAULT_TIMEOUT = 300
 
-# Token env var names, in priority order. The order IS the rule: 5 MAX
-# seats first, the Team seat (6) last because it is weekly-capped and the
-# MAX seats are not — never reorder 6 ahead of 1-5.
+# Token env var names, in priority order. The order IS the rule: the MAX
+# seats (1, 5) first, the Team seat (6) last because it is weekly-capped and
+# the MAX seats are not — never reorder 6 ahead of 1 and 5. Slots 2, 3, 4 are
+# retired (see RETIRED_OAUTH_SLOTS) and never attempted.
 #
 # Corrected 2026-08-23 (Zero ruling): this comment map was verified stale as
 # of that date via `claude auth status` + the setup-token transcript. The old

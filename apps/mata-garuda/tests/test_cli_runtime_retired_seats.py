@@ -82,6 +82,14 @@ def test_retired_value_aliased_into_a_live_or_legacy_slot_is_never_used(monkeypa
     assert "fake-live6" in tokens
 
 
+def test_retired_value_with_surrounding_whitespace_still_matches_its_alias(monkeypatch):
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_3", "  fake-closed3 \n")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_1", "fake-closed3")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "fake-closed3\t")
+    tokens = [token for _, token in cr.claude_token_chain()]
+    assert tokens == [""]
+
+
 def test_gate_reproducer_dead_seat_then_closed_seat_reaches_live_seats(monkeypatch):
     for k, v in {
         "CLAUDE_CODE_OAUTH_TOKEN_1": "fake-dead1",
