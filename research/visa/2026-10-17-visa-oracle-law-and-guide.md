@@ -64,6 +64,8 @@ Ruled against: Argon's new table + history table + compatibility view (more movi
 Taken from Astra: sponsor is three-valued (C1/C2 are CONDITIONAL), `is_sold` NULL means "to verify".
 Taken from Kimi: plain validity dates, `superseded_by` for retired codes (E28G).
 
+E30 coordinator ruling (2026-10-18): migration 332 adds nullable `stay_options` JSONB for discrete initial-stay choices, each a positive integer `value` with unit `DAY`, `MONTH` or `YEAR`, exactly as stated on the Law card. E30A keeps 1/2 YEAR and E30B keeps 1/2/4 YEAR; `initial_stay_days` remains NULL for year-based stays. The E30 Guide asks duration in months, compares YEAR as exactly 12 MONTHS, excludes DAY options from that comparison and returns the smallest fitting choice; above the largest choice it returns `STAY_TOO_LONG`. Migration 333 projects E30. Migration 330 and the applied family-C output (331) remain unchanged; C12/C22 stay options await a later family-C revision.
+
 Draft migration: `apps/backend-rag/backend/db/migrations_v2/330_visa_types_law_projection.sql` and the generated `331_visa_types_law_family_c.sql` (additive only; existing columns and readers untouched).
 Next: one importer `law/<FAMILY>/*.json -> visa_types` with a `--check` mode for CI, then import family C.
 Known simplification kept on purpose: the Guide checks month limits as months x 30 days (can only under-approve, never over-approve).

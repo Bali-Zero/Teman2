@@ -26,7 +26,7 @@ def max_total_days(visa: dict) -> int:
     return visa["max_total_months"] * 30
 
 
-def _positive_int(value) -> int | None:
+def _positive_int(value: object) -> int | None:
     """A positive integer, from an int or a string of digits; anything else is None."""
     if isinstance(value, bool):
         return None
@@ -41,9 +41,10 @@ def resolve(family: str, answers: dict) -> dict:
     """Return {"ask": question_id} while an answer is missing, else {"code", "verdict"}."""
     data = load_family(family)
     questions = data["questions"]
-    choice = questions["activity"]["options"].get(answers.get("activity"))
+    start = data.get("start_question", "activity")
+    choice = questions[start]["options"].get(answers.get(start))
     if choice is None:
-        return {"ask": "activity"}
+        return {"ask": start}
     while isinstance(choice, dict):
         sub = choice["ask"]
         if sub not in answers:
@@ -71,6 +72,27 @@ def resolve(family: str, answers: dict) -> dict:
             return {"ask": "sponsor", "code": code}
         if not questions["sponsor"]["options"][answers["sponsor"]]:
             return {"code": code, "verdict": NEEDS_SPONSOR}
+    if visa.get("stay_options"):
+        months = _positive_int(answers.get("stay_months"))
+        if months is None:
+            return {"ask": "stay_months", "code": code}
+        # Compare only exact calendar-month units, never approximate a day option.
+        options = sorted(
+            (o for o in visa["stay_options"] if o["unit"] in {"MONTH", "YEAR"}),
+            key=lambda o: o["value"] * (12 if o["unit"] == "YEAR" else 1),
+        )
+        for option in options:
+            if months <= option["value"] * (12 if option["unit"] == "YEAR" else 1):
+                return {"code": code, "verdict": OK, "stay_option": option}
+        if visa["extendable"]:
+            # The Law says the stay "dapat diperpanjang" but publishes no cumulative maximum.
+            return {
+                "code": code,
+                "verdict": OK_WITH_EXTENSION,
+                "stay_option": options[-1],
+                "total_max_known": False,
+            }
+        return {"code": code, "verdict": STAY_TOO_LONG}
     days = _positive_int(answers.get("stay_days"))
     if days is None:
         return {"ask": "stay_days", "code": code}
