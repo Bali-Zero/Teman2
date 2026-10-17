@@ -207,7 +207,7 @@ export default async function KBLIHomePage({
         <KBLIPersonaDoors />
 
         {/* ── TRUST BAR ── */}
-        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 -mt-4">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-8">
           {[
             { num: codeCount, label: "KBLI Codes" },
             { num: "22", label: "Industry Sectors" },

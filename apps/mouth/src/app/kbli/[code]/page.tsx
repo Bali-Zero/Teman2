@@ -6,7 +6,6 @@ import {
   getCode,
   getRelatedCodes,
   getSectionMeta,
-  getHeroStyle,
 } from "@/lib/kbli-data";
 import {
   getGoldContent,
@@ -164,7 +163,6 @@ export default async function KBLICodePage({
   ];
 
   const isGold = !!gold;
-  const heroStyle = getHeroStyle(kbli.section);
   const heroImage = GOLD_HERO_IMAGES[kbli.code] ?? null;
   const article = getRelatedArticle(kbli.code);
 
@@ -211,12 +209,8 @@ export default async function KBLICodePage({
                 <img
                   src={heroImage.src}
                   alt={heroImage.alt}
-                  className="absolute inset-0 h-full w-full object-cover object-center"
+                  className="hidden"
                   loading="eager"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: heroImage.overlay }}
                 />
                 <div
                   className="absolute inset-0"
@@ -227,16 +221,6 @@ export default async function KBLICodePage({
               </>
             ) : (
               <>
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `linear-gradient(${heroStyle.gradient})`,
-                  }}
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: heroStyle.pattern }}
-                />
                 <div
                   className="absolute inset-0"
                   style={{
@@ -255,7 +239,7 @@ export default async function KBLICodePage({
 
             {/* Hero content */}
             <div
-              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-24 sm:pt-32" : "pt-16 sm:pt-20"}`}
+              className={`relative px-6 pb-8 sm:px-8 lg:px-10 ${isGold ? "pt-12 sm:pt-16" : "pt-10 sm:pt-12"}`}
             >
               {/* Code pill */}
               <div className="mb-4 flex items-center gap-3">

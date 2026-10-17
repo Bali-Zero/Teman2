@@ -277,7 +277,7 @@ export function KBLISearch({
                 className={cn(
                   "w-full flex items-start gap-4 px-4 py-3 text-left transition-all duration-200",
                   index === activeIndex
-                    ? "bg-[var(--kbli-bg-surface)]"
+                    ? "bg-[var(--kbli-bg-secondary)]"
                     : "hover:bg-white/[0.04]",
                 )}
               >
