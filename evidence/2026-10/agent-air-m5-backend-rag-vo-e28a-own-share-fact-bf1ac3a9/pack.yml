@@ -1,0 +1,106 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-15 (handoff row SEQ29-A1, Pro conductor inbox) - the E28A 10 bn test is re-keyed to a NEW fact,
+  the applicant's OWN shareholding value in the sponsoring company (gte 10_000_000_000), per Permenkumham
+  22/2023 jo 11/2024 Pasal 38(2)(a); the 2.5 bn paid-up bound stays as the PT PMA company prerequisite. Step A
+  is the engine accepting the fact; the pack rule and the mouth question follow in later steps.
+mission: >-
+  The Visa Oracle engine accepts the fact investment.own_shareholding_idr on /evaluate so the E28A test can be
+  re-keyed to the applicant's OWN shareholding in the sponsoring company (step A of the E28A own-shareholding
+  chain; the pack rule and the mouth question follow).
+lanes:
+  - lane: e28a-engine-fact
+    role: build
+    seat: >-
+      claude-sonnet-5 builder, worktree backend-rag-vo-e28a-own-share-fact-1017 on M5, mirroring seq-28 step A
+      (commit b49e1f6230, work.annual_foreign_income_usd).
+  - lane: e28a-ground-truth
+    role: ground_truth
+    seat: >-
+      The visa_engine request model (models.py) at origin/main before the change; the change adds one fact the
+      engine accepts and asserts no eligibility rule of its own (no pack rule, no mouth question).
+    nb: apps/backend-rag/backend/services/visa_engine/models.py
+    query_hash: "8631b265d97427e841d7fccdb811f7de52cdae559c479544fc20864f9bbaed46" # pragma: allowlist secret
+    note: query_hash = sha256 of models.py at origin/main 45f3317765 (before the change).
+pii_scan: clean
+bites:
+  consumer: >-
+    the Visa Oracle fact registry and the /evaluate request model (ApplicantFactsData) on nuzantara-rag, which
+    must keep accepting bodies without the new key and accept investment.own_shareholding_idr as UnknownFact or
+    KNOWN whole IDR. After the Fly deploy the compiler accepts a rule on investment.own_shareholding_idr, and a
+    synthetic POST to /api/visa-oracle/evaluate returns 200 both without the key and with it set to KNOWN, with
+    outcomes on the active seq-30 pack unchanged (the fact is NOT_ASKED).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_engine_own_shareholding_fact.py
+  expect: "contains:own shareholding rollout default holds"
+receipts:
+  - claim: "The whole visa_engine backend tree plus visa_check and the OpenAPI pin test, outside any sandbox, against the local test database (load average 2.65 at start, no pytest of this session running)."
+    cmd: cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest backend/tests/services/visa_engine backend/tests/scripts/visa_engine backend/tests/services/visa_check backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "4618 passed, 15 skipped, 3 failed, 39 errors in 222.97s. The 3 failed (test_visa_engine_retention_fk_registry x2: migration 281 and policy_scope column missing; test_write_substrate delete_guilt) and the 39 errors (test_evaluate_endpoint 31 missing relation visa_evaluate_idem..., test_shadow_evidence 6, test_shadow_match 2) are local test-database schema drift"
+    exit: 1
+    ts: "2026-10-17T00:31:15Z"
+    seat: this session
+  - claim: "The same DB-backed files on pristine origin/main (main checkout, f0dfca234c) show the same failures, so they are not caused by this change."
+    cmd: "cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest backend/tests/services/visa_engine/test_evaluate_endpoint.py backend/tests/services/visa_engine/test_shadow_evidence.py backend/tests/services/visa_engine/test_shadow_match.py backend/tests/services/visa_engine/test_visa_engine_retention_fk_registry.py backend/tests/services/visa_engine/test_write_substrate.py"
+    result: "3 failed, 406 passed, 39 errors in 19.37s"
+    exit: 1
+    ts: "2026-10-17T00:33:30Z"
+    seat: this session
+  - claim: "The new rollout-default class, the registry, compiler, active seq-30 pack, trace golden vector and OpenAPI pin tests, which carry the active-pack-unchanged claim."
+    cmd: cd apps/backend-rag && PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/test_rulepack_compiler.py backend/tests/services/visa_engine/test_seq30_pack.py backend/tests/services/visa_engine/test_evaluation_trace.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+    result: "292 passed in 8.92s"
+    exit: 0
+    ts: "2026-10-17T00:32:47Z"
+    seat: this session
+  - claim: "Mutation: fact removed from the registry (backup restored by cp, cmp identical) turns the new tests red."
+    cmd: "remove the _spec(FactPath.INVESTMENT_OWN_SHAREHOLDING_IDR ...) entry from fact_registry.py, then pytest test_sponsor_type_rollout.py test_rulepack_compiler.py test_fact_registry.py -k 'E28A or OwnShareholding or registry or Registry'"
+    result: "10 failed, 114 passed (TestFactVocabularyExtensionRolloutDefaultE28A registry test, TestOwnShareholdingFactIsCompilable, and 8 registry catalogue tests); after cp restore the same selection is green (124 passed)"
+    exit: 1
+    ts: "2026-10-17T00:33:28Z"
+    seat: this session
+  - claim: "apps/mouth typechecks with the regenerated schema.d.ts and the new fact path."
+    cmd: cd apps/mouth && tsc --noEmit -p .
+    result: "no output; the pre-commit typecheck hook (npm run typecheck -w apps/mouth) also passed on the commit"
+    exit: 0
+    ts: "2026-10-17T00:33:18Z"
+    seat: this session
+  - claim: "The mouth fact-mapper Vitest file, which holds the fact-path parity test admitting the key until the mouth question ships."
+    cmd: "cd apps/mouth && vitest run 'src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts'"
+    result: "Test Files 1 passed (1); Tests 195 passed (195)"
+    exit: 0
+    ts: "2026-10-17T00:33:17Z"
+    seat: this session
+  - claim: "The observer passes: the rollout-default test class for investment.own_shareholding_idr."
+    cmd: python3 scripts/ci/observe_visa_engine_own_shareholding_fact.py
+    result: "11 passed in 0.02s; own shareholding rollout default holds"
+    exit: 0
+    ts: "2026-10-17T00:33:16Z"
+    seat: this session
+  - claim: "The observer's summary parser rejects skipped, error, failed, xfailed, deselected and reduced counts."
+    cmd: python3 -m pytest tests/scripts/test_observe_visa_engine_own_shareholding_fact.py
+    result: "14 passed"
+    exit: 0
+    ts: "2026-10-17T00:33:16Z"
+    seat: this session
+decisions:
+  - id: D-rollout-default
+    decision: >-
+      The new key is optional on the wire with an UnknownFact(NOT_ASKED) default built by default_factory,
+      never zero, because the request model rejects unknown keys and the deployed mouth does not send it yet;
+      the mouth step closes the seam, the pack step adds the rule.
+  - id: D-mouth-seam
+    decision: >-
+      Mouth files touched are generated or parity-only: schema.d.ts and its OpenAPI pin are regenerated, and
+      ORDERED_ROLLOUT_OPTIONAL_PATHS admits the key so the fact-mapper parity test and the e2e key count stay
+      true. No question, copy or mapper behaviour changes.
+  - id: D-idempotency-409
+    decision: >-
+      Same accepted limit as seq-28 step A: the defaulted key enters the idempotency HMAC, so a visitor who
+      evaluated before the deploy and reloads within the client identity TTL can get HTTP 409 once. Structural
+      fix (exclude unset rollout defaults from canonical_request) is a separate PR.
+  - id: D-sentry-scrub
+    decision: >-
+      The field is SENSITIVE and the mouth does not send a value in this step. Facts scrub coverage for the
+      value must land before the mouth step starts sending it; carried to that step.
+dissent: []

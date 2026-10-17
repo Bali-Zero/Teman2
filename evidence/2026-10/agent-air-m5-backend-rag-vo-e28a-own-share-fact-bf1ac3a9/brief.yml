@@ -1,0 +1,30 @@
+gear: 2
+gear_reason: >-
+  Size floor (43 files, +485/-39, above the 400-churn line) and a hot zone: apps/backend-rag visa_engine
+  contract (request model, fact registry, OpenAPI and generated schema), where merging is the Fly deploy.
+mission: >-
+  The Visa Oracle engine accepts the fact investment.own_shareholding_idr on /evaluate so the E28A test can be
+  re-keyed to the applicant's OWN shareholding in the sponsoring company (step A of the E28A own-shareholding
+  chain; the pack rule and the mouth question follow).
+objective: >-
+  The engine registers FactPath investment.own_shareholding_idr (whole IDR, sensitive; 63 paths = 59 applicant
+  plus 4 derived) and accepts it on /evaluate; a body that omits it validates with UnknownFact NOT_ASKED built
+  by default_factory, never zero; a supplied KNOWN non-negative integer is honoured and negative, fractional,
+  string and boolean values are rejected; the compiler accepts a rule whose required_facts include it;
+  contracts, OpenAPI pin and schema.d.ts are regenerated and the count pins moved. No pack rule and no mouth
+  question change in this PR; the active seq-30 outcomes do not change.
+scope:
+  - apps/backend-rag/backend/services/visa_engine/enums.py
+  - apps/backend-rag/backend/services/visa_engine/fact_registry.py
+  - apps/backend-rag/backend/services/visa_engine/models.py
+  - apps/backend-rag/backend/services/visa_engine/contracts/
+  - apps/backend-rag/backend/tests/services/visa_engine/
+  - apps/backend-rag/backend/tests/scripts/visa_engine/
+  - apps/mouth/src/lib/api/
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/_lib/fact-mapper.test.ts
+  - scripts/ci/observe_visa_engine_own_shareholding_fact.py
+  - tests/scripts/test_observe_visa_engine_own_shareholding_fact.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2
