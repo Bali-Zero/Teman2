@@ -1,0 +1,18 @@
+task_id: gate-zsh-test-ci-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Run the zsh preflight regression test added by PR 8630 in CI (guard-conformance.yml), with zsh
+  installed on the ubuntu runner and a missing zsh turned from a silent skip into a failure, and
+  give the old unbraced form a bash control so its zsh failure is proven zsh-specific.
+acceptance:
+  - text: >-
+      The test passes with zsh present, fails with REQUIRE_ZSH=1 and zsh absent, skips without
+      the variable; reverting the brace fix turns the zsh case red.
+    probe: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_harness_fable_gate_preflight_zsh_1017.py
+  - text: The workflow parses and passes actionlint; the step runs under the same relevance gate as the publisher pin.
+    probe: actionlint .github/workflows/guard-conformance.yml
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

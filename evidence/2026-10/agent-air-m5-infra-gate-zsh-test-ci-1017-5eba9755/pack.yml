@@ -1,0 +1,52 @@
+gear: 2
+brief_ref: evidence/brief.yml
+ruling: "No owner ruling needed: CI wiring follow-up of PR 8630's independent gate."
+mission: >-
+  The zsh-safe ledger preflight of scripts/harness_fable_gate.py stays proven in CI, so a
+  regression to the unbraced form cannot merge green.
+lanes:
+  - lane: gate-zsh-test-ci
+    role: build
+    seat: codex gpt-5.6-terra (scripts/seat_build.sh, 187 s, rc 0)
+  - lane: gate-zsh-test-ci
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5)
+pii_scan: clean
+bites: >-
+  Consumer: the guard-conformance workflow on this PR (the diff touches the workflow and the test,
+  both in its relevance regex). Observation: the PR's guard-conformance run shows the step
+  "harness/fable-gate zsh preflight regression" passing with zsh installed.
+receipts:
+  - claim: The zsh/bash preflight test passes locally with zsh present.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_harness_fable_gate_preflight_zsh_1017.py
+    result: "4 passed in 2.24s"
+    exit: 0
+    ts: "2026-10-17T01:27:00Z"
+    seat: this session
+  - claim: With REQUIRE_ZSH=1 and zsh absent the zsh cases fail; without the variable they skip.
+    cmd: REQUIRE_ZSH=1 ZSH_BIN=/nonexistent/zsh python3 -m pytest ...; ZSH_BIN=/nonexistent/zsh python3 -m pytest ...
+    result: "2 failed, 2 passed; 2 passed, 2 skipped"
+    exit: 0
+    ts: "2026-10-17T01:27:30Z"
+    seat: this session
+  - claim: Reverting the brace fix in scripts/harness_fable_gate.py turns the zsh case red; file restored byte-identical.
+    cmd: cp backup; sed the two braced refs back to $R; pytest; cp back + cmp
+    result: "1 failed, 3 passed; restored"
+    exit: 0
+    ts: "2026-10-17T01:27:30Z"
+    seat: this session
+  - claim: The workflow parses and passes actionlint.
+    cmd: yaml.safe_load + actionlint .github/workflows/guard-conformance.yml
+    result: "yaml ok; actionlint ok"
+    exit: 0
+    ts: "2026-10-17T01:28:29Z"
+    seat: this session
+decisions:
+  - id: D-require-zsh
+    text: >-
+      CI sets REQUIRE_ZSH=1 so a runner without zsh fails the step instead of skipping it; local
+      runs keep skipping when zsh is absent.
+dissent: []
+spend:
+  wall_clock_hours: 0.2
+  adversarial_rounds: 0
