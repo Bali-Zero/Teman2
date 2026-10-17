@@ -12,7 +12,7 @@ objective: >-
   question, with no threshold in the copy and no not-sure option; the fact-mapper sends it as KNOWN whole IDR;
   the ordered-rollout exception is empty; the reason copy E28A_OWN_SHAREHOLDING_BELOW_MIN exists for the seq-31
   pack and E28A_PAID_CAPITAL_BELOW_MIN is reworded as a company rule; the walk corpus, census pins and
-  no-path-doors fingerprint are regenerated. No pack rule changes; seq-30 outcomes do not change.
+  no-path-doors fingerprint are regenerated. No pack rule changes; seq-30 engine outcomes do not change. One user-visible seq-30 change, from the regenerated replay: no-path pages for calling-visa nationality and active/over-60-day overstay no longer suggest the C1 door (the replay shows every door shut there).
 scope:
   - apps/mouth/src/app/(visa-oracle)/visa-oracle/
   - apps/mouth/src/lib/api/applicant-fact-paths.ts

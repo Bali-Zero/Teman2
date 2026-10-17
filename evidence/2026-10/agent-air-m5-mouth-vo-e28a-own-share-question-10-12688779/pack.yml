@@ -11,7 +11,7 @@ lanes:
   - lane: e28a-mouth-question
     role: build
     seat: >-
-      claude-sonnet-5.5 implementer, worktree mouth-vo-e28a-own-share-question-1017 on M5, mirroring seq-28 step B
+      claude-sonnet-5 implementer, worktree mouth-vo-e28a-own-share-question-1017 on M5, mirroring seq-28 step B
       (squash 2630e98c70, remote_annual_income_usd).
   - lane: e28a-ground-truth
     role: ground_truth
@@ -109,8 +109,31 @@ decisions:
       Coordinator item: the generator's generic numeric default (IDR 1,000,000,000) sat below the E28A minimum, so
       the seq-31 candidate would drop E28A from every qualifying walk. The default answer for
       investment_own_shareholding_idr is now IDR 10,000,000,000; the two boundary witnesses keep 9,999,999,999 and
-      10,000,000,000. 16 walk fixtures changed that one answer (pt_pma, below_published_threshold, company_only,
+      10,000,000,000. 15 walk fixtures changed that one answer (17 walks carry the fact: these 15 plus the 2 boundary witnesses) (pt_pma, below_published_threshold, company_only,
       foreign_branch_only, full_capital, ikn_subsidiary, no_route, offshore_application, sponsor_government,
       sponsor_government/not_world_figure, capital_market, capital_market_only, business_exploring, the stay_361
       explorer walk, onshore_invest). Seq-30 does not read the fact: census and gold-coverage pins unchanged and green.
-dissent: []
+dissent:
+  - seat: "codex-gpt-5.6-sol (cross-family red team on 960895959d) - FIX-FIRST"
+    objection: "MEDIUM: question asked on the pt_pma vehicle even after investment_pt_pma no."
+    status: RETRACTED
+    disposition: "Cured in 347fb1dc27: gated on yes; innocence test; gate mutation (gate removed) fails 1 test."
+  - seat: "codex-gpt-5.6-sol (cross-family red team on 960895959d) - FIX-FIRST"
+    objection: "MEDIUM: number input converted before validation; 9999999999.9999999 rounded to 10000000000 and passed as KNOWN."
+    status: RETRACTED
+    disposition: "Cured: parseWholeNumberInput digits-only before conversion on the shared number path; old Number() path fails 4 tests, dropping the check fails 9."
+  - seat: "codex-gpt-5.6-sol (cross-family red team on 960895959d) - FIX-FIRST"
+    objection: "MEDIUM: no-path-doors replay only re-fingerprinted; 38 generated vs 27 recorded walks; as_of before signed_at."
+    status: RETRACTED
+    disposition: "Cured: replay regenerated at the active pack signed_at (38 walks, matches generator byte for byte); it exposed a C1 door over-match on calling-visa and overstay dead ends, now abstaining (disclosed in the PR body as a seq-30 user-visible change)."
+  - seat: "codex-gpt-5.6-sol (cross-family red team on 960895959d) - FIX-FIRST"
+    objection: "MEDIUM: the I-M01 pending exemption never expires."
+    status: RETRACTED
+    disposition: "Cured: exemption holds only while the highest signed pack is <= 30; pendingAllowed=true mutation fails."
+  - seat: "claude-opus-5-5 (fresh final gate on 347fb1dc27) - PASS"
+    objection: "LOW: type=number lets 30.0 / 2500000000.00 / 1e3 / -0 through native validation; the digits-only parse then rejects them silently (Continue does nothing, no message)."
+    status: ACCEPTED
+    disposition: "Follow-up (not a fix-of-a-fix in this PR): show an inline error on parse failure or accept ^\\d+(\\.0+)?$. Plain digits behave exactly as before."
+spend:
+  wall_clock_hours: 2
+  adversarial_rounds: 2
