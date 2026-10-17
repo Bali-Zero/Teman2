@@ -85,7 +85,7 @@ sys.exit(0)
 def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, language_present: bool = True, versions: dict | None = None,
             override: str | None = None, override_rc: int = 0, override_doc: dict | None = None, age_days: float = 1.0, main: dict | None = None, runs_rc: int = 0, jobs_rc: int = 0,
             org_override: str | None = None, owner_type: str = "Organization", org_rc: int = 0, repo_rc: int = 0, list_404: str = "", filler: int = 0,
-            page_size: int = 100, total_delta: int = 0, other_runs: list | None = None) -> Path:
+            page_size: int = 100, total_delta: int = 0, other_runs: list | None = None, flipped: dict | None = None) -> Path:
     """A `gh api` that answers what the plan reads: the code-scanning analyses list of the hosted main branch (two languages, newest first;
     `versions` sets the reported CLI per language where `version` sets both, `age_days` the newest one's age), the completed security.yml
     runs on main and the jobs of the newest own-main one (`main` sets each language's job conclusion; `other_runs` adds runs, as the API
@@ -113,7 +113,7 @@ def fake_gh(tmp_path: Path, version: str | None = "2.27.2", rc: int = 0, languag
 import json, re, sys
 path, cfg = sys.argv[2], json.loads({json.dumps(json.dumps({"rows": rows, "rc": rc, "override_doc": override_doc, "runs": runs, "runs_rc": runs_rc, "jobs": jobs, "jobs_rc": jobs_rc,
                                                               "lists": lists, "rcs": {"repo": override_rc, "org": org_rc}, "repo_rc": repo_rc, "owner_type": owner_type,
-                                                              "list_404": list_404, "page_size": page_size, "total_delta": total_delta}))})
+                                                              "list_404": list_404, "page_size": page_size, "total_delta": total_delta, "flipped": flipped}))})
 def answer(doc, code):
     if code:
         sys.stderr.write("gh: HTTP 502\\n")
@@ -141,8 +141,15 @@ elif "/actions/workflows/security.yml/runs" in path:
     answer(cfg["runs"], cfg["runs_rc"])
 elif "/actions/runs/900/jobs" in path:
     answer(cfg["jobs"], cfg["jobs_rc"])
+elif cfg["flipped"] and path.endswith("/protection/required_status_checks"):
+    sys.stderr.write("gh: Branch not protected (HTTP 404)\\n")
+    sys.exit(1)
+elif cfg["flipped"] and "/rulesets?per_page=100" in path:
+    answer([{{"id": 5, "name": "merge-queue-main", "source_type": "Repository"}}], 0)
+elif cfg["flipped"] and path.endswith("/rulesets/5"):
+    answer(cfg["flipped"], 0)
 elif re.fullmatch(r"repos/[^/]+/[^/]+", path):
-    answer({{"owner": {{"type": cfg["owner_type"]}}}}, cfg["repo_rc"])
+    answer({{"owner": {{"type": cfg["owner_type"]}}, "default_branch": "main"}}, cfg["repo_rc"])
 else:
     sys.stderr.write("fake gh: unexpected " + path + "\\n")
     sys.exit(9)
@@ -586,12 +593,14 @@ def main_jobs(**conclusion) -> dict:
     return {"jobs": [{"name": f"CodeQL Analysis ({lang})", "conclusion": c} for lang, c in got.items()] + [{"name": "Bandit", "conclusion": "failure"}]}
 
 
-def run_reader(rows, pin="2.27.2", language="python", rc=0, runs=None, jobs=None, runs_rc=0, jobs_rc=0, now=READER_NOW, repo="o/r", fork_jobs=None):
+def run_reader(rows, pin="2.27.2", language="python", rc=0, runs=None, jobs=None, runs_rc=0, jobs_rc=0, now=READER_NOW, repo="o/r", fork_jobs=None, flip=None):
     """The reader against a stub gh: analyses -> `rows`, the security.yml runs -> `runs`, the newest run's jobs -> `jobs` (run 777's, the fork's, -> `fork_jobs`)."""
     answers = {"/code-scanning/analyses": (rc, rows), "/actions/workflows/security.yml/runs": (runs_rc, MAIN_RUNS if runs is None else runs),
                "/actions/runs/900/jobs": (jobs_rc, main_jobs() if jobs is None else jobs), "/actions/runs/777/jobs": (0, main_jobs() if fork_jobs is None else fork_jobs)}
 
     def run(argv, **kw):
+        if flip is not None and (hit := next((v for k, v in flip.items() if argv[2].endswith(k)), None)):   # the flip probe's reads: (rc, doc, stderr)
+            return subprocess.CompletedProcess(argv, hit[0], json.dumps(hit[1]), hit[2])
         code, doc = next((v for k, v in answers.items() if k in argv[2]), (1, "unexpected path"))
         return subprocess.CompletedProcess(argv, code, json.dumps(doc) if not isinstance(doc, str) else doc, "gh: HTTP 500")
     return reader.main(["--repo", repo, "--language", language, "--pin", pin], run=run, now=now)
@@ -1303,3 +1312,72 @@ def test_the_leg_turns_a_checker_crash_into_a_killed_leg_and_the_driver_reads_it
         steps, rc = drive_planned(tmp_path / name, spec, **extra)
         status, reason = runner.steps_verdict(combined(steps), spec)
         assert rc == 4 and steps[idx]["status"] == "ERROR" and status == "ERROR", (name, steps, reason)
+
+
+# ------------------------------------------------------------------------------------------------ the sentinel after the flip (hosted no longer gates)
+FLIPPED_RS = {"name": "merge-queue-main", "target": "branch", "enforcement": "active", "rules": [{"type": "update", "parameters": {"update_allows_fetch_and_merge": False}}],
+              "bypass_actors": [{"actor_id": None, "actor_type": "DeployKey", "bypass_mode": "always"}],
+              "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}}}
+GONE = (1, {"message": "Branch not protected"}, "gh: Branch not protected (HTTP 404)")
+
+
+def flip_state(protection=GONE, rulesets=None, rs=FLIPPED_RS, repo_doc=None) -> dict:
+    return {"/protection/required_status_checks": protection,
+            "/rulesets?per_page=100": (0, [{"id": 5, "name": "merge-queue-main", "source_type": "Repository"}] if rulesets is None else rulesets, ""),
+            "/rulesets/5": (0, rs, ""), "o/r": (0, {"default_branch": "main"} if repo_doc is None else repo_doc, "")}
+
+
+@pytest.mark.parametrize("rows,kw,rc", [
+    (one_row(at(1), "2.27.3"), {}, 3), (one_row(at(1)), {"language": "go"}, 4), (one_row(at(30)), {}, 5), (one_row(at(1)), {"jobs": main_jobs(python="failure")}, 6)])
+def test_every_hosted_finding_is_advisory_once_the_flip_is_in_force_and_blocking_before_it(rows, kw, rc, capsys):
+    assert run_reader(rows, **kw) == rc                                      # no probe answer: not flipped
+    assert run_reader(rows, **kw, flip=flip_state()) == 7
+    err = capsys.readouterr().err
+    assert "ADVISORY" in err and f"(exit {rc})" in err and any(w in err for w in ("MISMATCH", "NO-ANALYSIS", "STALE", "MAIN-RED"))
+
+
+def test_a_clean_read_stays_clean_and_a_failed_read_stays_cannot_verify_after_the_flip(capsys):
+    assert run_reader(one_row(at(1)), flip=flip_state()) == 0
+    assert run_reader([], rc=1, flip=flip_state()) == 1 and "ADVISORY" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("state", [
+    flip_state(protection=(0, {"checks": []}, "")),                                             # classic protection still stands: hosted still gates
+    flip_state(protection=(1, {"message": "Not Found"}, "gh: Not Found (HTTP 404)")),           # a 404 that is not `Branch not protected`
+    flip_state(protection=(1, {"message": "Branch not protected"}, "gh: Branch not protected (HTTP 403)")),
+    flip_state(protection=(1, None, "gh: HTTP 502")),                                           # the read failed
+    flip_state(rulesets=[]), flip_state(rulesets=[{"id": 5, "name": "merge-queue-main"}, {"id": 6, "name": "merge-queue-main"}]),
+    flip_state(rulesets=[{"id": 5, "name": "other"}]),
+    flip_state(rulesets=[{"id": 5, "name": "merge-queue-main"}] + [{"id": 7, "name": "x"}] * 99),   # a full page may be a truncated read
+    flip_state(rs={**FLIPPED_RS, "enforcement": "disabled"}), flip_state(rs={**FLIPPED_RS, "rules": [{"type": "merge_queue"}]}),
+    flip_state(rs={**FLIPPED_RS, "bypass_actors": []}), flip_state(rs={**FLIPPED_RS, "conditions": {"ref_name": {"include": ["refs/heads/develop"]}}}),
+    flip_state(rs={**FLIPPED_RS, "conditions": {"ref_name": {"include": ["~ALL"], "exclude": ["refs/heads/main"]}}}),
+    flip_state(rs={**FLIPPED_RS, "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": ["refs/heads/ma*"]}}}),
+    flip_state(repo_doc={"default_branch": "develop"}), flip_state(repo_doc=[])])
+def test_the_sentinel_stays_blocking_in_every_state_that_is_not_the_flip(state, capsys):
+    assert run_reader(one_row(at(1), "2.27.3"), flip=state) == 3 and "ADVISORY" not in capsys.readouterr().err
+
+
+def test_the_readers_flip_predicate_is_hosted_compares_over_the_same_documents():
+    hc = _load(REAL / "scripts/localci/hosted_compare.py", "hosted_compare_for_cqlver")
+    assert reader.FLIP_RULESET == hc.FLIP_RULESET and reader.NOT_PROTECTED == hc.NOT_PROTECTED
+    docs = [FLIPPED_RS, {**FLIPPED_RS, "enforcement": "evaluate"}, {**FLIPPED_RS, "name": "x"}, {**FLIPPED_RS, "target": "tag"}, {**FLIPPED_RS, "rules": []},
+            {**FLIPPED_RS, "bypass_actors": [{"actor_type": "Team", "bypass_mode": "always"}]}, {**FLIPPED_RS, "conditions": {}}, None, [],
+            {**FLIPPED_RS, "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": ["~DEFAULT_BRANCH"]}}},
+            {**FLIPPED_RS, "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": ["a?"]}}}]
+    for rs in docs:
+        for branch, default in (("main", "main"), ("main", "develop"), ("develop", "main")):
+            assert reader.is_flipped_ruleset(rs, branch, default) is hc.is_flipped_ruleset(rs, branch, default), (rs, branch, default)
+
+
+@pytest.mark.parametrize("lang", LANGS)
+def test_a_hosted_cli_move_after_the_flip_plans_the_leg_with_a_note_and_never_blocks(tmp_path, monkeypatch, lang):
+    """The 2026-10-09 shape on a flipped repository: hosted reports a CLI the matrix does not pin; a docs-only PR and a code PR both plan."""
+    for i, candidate in enumerate((DOCS_ONLY, PY_CHANGE, {**PY_CHANGE, **JS_CHANGE})):
+        spec, _ = plan_codeql(tmp_path / str(i), monkeypatch, lang, candidate, gh_version="2.27.3", gh_kw={"flipped": FLIPPED_RS})
+        assert spec["kind"] == "contained_jobs" and any("version sentinel ADVISORY" in n and "MISMATCH" in n for n in spec["plan_notes"])
+        assert not any("== the pin" in n for n in spec["plan_notes"])
+    spec, _ = plan_codeql(tmp_path / "before", monkeypatch, lang, PY_CHANGE, gh_version="2.27.3")
+    assert spec["kind"] == "record" and spec["status"] == "BLOCKED"   # the same drift before the flip is what it was
+    spec, _ = plan_codeql(tmp_path / "match", monkeypatch, lang, PY_CHANGE, gh_kw={"flipped": FLIPPED_RS})
+    assert spec["kind"] == "contained_jobs" and any("== the pin 2.27.2" in n for n in spec["plan_notes"]) and not any("ADVISORY" in n for n in spec["plan_notes"])

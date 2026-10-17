@@ -1342,10 +1342,14 @@ def ring_gating_override(wt: Path, base: str, trusted: Path, repo: str, jobs: di
     return {"read": "ok", "active": answer == "active=true"}
 
 
-def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, language: str, pin: str, repo: str) -> str | None:
+ADVISORY_RC = 7   # codeql_version_read.py: a hosted finding read after the flip
+
+
+def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, language: str, pin: str, repo: str, notes: list | None = None) -> str | None:
     """None when the newest hosted analysis of `language` on main reports the pinned CLI, else why there is no verdict (BLOCKED, never
     green): another version, no such analysis, or a read that failed. BASE's reader runs on the host at plan time with the operator's gh,
-    through the same host-reader path as the harness floor's (retried on its CANNOT-VERIFY line, then no verdict)."""
+    through the same host-reader path as the harness floor's (retried on its CANNOT-VERIFY line, then no verdict). Its exit 7 is the
+    same finding read after the flip, when hosted no longer gates: None too, with the finding in `notes` (the judge is still the pinned bundle)."""
     rel = str(spec.get("reader") or "") if isinstance(spec, dict) else ""
     try:
         rel = safe_tree_path(rel)
@@ -1359,6 +1363,9 @@ def version_sentinel(trusted: Path, wt: Path, base: str, check: str, spec, langu
     dest.write_bytes(blob)
     got = run_host_reader([sys.executable, "-I", str(dest), "--repo", repo, "--language", language, "--pin", pin], dest.parent, 300,
                           no_verdict="::error::codeql_version_read: CANNOT-VERIFY")
+    if got["rc"] == ADVISORY_RC and notes is not None:
+        notes.append(f"version sentinel ADVISORY (hosted no longer gates, the pinned bundle {pin} judges): {(got.get('log') or '').strip()[-600:]}")
+        return None
     if got["rc"] == 0:
         return None
     return f"version sentinel: {got['reason']}: {(got.get('log') or '').strip()[-300:]}"
@@ -1581,9 +1588,11 @@ def plan_service_context(wt: Path, base: str, cand: str, trusted: Path, name: st
         pin = str(((local.get("deps") or {}).get("codeql") or {}).get("version") or "")
         if not lang or not pin:
             return _blocked("version_sentinel needs local.leg.language and local.deps.codeql.version")
-        if (why := version_sentinel(trusted, wt, base, str(ctx["check"]), local["version_sentinel"], lang, pin, repo)):
+        seen = len(notes)
+        if (why := version_sentinel(trusted, wt, base, str(ctx["check"]), local["version_sentinel"], lang, pin, repo, notes)):
             return _blocked(why)
-        notes.append(f"hosted {lang} CodeQL CLI == the pin {pin} at plan time")
+        if len(notes) == seen:   # no advisory note: the hosted CLI is the pin
+            notes.append(f"hosted {lang} CodeQL CLI == the pin {pin} at plan time")
     history = history_delta(wt, base, cand)
     if isinstance(history, str):
         return _blocked(history)

@@ -12,6 +12,11 @@ PR branch named main is not it) has this language's CodeQL job concluded success
 older than 7 days (hosted has not analysed main since, so the CLI it runs now is unknown) · 6 = the newest completed security.yml run on
 main has this language's job red (hosted main fails on this leg: a CLI upgrade that dies before it uploads shows here and nowhere else) ·
 1 = a read failed (its stderr line starts with the CANNOT-VERIFY marker, which the runner asks again on, then gives up) · 2 = bad arguments.
+
+Exit 7 = one of those four findings (3-6) read AFTER THE FLIP: hosted no longer gates (the classic protection of main is gone and the
+`merge-queue-main` ruleset is the flipped one), so the hosted CLI is a reference nobody judges by and a drift of it (or a frozen or red
+hosted main) must not need a human write to clear; the runner passes with the finding as a plan note. The judge is unchanged: the leg
+still refuses any CLI but the pinned, checksum-fetched bundle. A read that fails (1) or a flip that cannot be read stays what it was.
 """
 from __future__ import annotations
 
@@ -33,6 +38,13 @@ WORKFLOW = "security.yml"
 # `push` lists branches [develop] only, `pull_request` and `merge_group` runs carry the PR's or the queue's ref, and `schedule` and
 # `workflow_dispatch` run on the default branch. A fork's pull_request run can carry head_branch "main" too: it is neither this repository's nor these events.
 MAIN_EVENTS = frozenset({"schedule", "workflow_dispatch"})
+ADVISORY = 7
+FINDINGS = (3, 4, 5, 6)
+# The flipped state, restated from hosted_compare.py (this reader runs alone from `trusted/`, python -I: nothing is importable);
+# tests/test_codeql_contexts.py pins both predicates to hosted_compare's, document for document.
+FLIP_RULESET = "merge-queue-main"
+NOT_PROTECTED = "Branch not protected"
+_GLOB = re.compile(r"[*?\[]")
 
 
 def fail(marker: str, msg: str, rc: int) -> int:
@@ -73,12 +85,53 @@ def gh_json(run, path: str):
         return f"(read failed) {type(e).__name__}"
 
 
+def is_flipped_ruleset(rs: object, branch: str, default_branch: object) -> bool:
+    """The flipped ruleset by meaning: enforced, one `update` rule allowing no fetch-and-merge, the DeployKey the one bypass actor, always,
+    and the branch included by name and excluded by nothing."""
+    if not isinstance(rs, dict):
+        return False
+    rules, bypass = rs.get("rules") or [], rs.get("bypass_actors") or []
+    ref = (rs.get("conditions") or {}).get("ref_name") or {}
+    names = {f"refs/heads/{branch}", "~ALL", *(["~DEFAULT_BRANCH"] if branch == default_branch else [])}
+    exclude = ref.get("exclude") or []
+    return (rs.get("name") == FLIP_RULESET and rs.get("target") == "branch" and rs.get("enforcement") == "active"
+            and len(rules) == 1 and rules[0].get("type") == "update"
+            and (rules[0].get("parameters") or {}).get("update_allows_fetch_and_merge") is False
+            and len(bypass) == 1 and bypass[0].get("actor_type") == "DeployKey" and bypass[0].get("bypass_mode") == "always"
+            and bool(names & set(ref.get("include") or [])) and not names & set(exclude) and not any(_GLOB.search(x) for x in exclude))
+
+
+def flipped(run, repo: str, branch: str = "main") -> bool:
+    """True only when GitHub says `branch` has no classic protection (HTTP 404 `Branch not protected`) AND the repository has exactly one
+    `merge-queue-main` ruleset and it is the flipped one. Every other state, and every read that fails, is False: the sentinel stays blocking."""
+    doc = gh_json(run, f"repos/{repo}/branches/{branch}/protection/required_status_checks")
+    if not (isinstance(doc, str) and NOT_PROTECTED in doc and "(HTTP 404)" in doc):
+        return False
+    batch = gh_json(run, f"repos/{repo}/rulesets?per_page={PAGE}")
+    if not isinstance(batch, list) or len(batch) >= PAGE:   # a full page may be a truncated read
+        return False
+    named = [r for r in batch if isinstance(r, dict) and r.get("name") == FLIP_RULESET and r.get("source_type", "Repository") == "Repository"]
+    if len(named) != 1 or not isinstance(named[0].get("id"), int):
+        return False
+    rs, info = gh_json(run, f"repos/{repo}/rulesets/{named[0]['id']}"), gh_json(run, f"repos/{repo}")
+    return isinstance(info, dict) and is_flipped_ruleset(rs, branch, info.get("default_branch"))
+
+
 def main(argv: list[str] | None = None, run=subprocess.run, now: datetime.datetime | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--repo", required=True)
     ap.add_argument("--language", required=True)
     ap.add_argument("--pin", required=True)
     args = ap.parse_args(argv)
+    rc = judge(args, run, now)
+    if rc in FINDINGS and flipped(run, args.repo):
+        print(f"codeql_version_read: ADVISORY: hosted no longer gates (main has no classic protection and the flipped ruleset is in force): "
+              f"the finding above (exit {rc}) is reported, not blocking; the judge is the pinned bundle", file=sys.stderr)
+        return ADVISORY
+    return rc
+
+
+def judge(args: argparse.Namespace, run, now: datetime.datetime | None) -> int:
     if not (REPO_RE.match(args.repo) and LANG_RE.match(args.language) and VERSION_RE.match(args.pin)) or any(seg in (".", "..") for seg in args.repo.split("/")):
         return fail("::error::codeql_version_read:", "repo, language or pin is not in its plain shape", 2)
     now = now or datetime.datetime.now(datetime.timezone.utc)
