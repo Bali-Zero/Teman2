@@ -24,10 +24,10 @@ EXPECTED_SIGNED_SEQUENCE = 31
 # (module, minimum passed, maximum skipped): a reduced count, a failure, an error,
 # an xfail or an extra skip is red.
 TEST_MODULES = (
-    # Floors are the SIGNED-state counts: 35 = 31 unsigned-source tests + the 4 signed-bundle
+    # Floors are the SIGNED-state counts: 37 = 33 unsigned-source tests + the 4 signed-bundle
     # ties; the census is 125 collected, 14 of them candidate-mode tests that skip once no
     # unsigned pack sits above the highest signed one (125 - 14 = 111 passed, 14 skipped).
-    ("backend/tests/services/visa_engine/test_seq31_pack.py", 35, 0),
+    ("backend/tests/services/visa_engine/test_seq31_pack.py", 37, 0),
     ("backend/tests/services/visa_engine/test_interview_walk_census.py", 111, 14),
     ("backend/tests/scripts/visa_engine/test_review_hold_inventory.py", 7, 0),
 )
