@@ -91,7 +91,11 @@ manager is required.
 
 ## Mission
 
-BLUE, provisional Gear 2. Codex prepares implementation; Claude Opus 5.5 xhigh
+BLUE, Gear 3: the settings module and measured diff trigger the enforced floor.
+Council is not triggered: this is one bounded derived view, with no parallel
+research breadth or divergent architecture priors requiring a council.
+Codex prepares implementation; Claude Opus 5.5 xhigh
 owns design review and release. A distinct fresh Opus 5.5 xhigh session grades
 the final candidate. Worktree: `.worktrees/mouth-kita-member-duties-1017`.
-Base: `d9546c7`. All other sessions' workspaces and changes remain untouched.
+Base refreshed from `d9546c7` to `7f670dcde0` before release; generated contracts
+include the intervening main changes. Other sessions' workspaces remain untouched.
