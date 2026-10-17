@@ -518,6 +518,80 @@ def test_e2e_sonner_rich_controls_stay_on_contract_and_mutant_fails(tmp_path):
     assert _paint_contrast(mutant["#error [data-close-button]"]) == pytest.approx(1.29, abs=0.01)
 
 
+HANDOFF_CURE = """/*
+ * The shared CTAHandoff bar is sticky to the viewport bottom: inside R19 it sat over the persona
+ * cards, the stat pills and the last lines of every page. It stays in the flow, at the end of the page.
+ */
+[role="group"][aria-label="Next actions"]:is(.kbli-r19, .kbli-r19 *) {
+  position: static !important;
+}
+"""
+CANVAS_CURE = """/*
+ * The page canvas behind the wrapper is the global dark body: an overscroll bounce or a short page showed it
+ * as a dark band under the paper. The canvas takes Direction A's paper while an R19 wrapper is mounted.
+ */
+html:has(.kbli-r19),
+body:has(.kbli-r19) {
+  background-color: #f7f4ee;
+}
+"""
+# CTAHandoff's own inline style, as packages/core/components/CTAHandoff.tsx renders it.
+HANDOFF = ('<div role="group" aria-label="Next actions" style="display:flex;padding:8px 16px;position:sticky;'
+           'z-index:40;bottom:0;background:#fff;border-top:1px solid #ddd"><a href="#" style="min-height:44px">'
+           'Talk on WhatsApp</a></div>')
+
+
+def _boxes(tmp_path, body: str, css: str, probes: list[str], scroll: int = 0) -> dict:
+    from playwright.sync_api import sync_playwright
+    page_path = tmp_path / "b.html"
+    page_path.write_text(f"<!doctype html><style>body{{margin:0}}{css}</style>{body}")
+    m = census_mod._load_measure()
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(executable_path=m.CHROME)
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto(page_path.as_uri())
+        page.evaluate("y => window.scrollTo(0, y)", scroll)
+        boxes = page.evaluate("""selectors => Object.fromEntries(selectors.map(selector => {
+          const r = document.querySelector(selector).getBoundingClientRect();
+          return [selector, { top: r.top, bottom: r.bottom }];
+        }))""", probes)
+        browser.close()
+        return boxes
+
+
+@needs_browser
+def test_e2e_the_handoff_bar_never_overlaps_the_page_and_mutant_fails(tmp_path):
+    body = (f'<div class="kbli-r19"><div id="page" style="height:3000px">content</div>{HANDOFF}</div>')
+    css = _real_wrapper_css()
+    for scroll in (0, 700):
+        clean = _boxes(tmp_path, body, css, ["#page", "[aria-label='Next actions']"], scroll)
+        assert clean["[aria-label='Next actions']"]["top"] >= clean["#page"]["bottom"]
+    mutant = _boxes(tmp_path, body, _without_cure(css, HANDOFF_CURE), ["#page", "[aria-label='Next actions']"])
+    assert mutant["[aria-label='Next actions']"]["top"] < mutant["#page"]["bottom"]
+
+
+@needs_browser
+def test_e2e_the_canvas_behind_an_r19_wrapper_is_paper_and_mutant_fails(tmp_path):
+    from playwright.sync_api import sync_playwright
+    m = census_mod._load_measure()
+
+    def canvas(css: str) -> tuple[str, str]:
+        page_path = tmp_path / "c.html"
+        page_path.write_text('<!doctype html><style>body{background:rgb(29,39,59)}' + css
+                             + '</style><div class="kbli-r19">x</div>')
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=m.CHROME)
+            page = browser.new_page()
+            page.goto(page_path.as_uri())
+            read = page.evaluate("""() => [getComputedStyle(document.documentElement).backgroundColor,
+                                          getComputedStyle(document.body).backgroundColor]""")
+            browser.close()
+            return tuple(_hex(c) for c in read)
+    css = _real_wrapper_css()
+    assert canvas(css) == ("#F7F4EE", "#F7F4EE")
+    assert canvas(_without_cure(css, CANVAS_CURE))[1] == "#1D273B"
+
+
 BRACKET = "group-hover:text-[color:var(--accent-zantara)]"
 
 
