@@ -359,10 +359,12 @@ materialised from the object store (never `git archive`, which honours a candida
 are a Pysa run that emits no model record and a tree with no route handler to model: both are refused, never read as clean).
 Tests are out of the analysis scope, so an in-scope module that imports from a `tests/` path is reported as a `scope_escape` flow
 (new versus BASE → FAIL) instead of quietly widening the blind spot; Pysa rule codes outside the five benchmarked families are kept
-as `pysa_<code>` flows, never dropped. A `pysa_<code>` flow is keyed by rule code, source callable, file and the sink statement's first line (one flow per statement, not
-per argument line): Pysa's partial-sink rules (5051 SQL, 5052 XSS, 5053 URL-like) report one issue per argument line of a call and which
-lines fire varies between runs of the same tree (`intel.py` `send_approval_notification(...)`, 8 vs 9 flows, 5052/5053 swapping
-lines), so the line is not part of the identity — a new statement, a new rule code or a new source callable is still a new flow. `ctx.<name>` extra checks are the operator's explicit way to cover a context locally and are
+as `pysa_<code>` flows, never dropped. The string-combine rules (5051 SQL, 5052 XSS, 5053 URL-like, 5351, 5352: `string_combine_rules` of the pinned stubs) are keyed by rule code,
+source callable, file and the sink statement's first line: one flow per statement, not per argument line. They report one issue per
+argument line of a call and which lines fire varies between runs of the same tree (`intel.py` `send_approval_notification(...)`, 8 vs 9
+flows, 5052/5053 swapping lines), so the line is not part of their identity; every other `pysa_<code>` keeps per-line identity. A new
+statement, rule code or source callable is still a new flow. Residual (LOW, inherent to the per-scan variation): for these five rules a
+newly tainted argument of an already-flagged statement, same rule and callable, stays invisible. `ctx.<name>` extra checks are the operator's explicit way to cover a context locally and are
 resolved as such — the operator is the runner's trusted party, the candidate never is.
 
 ## Statuses and overall

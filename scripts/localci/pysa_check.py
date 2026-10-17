@@ -40,6 +40,9 @@ FAMILIES = {9001: ("log_injection", {"Logging"}), 6302: ("stack_trace_exposure",
             5011: ("path_injection", {"FileSystem_ReadWrite"}), 6060: ("path_injection", {"FileSystem_Other"}),
             5012: ("ssrf", {"HTTPClientRequest", "HTTPClientRequest_URI", "HTTPClientRequest_METADATA", "HTTPClientRequest_DATA"}),
             5018: ("redirect", {"Redirect"}), 5008: ("xss", {"XSS"})}
+# the rules of `string_combine_rules` in stubs/taint/core_privacy_security/taint.config (lines 176-292 of the pinned stubs): the only ones whose sinks are
+# "Triggered" partial sinks, and the only ones measured to vary between runs of one tree (62 sides). Every other pysa_<code> keeps its per-line identity.
+PARTIAL_SINK_CODES = {5051, 5052, 5053, 5351, 5352}
 ROUTE = {"get", "post", "put", "delete", "patch", "options", "head", "trace", "api_route", "route", "websocket"}
 REGISTER = {"add_api_route", "add_route", "add_websocket_route", "add_api_websocket_route"}   # imperative registration: router.add_api_route("/p", fn)
 FRAMEWORK_TYPES = {"Request", "Response", "WebSocket", "BackgroundTasks", "StreamingResponse", "HTMLResponse", "JSONResponse"}
@@ -576,7 +579,7 @@ def extract_findings(taint_output: Path, app_dir: Path) -> tuple[list[dict], int
                     leaves |= lv.hop(d["filename"], r, kinds, 0)
         for lf, ll, localised in sorted(leaves or {(d["filename"], d["line"], True)}):
             fn, text = stmt_of(app_dir, lf, ll)
-            if d["code"] not in FAMILIES:   # partial-sink rules (5051-5053...) report one issue per argument line of a call, and which lines Pysa triggers varies run to run: the flow is (rule, source, statement)
+            if d["code"] in PARTIAL_SINK_CODES:   # one issue per argument line of a call, and which lines Pysa triggers varies run to run: the flow is (rule, source, statement)
                 anchor = (family, d["callable"], lf, stmt_start(app_dir, lf, ll))
                 if anchor in stmts:
                     continue

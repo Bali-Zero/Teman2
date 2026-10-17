@@ -309,6 +309,18 @@ def test_partial_sink_flows_of_two_sources_or_two_files_into_one_shape_stay_apar
     assert len(pc.extract_findings(taint, app)[0]) == 3
 
 
+def test_plain_rule_keeps_per_line_identity_a_second_tainted_argument_is_new(tmp_path):
+    src = "def h(a, b):\n    run(\n        a,\n        b,\n    )\n"
+    one = _partial_sink_findings(tmp_path, "one", [(6064, 3)], src)
+    two = _partial_sink_findings(tmp_path, "two", [(6064, 3), (6064, 4)], src)      # RCE 6064 is not a string-combine rule
+    assert len(one) == 1 and len(two) == 2 and len(pc.diff_findings(one, two)["new"]) == 1
+
+
+@pytest.mark.parametrize("code", [5051, 5052, 5053, 5351, 5352])
+def test_every_string_combine_rule_is_one_flow_per_statement(tmp_path, code):
+    assert len(_partial_sink_findings(tmp_path, "x", [(code, 3), (code, 4), (code, 5)])) == 1
+
+
 def test_unexpected_crash_is_a_tool_error_rc2(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(pc, "cmd_scan", lambda a: (_ for _ in ()).throw(RuntimeError("boom")))
     rc = pc.main(["scan", "--home", str(tmp_path), "--worktree", str(tmp_path), "--out", str(tmp_path / "o")])
