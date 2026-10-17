@@ -79,12 +79,10 @@ def test_mata_runtime_documents_all_six_slot_identities() -> None:
     ).read_text(encoding="utf-8")
 
     assert '"CLAUDE_CODE_OAUTH_TOKEN_1",  # antonellosiano@gmail.com (MAX 20x)' in source
-    assert '"CLAUDE_CODE_OAUTH_TOKEN_2",  # sianoantonello@gmail.com (MAX 20x)' in source
-    assert (
-        '"CLAUDE_CODE_OAUTH_TOKEN_3",  # applevisionpro1987@gmail.com (MAX 20x)'
-        in source
-    )
-    assert '"CLAUDE_CODE_OAUTH_TOKEN_4",  # antozero1987@gmail.com (MAX 20x)' in source
+    # Slots 2, 3, 4: accounts closed (2026-10-17), RETIRED_OAUTH_SLOTS never attempts them.
+    assert '"CLAUDE_CODE_OAUTH_TOKEN_2",  # RETIRED (sianoantonello@gmail.com' in source
+    assert '"CLAUDE_CODE_OAUTH_TOKEN_3",  # RETIRED (applevisionpro1987@gmail.com' in source
+    assert '"CLAUDE_CODE_OAUTH_TOKEN_4",  # RETIRED (antozero1987@gmail.com' in source
     assert (
         '"CLAUDE_CODE_OAUTH_TOKEN_5",  # kaiser198719871987@gmail.com (MAX 20x)'
         in source

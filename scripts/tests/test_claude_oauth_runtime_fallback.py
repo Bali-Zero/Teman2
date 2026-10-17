@@ -62,6 +62,31 @@ def _install_five_slots(monkeypatch: Any) -> None:
     monkeypatch.setenv("PERPLEXITY_API_KEY", "must-not-leak")
 
 
+def _install_live_slots(monkeypatch: Any) -> None:
+    """Live seats 1, 5, 6 + legacy; retired slots 2, 3, 4 stay set (must be ignored)."""
+    _install_five_slots(monkeypatch)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_6", "sentinel-6")
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "sentinel-legacy")
+
+
+LIVE_CHAIN_TOKENS = ["sentinel-1", "sentinel-5", "sentinel-6", "sentinel-legacy", ""]
+
+
+def _live_outcome_runner(
+    monkeypatch: Any,
+    module: ModuleType,
+    success_stdout: str,
+) -> list[str]:
+    outcomes = (
+        SimpleNamespace(returncode=0, stdout="401 unauthorized", stderr=""),
+        SimpleNamespace(returncode=0, stdout="weekly limit reached", stderr=""),
+        SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
+        "timeout",
+        SimpleNamespace(returncode=0, stdout=success_stdout, stderr=""),
+    )
+    return _outcome_runner(monkeypatch, module, outcomes)
+
+
 def _five_outcome_runner(
     monkeypatch: Any,
     module: ModuleType,
@@ -74,11 +99,19 @@ def _five_outcome_runner(
         "timeout",
         SimpleNamespace(returncode=0, stdout=success_stdout, stderr=""),
     )
+    return _outcome_runner(monkeypatch, module, outcomes)
+
+
+def _outcome_runner(
+    monkeypatch: Any,
+    module: ModuleType,
+    outcomes: tuple[Any, ...],
+) -> list[str]:
     seen_tokens: list[str] = []
 
     def _run(*args: Any, **kwargs: Any) -> SimpleNamespace:
         env = kwargs["env"]
-        seen_tokens.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        seen_tokens.append(env.get("CLAUDE_CODE_OAUTH_TOKEN", ""))
         for key in (
             "ANTHROPIC_API_KEY",
             "ANTHROPIC_AUTH_TOKEN",
@@ -203,21 +236,21 @@ def test_dlq_reasoner_reaches_slot_five_after_auth_quota_and_empty(
     assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
 
 
-def test_mata_runtime_reaches_slot_five_after_auth_quota_and_empty(
+def test_mata_runtime_skips_retired_slots_and_rotates_all_outcomes(
     monkeypatch: Any,
 ) -> None:
     module = _load_module(
         "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
         "oauth_mata_cli_runtime",
     )
-    _install_five_slots(monkeypatch)
+    _install_live_slots(monkeypatch)
     module.reset_exhausted_tokens()
     outcomes = (
         SimpleNamespace(returncode=0, stdout="401 unauthorized", stderr=""),
         SimpleNamespace(returncode=0, stdout="weekly limit reached", stderr=""),
         SimpleNamespace(returncode=0, stdout=" \n", stderr=""),
         "timeout",
-        SimpleNamespace(returncode=0, stdout="slot-five-success", stderr=""),
+        SimpleNamespace(returncode=0, stdout="keychain-success", stderr=""),
     )
     seen: list[str] = []
 
@@ -228,7 +261,7 @@ def test_mata_runtime_reaches_slot_five_after_auth_quota_and_empty(
     ) -> SimpleNamespace:
         assert env is not None
         assert "ANTHROPIC_API_KEY" not in env
-        seen.append(env["CLAUDE_CODE_OAUTH_TOKEN"])
+        seen.append(env.get("CLAUDE_CODE_OAUTH_TOKEN", ""))
         outcome = outcomes[len(seen) - 1]
         if outcome == "timeout":
             raise subprocess.TimeoutExpired(cmd, timeout=timeout)
@@ -240,12 +273,12 @@ def test_mata_runtime_reaches_slot_five_after_auth_quota_and_empty(
     result = runtime.invoke("safe test prompt")
 
     assert result.success
-    assert result.output == "slot-five-success"
-    assert result.token_used == "CLAUDE_CODE_OAUTH_TOKEN_5"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+    assert result.output == "keychain-success"
+    assert result.token_used == "keychain"
+    assert seen == LIVE_CHAIN_TOKENS
 
 
-def test_daily_briefing_reaches_slot_five(
+def test_daily_briefing_skips_retired_slots_and_rotates_all_outcomes(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
@@ -253,16 +286,16 @@ def test_daily_briefing_reaches_slot_five(
         "apps/mata-garuda/mata_garuda/agents/daily_briefing_agent.py",
         "oauth_daily_briefing",
     )
-    _install_five_slots(monkeypatch)
-    seen = _five_outcome_runner(monkeypatch, module, "two-line summary")
+    _install_live_slots(monkeypatch)
+    seen = _live_outcome_runner(monkeypatch, module, "two-line summary")
 
     output = module._tldr_claude("Title", "Body")
 
     assert output == "two-line summary"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+    assert seen == LIVE_CHAIN_TOKENS
 
 
-def test_weekly_digest_reaches_slot_five(
+def test_weekly_digest_skips_retired_slots_and_rotates_all_outcomes(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
@@ -270,16 +303,16 @@ def test_weekly_digest_reaches_slot_five(
         "apps/mata-garuda/mata_garuda/agents/weekly_digest_agent.py",
         "oauth_weekly_digest",
     )
-    _install_five_slots(monkeypatch)
-    seen = _five_outcome_runner(monkeypatch, module, "weekly analysis")
+    _install_live_slots(monkeypatch)
+    seen = _live_outcome_runner(monkeypatch, module, "weekly analysis")
 
     output = module.call_claude("safe prompt")
 
     assert output == "weekly analysis"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+    assert seen == LIVE_CHAIN_TOKENS
 
 
-def test_ai_digest_reaches_slot_five(
+def test_ai_digest_skips_retired_slots_and_rotates_all_outcomes(
     monkeypatch: Any,
 ) -> None:
     monkeypatch.syspath_prepend(str(REPO_ROOT / "apps/mata-garuda"))
@@ -287,13 +320,13 @@ def test_ai_digest_reaches_slot_five(
         "apps/mata-garuda/scripts/run_ai_digest.py",
         "oauth_ai_digest",
     )
-    _install_five_slots(monkeypatch)
-    seen = _five_outcome_runner(monkeypatch, module, "AI digest")
+    _install_live_slots(monkeypatch)
+    seen = _live_outcome_runner(monkeypatch, module, "AI digest")
 
     output = module.call_claude_synthesis("safe prompt")
 
     assert output == "AI digest"
-    assert seen == [f"sentinel-{slot}" for slot in range(1, 6)]
+    assert seen == LIVE_CHAIN_TOKENS
 
 
 def test_mata_keychain_fallbacks_strip_paid_api_key(
@@ -682,13 +715,6 @@ def test_all_python_token_chains_deduplicate_values_before_budgeting(
         ),
         (
             _load_module(
-                "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
-                "oauth_chain_mata_runtime",
-            ),
-            "claude_token_chain",
-        ),
-        (
-            _load_module(
                 "apps/evaluator/nlm_deep_research/t4_monitor.py",
                 "oauth_chain_t4_monitor",
             ),
@@ -706,6 +732,17 @@ def test_all_python_token_chains_deduplicate_values_before_budgeting(
     for module, chain_name in modules_and_chains:
         values = [value for _, value in getattr(module, chain_name)()]
         assert values == ["same", "other", ""], module.__name__
+
+    mata = _load_module(
+        "apps/mata-garuda/mata_garuda/runtime/cli_runtime.py",
+        "oauth_chain_mata_runtime",
+    )
+    for slot, value in ((1, "same"), (5, "same"), (6, "other")):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", value)
+    for slot in (2, 3, 4):
+        monkeypatch.setenv(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", f"retired-{slot}")
+    values = [value for _, value in mata.claude_token_chain()]
+    assert values == ["same", "other", ""], "mata retired slots 2/3/4 are skipped"
 
     vision = _load_wr2_vision("oauth_chain_vision")
     values = [
