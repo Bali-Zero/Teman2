@@ -52,31 +52,31 @@ receipts:
     seat: this session
   - claim: The seq-31 pack gate - chain, source_records byte identity, the exact rule diff and nothing else, the boundary witnesses, builder guards, gold personas.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq31_pack.py -p no:cacheprovider  # probes: backend/tests/services/visa_engine/test_seq31_pack.py::TestCommittedSourceMatchesFold, backend/tests/services/visa_engine/test_seq31_pack.py::TestE28ABoundaryWitnesses, backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource (skipped until signed)"
-    result: "31 passed, 4 skipped (the 4 skips are TestSignedBundleTiesToSource, waiting for rulepack-prod-031.signed.json)"
+    result: "33 passed, 4 skipped (the 4 skips are TestSignedBundleTiesToSource, waiting for rulepack-prod-031.signed.json)"
     exit: 0
     ts: "2026-10-17T09:55:00Z"
     seat: this session
   - claim: The interview walk census (182 walks) on the candidate with the new seq-31 pins; no state moves, two walks lose E28A.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider  # probe: backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack"
-    result: "125 passed in 332.16s (14 of them are candidate-mode tests that skip once seq-31 is signed: 111 passed, 14 skipped expected)"
+    result: "125 passed in 236.03s on the rebased tree (182-walk corpus with the cured default own-shareholding answer; 14 of them are candidate-mode tests that skip once seq-31 is signed: 111 passed, 14 skipped expected)"
     exit: 0
     ts: "2026-10-17T09:30:00Z"
     seat: this session
   - claim: Seq-30 gate, rulepack compiler, compiled-pack, sponsor-type rollout and negative-persona tests stay green.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq30_pack.py test_rulepack_compiler.py test_compiler_build_compiled_pack.py test_sponsor_type_rollout.py test_gold_coverage_negative_personas.py -p no:cacheprovider"
-    result: "205 passed in 14.03s"
+    result: "316 passed in 5.37s (adds test_fact_registry.py)"
     exit: 0
     ts: "2026-10-17T09:35:00Z"
     seat: this session
   - claim: Gold harness, gold coverage floor, evaluator gold, replay artifact, gold scripts and the seq-28 and seq-29 pack gates stay green with the E28A persona answering the new fact.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/gold_harness test_gold_coverage_floor.py test_evaluator_gold.py test_gold_replay_artifact.py backend/tests/scripts/visa_engine/test_gold_coverage_eval.py test_gold_coverage_replay.py test_gold_replay_driver.py test_seq28_pack.py test_seq29_pack.py -p no:cacheprovider"
-    result: "539 passed in 31.01s"
+    result: "539 passed in 14.71s (gold_coverage dir included)"
     exit: 0
     ts: "2026-10-17T09:50:00Z"
     seat: this session
   - claim: Mouth engine-adapter, no-path-doors, fixture freshness, copy-truth and walk-corpus tests; four engine-adapter tests read the highest SIGNED pack and are red until seq-31 is signed.
     cmd: "cd apps/mouth && npx vitest --run engine-adapter.test.ts no-path-doors.test.tsx no-path-doors-fixture-freshness.test.ts copy-truth.test.ts walk-corpus-determinism.test.ts"
-    result: "616 passed, 4 failed (PR-15 retired-key orphans, I-M01 orphans, Slice A10 thresholds, SUPPORT-copy anchors - each reads rulepack-prod-NNN.signed.json)"
+    result: "653 passed, 4 failed (PR-15 retired-key orphans, I-M01 orphans, Slice A10 thresholds, SUPPORT-copy anchors - each reads rulepack-prod-NNN.signed.json)"
     exit: 1
     ts: "2026-10-17T09:45:00Z"
     seat: this session
@@ -94,13 +94,13 @@ receipts:
     seat: this session
   - claim: The signed-state observer's summary parser and constants tests.
     cmd: "python3 -m pytest tests/scripts/test_observe_visa_seq31_signed.py -p no:cacheprovider"
-    result: "14 passed"
+    result: "14 passed (observer floors now 37/0 for test_seq31_pack.py, 111/14 for the census)"
     exit: 0
     ts: "2026-10-17T09:37:00Z"
     seat: this session
   - claim: "Mutation: flipping el.e28a.investment back to investment.investment_capital_idr in the committed source (backup restored by cp) turns the pack gate red."
     cmd: "rewrite the 4th arg of el.e28a.investment to investment.investment_capital_idr and required_facts accordingly; pytest test_seq31_pack.py; cp the backup back"
-    result: "8 failed, 23 passed, 4 skipped; after restore 31 passed, 4 skipped"
+    result: "8 failed, 23 passed, 4 skipped on the pre-rebase 31-test file; after restore 31 passed, 4 skipped (run before the corpus tests were added)"
     exit: 1
     ts: "2026-10-17T09:28:00Z"
     seat: this session
@@ -129,18 +129,25 @@ decisions:
     decision: >-
       The E28A gold persona gains investment.own_shareholding_idr = 10000000000: on seq-31 an unanswered own shareholding
       is NEEDS_INPUT, so the persona would otherwise stop reaching E28A. It replays identically on seq-30 and seq-31.
-  - id: D-full-capital-walk
+  - id: D-rebase-step-b-cure
     decision: >-
-      The step-B walk offshore/invest/pt_pma/full_capital answers an own shareholding of IDR 1,000,000,000, so on seq-31
-      it loses E28A (pinned). It is not edited here: the corpus is step B's; the E28A support route is named by the
-      own_shareholding_10000000000 witness.
+      Rebased onto the cured step B (PR #8649, 547873bfa5). Its corpus answers an own shareholding of IDR 10,000,000,000 by
+      default, so offshore/invest/pt_pma/full_capital keeps E28A and ONLY the 9,999,999,999 witness loses it (recomputed by
+      evaluating the candidate against the 182-walk corpus, never by hand). Step B's expiring pending exemption in
+      engine-adapter.test.ts is removed outright: from seq-31 the pack emits E28A_OWN_SHAREHOLDING_BELOW_MIN. Step B's
+      replay fixture (38 walks) and its buildNoPathDoors abstentions are kept as they are.
+  - id: D-not-asked-vehicles
+    decision: >-
+      Gate forward note: on the 165 corpus walks whose own shareholding is NOT_ASKED (merit, family, undecided, bank deposit,
+      property vehicles, pt_pma after "no", every non-investment branch) no outcome moves between seq-30 and seq-31 and no
+      walk is NEEDS_INPUT on investment.own_shareholding_idr; asserted by
+      test_seq31_pack.py::TestCorpusOnTheCandidate.
   - id: D-replay-fixture-deferred
     decision: >-
       no-path-doors.replay.json and no-path-doors.test.tsx name the highest SIGNED pack, so they cannot be bumped before
-      rulepack-prod-031.signed.json exists (the generator reads signed packs). No no-path walk changes on seq-31 (only
-      two SUPPORTED walks change candidates), so the seq-30 precedent applies after signing: header-only bump (file,
-      sequence, version, as_of). Do NOT regenerate: step B found the committed fixture (27 walks) already behind its
-      generator (38) on base; regenerating would silently change scope.
+      rulepack-prod-031.signed.json exists. Step B (cured, #8649) already regenerated the replay at the seq-30 signed_at (38
+      walks); no no-path walk changes on seq-31 (only one SUPPORTED walk changes candidates), so after signing the bump is
+      header-only (file, sequence, version, as_of) and the signer does it. Not regenerated here.
   - id: D-support-copy
     decision: >-
       E28A_INVESTMENT_ELIGIBLE copy said "total investment capital of IDR 10 billion", which seq-31 makes false; it now says
