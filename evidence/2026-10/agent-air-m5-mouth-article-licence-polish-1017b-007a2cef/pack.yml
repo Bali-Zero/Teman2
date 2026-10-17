@@ -112,6 +112,15 @@ decisions:
     text: >-
       Gear 3 is size-driven: the llms exports churn thousands of lines, not the risk of the
       change; the council was run anyway.
+  - id: D-successor-pr
+    text: >-
+      Successor of PR 8654, which was armed (branch frozen) when the mouth vitest suite went red
+      on src/i18n/secondhome-article-claims.test.ts: the new e31e total "~IDR 24,000,000
+      (USD 1,500)" hits the lexical E33G-income USD 1,500 patterns. It is the USD conversion of
+      the IDR total, not an E33 claim; 037458c659 re-pins the ratchet (4 new line hashes on
+      e31e en/fr, 3 stale IDR 2,000,000 hashes removed on en/fr/ru). The six commits of 8654
+      are cherry-picked unchanged onto origin/main 6e1eb202aa; the pack moved to this branch
+      slug.
 seat_fallback_reason: >-
   agy-gemini-4-argon and tp1-qwen3.8-max were not dispatched; codex-gpt-5.6-sol (titolare) and
   kimi-code/k3 were the two cross-family read-only reviewers. No seat unavailability was
