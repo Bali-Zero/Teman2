@@ -7,6 +7,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 HERE = Path(__file__).parent
 PRICES_PATH = HERE.parent.parent.parent / "data" / "bali_zero_official_prices_2026.json"
@@ -115,7 +116,7 @@ def _text(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def literal(column: str, value) -> str:
+def literal(column: str, value: Any) -> str:
     if value is None:
         return "NULL"
     if column in JSON_COLUMNS:
