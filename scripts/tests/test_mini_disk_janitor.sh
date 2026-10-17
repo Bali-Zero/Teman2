@@ -69,7 +69,9 @@ STUB
   for f in old1.bin Homebrew/old.tgz Homebrew/nest/only-old com.apple.x/old; do : > "$C/$f"; touch -t $OLD "$C/$f"; done
   : > "$C/fresh.bin"; : > "$C/Homebrew/fresh.tgz"
   : > "$OUTSIDE/a/oldfile"; touch -t $OLD "$OUTSIDE/a/oldfile"; : > "$OUTSIDE/b/oldfile"; touch -t $OLD "$OUTSIDE/b/oldfile"
-  ln -s "$OUTSIDE/a" "$C/lnk"; ln -s "$OUTSIDE/b" "$C/app/lnk2"
+  mkdir -p "$C/ms-playwright/chromium-1" "$C/SomeApp"
+  for f in ms-playwright/chromium-1/chrome SomeApp/old; do : > "$C/$f"; touch -t $OLD "$C/$f"; done
+  ln -s "$OUTSIDE/b" "$C/Homebrew/lnk3"   # nested symlink inside an allowlisted entry
 }
 runp() { # args to the payload; extra env via RUNP_ENV (word-split)
   HOME="$H" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_JOURNAL="$ROOT/journal.jsonl" MINI_DISK_JANITOR_DF_PATH=/ \
@@ -96,13 +98,24 @@ tail -1 "$ROOT/out.txt" | grep -q '^level=critical$' && ok "last stdout line is 
 echo "== T2 apply removes old cache files only =="
 build; runp --apply; C="$H/Library/Caches"
 [ "$RC" -eq 0 ] && ok "apply exits 0" || no "apply rc=$RC err=$(head -3 "$ROOT/err.txt")"
-{ [ ! -e "$C/old1.bin" ] && [ ! -e "$C/Homebrew/old.tgz" ] && [ ! -e "$C/Homebrew/nest/only-old" ]; } && ok "old files removed" || no "old files survived"
+{ [ ! -e "$C/Homebrew/old.tgz" ] && [ ! -e "$C/Homebrew/nest/only-old" ]; } && ok "old files under an allowlisted entry removed" || no "old allowlisted files survived"
 { [ -e "$C/fresh.bin" ] && [ -e "$C/Homebrew/fresh.tgz" ]; } && ok "fresh files survive" || no "fresh file deleted"
 [ -e "$C/com.apple.x/old" ] && ok "com.apple.* top-level entry skipped" || no "com.apple.x/old deleted"
-{ [ -e "$OUTSIDE/a/oldfile" ] && [ -e "$OUTSIDE/b/oldfile" ] && [ -L "$C/lnk" ] && [ -L "$C/app/lnk2" ]; } && ok "symlink targets and links survive (never followed)" || no "symlink followed or removed"
+{ [ -e "$OUTSIDE/b/oldfile" ] && [ -L "$C/Homebrew/lnk3" ]; } && ok "nested symlink target and link survive (never followed)" || no "symlink followed or removed"
+{ [ -e "$C/ms-playwright/chromium-1/chrome" ] && [ -e "$C/SomeApp/old" ] && [ -e "$C/old1.bin" ]; } && ok "ms-playwright, unknown SomeApp and loose top-level files survive (allowlist, fail-closed)" || no "unlisted cache entry deleted"
 { [ ! -d "$C/Homebrew/emptydir" ] && [ ! -d "$C/Homebrew/nest" ] && [ -d "$C/Homebrew" ]; } && ok "empty subdirs pruned, depth-1 entries kept" || no "empty-dir pruning wrong"
-! grep -qE 'old1|only-old|Homebrew' "$ROOT/err.txt" && ok "no candidate names in logs" || no "names leaked to log"
+! grep -qE 'old1|only-old|Homebrew|SomeApp|playwright' "$ROOT/err.txt" && ok "no candidate names in logs" || no "names leaked to log"
 "$REAL_PY" -c 'import json,sys; [json.loads(l) for l in open(sys.argv[1])]' "$ROOT/journal.jsonl" && ok "receipt is valid JSON" || no "receipt invalid"
+
+echo "== T2b allowlist refusals =="
+build; C="$H/Library/Caches"; ln -s "$OUTSIDE/a" "$C/Codex"
+
+HOME="$H" PATH="$FB:$SYS_PATH" MINI_DISK_JANITOR_JOURNAL="$ROOT/journal.jsonl" MINI_DISK_JANITOR_DF_PATH=/ MINI_DISK_JANITOR_BUSY_WAIT_MIN=0 MINI_DISK_JANITOR_NOTIFY="$ROOT/n.py" \
+  MINI_DISK_JANITOR_CACHE_ALLOW="Homebrew com.apple.x Codex ../escape a/b . .. Missing" bash "$PAYLOAD" --apply > "$ROOT/out.txt" 2> "$ROOT/err.txt"; RC=$?
+{ [ "$(step_status user_caches)" = "error:allow-refused" ] && [ "$RC" -eq 1 ]; } && ok "refused allowlist entries -> step error, exit 1" || no "refusal status: $(step_status user_caches) rc=$RC"
+{ [ -e "$C/com.apple.x/old" ] && [ -e "$OUTSIDE/a/oldfile" ] && [ -L "$C/Codex" ]; } && ok "com.apple.* listed in env survives; listed symlink not followed" || no "refused entry touched"
+[ ! -e "$C/Homebrew/old.tgz" ] && [ -e "$C/Homebrew/fresh.tgz" ] && ok "valid entries still processed beside refused ones; fresh survives" || no "valid entry skipped"
+receipt | grep -q '"refused":6' && ok "refusals counted (6)" || no "refused count: $(receipt | grep -o '"refused":[0-9]*')"
 
 echo "== T3 busy runner =="
 build; touch "$FX/busy"; runp --apply

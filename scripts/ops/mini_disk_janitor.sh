@@ -21,9 +21,13 @@
 #   docker        `docker image prune -f` and `docker builder prune -f` (dangling images, build cache).
 #                 Never -a, never volume / container / system prune.
 #   vm_trim       `colima ssh -- sudo fstrim -av`: hands the freed guest blocks back to the host.
-#   user_caches   regular files older than CACHE_DAYS under the physical $HOME/Library/Caches only;
-#                 find -P -xdev, symlinks never followed, every top-level com.apple.* entry skipped,
-#                 empty subdirectories removed afterwards. Counts and bytes are logged, never names.
+#   user_caches   ALLOWLIST (fail-closed): regular files older than CACHE_DAYS inside ONLY the top-level
+#                 names in MINI_DISK_JANITOR_CACHE_ALLOW (default: Homebrew Google Codex ollama pip
+#                 go-build com.exafunction.windsurf.ShipIt) under the physical $HOME/Library/Caches;
+#                 find -P -xdev, symlinks never followed, empty subdirectories removed afterwards.
+#                 An unknown entry is never touched. A listed name that is path-like, "."/"..",
+#                 com.apple.*, or a symlink is refused (step error, nothing deleted for it); an absent
+#                 name is skipped silently. Counts and bytes are logged, never names.
 #   npm           `npm cache verify` (garbage-collects its own cache).
 #   uv            `uv cache prune` (a timeout means another uv holds the lock: skipped uv-lock-busy).
 #   floor         receptor, always runs (also in dry-run): host free GiB + runner container / use%
@@ -31,6 +35,9 @@
 #
 # Deliberately absent: `brew cleanup` / `brew autoremove` / any brew command (a brew autoremove killed
 # node on this Mini, lesson 2026-09-26; the Homebrew download cache is covered by user_caches), and
+# ms-playwright* (installed browser binaries with old mtimes, not a regenerating cache: a manual wipe
+# of ~/Library/Caches on 2026-10-17 deleted it and broke the production journey-sentinel until
+# `npx playwright install chromium` was re-run), any cache entry not in the allowlist, and
 # anything under ~/pro-offload, ~/icloud-*, ~/Desktop, ~/Downloads, ~/.ollama, ~/.cache/huggingface,
 # OSINT data, Docker volumes, git worktrees (the broker owns them) and backups. `uv cache clean` is
 # never used either (prune only).
@@ -52,6 +59,7 @@ BUSY_WAIT_MIN="${MINI_DISK_JANITOR_BUSY_WAIT_MIN:-45}"
 BUSY_POLL_S="${MINI_DISK_JANITOR_BUSY_POLL_S:-60}"
 TOOL_PCT="${MINI_DISK_JANITOR_TOOL_PCT:-75}"
 CACHE_DAYS="${MINI_DISK_JANITOR_CACHE_DAYS:-14}"
+CACHE_ALLOW="${MINI_DISK_JANITOR_CACHE_ALLOW:-Homebrew Google Codex ollama pip go-build com.exafunction.windsurf.ShipIt}"
 HOST_WARN_GB="${MINI_DISK_JANITOR_HOST_WARN_GB:-40}"
 HOST_CRIT_GB="${MINI_DISK_JANITOR_HOST_CRIT_GB:-20}"
 RUNNER_WARN_PCT="${MINI_DISK_JANITOR_RUNNER_WARN_PCT:-85}"
@@ -180,7 +188,7 @@ fi
 
 # ── user_caches ─────────────────────────────────────────────────────────────
 user_caches() {
-  local C phys physhome entry f n=0 bytes=0 sz
+  local C phys physhome entry name f n=0 bytes=0 sz refused=0
   [ -n "$H" ] || { step_end user_caches error home-unsafe; return; }
   physhome=$(cd "$H" 2>/dev/null && pwd -P)
   { [ -n "$physhome" ] && [ "$physhome" != "/" ]; } || { step_end user_caches error home-unsafe; return; }
@@ -189,16 +197,25 @@ user_caches() {
   [ -d "$C" ] || { step_end user_caches skipped no-caches; return; }
   phys=$(cd "$C" 2>/dev/null && pwd -P)
   case "$phys" in "$physhome"/*) : ;; *) step_end user_caches error caches-outside-home; return ;; esac
-  while IFS= read -r -d '' entry; do
+  set -f   # allowlist names are literal, never globs
+  for name in $CACHE_ALLOW; do
+    case "$name" in
+      .|..|*/*|com.apple.*) refused=$((refused + 1)); log "user_caches: allowlist entry refused (reserved or path-like)"; continue ;;
+    esac
+    entry="$phys/$name"
+    [ -L "$entry" ] && { refused=$((refused + 1)); log "user_caches: allowlist entry refused (symlink)"; continue; }
+    [ -d "$entry" ] || continue   # absent names are fine
     while IFS= read -r -d '' f; do
       sz=$(stat -c %s "$f" 2>/dev/null || stat -f %z "$f" 2>/dev/null); case "$sz" in ''|*[!0-9]*) sz=0 ;; esac   # GNU first: BSD stat has no -c, GNU stat -f means filesystem
       n=$((n + 1)); bytes=$((bytes + sz))
       $APPLY && rm -f -- "$f" 2>/dev/null
     done < <(find -P "$entry" -xdev -type f -mtime +"$CACHE_DAYS" -print0 2>/dev/null)
-    if $APPLY && [ -d "$entry" ]; then find -P "$entry" -xdev -mindepth 1 -type d -empty -delete 2>/dev/null; fi
-  done < <(find -P "$phys" -xdev -mindepth 1 -maxdepth 1 ! -name 'com.apple.*' ! -type l -print0 2>/dev/null)
+    if $APPLY; then find -P "$entry" -xdev -mindepth 1 -type d -empty -delete 2>/dev/null; fi
+  done
+  set +f
   log "user_caches: files=$n bytes=$bytes"
-  if $APPLY; then step_end user_caches "done" "" "\"files\":$n,\"bytes\":$bytes"
+  if [ "$refused" -gt 0 ]; then step_end user_caches error allow-refused "\"files\":$n,\"bytes\":$bytes,\"refused\":$refused"
+  elif $APPLY; then step_end user_caches "done" "" "\"files\":$n,\"bytes\":$bytes"
   else step_end user_caches dry-run "" "\"files\":$n,\"bytes\":$bytes"; fi
 }
 step_begin; user_caches
