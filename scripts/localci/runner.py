@@ -2804,7 +2804,7 @@ def _run_egress(name: str, spec: dict, job: dict, st: dict, slug: str, cfg_base:
     if err or not got or len(got) != 1 or got[0]["name"] != st["name"] or (rc, got[0]["status"]) not in ((0, "PASS"), (1, "FAIL")):
         return {"rc": None, "reason": f"egress sandbox gave no consistent verdict: {err or f'rc={rc}, junit {got}'}", "log": tail}
     full = log.read_text(errors="replace") if log.exists() else ""
-    if rc == 1 and not re.search(r"known vulnerabilit|^Name +Version +ID", full, re.I | re.M) and (  # a finding is a verdict, network or not
+    if rc == 1 and not re.search(r"^Found [1-9][0-9]* known vulnerabilit|^Name +Version +ID", full, re.M) and (  # a finding is a verdict, network or not; the clean line is not one
             net := re.search(r"(ReadTimeoutError|ConnectTimeoutError|NewConnectionError|Max retries exceeded|Temporary failure in name "
                              r"resolution)[^\n]{0,120}", full)):
         return {"rc": None, "reason": f"the network failed the egress step, not the candidate ({net.group(0)[:100]}): no verdict (never green), re-run", "log": tail}
