@@ -934,6 +934,18 @@
    ]
   },
   {
+   "query": "spirits license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "spirits licence for my bar",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
    "query": "",
    "expect_no_hits": true
   },
