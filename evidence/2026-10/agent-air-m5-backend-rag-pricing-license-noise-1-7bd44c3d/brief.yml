@@ -1,0 +1,37 @@
+task_id: pricing-license-noise-1017
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  HIGH follow-up of PR 8655's gate. PricingService.search_service treats a query token as noise
+  when it equals a noise word or a noise word of 4+ characters plus a light suffix of the same
+  closed set row matching uses ("prices", "biayanya", "selling"), and the generic licence/sale
+  words license, licence, licensing and sell join the noise list. Ordinary messages with
+  "licenses", "licences", "selling", "sells" or "seller" stop pulling the three Alcohol License
+  rows, inflected noise words stop adding rows, and "driving license" returns the Driving License
+  row only. permit and izin stay distinctive. Spec: docs/specs/2026-10-17-pricing-search-token-matching-spec.md
+  (rule 3 and the out-of-scope note, revised after PR 8655's gate).
+acceptance:
+  - text: >-
+      The 130-query corpus passes in both directions, including "Which licenses do I need for a
+      restaurant", "licenses for a villa rental business", "I am selling food online, which
+      permit", "we sell coffee, what permit" and "restaurant licenses" without Alcohol License
+      rows, "driving license" with the Driving License row and no Alcohol License row, and
+      "prices for KITAS" without the seven rows that matched only on "price"; "alcohol license",
+      "izin minuman beralkohol", "alkohol", "miras" and "minuman keras" still find the three rows.
+    probe: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+  - text: >-
+      No corpus query gains a row versus origin/main; every row lost matched only through license,
+      sell or price and is listed in the PR; work permit, stay permit, re-entry permit and permit
+      keep their counts.
+    probe: scratch before/after of origin/main vs HEAD over 145 queries (search-after-D.json)
+assumptions:
+  - text: >-
+      A query made only of noise words keeps the raw-query fallback, so "license" or "prices"
+      alone still return the rows carrying that word; a real client sentence carries at least one
+      distinctive word.
+    status: verified
+    probe: before/after table ("license" alone returns 4 rows before and after)
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1
