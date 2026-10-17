@@ -398,6 +398,41 @@ the sentinel's own active-pack query on `visa_ruleset_activations`: exactly one 
 same instant; #8624 merged 2026-10-16T14:20:35Z as `3f23a84da7`; backend /health build_sha `7163570a88` contains it).
 The `activation_id` itself was not read in that measurement.
 
+## Signing + activation note (2026-10-17, seq-31 candidate)
+
+`rulepack-prod-031.source.json` is the UNSIGNED candidate of the E28A own-shareholding re-key on top
+of signed seq-30 (`fold_pack_seq31.py`, `--check` reproducible): `created_at` `2026-10-17T12:00:00Z`,
+`created_by` `agent.air-m5.backend-rag.vo-seq31-e28a-own-share-1017`, `rule_pack_id`
+`4bff6af7-395d-5c98-9b43-0a45e04ee651`, candidate `payload_sha256`
+`01f14647e653312434e0d2cea19f7b0aea55cc97f515d66916ed86f95ca202c1`, chained to signed seq-30
+(`previous_payload_sha256` `972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413`),
+sequence 30 to 31, version `2026.10.17`, `rollback_of_payload_sha256` null. Products 38, rules 118 to 118
+(one modified, one retired, one inserted). All 28 `source_records` and the 18 `OFFICIAL_PORTAL` stamps
+are byte-identical to signed seq-30, so the freshness boundary does not move.
+
+What the pack contains (one content item, owner ruling 1 of 2026-10-15, handoff `SEQ29-A1`):
+
+1. `el.e28a.investment` tests `investment.own_shareholding_idr >= 10,000,000,000` (the applicant's OWN
+   shareholding value in the sponsoring company; the saved official E28A page
+   `research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt` states no company
+   total-investment figure) instead of `investment.investment_capital_idr`. The IDR 2.5bn paid-up bound
+   and the PT PMA commitment stay.
+2. `hf.e28a.total-investment-below-min` (`E28A_TOTAL_INVESTMENT_BELOW_MIN`) is retired and
+   `hf.e28a.own-shareholding-below-min` (`E28A_OWN_SHAREHOLDING_BELOW_MIN`) is appended: the semantics
+   changed, so the code is renamed, and the old code stays replayable in the mouth copy table.
+3. `hf.e28a.paid-capital-below-min` is untouched; the IDR 2.5bn paid-up bound is a PT PMA company
+   prerequisite, not a personal visa figure (the pack carries only `explanation_key`; the user-facing
+   sentence is in `engine-adapter.ts`).
+
+No regulation number is written into the pack for this item: the pinpoint for the shareholding figure is
+UNVERIFIED in this repository (TO VERIFY against source); the rules cite the E28A record the pack already
+carries.
+
+**Activation: PENDING.** The candidate is unsigned. Signing, the signed bundle landing in the same PR
+with `scripts/ci/observe_visa_seq31_signed.py` (replacing `observe_visa_seq30_signed.py`), the mouth
+replay-fixture header bump (`no-path-doors.replay.json`, `no-path-doors.test.tsx`) and the activation
+ceremony are not done.
+
 ## Rotation
 
 1. Mint a new kid (e.g. `2027-01-prod-1`) with the same procedure.
