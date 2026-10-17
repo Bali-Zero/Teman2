@@ -44,33 +44,33 @@ receipts:
     exit: 0
     ts: "2026-10-17T09:40:00Z"
     seat: this session
-  - claim: The fold reproduces from verified signed seq-30 and the candidate payload digest is 01f14647e653312434e0d2cea19f7b0aea55cc97f515d66916ed86f95ca202c1 (unsigned; JCS).
+  - claim: The fold reproduces from verified signed seq-30 and the candidate payload digest is 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4 (unsigned; JCS).
     cmd: 'cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -c "fold_pack_seq31.main([''--check''])"  # trust-store env set from the pinned public keys, as the tests do'
-    result: "fold_pack_seq31: OK (rulepack-prod-031.source.json, payload_sha256=01f14647e653312434e0d2cea19f7b0aea55cc97f515d66916ed86f95ca202c1)"
+    result: "fold_pack_seq31: OK (rulepack-prod-031.source.json, payload_sha256=7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4)"
     exit: 0
     ts: "2026-10-17T09:41:00Z"
     seat: this session
   - claim: The seq-31 pack gate - chain, source_records byte identity, the exact rule diff and nothing else, the boundary witnesses, builder guards, gold personas.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq31_pack.py -p no:cacheprovider  # probes: backend/tests/services/visa_engine/test_seq31_pack.py::TestCommittedSourceMatchesFold, backend/tests/services/visa_engine/test_seq31_pack.py::TestE28ABoundaryWitnesses, backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource (skipped until signed)"
-    result: "33 passed, 4 skipped (the 4 skips are TestSignedBundleTiesToSource, waiting for rulepack-prod-031.signed.json)"
+    result: "35 passed, 4 skipped (the 4 skips are TestSignedBundleTiesToSource, waiting for rulepack-prod-031.signed.json)"
     exit: 0
     ts: "2026-10-17T09:55:00Z"
     seat: this session
   - claim: The interview walk census (182 walks) on the candidate with the new seq-31 pins; no state moves, two walks lose E28A.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py -p no:cacheprovider  # probe: backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack"
-    result: "125 passed in 236.03s on the rebased tree (182-walk corpus with the cured default own-shareholding answer; 14 of them are candidate-mode tests that skip once seq-31 is signed: 111 passed, 14 skipped expected)"
+    result: "125 passed in 362.50s on the cured tree (182-walk corpus with the cured default own-shareholding answer; 14 of them are candidate-mode tests that skip once seq-31 is signed: 111 passed, 14 skipped expected)"
     exit: 0
     ts: "2026-10-17T09:30:00Z"
     seat: this session
   - claim: Seq-30 gate, rulepack compiler, compiled-pack, sponsor-type rollout and negative-persona tests stay green.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq30_pack.py test_rulepack_compiler.py test_compiler_build_compiled_pack.py test_sponsor_type_rollout.py test_gold_coverage_negative_personas.py -p no:cacheprovider"
-    result: "316 passed in 5.37s (adds test_fact_registry.py)"
+    result: "316 passed in 8.86s (adds test_fact_registry.py)"
     exit: 0
     ts: "2026-10-17T09:35:00Z"
     seat: this session
   - claim: Gold harness, gold coverage floor, evaluator gold, replay artifact, gold scripts and the seq-28 and seq-29 pack gates stay green with the E28A persona answering the new fact.
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/gold_harness test_gold_coverage_floor.py test_evaluator_gold.py test_gold_replay_artifact.py backend/tests/scripts/visa_engine/test_gold_coverage_eval.py test_gold_coverage_replay.py test_gold_replay_driver.py test_seq28_pack.py test_seq29_pack.py -p no:cacheprovider"
-    result: "539 passed in 14.71s (gold_coverage dir included)"
+    result: "539 passed in 23.19s (gold_coverage dir included)"
     exit: 0
     ts: "2026-10-17T09:50:00Z"
     seat: this session
@@ -94,7 +94,7 @@ receipts:
     seat: this session
   - claim: The signed-state observer's summary parser and constants tests.
     cmd: "python3 -m pytest tests/scripts/test_observe_visa_seq31_signed.py -p no:cacheprovider"
-    result: "14 passed (observer floors now 37/0 for test_seq31_pack.py, 111/14 for the census)"
+    result: "14 passed (observer floors now 39/0 for test_seq31_pack.py, 111/14 for the census)"
     exit: 0
     ts: "2026-10-17T09:37:00Z"
     seat: this session
@@ -108,7 +108,19 @@ council_run: pending
 council_note: >-
   PENDING - no council or journal entry is fabricated here. The orchestrator runs the gates (generator is never grader)
   and attaches journal.jsonl before signing; council_run is set to journal.jsonl at that point.
-dissent: []
+dissent:
+  - seat: codex-gpt-5.6-sol (council on 5221456ba0, FIX-FIRST; the journal line is the orchestrator's, not written here)
+    objection: "HIGH - rulepack-prod-031.source.json created_at 2026-10-17T12:00:00Z was in the future; the signer's chronology check rejects it."
+    status: CONFIRMED
+    note: "Cured: fold_pack_seq31.py stamps a fixed past instant 2026-10-17T03:30:00Z (the seq-29/seq-30 fixed-constant convention); new payload sha256 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4; TestPackIntegrity pins created_at <= now."
+  - seat: codex-gpt-5.6-sol (same council pass)
+    objection: "HIGH - the reworded E28A_INVESTMENT_ELIGIBLE sentence would tell a seq-30-evaluated applicant (who may own IDR 1) that they personally own IDR 10 bn+; replay and rollback keep emitting the old code."
+    status: CONFIRMED
+    note: "Cured by renaming: el.e28a.investment now emits the new E28A_OWN_SHAREHOLDING_ELIGIBLE; E28A_INVESTMENT_ELIGIBLE regains its original copy and is retired-replayable from seq-31 (RETIRED_FROM_SEQUENCE); anchors re-keyed to the new code."
+  - seat: codex-gpt-5.6-sol (same council pass)
+    objection: "LOW - brief.yml acceptance said two walks lose E28A; implementation, tests and replay show one."
+    status: CONFIRMED
+    note: "Cured: acceptance now says exactly one walk."
 decisions:
   - id: D-retire-and-insert
     decision: >-
@@ -150,8 +162,9 @@ decisions:
       header-only (file, sequence, version, as_of) and the signer does it. Not regenerated here.
   - id: D-support-copy
     decision: >-
-      E28A_INVESTMENT_ELIGIBLE copy said "total investment capital of IDR 10 billion", which seq-31 makes false; it now says
-      the applicant personally owns shares worth IDR 10 billion or more in the PT PMA, and the SUPPORT-copy anchor test maps
-      the second figure to investment.own_shareholding_idr.
+      E28A_INVESTMENT_ELIGIBLE keeps its original copy (company capital, valid for seq-20..30 decisions) and is retired
+      replayable from seq-31; the seq-31 rule emits the new E28A_OWN_SHAREHOLDING_ELIGIBLE with own-shares copy built from
+      E28A_OWN_SHAREHOLDING_THRESHOLD_IDR and E28A_PAID_UP_CAPITAL_THRESHOLD_IDR, anchored to the backing rule. Ordering:
+      the mouth copy is safe to ship before activation; activation must wait until the mouth deploy carrying the new code is live.
 spend:
   wall_clock_hours: 3

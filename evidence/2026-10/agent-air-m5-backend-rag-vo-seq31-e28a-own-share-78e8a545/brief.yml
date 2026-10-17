@@ -35,7 +35,7 @@ acceptance:
     probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestE28ABoundaryWitnesses
   - text: WHEN the signed seq-31 bundle exists THEN its payload SHALL equal the source, verify under the pinned prod key, anchor to the signed seq-30 digest, and a flipped byte SHALL break the signature.
     probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource
-  - text: WHEN the census replays the 182-walk corpus on the candidate THEN exactly two walks SHALL lose E28A and no walk SHALL change state.
+  - text: WHEN the census replays the 182-walk corpus on the candidate THEN exactly one walk (the 9,999,999,999 boundary witness) SHALL lose E28A and no walk SHALL change state.
     probe: backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack
 bites:
   consumer: >-

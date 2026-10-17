@@ -401,10 +401,10 @@ The `activation_id` itself was not read in that measurement.
 ## Signing + activation note (2026-10-17, seq-31 candidate)
 
 `rulepack-prod-031.source.json` is the UNSIGNED candidate of the E28A own-shareholding re-key on top
-of signed seq-30 (`fold_pack_seq31.py`, `--check` reproducible): `created_at` `2026-10-17T12:00:00Z`,
+of signed seq-30 (`fold_pack_seq31.py`, `--check` reproducible): `created_at` `2026-10-17T03:30:00Z`,
 `created_by` `agent.air-m5.backend-rag.vo-seq31-e28a-own-share-1017`, `rule_pack_id`
 `4bff6af7-395d-5c98-9b43-0a45e04ee651`, candidate `payload_sha256`
-`01f14647e653312434e0d2cea19f7b0aea55cc97f515d66916ed86f95ca202c1`, chained to signed seq-30
+`7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4`, chained to signed seq-30
 (`previous_payload_sha256` `972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413`),
 sequence 30 to 31, version `2026.10.17`, `rollback_of_payload_sha256` null. Products 38, rules 118 to 118
 (one modified, one retired, one inserted). All 28 `source_records` and the 18 `OFFICIAL_PORTAL` stamps
@@ -416,7 +416,9 @@ What the pack contains (one content item, owner ruling 1 of 2026-10-15, handoff 
    shareholding value in the sponsoring company; the saved official E28A page
    `research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt` states no company
    total-investment figure) instead of `investment.investment_capital_idr`. The IDR 2.5bn paid-up bound
-   and the PT PMA commitment stay.
+   and the PT PMA commitment stay. Its SUPPORT reason code is renamed `E28A_INVESTMENT_ELIGIBLE` to
+   `E28A_OWN_SHAREHOLDING_ELIGIBLE` (the sentence changes meaning); the mouth copy for the new code must be
+   live before activation, because an unknown SUPPORT code on the client could break the result page.
 2. `hf.e28a.total-investment-below-min` (`E28A_TOTAL_INVESTMENT_BELOW_MIN`) is retired and
    `hf.e28a.own-shareholding-below-min` (`E28A_OWN_SHAREHOLDING_BELOW_MIN`) is appended: the semantics
    changed, so the code is renamed, and the old code stays replayable in the mouth copy table.
