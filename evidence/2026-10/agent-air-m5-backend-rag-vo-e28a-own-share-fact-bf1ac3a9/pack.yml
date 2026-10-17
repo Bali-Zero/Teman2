@@ -185,3 +185,6 @@ dissent:
     objection: "Evidence pack: gear_reason numbers off the measured diff; failure attribution; reviews not recorded."
     status: RETRACTED
     disposition: "Cured: gear_reason uses the measured diff, attribution fixed, both reviews recorded here, fingerprint change recorded as ACCEPTED (D-fingerprint-once). Findings are recorded from the coordinator's cure list, not from the reviewers' original text, so numbering is the coordinator's order."
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 2
