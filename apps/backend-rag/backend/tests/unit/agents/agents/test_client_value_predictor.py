@@ -3,6 +3,8 @@ Unit tests for ClientValuePredictor
 Target: >95% coverage
 """
 
+import asyncio
+import json
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -11,6 +13,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import asyncpg
+import httpx
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -18,6 +21,38 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from backend.agents.agents.client_value_predictor import ClientValuePredictor
+
+
+class _AsyncContext:
+    def __init__(self, value: Any = None) -> None:
+        self.value = value
+
+    async def __aenter__(self) -> Any:
+        return self.value
+
+    async def __aexit__(self, *args: object) -> None:
+        return None
+
+
+class _FakeConn:
+    def __init__(
+        self,
+        fetch_rows: list[dict[str, str]] | None = None,
+        execute_side_effect: Exception | None = None,
+    ) -> None:
+        self.fetch = AsyncMock(return_value=fetch_rows or [])
+        self.execute = AsyncMock(side_effect=execute_side_effect)
+
+    def transaction(self) -> _AsyncContext:
+        return _AsyncContext()
+
+
+class _FakePool:
+    def __init__(self, *connections: _FakeConn) -> None:
+        self._connections = list(connections)
+
+    def acquire(self) -> _AsyncContext:
+        return _AsyncContext(self._connections.pop(0))
 
 
 @pytest.fixture
@@ -307,3 +342,134 @@ class TestClientValuePredictor:
             "total_messages_sent": 0,
             "errors": ["Database error: pool unavailable"],
         }
+
+    @pytest.mark.asyncio
+    async def test_run_daily_nurturing_scores_contacts_and_reports_summary(
+        self,
+        client_value_predictor: ClientValuePredictor,
+    ) -> None:
+        """Active clients are scored, contacted, counted, and summarized."""
+        initial_conn = _FakeConn(fetch_rows=[{"id": "101"}, {"id": "202"}, {"id": "303"}])
+        vip_conn = _FakeConn()
+        risk_conn = _FakeConn()
+        client_value_predictor.db_pool = _FakePool(initial_conn, vip_conn, risk_conn)
+        client_value_predictor.calculate_scores_batch = AsyncMock(
+            return_value={
+                "101": {
+                    "name": "Client A",
+                    "phone": "+62000000101",
+                    "ltv_score": 91.0,
+                    "segment": "VIP",
+                    "risk_level": "LOW_RISK",
+                },
+                "202": {
+                    "name": "Client B",
+                    "phone": "+62000000202",
+                    "ltv_score": 82.0,
+                    "segment": "HIGH_VALUE",
+                    "risk_level": "HIGH_RISK",
+                },
+            },
+        )
+        client_value_predictor.segmentation_service.should_nurture = MagicMock(
+            side_effect=[(True, "VIP inactive"), (True, "High risk")],
+        )
+        client_value_predictor.generate_nurturing_message = AsyncMock(
+            side_effect=["hello vip", "hello risk"],
+        )
+        client_value_predictor.send_whatsapp_message = AsyncMock(side_effect=["SM1", "SM2"])
+        slack_client = MagicMock()
+        slack_client.post = AsyncMock(side_effect=httpx.HTTPError("slack down"))
+
+        with (
+            patch("backend.app.core.config.settings") as mock_settings,
+            patch(
+                "backend.agents.agents.client_value_predictor.httpx.AsyncClient",
+                return_value=_AsyncContext(slack_client),
+            ),
+        ):
+            mock_settings.slack_webhook_url = "https://slack.example/webhook"
+            result = await client_value_predictor.run_daily_nurturing(timeout=1.0)
+
+        assert result == {
+            "vip_nurtured": 1,
+            "high_risk_contacted": 1,
+            "total_messages_sent": 2,
+            "errors": [],
+        }
+        client_value_predictor.calculate_scores_batch.assert_awaited_once_with(
+            ["101", "202", "303"],
+        )
+        assert json.loads(vip_conn.execute.await_args_list[0].args[1])["segment"] == "VIP"
+        assert vip_conn.execute.await_args_list[0].args[2] == 101
+        assert vip_conn.execute.await_count == 2
+        assert risk_conn.execute.await_count == 2
+        slack_client.post.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_daily_nurturing_keeps_processing_after_client_error(
+        self,
+        client_value_predictor: ClientValuePredictor,
+    ) -> None:
+        """A per-client transaction error is captured without blocking later clients."""
+        initial_conn = _FakeConn(fetch_rows=[{"id": "101"}, {"id": "202"}])
+        failing_conn = _FakeConn(execute_side_effect=RuntimeError("metadata write failed"))
+        ok_conn = _FakeConn()
+        client_value_predictor.db_pool = _FakePool(initial_conn, failing_conn, ok_conn)
+        client_value_predictor.calculate_scores_batch = AsyncMock(
+            return_value={
+                "101": {"ltv_score": 91.0, "segment": "VIP", "risk_level": "LOW_RISK"},
+                "202": {
+                    "ltv_score": 35.0,
+                    "segment": "LOW_VALUE",
+                    "risk_level": "LOW_RISK",
+                },
+            },
+        )
+        client_value_predictor.segmentation_service.should_nurture = MagicMock(
+            return_value=(False, ""),
+        )
+        client_value_predictor.generate_nurturing_message = AsyncMock()
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.slack_webhook_url = None
+            result = await client_value_predictor.run_daily_nurturing(timeout=1.0)
+
+        assert result == {
+            "vip_nurtured": 0,
+            "high_risk_contacted": 0,
+            "total_messages_sent": 0,
+            "errors": ["Client 101: metadata write failed"],
+        }
+        assert ok_conn.execute.await_count == 1
+        client_value_predictor.generate_nurturing_message.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_run_daily_nurturing_timeout_and_unexpected_error_payloads(
+        self,
+        client_value_predictor: ClientValuePredictor,
+    ) -> None:
+        """Outer exception handlers return stable error payloads."""
+
+        async def raise_timeout(coro: Any, timeout: float) -> Any:
+            coro.close()
+            raise asyncio.TimeoutError
+
+        async def raise_unexpected(coro: Any, timeout: float) -> Any:
+            coro.close()
+            raise ValueError("scheduler exploded")
+
+        with patch(
+            "backend.agents.agents.client_value_predictor.asyncio.wait_for",
+            new=raise_timeout,
+        ):
+            timeout_result = await client_value_predictor.run_daily_nurturing(timeout=0.01)
+
+        with patch(
+            "backend.agents.agents.client_value_predictor.asyncio.wait_for",
+            new=raise_unexpected,
+        ):
+            unexpected_result = await client_value_predictor.run_daily_nurturing(timeout=0.01)
+
+        assert timeout_result["errors"] == ["Operation timed out after 0.01s"]
+        assert unexpected_result["errors"] == ["Unexpected error: scheduler exploded"]
