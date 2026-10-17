@@ -3,6 +3,7 @@ for the flip; the phase_f_halt file still halts. The cache carries ``phase_e_rea
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -134,7 +135,7 @@ def test_a_short_span_is_false_on_the_term_apart_from_false_green_too(fw, monkey
     assert doc["phase_e_ready"] is False and doc["phase_e_ready_ex_false_green"] is False and doc["false_green_keys"] == []
 
 
-def test_a_real_false_green_over_the_threshold_keeps_ready_false_and_the_term_apart_true(fw, monkeypatch):
+def test_a_real_false_green_over_the_threshold_keeps_ready_false_and_the_term_apart_true(fw, board, monkeypatch):
     refresh_on(monkeypatch)
     head = "e" * 40
     hub, real = fw.hub, fw.hub.__class__.__call__
@@ -149,3 +150,13 @@ def test_a_real_false_green_over_the_threshold_keeps_ready_false_and_the_term_ap
     assert fw.tick() == 0
     doc = cache(fw)
     assert doc["phase_e_ready"] is False and doc["phase_e_ready_ex_false_green"] is True and doc["false_green_keys"] == [f"#2000@{head[:12]}"]
+    assert [x["job"] for x in lines(board)] == [f"localci:false-green:#2000@{head[:12]}"]
+
+
+# ------------------------------------------------------------------ isolation: no test reaches the real escalation board
+def test_a_test_without_its_own_board_alarms_into_the_session_temp_not_a_checkout(fw, tmp_path_factory):
+    path = tmp_path_factory.getbasetemp() / "escalations_pro.jsonl"   # conftest's autouse board_off_the_checkout, not requested here
+    assert os.environ.get(mg.ESCALATIONS_ENV) == str(path)
+    before = len(lines(path))
+    mg.alarm_false_green(fw.state, ["#7@dddddddddddd"])
+    assert alarms(fw)[-1]["escalated"] is True and len(lines(path)) == before + 1
