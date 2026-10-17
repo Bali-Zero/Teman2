@@ -7,7 +7,8 @@ SVC = tuple(f"{CQ_T}::{n}" for n in (
     "test_a_changed_action_input_without_the_matrix_with_pin_is_refused", "test_an_unreadable_candidate_matrix_cannot_have_its_pins_compared",
     "test_a_candidate_that_touches_neither_file_is_not_compared", "test_a_candidate_matrix_that_drops_a_pin_is_refused",
     "test_a_pin_the_candidate_adds_must_agree_with_the_candidate_workflow", "test_a_non_string_uses_is_described_by_type_never_echoed",
-    "test_a_pin_with_a_trailing_newline_is_not_an_immutable_ref"))
+    "test_a_pin_with_a_trailing_newline_is_not_an_immutable_ref",
+    "test_a_pin_added_on_a_step_base_does_not_pin_is_still_compared", "test_a_candidate_workflow_that_expands_past_the_alias_cap_is_read_as_unreadable"))
 USES = 'if ws.get("uses") != ms["uses_pin"]:\n                    seen ='
 
 ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {

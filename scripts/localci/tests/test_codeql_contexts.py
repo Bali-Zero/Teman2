@@ -1009,6 +1009,21 @@ def test_a_pin_the_candidate_adds_must_agree_with_the_candidate_workflow(tmp_pat
     assert spec["status"] == "BLOCKED" and "Autobuild" in spec["reason"] and "inputs differ" in spec["reason"]
 
 
+def test_a_pin_added_on_a_step_base_does_not_pin_is_still_compared(tmp_path, monkeypatch):
+    base_steps = [{k: v for k, v in s.items() if not (s["workflow_step"] == "Autobuild" and k == "uses_pin")} for s in matrix_ctx("python")["local"]["steps"]]
+    mx = (REAL / MATRIX_REL).read_text()
+    marker = "        - workflow_step: Autobuild\n          uses_pin: github/codeql-action/autobuild@" + OLD_SHA + "\n"
+    spec = plan_codeql(tmp_path, monkeypatch, "python", {MATRIX_REL: mx.replace(marker, marker + "          with_pin: {added: input}\n")}, ctx_over={"steps": base_steps})[0]
+    assert spec["status"] == "BLOCKED" and "Autobuild" in spec["reason"] and "inputs differ" in spec["reason"]
+
+
+def test_a_candidate_workflow_that_expands_past_the_alias_cap_is_read_as_unreadable(tmp_path, monkeypatch):
+    levels = ["x-bomb:\n  l0: &l0 [x, x, x, x, x, x, x, x, x, x]\n"] + [f"  l{i}: &l{i} [{', '.join([f'*l{i - 1}'] * 10)}]\n" for i in range(1, 7)]
+    wf = dependabot_bump((REAL / SECURITY).read_text()) + "".join(levels)
+    spec = bumped(tmp_path, monkeypatch, wf, (REAL / MATRIX_REL).read_text().replace(OLD_SHA, NEW_SHA))
+    assert spec["status"] == "BLOCKED" and "unreadable as data (ValueError)" in spec["reason"]
+
+
 def test_a_non_string_uses_is_described_by_type_never_echoed(tmp_path, monkeypatch):
     wf = (REAL / SECURITY).read_text()
     old = "        uses: github/codeql-action/init@" + OLD_SHA + " # v4.38.2\n"
