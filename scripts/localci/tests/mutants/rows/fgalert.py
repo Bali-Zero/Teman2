@@ -1,5 +1,6 @@
 """Owner ruling 2026-10-17: after the flip a FALSE_GREEN is an alarm, not a halt (tests/test_false_green_alarm.py)."""
 PY, T = "scripts/localci/merger.py", ("scripts/localci/tests/test_false_green_alarm.py",)
+CF = "scripts/localci/tests/conftest.py"
 GATE = '        if not (os.environ.get(PHASE_F_ENV) == "1" and doc.get("phase_e_ready_ex_false_green") is True):'
 
 ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
@@ -17,5 +18,7 @@ ROWS: dict[str, tuple[str, str, str, tuple[str, ...]]] = {
     "fg-alarm-never-fired-from-refresh": (PY, '        alarm_false_green(state, facts["false_green_keys"])', "        pass", T),
     "fg-alarm-not-high": (PY, '"priority": "HIGH", "status": "pending", "ts": ts, "machine": "pro"', '"priority": "LOW", "status": "pending", "ts": ts, "machine": "pro"', T),
     "fg-keys-skip-pr-level": (PY, 'if rows[-1]["class"] == "FALSE_GREEN" or ctx_fg or raw - len(got) > 0:', "if ctx_fg or raw - len(got) > 0:", T),
+    "fg-board-fixture-not-autouse": (CF, "@pytest.fixture(autouse=True)\ndef board_off_the_checkout(", "@pytest.fixture\ndef board_off_the_checkout(", T),
+    "fg-board-fixture-sets-no-env": (CF, '    monkeypatch.setenv("LOCALCI_ESCALATIONS_FILE", str(path))\n', "", T),
     "fg-keys-skip-every-level": (PY, 'if rows[-1]["class"] == "FALSE_GREEN" or ctx_fg or raw - len(got) > 0:', "if False:", T),
 }
