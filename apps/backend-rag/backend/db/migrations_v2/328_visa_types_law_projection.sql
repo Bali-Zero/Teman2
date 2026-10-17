@@ -26,6 +26,20 @@
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
+-- visa_types is not created by any numbered migration (production has it from
+-- before the ledger). On such a database this is a no-op; on a fresh database
+-- (CI, local) it creates the legacy shape so the additive columns below have a
+-- table to extend. The shape is the production one: id, code, name, category,
+-- requirements, metadata.
+CREATE TABLE IF NOT EXISTS visa_types (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR NOT NULL UNIQUE,
+    name VARCHAR NOT NULL,
+    category VARCHAR,
+    requirements TEXT[],
+    metadata JSONB
+);
+
 ALTER TABLE visa_types
     ADD COLUMN IF NOT EXISTS family              TEXT,
     ADD COLUMN IF NOT EXISTS official_name_id    TEXT,
@@ -133,6 +147,7 @@ CREATE INDEX IF NOT EXISTS visa_types_family_idx ON visa_types (family);
 
 -- Removes only what this migration added; legacy columns and rows are untouched.
 DROP INDEX IF EXISTS visa_types_family_idx;
+-- squawk-ignore ban-drop-constraint
 ALTER TABLE visa_types
     DROP CONSTRAINT IF EXISTS vt_family_chk,
     DROP CONSTRAINT IF EXISTS vt_permit_class_chk,

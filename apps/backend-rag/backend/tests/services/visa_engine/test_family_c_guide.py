@@ -100,6 +100,15 @@ def test_extension_matches_law(code):
         assert months and int(months.group(1)) == visa["max_total_months"]
 
 
+@pytest.mark.parametrize("code", CODES)
+def test_non_extendable_total_equals_stay_days(code):
+    visa = DATA["visas"][code]
+    if visa["extendable"]:
+        return
+    assert visa["max_total_days"] == visa["stay_days"]
+    assert "max_total_months" not in visa
+
+
 # --- 2. Every path -------------------------------------------------------
 
 
