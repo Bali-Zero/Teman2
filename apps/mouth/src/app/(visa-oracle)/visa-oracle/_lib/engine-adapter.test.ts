@@ -30,6 +30,7 @@ import {
   D1_PROOF_OF_FUNDS_USD,
   D2_PROOF_OF_FUNDS_USD,
   D12_PROOF_OF_FUNDS_USD,
+  E28A_OWN_SHAREHOLDING_THRESHOLD_IDR,
   E33G_ANNUAL_INCOME_THRESHOLD_USD,
   E33E_DEPOSIT_THRESHOLD_USD,
   E33F_E33E_DEPOSIT_NOTE_CODE,
@@ -427,6 +428,20 @@ describe("Visa Oracle authoritative outcome adapter", () => {
       en: "The Remote Worker visa (E33G) needs a salary or income of at least USD 60,000 a year; the yearly figure you gave is below it.",
       id: "Visa Rumah Kedua Pekerja Jarak Jauh (E33G) memerlukan gaji atau penghasilan minimal USD 60.000 per tahun; angka tahunan yang Anda berikan berada di bawah batas tersebut.",
     });
+  });
+
+  it("states the E28A own-shareholding threshold in both languages and reframes the paid-up capital reason as a company rule", () => {
+    expect(E28A_OWN_SHAREHOLDING_THRESHOLD_IDR).toBe(10_000_000_000);
+    expect(SUPPORT_REASON_COPY.E28A_OWN_SHAREHOLDING_BELOW_MIN).toEqual({
+      en: "The Investor Visa (E28A) requires you to personally own shares worth at least IDR 10,000,000,000 in the sponsoring company, and the figure you gave is below it.",
+      id: "Visa Investor (E28A) memerlukan kepemilikan saham Anda sendiri di perusahaan penjamin senilai minimal Rp 10.000.000.000, dan angka yang Anda berikan berada di bawahnya.",
+    });
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.en).toContain(
+      "under the company rules",
+    );
+    expect(SUPPORT_REASON_COPY.E28A_PAID_CAPITAL_BELOW_MIN.id).toContain(
+      "ketentuan perusahaan",
+    );
   });
 
   it("states the E33G remote-work support threshold in both languages", () => {
@@ -1528,12 +1543,42 @@ describe("support reasons are sentences, not machine codes", () => {
     const liveE28 = [...live].filter((key) => /^E28[A-Z]_/.test(key));
     expect(liveE28.length).toBeGreaterThanOrEqual(7);
     expect(liveE28.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
-    const orphans = Object.keys(SUPPORT_REASON_COPY)
+    expect(e28CopyOrphans(Object.keys(SUPPORT_REASON_COPY), packs)).toEqual([]);
+  });
+
+  // E28A own-shareholding step B: the copy lands one step ahead of the pack
+  // that emits it (step C, seq-31). The exemption holds ONLY while the highest
+  // signed pack is seq-30 or lower; from seq-31 the pack must emit the reason,
+  // so a seq-31 pack that omits it (or a later pack that drops it) goes red.
+  const PENDING_PACK_E28_KEYS = ["E28A_OWN_SHAREHOLDING_BELOW_MIN"];
+  const PENDING_EXEMPTION_LAST_SEQUENCE = 30;
+  function e28CopyOrphans(
+    copyKeys: string[],
+    packs: Map<number, Set<string>>,
+  ): string[] {
+    const highest = Math.max(...packs.keys());
+    const live = packs.get(highest)!;
+    const pendingAllowed = highest <= PENDING_EXEMPTION_LAST_SEQUENCE;
+    return copyKeys
       .filter((key) => /^E28[A-Z]_/.test(key))
       .filter(
-        (key) => !live.has(key) && !RETIRED_SUPPORT_REASON_KEYS.includes(key),
+        (key) =>
+          !live.has(key) &&
+          !RETIRED_SUPPORT_REASON_KEYS.includes(key) &&
+          !(pendingAllowed && PENDING_PACK_E28_KEYS.includes(key)),
       );
-    expect(orphans).toEqual([]);
+  }
+
+  it("I-M01: the pending own-shareholding exemption expires at seq-31", () => {
+    const key = "E28A_OWN_SHAREHOLDING_BELOW_MIN";
+    const rest = new Set(["E28B_COMPANY_ESTABLISHMENT_ELIGIBLE"]);
+    // Guilt: a seq-31 pack that omits the reason is an orphan.
+    expect(e28CopyOrphans([key], new Map([[31, rest]]))).toEqual([key]);
+    // Innocence: seq-31 emitting it, or seq-30 still pending, passes.
+    expect(
+      e28CopyOrphans([key], new Map([[31, new Set([...rest, key])]])),
+    ).toEqual([]);
+    expect(e28CopyOrphans([key], new Map([[30, rest]]))).toEqual([]);
   });
 
   /**
@@ -1642,6 +1687,7 @@ describe("support reasons are sentences, not machine codes", () => {
     for (const key of [
       "E28A_PAID_CAPITAL_BELOW_MIN",
       "E28A_TOTAL_INVESTMENT_BELOW_MIN",
+      "E28A_OWN_SHAREHOLDING_BELOW_MIN",
     ]) {
       expect(SUPPORT_REASON_COPY[key].id).toMatch(/Rp \d{1,3}(\.\d{3})+/);
     }

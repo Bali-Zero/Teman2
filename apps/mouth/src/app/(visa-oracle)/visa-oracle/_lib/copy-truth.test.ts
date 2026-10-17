@@ -90,6 +90,11 @@ const TRUTH: readonly (readonly [string, string, string])[] = [
     "Kami mencatat kode negara persis seperti yang Anda masukkan dan tidak menafsirkannya.",
   ],
   [
+    "why.investment_own_shareholding_idr",
+    "The Investor visa looks at the shares you hold yourself in the sponsoring company, not only at the company's capital.",
+    "Visa Investor melihat saham yang Anda miliki sendiri di perusahaan penjamin, tidak hanya modal perusahaan.",
+  ],
+  [
     "why.remote_annual_income_usd",
     "The remote-worker visa (E33G) has a yearly income requirement. The amount is used exactly as you enter it.",
     "Visa pekerja jarak jauh (E33G) memiliki persyaratan penghasilan tahunan. Jumlah ini digunakan persis seperti yang Anda masukkan.",

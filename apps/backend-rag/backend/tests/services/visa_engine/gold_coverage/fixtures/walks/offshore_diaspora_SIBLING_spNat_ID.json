@@ -82,6 +82,10 @@
       "status": "UNKNOWN",
       "reason": "NOT_ASKED"
     },
+    "investment.own_shareholding_idr": {
+      "status": "UNKNOWN",
+      "reason": "NOT_ASKED"
+    },
     "investment.proposed_role": { "status": "UNKNOWN", "reason": "NOT_ASKED" },
     "investment.investment_amount_usd": {
       "status": "UNKNOWN",

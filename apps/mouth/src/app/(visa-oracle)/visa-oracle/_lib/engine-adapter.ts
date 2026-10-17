@@ -302,6 +302,11 @@ function usd(value: number, locale: "en-US" | "id-ID"): string {
   return `USD ${value.toLocaleString(locale)}`;
 }
 
+// Indonesian writes rupiah as "Rp", English as "IDR" (I-M02).
+function idr(value: number, locale: "en-US" | "id-ID"): string {
+  return `${locale === "id-ID" ? "Rp" : "IDR"} ${value.toLocaleString(locale)}`;
+}
+
 // Exported so `engine-adapter.test.ts` can pin these against the signed
 // pack's own `el.e33.property-basis` / `el.e33.deposit-basis` `gte` values
 // (same technique as fact-mapper.test.ts's "AMBIGUOUS_SPONSOR relation
@@ -321,6 +326,7 @@ export const SECOND_HOME_DEPOSIT_THRESHOLD_USD = 130_000;
 export const RETIREMENT_INCOME_THRESHOLD_USD = 3_000;
 export const E33E_DEPOSIT_THRESHOLD_USD = 50_000;
 export const E33G_ANNUAL_INCOME_THRESHOLD_USD = 60_000;
+export const E28A_OWN_SHAREHOLDING_THRESHOLD_IDR = 10_000_000_000;
 
 // Visit-visa proof-of-funds minimums (V03, 2026-10-13). The signed pack models
 // NO funds fact (its `el.d1/d2/d12-funds-*` rules test purpose/stay only), so
@@ -964,8 +970,12 @@ export const SUPPORT_REASON_COPY: Record<string, LocalizedText> = {
     "Visa Saat Kedatangan Wisata (B1) hanya diterbitkan untuk kewarganegaraan yang termasuk daftar negara subjek VOA, dan kewarganegaraan Anda tidak termasuk daftar tersebut.",
   ),
   E28A_PAID_CAPITAL_BELOW_MIN: text(
-    "The Investor Visa (E28A) requires paid-up capital of at least IDR 2,500,000,000, and the figure you gave is below it.",
-    "Visa Investor (E28A) memerlukan modal disetor minimal Rp 2.500.000.000, dan angka yang Anda berikan berada di bawahnya.",
+    "A PT PMA sponsoring an Investor Visa (E28A) must have paid-up capital of at least IDR 2,500,000,000 under the company rules, and the figure you gave is below it.",
+    "PT PMA yang menjamin Visa Investor (E28A) wajib memiliki modal disetor minimal Rp 2.500.000.000 menurut ketentuan perusahaan, dan angka yang Anda berikan berada di bawahnya.",
+  ),
+  E28A_OWN_SHAREHOLDING_BELOW_MIN: text(
+    `The Investor Visa (E28A) requires you to personally own shares worth at least ${idr(E28A_OWN_SHAREHOLDING_THRESHOLD_IDR, "en-US")} in the sponsoring company, and the figure you gave is below it.`,
+    `Visa Investor (E28A) memerlukan kepemilikan saham Anda sendiri di perusahaan penjamin senilai minimal ${idr(E28A_OWN_SHAREHOLDING_THRESHOLD_IDR, "id-ID")}, dan angka yang Anda berikan berada di bawahnya.`,
   ),
   E28A_TOTAL_INVESTMENT_BELOW_MIN: text(
     "The Investor Visa (E28A) requires total investment capital of at least IDR 10,000,000,000, and the figure you gave is below it.",
@@ -1413,6 +1423,17 @@ function declaresIndonesianNationality(facts: OracleFacts): boolean {
     .includes("ID");
 }
 
+/** Global filters that shut every purpose: the calling-visa nationality that
+ * is not assessed, and an active overstay (settle it first, or beyond the 60
+ * days). The full replay of the corpus against the signed pack (38 walks)
+ * returns NO product under any purpose for these walks, so naming the tourist
+ * door there would be an over-match (red team B, finding 3). */
+const GLOBALLY_SHUT_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "CALLING_VISA_NATIONALITY_NOT_ASSESSED",
+  "ACTIVE_OVERSTAY_SETTLE_FIRST",
+  "OVERSTAY_EXCEEDS_60_DAYS",
+]);
+
 /**
  * A dead end names the door that IS open.
  *
@@ -1438,6 +1459,9 @@ export function buildNoPathDoors(
   // this answer at all, so there is no replay-proven alternative to name —
   // the CTA on this dead end is a consultation, never a category switch.
   if (noPathReasonCodes.some((code) => SOURCELESS_NO_PATH_CODES.has(code))) {
+    return doors;
+  }
+  if (noPathReasonCodes.some((code) => GLOBALLY_SHUT_NO_PATH_CODES.has(code))) {
     return doors;
   }
   const category = facts.category;

@@ -18,6 +18,7 @@ import {
 import { WhyWeAsk } from "./WhyWeAsk";
 import { NotSure } from "./NotSure";
 import { AtlasGlyph } from "./OracleScenery";
+import { parseWholeNumberInput } from "../_lib/whole-number-input";
 
 export interface QuestionScreenProps {
   language: Language;
@@ -500,14 +501,12 @@ export function QuestionScreen({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            const value = Number(numberValue);
-            if (
-              !Number.isSafeInteger(value) ||
-              value < question.numberInput!.min ||
-              value > question.numberInput!.max
-            ) {
-              return;
-            }
+            const value = parseWholeNumberInput(
+              numberValue,
+              question.numberInput!.min,
+              question.numberInput!.max,
+            );
+            if (value === null) return;
             onAnswer(String(value));
           }}
           className="oracle-input-form"

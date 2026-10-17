@@ -66,15 +66,8 @@ const applicantFactPaths = {
 
 export const APPLICANT_FACT_COUNT = Object.keys(applicantFactPaths).length;
 
-/**
- * Backend fact paths the deployed frontend deliberately does not send yet
- * (ordered rollout: engine first, mouth question after). E28A own-shareholding
- * Step A: the engine accepts `investment.own_shareholding_idr`; the mouth
- * question is a later step that empties this set again.
- */
-export const ORDERED_ROLLOUT_OPTIONAL_PATHS: ReadonlySet<string> = new Set([
-  "investment.own_shareholding_idr",
-]);
+/** Backend fact paths temporarily omitted during an ordered rollout. */
+export const ORDERED_ROLLOUT_OPTIONAL_PATHS: ReadonlySet<string> = new Set();
 
 export const FRONTEND_EMITTED_FACT_COUNT =
   APPLICANT_FACT_COUNT - ORDERED_ROLLOUT_OPTIONAL_PATHS.size;

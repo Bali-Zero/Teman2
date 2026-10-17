@@ -169,6 +169,10 @@ function ordinaryAnswerFor(
   if (question.kind === "number") {
     if (id === "overstay_days") return "0";
     if (id === "stay_days") return "121";
+    // E28A own shareholding: the rule's own bound (IDR 10,000,000,000), so a
+    // walk that reaches the question qualifies unless it says otherwise; the
+    // two boundary witnesses override it.
+    if (id === "investment_own_shareholding_idr") return "10000000000";
     return "1000000000";
   }
   if (question.kind === "country-codes") return "IT";
@@ -833,6 +837,27 @@ export function enumerateScenarios(): Scenario[] {
       investment_paid_up_capital_idr: "2500000000",
     },
   });
+  // E28A own-shareholding step B (owner ruling 2026-10-15): boundary witnesses
+  // for the applicant's own shareholding, IDR 10,000,000,000 (the value the
+  // seq-31 pack will gate on) and one rupiah under it. Every signed pack up to
+  // seq-30 ignores the fact, so both answer like `full_capital`.
+  for (const [suffix, value] of [
+    ["9999999999", "9999999999"],
+    ["10000000000", "10000000000"],
+  ] as const) {
+    scenarios.push({
+      label: `offshore/invest/pt_pma/own_shareholding_${suffix}`,
+      overrides: {
+        ...base,
+        category: "invest",
+        investment_vehicle: "pt_pma",
+        wants_onshore_conversion: "no",
+        investment_capital_idr: "10000000000",
+        investment_paid_up_capital_idr: "2500000000",
+        investment_own_shareholding_idr: value,
+      },
+    });
+  }
   // `el.e30e-student-support` / `el.e30f-student-support`: both read
   // `sponsor.type`, and the study branch has asked `sponsor_category` all
   // along — the corpus just never answered anything but its first option

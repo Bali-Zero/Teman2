@@ -121,20 +121,18 @@ describe("mapOracleFactsToApplicantFacts — full contract (acceptance test 1)",
   const backendPaths = extractApplicantFactPathsFromModelsPy();
   const expectedPaths = requiredFrontendFactPaths();
 
-  it("sanity: only own shareholding is omitted during ordered rollout", () => {
+  it("sanity: the ordered-rollout exception is empty", () => {
     expect(backendPaths.length).toBe(APPLICANT_FACT_COUNT);
     expect(backendPaths.length).toBe(59);
-    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([
-      "investment.own_shareholding_idr",
-    ]);
+    expect([...ORDERED_ROLLOUT_OPTIONAL_PATHS]).toEqual([]);
     expect(
       backendPaths.filter((factPath) => !expectedPaths.includes(factPath)),
-    ).toEqual(["investment.own_shareholding_idr"]);
-    expect(expectedPaths.length).toBe(58);
+    ).toEqual([]);
+    expect(expectedPaths.length).toBe(59);
     expect(expectedPaths.length).toBe(FRONTEND_EMITTED_FACT_COUNT);
   });
 
-  it("emits the other 58 backend fact-path keys", () => {
+  it("emits all 59 backend fact-path keys", () => {
     const result = mapFacts({});
     const actualKeys = Object.keys(result.facts).sort();
     expect(actualKeys).toEqual([...expectedPaths].sort());
@@ -2321,5 +2319,48 @@ describe("the ten seq-21 qualification facts — asked, and a no is a known fals
     expect(PAIRS.filter(([, factPath]) => !supportReads.has(factPath))).toEqual(
       [],
     );
+  });
+});
+
+describe("own shareholding fact", () => {
+  const PATH = "investment.own_shareholding_idr";
+
+  it('maps "9999999999" to KNOWN 9999999999', () => {
+    expect(
+      mapFacts({ investment_own_shareholding_idr: "9999999999" }).facts[PATH],
+    ).toEqual({ status: "KNOWN", value: 9_999_999_999 });
+  });
+
+  it('maps "10000000000" to KNOWN 10000000000', () => {
+    expect(
+      mapFacts({ investment_own_shareholding_idr: "10000000000" }).facts[PATH],
+    ).toEqual({ status: "KNOWN", value: 10_000_000_000 });
+  });
+
+  it('maps "0" to KNOWN 0 (the lower bound is inclusive)', () => {
+    expect(
+      mapFacts({ investment_own_shareholding_idr: "0" }).facts[PATH],
+    ).toEqual({ status: "KNOWN", value: 0 });
+  });
+
+  it("maps a number above the safe maximum to UNKNOWN NOT_PROVIDED", () => {
+    expect(
+      mapFacts({ investment_own_shareholding_idr: "9007199254740993" }).facts[
+        PATH
+      ],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
+  });
+
+  it("maps an unanswered question to UNKNOWN NOT_ASKED", () => {
+    expect(mapFacts({}).facts[PATH]).toEqual({
+      status: "UNKNOWN",
+      reason: "NOT_ASKED",
+    });
+  });
+
+  it('maps malformed "12a" to UNKNOWN NOT_PROVIDED', () => {
+    expect(
+      mapFacts({ investment_own_shareholding_idr: "12a" }).facts[PATH],
+    ).toEqual({ status: "UNKNOWN", reason: "NOT_PROVIDED" });
   });
 });

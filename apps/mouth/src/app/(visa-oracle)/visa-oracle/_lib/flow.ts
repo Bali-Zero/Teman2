@@ -817,6 +817,7 @@ function ptPmaCommitmentQuestionIds(facts: OracleFacts): readonly string[] {
       ? [
           "investment_capital_idr",
           "investment_paid_up_capital_idr",
+          "investment_own_shareholding_idr",
           "investment_role",
         ]
       : []),
@@ -982,6 +983,11 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "investment_pt_pma",
             "investment_capital_idr",
             "investment_paid_up_capital_idr",
+            // E28A: a "no" on the commitment makes the rule false, so the own
+            // shareholding is asked only after a "yes" (red team B, finding 1).
+            ...(facts.investment_pt_pma === "yes"
+              ? ["investment_own_shareholding_idr"]
+              : []),
             "investment_role",
           ]
         : branch === "property"

@@ -1,0 +1,26 @@
+gear: 2
+gear_reason: >-
+  Size floor (203 files, +1599/-33 of which 180 are regenerated walk-corpus fixtures; 21 hand-written files,
+  +468/-33) and a hot zone: the public Visa Oracle interview (apps/mouth) and the interview walk census that
+  pins what the engine answers.
+mission: >-
+  The Visa Oracle interview asks the applicant's OWN shareholding in the sponsoring company and sends it as
+  investment.own_shareholding_idr (step B of the E28A own-shareholding chain; step A taught the engine the
+  fact, step C re-keys the pack rule).
+objective: >-
+  The PT PMA investor branch asks investment_own_shareholding_idr in rupiah right after the paid-up capital
+  question, with no threshold in the copy and no not-sure option; the fact-mapper sends it as KNOWN whole IDR;
+  the ordered-rollout exception is empty; the reason copy E28A_OWN_SHAREHOLDING_BELOW_MIN exists for the seq-31
+  pack and E28A_PAID_CAPITAL_BELOW_MIN is reworded as a company rule; the walk corpus, census pins and
+  no-path-doors fingerprint are regenerated. No pack rule changes; seq-30 engine outcomes do not change. One user-visible seq-30 change, from the regenerated replay: no-path pages for calling-visa nationality and active/over-60-day overstay no longer suggest the C1 door (the replay shows every door shut there).
+scope:
+  - apps/mouth/src/app/(visa-oracle)/visa-oracle/
+  - apps/mouth/src/lib/api/applicant-fact-paths.ts
+  - apps/mouth/scripts/visa-oracle/generate-walk-corpus.ts
+  - apps/mouth/e2e/visa-oracle-v2.spec.ts
+  - apps/backend-rag/backend/tests/services/visa_engine/
+  - scripts/ci/observe_visa_oracle_own_shareholding_question.py
+  - tests/scripts/test_observe_visa_oracle_own_shareholding_question.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 2

@@ -147,7 +147,7 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     ).toBe(replay.walk_corpus_fingerprint);
   });
 
-  it("covers the 21 dead ends, 3 held walks and 3 missing-input walks the current census reports", () => {
+  it("covers the 30 dead ends, 4 held walks and 4 missing-input walks the current census reports", () => {
     // D19 (2026-09-16): the corpus regeneration this pin depends on surfaced
     // one walk the previous evidence had omitted —
     // `offshore_business_exploring_sponsor_no_no_route.json`, D12_NOT_CONVERTIBLE —
@@ -220,14 +220,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
     // work/no_government_collaboration/sponsor_confirmed_no) and two new
     // NEEDS_INPUT walks (1 -> 3: payer_unsure, sponsor_confirmed_unsure).
     // HUMAN_REVIEW_REQUIRED holds at 3. No pre-existing walk changed state.
+    //
+    // E28A own-shareholding step B red-team cure (2026-10-17): the fixture is
+    // regenerated in full at the active pack's signed_at (seq-30), covering
+    // the T06 visit-bound walks, the PR-13 global-filter walks and the
+    // PR-12 variants earlier regenerations missed: 21 -> 30 dead ends, 3 -> 4
+    // held, 3 -> 4 missing-input. No pre-existing recorded walk changed state.
     const states = replay.walks.map((walk) => walk.state);
     expect(
       states.filter((state) => state === "NO_SUPPORTED_PATH"),
-    ).toHaveLength(21);
+    ).toHaveLength(30);
     expect(
       states.filter((state) => state === "HUMAN_REVIEW_REQUIRED"),
-    ).toHaveLength(3);
-    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(3);
+    ).toHaveLength(4);
+    expect(states.filter((state) => state === "NEEDS_INPUT")).toHaveLength(4);
     expect(replay.pack.file).toBe("rulepack-prod-030.signed.json");
   });
 
@@ -239,7 +245,17 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       if (outcome.state !== "NO_SUPPORTED_PATH") {
         throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
       }
-      expect(outcome.alternatives.length).toBeGreaterThan(0);
+      // Positive abstention where the replay shuts every door (stay beyond
+      // the tourist bound, global filters, Indonesian nationality); a door
+      // must be named wherever the replay proves one open.
+      const anyDoorOpen = Object.values(
+        walk.doors as Record<string, readonly string[]>,
+      ).some((codes) => codes.length > 0);
+      if (anyDoorOpen) {
+        expect(outcome.alternatives.length).toBeGreaterThan(0);
+      } else {
+        expect(outcome.alternatives).toHaveLength(0);
+      }
       expectDoorsProven(outcome.alternatives, walk.doors, walk.label);
     });
   }
@@ -309,6 +325,9 @@ describe("no-path doors — the evidence behind every named alternative", () => 
   // decision outside a wording-only mandate, not a defect this diff owns.
   const WALKS_WITHOUT_A_NAMED_CAUSE_YET = new Set([
     "offshore/work/sponsor_government/trade_office_only/employer_no",
+    // T06 visit-bound walk: the stay-bound sentence is shown next to the
+    // generic catalogue sentence; a bespoke cause is a product decision.
+    "offshore/business/no_local_compensation/stay_181",
   ]);
 
   // The browser found this hole before this loop did (2026-09-13): a code with
@@ -323,7 +342,20 @@ describe("no-path doors — the evidence behind every named alternative", () => 
       if (outcome.state !== "NO_SUPPORTED_PATH") {
         throw new Error(`expected NO_SUPPORTED_PATH, got ${outcome.state}`);
       }
-      expect(outcome.noPathReasons.length).toBe(noPathReasonCodes(walk).length);
+      // The adapter shows exactly the recorded causes, with two deliberate
+      // exceptions: it de-stacks the any-overstay sentence under the 60-day
+      // one, and it adds the visit-stay-bound sentence on a walk past 180 days.
+      const recorded = noPathReasonCodes(walk);
+      const destacked = recorded.includes("OVERSTAY_EXCEEDS_60_DAYS")
+        ? recorded.filter((code) => code !== "ACTIVE_OVERSTAY_SETTLE_FIRST")
+        : recorded;
+      const shown = outcome.noPathReasons.map((item) => item.code);
+      expect(
+        shown.filter((code) => code !== "VISIT_STAY_EXCEEDS_180_DAYS"),
+      ).toEqual(destacked);
+      expect(
+        shown.filter((code) => code === "VISIT_STAY_EXCEEDS_180_DAYS").length,
+      ).toBeLessThanOrEqual(1);
       for (const reason of outcome.noPathReasons) {
         expect(
           reason.message.en,

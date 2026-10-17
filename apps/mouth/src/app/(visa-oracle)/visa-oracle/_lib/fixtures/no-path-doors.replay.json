@@ -5,9 +5,9 @@
     "sequence": 30,
     "version": "2026.10.16"
   },
-  "as_of": "2026-10-16 12:00:00+00:00",
+  "as_of": "2026-10-16 12:24:48.389183+00:00",
   "age_55_birth_date": "1971-09-01",
-  "walk_corpus_fingerprint": "05928bb6491e93334aa3fea7550e818ef637de254dc49d2ddf5a29f8030cddf0",
+  "walk_corpus_fingerprint": "8a3922ec39ea5a26255b0e6f7a6207d7536e5e494d279e8503040e3228f36bbe",
   "walks": [
     {
       "label": "offshore/business",
@@ -24,6 +24,16 @@
       "no_path_reason_codes": ["D12_NOT_CONVERTIBLE"],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/business/no_local_compensation/stay_181",
+      "walk_fixture": "offshore_business_no_local_compensation_stay_181.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "OPERATIONAL_NO_PRODUCT_MATCHES_DECLARED_PURPOSES"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
       "label": "offshore/family/PARENT/spNat=IT/minor/guardian=no",
@@ -48,6 +58,14 @@
       "no_path_reason_codes": [],
       "missing_facts": [],
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/other/medical/stay_181",
+      "walk_fixture": "offshore_other_medical_stay_181.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["BRIDGING_ONSHORE_ONLY"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
       "label": "offshore/other/no_paid_activity",
@@ -169,6 +187,54 @@
       "doors": { "TOURISM": ["C1"], "SECOND_HOME": [], "AGE_55": [] }
     },
     {
+      "label": "offshore/tourism/stay_181",
+      "walk_fixture": "offshore_tourism_stay_181.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["BVK_NATIONALITY_ONLY"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/tourism/stay_181/multiple",
+      "walk_fixture": "offshore_tourism_stay_181_multiple.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["BVK_NATIONALITY_ONLY"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/minor",
+      "walk_fixture": "offshore_work_minor.json",
+      "state": "NEEDS_INPUT",
+      "no_path_reason_codes": [],
+      "missing_facts": ["family.sponsor_confirmed"],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": ["E23", "E33B"] }
+    },
+    {
+      "label": "offshore/work/minor/guardian_no",
+      "walk_fixture": "offshore_work_minor_guardian_no.json",
+      "state": "HUMAN_REVIEW_REQUIRED",
+      "no_path_reason_codes": [],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": ["E23", "E33B"] }
+    },
+    {
+      "label": "offshore/work/nationality_calling_visa",
+      "walk_fixture": "offshore_work_nationality_calling_visa.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["CALLING_VISA_NATIONALITY_NOT_ASSESSED"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "offshore/work/nationality_id",
+      "walk_fixture": "offshore_work_nationality_id.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["APPLICANT_IS_INDONESIAN_CITIZEN"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
       "label": "offshore/work/no_government_collaboration/payer_unsure",
       "walk_fixture": "offshore_work_no_government_collaboration_payer_unsure.json",
       "state": "NEEDS_INPUT",
@@ -257,6 +323,36 @@
         "SECOND_HOME": ["E33"],
         "AGE_55": ["E33E", "E33F"]
       }
+    },
+    {
+      "label": "onshore/work/overstay_30",
+      "walk_fixture": "onshore_work_overstay_30.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": ["ACTIVE_OVERSTAY_SETTLE_FIRST"],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "onshore/work/overstay_61",
+      "walk_fixture": "onshore_work_overstay_61.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "ACTIVE_OVERSTAY_SETTLE_FIRST",
+        "OVERSTAY_EXCEEDS_60_DAYS"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
+    },
+    {
+      "label": "onshore/work/sponsor_government/trade_office_only/overstay_61",
+      "walk_fixture": "onshore_work_sponsor_government_trade_office_only_overstay_61.json",
+      "state": "NO_SUPPORTED_PATH",
+      "no_path_reason_codes": [
+        "ACTIVE_OVERSTAY_SETTLE_FIRST",
+        "OVERSTAY_EXCEEDS_60_DAYS"
+      ],
+      "missing_facts": [],
+      "doors": { "TOURISM": [], "SECOND_HOME": [], "AGE_55": [] }
     }
   ],
   "counterexamples": [
