@@ -1,0 +1,49 @@
+task_id: kbli-nav-design-h1d
+mission: kbli-nav-design-loop (Track A, build, lot H1d — the collapsed verdict sheet's edges read cleanly, the selected row stays whole in the strip; successor of #8550)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Visible app change (the collapsed sheet is exactly its last whole row plus a 12 pt margin; the list masthead and the narrow filter bar scroll
+  with the rows; expanding never shrinks the sheet) with census checks of their own, shipped under the fresh-gate lane. Bound by the #8550 gate
+  findings F3, F4, F7, F8 and its binding 11 (one declared deviation, below). Content frozen in the expanded sheet and in every title; the collapsed
+  sheet no longer draws the action row, the Bali block and the risk row (ruling E1: they stay one drag away in the expanded sheet). The guards
+  F1, F2, F10 and the step-9 window host are H1g and are NOT claimed.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: in the collapsed sheet no row is ever sliced at its edge (height = the largest whole cumulative fit {band, band+plate,
+  band+plate+official} + 12 pt, no slack), and the selected row of the list is whole in the strip above the sheet, for every one of the 1,559 codes,
+  en and id, at 1040x700 with the sidebar at 300 pt, 1040x700 and 1180x800, in the real NSWindow harness.
+constraints:
+  - No fact, verdict, cap, basis or reason changes; the title is never truncated (44 -> 34 -> 28, no lineLimit, no ellipsis).
+  - Expanding the sheet never makes it shorter than the collapsed one (E6).
+  - The census windows are 1040x700 sidebar 300, 1040x700 sidebar 232, 1180x800 sidebar 232 (E7); the app's minimum window is 1040x700.
+  - Step 9 (title whole) runs in the bare host as the NAMED CONTROL: the window host reads 0 words through PDFKit. Carried to H1g, not claimed here.
+acceptance:
+  - text: O1. No drawn row of the collapsed sheet crosses sheet bottom - 12 pt and the sheet is within 1 pt of (last drawn row + 12 pt).
+    probe: "Pro: fold_census over the real RootView, 1,559 codes x en/id x 3 windows, collapsed and open = 18,708 rows, 0 FAIL (census H, head 98238b758b; the app diff to this head is 2 dark-only lines in CensusFrame.swift)"
+  - text: O2. The selected row is whole inside the scroll view above the sheet, at every code and window.
+    probe: "Pro: the same census; rows with the row.selected mark 1,559 of 1,559 per cell; least clearance 6.5 pt at 1040x700 sidebar 300"
+  - text: E6. The expanded sheet is never shorter than the collapsed one.
+    probe: "Pro: the --open cells of the census, 0 FAIL; head_mutants peek300 FAILs by 'expanding shrank it'"
+  - text: E9. A sheet above the cap and a wrong height rule FAIL under their own cause.
+    probe: "Pro: fold_census.py --self-test; head_mutants space10, noplate and slack470 FAIL by 'plate starts 10.0 pt under the row above', 'the sheet's bottom edge ... slack' and '32.0 pt under the last drawn row'"
+  - text: The scroll view of a changed list is a new scroll view (the last long sector to the first short one built no row).
+    probe: "Pro: head_mutants noid FAILs on the tail sweep 96900,97000,98100,98200,99000 (16 rows: 97000, 98100, 98200, 99000 x 4 configs, 'the selected row is not drawn'); the control passes it (30 of 30 rows)"
+  - text: The night root render is night (N1) in the window host.
+    probe: "Pro: png_census 0 FAIL, 1 VACUOUS with the N1 guard armed on root-collapsed night; without the dark window appearance the same set FAILs 3 (19.6 to 20.1 percent day chrome)"
+  - text: Content SHALL stay frozen.
+    probe: "Pro: word census vs origin/main on the open sheets, 0 lost 0 gained; content_check steps 1, 3, 5-8 ok, contrast TOTAL=196 FAIL=0"
+deferred:
+  - id: step-9-window-host
+    to: H1g
+    text: Binding 11 asks step 9 in the committed window host; PDFKit extracts 0 words from the window host's PDF. Step 9 runs in the bare host as the named control (12,472 rows, 0 FAIL).
+  - id: chrome-census-blind
+    to: H1g
+    text: The registry-chrome text census is BLIND since the masthead and the narrow filter bar sit inside the ScrollView (1 of 1 dump INCOMPLETE); en_purity step 4 fails on it. Needs a flat dump mode.
+  - id: nosettle-mutant
+    to: H1g
+    text: The mutant nosettle (the settle re-fire removed) is NOT caught by any census scenario; a window-resize scenario is missing.
+  - id: gate-F1-F2-F10
+    to: H1g
+    text: measure_contrast CHIP_SITES line-pinned (PARITY=1), step-9 holes, no committed guard for the 44/34/28 rule.
