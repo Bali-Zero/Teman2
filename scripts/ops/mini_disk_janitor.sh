@@ -23,8 +23,12 @@
 #                 Race: inside each exec script, after the idle re-check, every target is first renamed
 #                 (atomic mv, same filesystem) to a `.janitor-trash-*` sibling and only then deleted, so a
 #                 job that starts mid-run finds an empty cache that pip/uv/setup actions recreate. The
-#                 residual window is the rename instant, not the delete. Leftover `.janitor-trash-*` from
-#                 an interrupted run are swept at the start of every script (maxdepth 1, exact prefix).
+#                 residual window is the rename instant, not the delete. Order inside each exec script: idle
+#                 re-check -> renames -> delete this run's trash -> sweep of earlier runs' leftovers.
+#                 NAMESPACE CONTRACT (bounds the sweep, which has no per-entry provenance check):
+#                 top-level entries named `.janitor-trash-*` directly under /home/runner/.cache and
+#                 /tmp inside the runner container are RESERVED for this janitor and are deleted on
+#                 sight (maxdepth 1, exact prefix); nothing else in the fleet writes that prefix.
 #   docker        `docker image prune -f` and `docker builder prune -f` (dangling images, build cache).
 #                 Never -a, never volume / container / system prune.
 #   vm_trim       `colima ssh -- sudo fstrim -av`: hands the freed guest blocks back to the host.
@@ -150,14 +154,17 @@ SWEEP='find /home/runner/.cache /tmp -mindepth 1 -maxdepth 1 -name ".janitor-tra
 IDLE_CHECK='o=$(ps -eo args 2>/dev/null) || exit 74
 [ -n "$o" ] || exit 74
 printf "%s\n" "$o" | grep -q "[R]unner\.Worker" && exit 75'
+# Order inside the exec script: idle re-check -> renames -> delete THIS run's trash -> sweep leftovers
+# of earlier runs, so the renames sit as close to the idle re-check as possible. The /tmp entries are
+# handled by find itself (-exec ... {} +): every argument is a path find produced, never a re-split line,
+# so a file name with an embedded newline cannot make the loop touch something outside the declared set.
+ENTRY_MV='for e; do mv "$e" "/tmp/.janitor-trash-e-$p-${e##*/}" 2>/dev/null; done'
 CLEAN_SCRIPT="$IDLE_CHECK"'
-'"$SWEEP"'
 mv /home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-$$ 2>/dev/null
 mv /home/runner/.cache/uv /home/runner/.cache/.janitor-trash-uv-$$ 2>/dev/null
 mv /tmp/pytest-of-runner /tmp/.janitor-trash-pytest-$$ 2>/dev/null
-find /tmp -mindepth 1 -maxdepth 1 \( -name "pip-unpack-*" -o \( -name "tmp*" -mtime +0 \) \) 2>/dev/null | while IFS= read -r e; do
-  mv "$e" "/tmp/.janitor-trash-e-$$-${e##*/}" 2>/dev/null
-done
+find /tmp -mindepth 1 -maxdepth 1 \( -name "pip-unpack-*" -o \( -name "tmp*" -mtime +0 \) \) -exec sh -c '"'"'p=$1; shift; '"$ENTRY_MV"''"'"' sh "$$" {} + 2>/dev/null
+find /home/runner/.cache /tmp -mindepth 1 -maxdepth 1 \( -name ".janitor-trash-*-$$" -o -name ".janitor-trash-e-$$-*" \) -exec rm -rf {} + 2>/dev/null
 '"$SWEEP"'
 exit 0'
 step_begin

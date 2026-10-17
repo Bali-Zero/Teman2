@@ -101,6 +101,11 @@ build; echo 10000000 > "$FX/host_kb"; BEFORE=$(tree); runp
 receipt | grep -q '"mode":"dry-run"' && receipt | grep -q '"level":"critical"' && ok "dry-run still journals and still computes the level" || no "dry-run receipt"
 tail -1 "$ROOT/out.txt" | grep -q '^level=critical$' && ok "last stdout line is level=" || no "level line"
 
+echo "== T2c allowlisted top-level entry survives when it becomes empty (-mindepth 1) =="
+build; C="$H/Library/Caches"; mkdir -p "$C/Homebrew/deep"; rm -rf "$C/Homebrew"; mkdir -p "$C/Homebrew/sub"; : > "$C/Homebrew/sub/o.tgz"; touch -t $OLD "$C/Homebrew/sub/o.tgz"
+runp --apply
+{ [ -d "$C/Homebrew" ] && [ ! -e "$C/Homebrew/sub" ]; } && ok "Homebrew/ itself survives when emptied; its subdir is pruned" || no "top-level entry removed or not pruned"
+
 echo "== T2 apply removes old cache files only =="
 build; runp --apply; C="$H/Library/Caches"
 [ "$RC" -eq 0 ] && ok "apply exits 0" || no "apply rc=$RC err=$(head -3 "$ROOT/err.txt")"
@@ -163,8 +168,36 @@ for t in "/home/runner/.cache/pip /home/runner/.cache/.janitor-trash-pip-" "/hom
   printf '%s' "$S" | grep -qF "mv $t" && ok "atomic mv to trash: ${t%% *}" || no "no mv for ${t%% *}"
 done
 { ! printf '%s\n' "$S" | grep 'rm -rf' | grep -qv 'janitor-trash-'; } && ok "every rm -rf names only .janitor-trash-* (no direct delete of a target)" || no "direct rm -rf of a target"
-{ printf '%s' "$S" | grep -n 'rm -rf' | head -1 | cut -d: -f1 | { read a; [ "$a" -lt "$(printf '%s' "$S" | grep -n 'mv /home/runner/.cache/pip' | cut -d: -f1)" ]; }; } && ok "leftover-trash sweep runs before the new renames" || no "sweep order"
+{ ia=$(printf '%s' "$S" | grep -n 'ps -eo args' | head -1 | cut -d: -f1); rn=$(printf '%s' "$S" | grep -n 'mv /home/runner/.cache/pip' | cut -d: -f1)
+  dl=$(printf '%s' "$S" | grep -n 'rm -rf' | head -1 | cut -d: -f1); sw=$(printf '%s' "$S" | grep -n 'rm -rf' | tail -1 | cut -d: -f1)
+  [ "$ia" -lt "$rn" ] && [ "$rn" -lt "$dl" ] && [ "$dl" -lt "$sw" ]; } && ok "order: idle re-check, renames, this run's trash, leftover sweep last" || no "exec script order"
+printf '%s' "$S" | grep 'rm -rf' | head -1 | grep -qF -- '-name ".janitor-trash-*-$$"' && ok "this run's trash is deleted by its own pid suffix" || no "own-trash delete missing"
 printf '%s' "$S" | grep -E 'rm -rf' | grep -qF -- '-mindepth 1 -maxdepth 1 -name ".janitor-trash-*"' && ok "sweep is bounded (mindepth 1, maxdepth 1, exact prefix)" || no "sweep unbounded"
+
+echo "== T4c exec script run against a scratch tree (newline-safe /tmp handling) =="
+build; runp --apply; S="$(clean_script)"
+SC="$ROOT/ctr"; mkdir -p "$SC/tmp" "$SC/home/runner/.cache/pip" "$SC/home/runner/.cache/uv" "$SC/tmp/pytest-of-runner" "$ROOT/ps-idle"
+printf '#!/bin/sh\necho "sleep 5"\n' > "$ROOT/ps-idle/ps"; chmod +x "$ROOT/ps-idle/ps"
+mkdir "$SC/tmp/pip-unpack-1" "$SC/tmp/tmpold" "$SC/tmp/tmpnew" "$SC/tmp/keep-me" "$SC/tmp/victim"
+touch "$SC/home/runner/.cache/pip/f" "$SC/home/runner/.cache/other"
+mkdir "$SC/tmp/.janitor-trash-leftover" "$SC/home/runner/.cache/.janitor-trash-old"
+touch -t $OLD "$SC/tmp/tmpold"
+NLN="pip-unpack-nl
+victim"                              # one file name that spans two lines; line 2 is another entry's name
+: > "$SC/tmp/$NLN"
+NLO="tmpold-nl
+victim"                 # OLD tmp* name spanning two lines (second line = the victim entry)
+: > "$SC/tmp/$NLO"; touch -t $OLD "$SC/tmp/$NLO"
+printf '%s' "$S" | sed -e 's#/home/runner#@H@#g' -e 's#/tmp#@T@#g' -e "s#@H@#$SC/home/runner#g" -e "s#@T@#$SC/tmp#g" > "$ROOT/exec-sb.sh"
+( cd "$SC/tmp" && PATH="$ROOT/ps-idle:$SYS_PATH" sh "$ROOT/exec-sb.sh" ); r=$?
+[ "$r" -eq 0 ] && ok "exec script runs clean against the scratch tree" || no "exec script rc=$r"
+{ [ ! -e "$SC/tmp/pip-unpack-1" ] && [ ! -e "$SC/tmp/tmpold" ] && [ ! -e "$SC/home/runner/.cache/pip" ] && [ ! -e "$SC/home/runner/.cache/uv" ] && [ ! -e "$SC/tmp/pytest-of-runner" ]; } && ok "declared set removed" || no "declared set survived"
+{ [ -d "$SC/tmp/tmpnew" ] && [ -d "$SC/tmp/keep-me" ] && [ -e "$SC/home/runner/.cache/other" ]; } && ok "fresh tmp*, other /tmp entries and other cache files survive" || no "undeclared entry removed"
+[ -d "$SC/tmp/victim" ] && ok "entry named like line 2 of a multi-line name is neither moved nor deleted" || no "newline name made the script delete an entry outside the set"
+[ ! -e "$SC/tmp/$NLO" ] && ok "old multi-line tmp* name removed whole; victim still survives" || no "old multi-line tmp* name left behind"
+[ ! -e "$SC/tmp/$NLN" ] && ok "the multi-line name itself is in the declared set and removed whole" || no "multi-line name left behind"
+{ [ ! -e "$SC/tmp/.janitor-trash-leftover" ] && [ ! -e "$SC/home/runner/.cache/.janitor-trash-old" ] && [ -z "$(find "$SC/tmp" -mindepth 1 -maxdepth 1 -name ".janitor-trash-*")" ]; } && ok "leftover and own trash all swept" || no "trash left behind"
+build; runp --apply; S="$(clean_script)"; printf '%s' "$S" | grep -qE 'read -r|while ' && no "exec script re-splits lines (read/while loop)" || ok "no line loop in the exec script"
 
 echo "== T5 docker / colima / npm / uv argv =="
 build; runp --apply
