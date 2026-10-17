@@ -47,7 +47,7 @@ TEMPLATE_SCAN_EXEMPTIONS: tuple[str, ...] = ("+62 821 3454 721", "80361")
 
 ExpectedRow = tuple[str, tuple[str, ...], int, tuple[str, ...], str]
 
-# Committed oracle table binding every placeholder (all 51) to its printed row cells
+# Committed oracle table binding every placeholder (all 50) to its printed row cells
 # (label_cell, qualifier_cells, price_col_index, canonical_path, canonical_row_name).
 EXPECTED_ROWS: dict[str, ExpectedRow] = {
     "PRICE_VOA": (
@@ -386,13 +386,6 @@ EXPECTED_ROWS: dict[str, ExpectedRow] = {
         ("other_process", "Mutation Address"),
         "Mutation Address",
     ),
-    "PRICE_SIM": (
-        "Driving licence",
-        (),
-        1,
-        ("other_process", "Driving License"),
-        "Driving License",
-    ),
     "PRICE_EPO": (
         "Exit permit (EPO) — filed in Indonesia, surrendering your stay permit",
         (),
@@ -529,7 +522,7 @@ def _assert_parity(
     filled_html: str, raw_template: str, pricing: dict
 ) -> list[tuple[str, str]]:
     """Verify every printed price cell and its row label/qualifiers match EXPECTED_ROWS."""
-    assert len(EXPECTED_ROWS) == 51
+    assert len(EXPECTED_ROWS) == 50
     template_placeholders = set(GEN.PLACEHOLDER_RE.findall(raw_template))
     assert template_placeholders == set(EXPECTED_ROWS.keys()) == set(GEN.PRICE_MAP.keys())
 

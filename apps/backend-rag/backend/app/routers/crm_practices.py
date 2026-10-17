@@ -483,7 +483,8 @@ async def create_practice(
         async with db_pool.acquire() as conn:
             # Get practice_type_id from code
             practice_type_row = await conn.fetchrow(
-                "SELECT id, base_price, category, name FROM practice_types WHERE code = $1",
+                "SELECT id, base_price, category, name FROM practice_types"
+                " WHERE code = $1 AND is_active = true",
                 practice_type_code,
             )
 
@@ -498,9 +499,11 @@ async def create_practice(
                             "(migration 311 not applied) — cannot open an inquiry without a service"
                         ),
                     )
+                # A retired row (is_active = false, e.g. migration 327) is not
+                # found either: the catalogue route hides it, so must creation.
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Practice type '{practice_type_code}' not found",
+                    detail=f"Practice type '{practice_type_code}' not found or retired",
                 )
 
             # If family_member_id is set, verify it belongs to the same client.

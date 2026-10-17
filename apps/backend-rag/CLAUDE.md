@@ -184,16 +184,18 @@ KG `HAS_FEE` relations (~1,500) contain government PNBP fees and legal regulatio
 - Tool: `PricingTool` (Tool #2)
 - Loaded by: `PricingService._load_prices()`
 
-The 2026 schema has 9 categories vs the legacy 2025 schema's 8:
+The 2026 schema has 8 live categories (plus `compliance_retainers`) vs the legacy 2025 schema's 8:
 `single_entry_visas` (now includes ``C1 Tourism Extension``),
 `multiple_entry_visas`, `kitas_permits`, `kitap_permits`,
 `tax_accounting` (NEW — has one extra nesting level for the 4 tier
 sub-blocks ``monthly_tax_basic`` / ``monthly_tax_bundled`` /
 ``annual_basic_packages`` / ``annual_standalone``), `company_services`,
 `consultant_services` (NEW — Close PMA, NPWPD, BPJS, NPWP Personal,
-Update Data, EFIN), `other_process`, `urgent_processing` (was
-``urgent_services`` in 2025). The legacy `visa_extensions` category was
-dropped.
+Update Data, EFIN), `other_process`. The legacy `visa_extensions` category was
+dropped, and `urgent_processing` (was ``urgent_services`` in 2025) was
+retired on 2026-10-17 together with the Driving License and Created Molina
+Express rows (owner ruling; migration 327 deactivates their
+`practice_types` rows).
 
 Each entry now exposes `name` / `description_en` / `icon_id` /
 `tier_range` (a `[low, high]` pair when there is no single `price`)

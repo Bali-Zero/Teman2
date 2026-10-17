@@ -53,7 +53,6 @@ const VISA_PRICING_CATEGORIES = [
   "kitas_permits",
   "kitap_permits",
   "other_process",
-  "urgent_processing",
 ] as const;
 
 const POPULAR_VISA_PRICING_KEYS = new Set([

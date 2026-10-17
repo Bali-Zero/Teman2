@@ -141,10 +141,11 @@ class TestPricingJsonConsistency:
         )
 
     def test_all_categories_present(self, real_pricing_service):
-        # 2026 schema: 9 categories. ``visa_extensions`` was dropped
-        # (C1 Tourism Extension moved into single_entry_visas);
-        # ``urgent_services`` renamed to ``urgent_processing``;
-        # ``tax_accounting`` and ``consultant_services`` are NEW.
+        # 2026 schema. ``visa_extensions`` was dropped (C1 Tourism
+        # Extension moved into single_entry_visas); ``tax_accounting`` and
+        # ``consultant_services`` are NEW; ``urgent_processing`` (ex
+        # ``urgent_services``) was retired by the owner on 2026-10-17 —
+        # the Urgent 1/2/3 Hari surcharges are no longer sold.
         expected_categories = [
             "single_entry_visas",
             "multiple_entry_visas",
@@ -154,7 +155,6 @@ class TestPricingJsonConsistency:
             "company_services",
             "consultant_services",
             "other_process",
-            "urgent_processing",
         ]
         services = real_pricing_service.prices.get("services", {})
         for cat in expected_categories:
