@@ -992,6 +992,55 @@
    "expect_no_hits": true
   },
   {
+   "query": "license to",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "LICENCE, TO!!!",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "selling to",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "license of",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "license and",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "license a",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "license prices",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
    "query": "bar license",
    "must_find": [
     "@alcohol"

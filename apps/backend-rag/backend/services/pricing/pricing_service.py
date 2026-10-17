@@ -102,8 +102,8 @@ def _is_noise(token: str) -> bool:
 
 
 # Generic trade words (owner ruling 2026-10-17: "ma è generico"): a bare licence/sale word
-# names no service. They are noise in a mixed query; in an all-noise query they are also
-# dropped from the whole-query fallback, so "license" / "selling" alone match no row.
+# names no service. They are noise in a mixed query; an all-noise query that holds one has
+# no whole-query fallback at all, so "license" / "license to" / "selling" match no row.
 _GENERIC_TRADE_WORDS = frozenset({"license", "licence", "licensing", "sell"})
 _GENERIC_TRADE_FORMS = _GENERIC_TRADE_WORDS | {
     w + suffix for w in _GENERIC_TRADE_WORDS if len(w) >= 4 for suffix in _LIGHT_SUFFIXES
@@ -131,8 +131,8 @@ def _query_terms(query: str) -> tuple[list[str], list[str]]:
     ("re-entry", "pt-pma") stays ONE term whose parts are joined by a space; it matches
     only as a contiguous phrase of its parts. A hyphenated word that starts with a
     negator ("non-alcoholic") is dropped whole. With nothing left, the raw words are
-    used (whole-query phrase match), minus the generic trade words ("license", "selling"
-    ...): a query of only those matches no row.
+    used (whole-query phrase match), unless one of them is a generic trade word ("license",
+    "selling" ...): such a query is generic and matches no row, whatever other noise it holds.
     """
     flat: list[str] = []
     items: list[str] = []
@@ -158,7 +158,9 @@ def _query_terms(query: str) -> tuple[list[str], list[str]]:
             terms.append(item)
     if terms:
         return tokens, terms
-    return [w for w in flat if w not in _GENERIC_TRADE_FORMS], []
+    if any(w in _GENERIC_TRADE_FORMS for w in flat):
+        return [], []
+    return flat, []
 
 
 def _words(text: Any) -> list[str]:

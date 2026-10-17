@@ -67,9 +67,9 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
    same rule as row matching. `permit` and `izin` are NOT noise. The implementation measures before adding each one (rule 5) and does not
    add a word that is the only token of a legitimate single-word query in the corpus.
 4. The one-character-token drop and the "all tokens were noise → use the raw query" fallback stay;
-   the fallback uses the same matcher, after dropping the generic trade words of rule 3 (`license`,
-   `licence`, `licensing`, `sell` and their inflections), so a query made only of those words and
-   other noise words matches no row. The legacy LIST-format branch uses the same matcher.
+   the fallback uses the same matcher, except that a query holding one of the generic trade words of
+   rule 3 (`license`, `licence`, `licensing`, `sell` and their inflections) has no fallback at all,
+   so "license", "license to", "selling and" match no row whatever other noise they hold. The legacy LIST-format branch uses the same matcher.
    Result shape, ordering and the internal-row exclusion are unchanged.
    **Aliases.** A tiny curated map (`_TOKEN_ALIASES`) expands an acronym a client types into extra
    target words the old substring match found by accident: itas → kitas, itap → kitap, tka →
@@ -116,7 +116,7 @@ Accepted and documented, not fixed (council 2026-10-17, v4):
   "Chrome extensions").
 - A query whose every word is noise falls back to the raw-query path, so "prices" ALONE still
   returns the rows that carry that word. The generic trade words of rule 3 ("license", "licenses",
-  "selling" ...) are dropped from that fallback (owner ruling 2026-10-17), so they alone match no row.
+  "selling" ...) remove that fallback (owner ruling 2026-10-17), so a query holding one matches no row.
 - "toko minuman" / "jualan minuman ringan" no longer return the alcohol rows: "minuman" alone is
   generic, by design.
 - Typos such as "seha" do not match.

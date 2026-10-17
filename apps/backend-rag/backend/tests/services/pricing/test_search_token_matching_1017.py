@@ -485,6 +485,13 @@ _GENERIC_ONLY = [
     "license license",
     "selling licenses",
     "berapa harga license",
+    "license to",
+    "LICENCE, TO!!!",
+    "selling to",
+    "license of",
+    "license and",
+    "license a",
+    "license prices",
 ]
 
 
