@@ -1,0 +1,44 @@
+task_id: kbli-nav-design-p3h3-census
+mission: kbli-nav-design-loop (Track A, build, lot PR 3-h-3 — the census half of the harness lot, split from 3-h-2')
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Above the floor evidence_pack_lint computes (1): Tools only (en_purity.py, its two word tables, encensus's chat
+  anchors), no Sources file, renders untouched, ~220 net lines — but it is the instrument the View PRs' GATED
+  entries ride on, and the lead commissions a fresh gate for every PR of the lot. Code and data sit in separate
+  commits (lead ruling 2026-10-11 05:35Z).
+l_level: L1
+gate_class: opus
+objective: >-
+  The census half of the harness lot, stacked on 3-h-2' (#8250), so that the View PRs' GATED entries (sheet-ledger,
+  detail-card, chat, chat-rail) can ride (lead rulings 2026-10-11). (1) R21: the ID self-test subtracts THIS record's
+  content in either language — its fields, their English, its Bali reason's two sides, its curated overlay, the
+  Indonesian of its own related-code notes, its English title, the titles of the codes its own fields name —
+  symmetric to Q16; another record's content is not subtracted, and the lexicon stays for the Views' UI words. (2)
+  R22: the head or tail of a dump line, at a word boundary and 12+ letters, that is a piece of the record's own
+  English (the English of its fields as held and as a View strips their markup, the fields the data already writes
+  in English, its title as its English, its status word humanised, the English titles of the codes its fields name)
+  counts no unknown word; its lexicon words are judged as before. A shorter line (4+ letters) counts as one when it
+  is a whole string of that English, the last line of one, or wraps from or into a neighbouring line that makes a
+  piece. A code the record does not name stays flagged. (3) R23: «jo.» between two instruments cited is a legal citation, in both modes. (4) R24: the chat
+  band's anchors are its own strings (title, last suggestion, reset); the code it is asked about is the rail's. (5)
+  R25: the never-drawn check reads no `.censusFrame` argument as a sink; the drawn text beside it still is one. (6)
+  #8247 gate binding (a): a never-English set (tempe pepes sungging keting pilis lais gambas peda sado debus ula
+  jami) that english_word reads and the lexicon does not hold, and an English-shaped inflection (-es only after s x
+  z ch sh o; a doubled consonant only after a vowel; a one-syllable CVC stem never takes -ed/-ing undoubled). The
+  re-read of the 1,993 remaining ID-corpus words read as English is a reader's other than the builder's. (7) The UI
+  words of the Views already on main (lead ruling: by origin): their Indonesian words in the lexicon (group ui), their
+  English words in en_ui_words; words a View PR introduces travel with that PR (#8247 gate binding (c)). (8) WORD_RE
+  and GLUE_RE read × and ÷ as no letter; a web address, AHU and a PP 28 sub-classification code are allowlisted;
+  cv, indonesia and air join PROPER.
+constraints:
+  - No Sources file changes; GATED is unchanged (each View PR joins it, Q18).
+  - Every new rule has its guilt and its innocence rows, including an Indonesian UI string drawn in English outside any record span.
+  - The lexicon holds UI words only where record content is the record spans' (R21).
+acceptance:
+  - text: The analyser self-test SHALL judge every R21–R23, R25 and never-English row right.
+    probe: "M5: en_purity selftest() and static_selftest() return no failure; Pro: corpus self-test lines R21 6/6, never-English 12/12"
+  - text: The full census at the head SHALL keep the 7 gated surfaces at 0 with every self-test green.
+    probe: "Pro: EN_CENSUS=full content_check.sh, steps 1–5 ok"
+  - text: With main's sheet-ledger, detail-card and chat gated (a probe), the ID self-test SHALL miss no UI word and the EN census SHALL hold no unknown UI word.
+    probe: "Pro: the probe GATED on main + 3-h-3, kept dumps, per-view counts"

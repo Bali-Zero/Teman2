@@ -30,3 +30,23 @@ yes	registry sheet: "blocked: yes"
 you	search peak: "YOU CAN DO THIS"
 cap	registry sheet: "foreign cap: 100%" (EN-1b)
 regulator	registry sheet: Bali status "Closed (sector regulator)"
+# 3-h-3 (2026-10-11): the English words of UI strings already on main that the ledger, the card and the chat draw.
+renumbered	ledger: the 2020→2025 mapping status "RENUMBERED"
+renumber	ledger: "RENUMBER 2020 01122 → 2025 01138"
+conf	ledger: the Bali confidence, "high conf."
+positive	ledger: "Positive Investment List"
+foreigners	ledger: "Can foreigners own this?"
+grounded	chat: chat.lead, "Answers grounded on Bali Zero sources"
+chat	chat: chat.reset, "New chat" (and "Chat baru" in Indonesian)
+scopes	ledger: "2 SCOPES × 4 SCALES"
+cert	ledger: "NIB + Standard Cert"
+dependent	ledger: "scope-dependent"
+version	card: KBLIVerdict, "the private-sector version"
+instead	card: KBLIVerdict, "register 59112 … instead"
+timeline	ledger: "Timeline:"
+intel	card: "Gold-Tier Intel"
+detail	ledger: "tap a cell for detail" (and "ketuk sel untuk detail")
+steps	ledger: "The national steps for this code"
+path	ledger: "NOT a path for a PT PMA in Bali"
+let	ledger: KBLIRegistryView's opener, "Let me walk you through it." (drawn in both modes)
+me	ledger: KBLIRegistryView's opener, "Let me walk you through it." (drawn in both modes)

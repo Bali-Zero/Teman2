@@ -786,3 +786,58 @@ sumpit	domain	archerfish; chopsticks
 tawes	domain	java barb (fish)
 tera	domain	calibration ("tera" of measuring instruments)
 toman	domain	giant snakehead (fish)
+# 3-h-3 (2026-10-11): the Indonesian words of UI strings already on main (lead ruling: by origin) that the Indonesian
+# dumps of the ledger, the card and the chat draw — Localization.swift, LabelBook, the Views' literals and the sector
+# names — measured with those three surfaces gated on main (a probe). Record content is the record spans' (R21).
+ahli	ui	expert: "Ahli KBLI & moratorium Bali" (chat.lead)
+alihkan	ui	redirect: "alihkan ke kode 59112"
+apa	function	what: "APA ARTINYA", "Apa yang saya butuhkan?"
+artinya	ui	its meaning: "APA ARTINYA" (what it means)
+aturan	ui	rule: "Kutipan aturan (EN)"
+baca	ui	read: "BACA PANDUAN LENGKAP"
+bantu	ui	help: "Mari saya bantu menelusurinya"
+beberapa	function	some, several: "beberapa scope berisiko"
+berisiko	ui	carrying risk: "scope berisiko lebih tinggi"
+berubah	ui	changed: "YANG BERUBAH DI 2025"
+bisakah	function	can … ?: "Bisakah asing memiliki ini?"
+butuhkan	ui	need: "Apa yang saya butuhkan?"
+cipta	ui	creation: "UU 6/2023 (Cipta Kerja)", Job Creation
+daftarkan	ui	register (imperative): "daftarkan 59112"
+deskripsi	ui	description: "DESKRIPSI"
+diizinkan	ui	permitted: "yang diizinkan"
+dinomori	ui	numbered: "DINOMORI ULANG" (renumbered)
+gantinya	ui	instead: "sebagai gantinya"
+hari	ui	day: "7 Hari Kerja" (working days)
+ilmiah	ui	scientific: sector M "Profesional, Ilmiah & Teknis"
+jalur	ui	path, route: "BUKAN jalur untuk PT PMA"
+ketuk	ui	tap: "ketuk sel untuk detail"
+kewenangan	authority	authority: "Kewenangan: Bupati / Walikota"
+langkah	ui	step: "Langkah-langkah nasional"
+mari	function	let us: "Mari saya bantu"
+memilih	ui	choosing: "dengan memilih scope"
+menelusurinya	ui	to look into it: "Mari saya bantu menelusurinya"
+menjawab	ui	answers: "Menjawab berdasarkan sumber Bali Zero"
+panduan	ui	guide: "BACA PANDUAN LENGKAP"
+pasca	ui	post-: "KEWAJIBAN PASCA-IZIN"
+pelengkap	ui	complementary: "KODE PELENGKAP"
+penomoran	ui	numbering: "PENOMORAN 2020 → 2025"
+positif	ui	positive: "Daftar Positif Investasi"
+referensi	ui	references: "REFERENSI"
+relevan	ui	relevant: "tidak relevan"
+saya	function	I, me: "Apa yang saya butuhkan?"
+sel	ui	cell: "ketuk sel untuk detail"
+siapa	function	who: "UNTUK SIAPA"
+statutori	ui	statutory: "Statutori — lihat tabel perizinan"
+subkl	ui	"subklasifikasi" (subclassification), abbreviated: "Subkl. IG002"
+tabel	ui	table: "lihat tabel perizinan"
+tampilkan	ui	show: "Tampilkan semua 14"
+terdaftar	ui	listed: "persyaratan terdaftar"
+tertarik	ui	interested: "Tertarik dengan …?"
+tetapi	function	but: "tetapi tergantung scope"
+tingkat	ui	level: "TINGKAT RISIKO"
+versi	ui	version: "versi swasta"
+apakah	function	whether, is … ?: "Apakah kode ini diblokir moratorium?" (chat.suggest3)
+berapa	function	how much: "Berapa modal minimum yang dibutuhkan?" (chat.suggest2)
+dibutuhkan	ui	needed: "modal minimum yang dibutuhkan?"
+jangka	ui	term, span: "Jangka waktu" (time limit), "Risiko · Jangka waktu"
+prosedur	ui	procedure: "PROSEDUR NASIONAL (REFERENSI)" (KBLIRegistryView)

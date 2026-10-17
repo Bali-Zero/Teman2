@@ -177,7 +177,10 @@ let rc: Int32 = MainActor.assumeIsolated {
             ScalePath.snapshotScope = nil; ScaleMatrix.snapshotOpenScope = nil
         }
         state.chatContextCode = k
-        emit(k.kode, "chat", ChatView(), height: 800, anchors: c)   // the code it is asked about
+        // R24: the band's own strings, its title, the last question it offers and its reset. The code it is asked about
+        // is drawn only in the rail, a ScrollView here: a band that keeps its questions in one reads INCOMPLETE.
+        emit(k.kode, "chat", ChatView(), height: 800,
+             anchors: [lang.t("chat.title"), lang.t("chat.suggest3"), lang.t("chat.reset")])
         state.chatContextCode = nil
         if n % 200 == 0 { err("encensus \(n)/\(codes.count)") }
     }
