@@ -84,6 +84,7 @@ WITH duties AS (
            FALSE AS can_open_process, c.passport_expiry AS due_date
       FROM clients c
      WHERE c.deleted_at IS NULL
+       AND isfinite(c.passport_expiry)
        AND c.passport_expiry <= CURRENT_DATE + 90
     UNION ALL
     SELECT 'process', c.id, COALESCE(NULLIF(c.full_name, ''), 'Client ' || c.id),
@@ -97,6 +98,7 @@ WITH duties AS (
       JOIN clients c ON c.id = p.client_id
       JOIN practice_types pt ON pt.id = p.practice_type_id
      WHERE c.deleted_at IS NULL AND p.status = ANY($5::text[])
+       AND isfinite(p.created_at)
        AND p.created_at < CURRENT_TIMESTAMP - INTERVAL '14 days'
 ), visible AS (
     SELECT * FROM duties WHERE ($3::text IS NULL OR assigned_to = $3)

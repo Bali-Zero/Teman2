@@ -1,0 +1,9 @@
+mission: kita-duties-finite-1017
+colour: BLUE
+gear: 1
+base: origin/main
+scope: Exclude non-finite source dates from the existing obligations windows
+consumer: Kita personal obligations and authorized team overview
+bites: Team overview stays readable when legacy CRM dates are non-finite
+pii: Synthetic PostgreSQL fixtures and read-only aggregate production diagnostics
+plan: docs/plans/2026-10-17-kita-duties-finite.md

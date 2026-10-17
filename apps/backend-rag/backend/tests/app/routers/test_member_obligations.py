@@ -207,6 +207,42 @@ async def test_personal_rules_use_source_ownership_boundaries_and_fixed_fields(d
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["passport", "process"])
+@pytest.mark.parametrize("sentinel", ["-infinity", "infinity"])
+async def test_nonfinite_source_dates_do_not_break_scopes_or_pagination(db, kind, sentinel):
+    async with db.acquire() as conn:
+        if kind == "passport":
+            await conn.execute(
+                "INSERT INTO clients (id,full_name,assigned_to,passport_expiry) "
+                "VALUES (20,'Nonfinite date fixture',$1,$2::text::date)",
+                MEMBER["email"],
+                sentinel,
+            )
+        else:
+            await conn.execute(
+                "INSERT INTO practices "
+                "(id,client_id,practice_type_id,status,assigned_to,created_by,created_at) "
+                "VALUES (120,1,1,'on_process',$1,$1,$2::text::timestamptz)",
+                MEMBER["email"],
+                sentinel,
+            )
+    async with client(db) as http:
+        personal = await http.get(URL)
+    async with client(db, ADMIN) as http:
+        team = await http.get(URL + "?scope=team")
+        page = await http.get(URL + "?scope=team&limit=1&offset=1")
+        filtered = await http.get(URL + "?scope=team&assigned_to=member-a%40example.test")
+    for response, expected in [(personal, (8, 4, 4)), (team, (13, 6, 7))]:
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert (body["total"], body["passport_count"], body["process_count"]) == expected
+        assert sum(owner["total"] for owner in body["owners"]) == body["total"]
+    assert page.status_code == filtered.status_code == 200
+    assert page.json()["total"] == 13 and len(page.json()["items"]) == 1
+    assert filtered.json()["total"] == 8
+
+
+@pytest.mark.asyncio
 async def test_admin_defaults_to_personal_and_team_counts_paginate(db):
     async with client(db, ADMIN) as http:
         personal = (await http.get(URL)).json()

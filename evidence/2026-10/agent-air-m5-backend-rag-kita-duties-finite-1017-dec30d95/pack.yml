@@ -1,0 +1,81 @@
+brief_ref: evidence/brief.yml
+plan_ref: docs/plans/2026-10-17-kita-duties-finite.md
+lanes:
+  - lane: implementation
+    role: build
+    seat: codex-gpt-6
+  - lane: independent-review
+    role: review
+    seat: claude-opus-5-5
+pii_scan: clean
+pii_scan_note:
+  Source code, synthetic PostgreSQL fixtures, and aggregate diagnostics only.
+  No client identity, contact data, passport numbers, credentials, or raw production logs.
+cloud_ok:
+  Builder Contract 4 permits source-only review. Production diagnostics emit counts,
+  SQLSTATE, and model-validity flags, with no client writes.
+what_changed:
+  Two predicates exclude non-finite passport expiry and process creation dates
+  before deadline arithmetic. Four PostgreSQL regressions cover both infinity signs, personal/team
+  views, owner filtering, and pagination.
+meta_pattern: Deadline arithmetic requires calendar dates at the shared query boundary.
+operator_only: No new consent, setting, migration, or operator action is required.
+dissent:
+  - seat: production-read-only-probe
+    objection:
+      Team overview returned HTTP 500 while personal scope returned 200. A read-only
+      query reproduced DatetimeFieldOverflowError, SQLSTATE 22008.
+    status: CONFIRMED
+    resolution:
+      One active passport expiry was negative infinity. On unmodified code, synthetic
+      negative-infinity passport and process cases failed with HTTP 500; two positive-infinity
+      controls passed (2 failed, 2 passed). The fixed full suite includes all four passing regression
+      cases. A candidate evaluated only in a separate read-only console process produced valid
+      team DTOs and consistent totals and owner counts.
+receipts:
+  - claim: Obligations, authorization boundary, and OpenAPI contract tests pass.
+    cwd: apps/backend-rag
+    cmd:
+      TEST_DATABASE_URL=postgresql://nuzantara@127.0.0.1:5432/nuzantara_test SKIP_SENTRY_INIT=1
+      PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest backend/tests/app/routers/test_member_obligations.py
+      backend/tests/security/test_crm_admin_role_boundary.py backend/tests/unit/scripts/test_generate_openapi_schema_pin.py
+      backend/tests/app/routers/test_garuda_voa_openapi_parity.py --tb=short
+    result: 115 passed; includes all four non-finite-date regression cases.
+    exit: 0
+    seat: codex-gpt-6
+    ts: "2026-10-17T12:12:42.199534Z"
+  - claim: The backend dependency import chain loads from the project virtualenv.
+    cwd: apps/backend-rag
+    cmd:
+      SKIP_SENTRY_INIT=1 PYTHONPATH=.:../crm-cell .venv/bin/python -c 'from backend.app.dependencies
+      import get_current_user; print("Import smoke OK")'
+    result: Import smoke OK.
+    exit: 0
+    seat: codex-gpt-6
+    ts: "2026-10-17T12:12:25.461450Z"
+  - claim: Required pre-deploy RAG smoke tests pass.
+    cwd: apps/backend-rag
+    cmd:
+      SKIP_SENTRY_INIT=1 PYTHONPATH=.:../crm-cell .venv/bin/python -m pytest backend/tests/services/rag/test_kg_langgraph.py
+      backend/tests/services/rag/test_kg_subgraphs.py backend/tests/services/rag/test_confidence.py
+      --tb=short
+    result: 91 passed.
+    exit: 0
+    seat: codex-gpt-6
+    ts: "2026-10-17T12:13:48.770202Z"
+  - claim: Changed Python files pass Ruff.
+    cwd: apps/backend-rag
+    cmd: .venv/bin/ruff check backend/app/routers/crm_enhanced_alerts.py backend/tests/app/routers/test_member_obligations.py
+    result: All checks passed; Ruff format left both files unchanged.
+    exit: 0
+    seat: codex-gpt-6
+    ts: "2026-10-17T12:20:42.174699Z"
+  - claim: The cross-family code review approves the bounded correction.
+    cmd: bash /tmp/kita-duties-finite-review.sh
+    result:
+      PASS from the existing BLUE Opus Dux. Only claude-opus-5-5 was used. Required before/after
+      proof and full test outcomes are recorded above; positive infinity is explicitly identified
+      as a control in the plan. A separate fresh Opus final gate is still required before release.
+    exit: 0
+    seat: claude-opus-5-5
+    ts: "2026-10-17T12:14:20.696530Z"
