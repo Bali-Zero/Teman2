@@ -1,3 +1,7 @@
+---
+adversarial_review: exempt-owner-ruled-design-doc
+---
+
 # Visa Oracle — Law + Guide (simple model)
 
 Date: 2026-10-17 · Owner ruling (Zero): keep it simple. Two sides only.
