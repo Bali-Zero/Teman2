@@ -10,8 +10,11 @@
   OpenAPI schema pin and deployed application contract parity checks.
 - TypeScript completed with exit code 0 on Pro after correcting the new badge
   to the existing `wait` tone. Ruff checks and formatting checks passed.
-- Token lint passed on the complete staged diff, including the relocated
-  register. The dependency import smoke check passed.
+- The initial staged token-lint pass depended on copy detection. The final gate
+  reproduced a false positive on an existing obligation ID in the relocated
+  register test under default git settings; an explicit ID annotation fixes it.
+  The full base-relative diff and register tests were rechecked after the fix.
+  The dependency import smoke check passed.
 - Real Chromium, using synthetic intercepted API responses, passed at desktop
   and 390px mobile sizes: personal source links, supervisor scope, owner filter,
   server-controlled process links, refresh after source resolution, and the

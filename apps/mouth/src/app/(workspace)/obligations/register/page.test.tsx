@@ -576,7 +576,7 @@ describe("ObligationsPage", () => {
 
     expect(
       await screen.findByText(
-        "✓ Obligation #101 approved → alert alert_obligation_42_abcd1234.",
+        "✓ Obligation #101 approved → alert alert_obligation_42_abcd1234.", // token-lint-ok: obligation ID, not a color
       ),
     ).toBeVisible();
   });
