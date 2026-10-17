@@ -1346,13 +1346,11 @@ EXPECTED_OUTCOME_BY_SEQUENCE[30] = {
 # seq-31 (E28A own-shareholding): `el.e28a.investment` and the new
 # `hf.e28a.own-shareholding-below-min` read `investment.own_shareholding_idr` against IDR
 # 10,000,000,000 instead of the company-level `investment.investment_capital_idr`. Measured on
-# the candidate replay of the 182-walk corpus: two walks lose E28A and no walk changes state.
-# `full_capital` answers an own shareholding of IDR 1,000,000,000 (the walk was named for the
-# company capital figures the old rule read), and the 9,999,999,999 boundary witness sits one
-# rupiah under the floor. The 10,000,000,000 witness keeps E28A, which is why it, not
-# `full_capital`, now names the E28A support route.
+# the candidate replay of the 182-walk corpus (whose default own-shareholding answer is
+# IDR 10,000,000,000): exactly one walk loses E28A, the 9,999,999,999 boundary witness one
+# rupiah under the floor, and no walk changes state. Walks on vehicles that never ask the
+# question leave the fact NOT_ASKED and do not move (see test_seq31_pack.py).
 _SEQ31_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
-    "offshore/invest/pt_pma/full_capital": ("SUPPORTED_CANDIDATES", ("C2", "D12", "E28B", "E28D", "E28F")),
     "offshore/invest/pt_pma/own_shareholding_9999999999": (
         "SUPPORTED_CANDIDATES",
         ("C2", "D12", "E28B", "E28D", "E28F"),

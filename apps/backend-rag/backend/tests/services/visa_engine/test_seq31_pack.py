@@ -360,6 +360,43 @@ class TestE28ABoundaryWitnesses:
         assert "E28A" in _decide(old_pack, self._facts(1))["candidates"]
 
 
+class TestCorpusOnTheCandidate:
+    """Census-level witnesses on the 182-walk corpus: only the boundary witness moves."""
+
+    @pytest.fixture(scope="class")
+    def replays(
+        self, pack: census.PackUnderTest, old_pack: census.PackUnderTest
+    ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+        walks = census._load_walks()
+        return walks, census._outcomes_on(walks, old_pack), census._outcomes_on(walks, pack)
+
+    def test_only_the_9999999999_witness_changes_and_only_by_losing_e28a(
+        self, replays: tuple[Any, dict[str, Any], dict[str, Any]]
+    ) -> None:
+        _walks, before, after = replays
+        moved = {label for label in before if before[label] != after[label]}
+        assert moved == {"offshore/invest/pt_pma/own_shareholding_9999999999"}
+        label = next(iter(moved))
+        assert before[label]["state"] == after[label]["state"] == "SUPPORTED_CANDIDATES"
+        assert set(before[label]["candidates"]) - set(after[label]["candidates"]) == {"E28A"}
+        assert "E28A" in after["offshore/invest/pt_pma/own_shareholding_10000000000"]["candidates"]
+        assert "E28A" in after["offshore/invest/pt_pma/full_capital"]["candidates"]
+
+    def test_walks_that_never_ask_own_shareholding_do_not_become_needs_input(
+        self, replays: tuple[Any, dict[str, Any], dict[str, Any]]
+    ) -> None:
+        walks, before, after = replays
+        unasked = [
+            label
+            for label, spec in walks.items()
+            if spec["overrides"].get(_OWN, {}).get("status") != "KNOWN"
+        ]
+        assert len(unasked) > 100
+        for label in unasked:
+            assert after[label] == before[label], label
+        assert [label for label, out in after.items() if _OWN in out["missing_facts"]] == []
+
+
 class TestBuilderGuards:
     def test_guilt_builder_refuses_an_already_rekeyed_e28a_rule(
         self, seq31: dict[str, Any]
