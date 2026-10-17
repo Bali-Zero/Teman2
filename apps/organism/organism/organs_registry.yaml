@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 973e64735c9464f7ba4692396c559e20e7e024d900c185a84cb1cd95f18bf963 # pragma: allowlist secret
+checksum: 9af752aa15b4539161a844c102ca9efb2caeb33f67e166efc3f3bb1f02af3ab6 # pragma: allowlist secret
 organs:
 - id: infra.postgres
   runtime: fly_machine
@@ -3358,5 +3358,23 @@ organs:
   bridge_source:
     type: state_file
     path: ~/.organism/last_seen/pro.janitor.json
+    timestamp_field: ts
+    status_field: status
+- id: mini.disk_janitor
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 172800
+  owner_module: infra/launchagents/wrappers/mini-disk-janitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.nuzantara.mini-disk-janitor
+  severity_on_silence: warning
+  notes: 'Daily bounded disk hygiene on the Mini (payload scripts/ops/mini_disk_janitor.sh, StartInterval 86400, no KeepAlive): prunes the self-hosted runner pip/uv/tmp caches only while the runner is idle, prunes dangling docker images and build cache, fstrims the Colima VM so freed space returns to the host, ages out ~/Library/Caches files older than 14 days, GCs the npm and uv caches, and alarms (Telegram p0) on host-free or runner-disk ceilings. expected_hb_seconds is 2x the cadence. Kill switch MINI_DISK_JANITOR_ENABLED=false. Born via organ_birth.py.'
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/mini.disk_janitor.json
     timestamp_field: ts
     status_field: status
