@@ -21,9 +21,9 @@ constraints:
   - Step 9 (title whole) runs in the bare host as the NAMED CONTROL: the window host reads 0 words through PDFKit. Carried to H1g, not claimed here.
 acceptance:
   - text: O1. No drawn row of the collapsed sheet crosses sheet bottom - 12 pt and the sheet is within 1 pt of (last drawn row + 12 pt).
-    probe: "Pro: fold_census over the real RootView, 1,559 codes x en/id x 3 windows, collapsed and open = 18,708 rows, 0 FAIL (census H, head 98238b758b; the app diff to this head is 2 dark-only lines in CensusFrame.swift)"
+    probe: "Pro: fold_census over the real RootView, 1,559 codes x en/id x 3 windows, collapsed and open = 18,708 rows, 0 FAIL (census H, head 98238b758b); targeted re-run on the clean build of the final code (66 en + 62 id tightest codes, sidebar 300, collapsed and open) fold_census: 256 rows, 0 FAIL; the rest of the head differs from census H by a night-only window appearance, an env-gated dump path, tool files and the harness focus fix"
   - text: O2. The selected row is whole inside the scroll view above the sheet, at every code and window.
-    probe: "Pro: the same census; rows with the row.selected mark 1,559 of 1,559 per cell; least clearance 6.5 pt at 1040x700 sidebar 300"
+    probe: "Pro: the same census; rows with the row.selected mark 1,559 of 1,559 per cell; least clearance 6.5 pt at 1040x700 sidebar 300 (targeted re-run 6.5 pt id 56102, 6.6 pt en 56306); row.selected drifts up to 0.9 pt, one 5 pt (id 98200), versus the pre-focus-fix run, cause not isolated"
   - text: E6. The expanded sheet is never shorter than the collapsed one.
     probe: "Pro: the --open cells of the census, 0 FAIL; head_mutants peek300 FAILs by 'expanding shrank it'"
   - text: E9. A sheet above the cap and a wrong height rule FAIL under their own cause.
@@ -34,13 +34,14 @@ acceptance:
     probe: "Pro: png_census 0 FAIL, 1 VACUOUS with the N1 guard armed on root-collapsed night; without the dark window appearance the same set FAILs 3 (19.6 to 20.1 percent day chrome)"
   - text: Content SHALL stay frozen.
     probe: "Pro: word census vs origin/main on the open sheets, 0 lost 0 gained; content_check steps 1, 3, 5-8 ok, contrast TOTAL=196 FAIL=0"
+  - text: The chrome text census (step 4, EN purity) reads the masthead and the filter bar again.
+    probe: "Pro: content_check step 4 ok on the head: registry-chrome complete (39 words en, 35 id), 0 Indonesian strings in EN; on 2885d8e39a registry-chrome was INCOMPLETE 1/1; the flat mode dropped makes it INCOMPLETE again"
+  - text: Harness runs never show a Dock icon, never take focus.
+    probe: "Pro: Tools/design/no_focus_check.sh PASS 4/4 on the clean build of 69902fe7be (Foreground 0); FAIL 4/4 on a mutant without the activation policy and on the build before the fix"
 deferred:
   - id: step-9-window-host
     to: H1g
     text: Binding 11 asks step 9 in the committed window host; PDFKit extracts 0 words from the window host's PDF. Step 9 runs in the bare host as the named control (12,472 rows, 0 FAIL).
-  - id: chrome-census-blind
-    to: H1g
-    text: The registry-chrome text census is BLIND since the masthead and the narrow filter bar sit inside the ScrollView (1 of 1 dump INCOMPLETE); en_purity step 4 fails on it. Needs a flat dump mode.
   - id: nosettle-mutant
     to: H1g
     text: The mutant nosettle (the settle re-fire removed) is NOT caught by any census scenario; a window-resize scenario is missing.
