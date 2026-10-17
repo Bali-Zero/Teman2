@@ -39,6 +39,13 @@ MIG_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
 # (`131_unify_migration_tracking.sql`). 129 and 130 collided with the
 # crm_guardian batch (PR #258) and were renumbered to 142 and 143 by
 # the P0-7 audit fix on 2026-04-29 — see cicatrix STRUCTURAL P0-7.
+#
+# 324 joined the batch on 2026-10-05: it is the migration counterpart of
+# the bootstrap's third `DROP NOT NULL` family
+# (`practices.practice_type_id`), the only one that had none. Prod
+# nullability was measured directly against the production leader
+# (information_schema.columns, is_nullable = 'YES') before the file was
+# written — see the migration header.
 LEGACY_PROMOTION_FILES = (
     "142_legacy_user_profiles.sql",
     "143_legacy_conversations.sql",
@@ -48,6 +55,7 @@ LEGACY_PROMOTION_FILES = (
     "135_legacy_notification_prefs.sql",
     "136_clients_drive_columns_and_defaults.sql",
     "137_team_members_legacy_columns_and_defaults.sql",
+    "324_practices_practice_type_id_nullable.sql",
 )
 
 # Files that landed in the 129/130 number range and are NOT part of the
@@ -203,4 +211,46 @@ def test_files_match_directory_listing() -> None:
     expected = sorted(in_range_legacy + NON_LEGACY_FILES_IN_RANGE)
     assert actual == expected, (
         f"unexpected files in 129–137 range\n  expected: {expected}\n  actual:   {actual}"
+    )
+
+
+def test_practices_drop_not_null_stays_tracked() -> None:
+    """Tripwire for the 2026-08-26 PENDING-ARM row (council finding Q2).
+
+    `test_files_match_directory_listing` filters BOTH sides of its
+    comparison to the 129–137 range, so a migration like
+    324_practices_practice_type_id_nullable.sql — added to
+    LEGACY_PROMOTION_FILES years after the original batch — is invisible
+    to that test: deleting its tuple entry would silently disable every
+    structural guard (rollback marker, idempotency, no SET NOT NULL in
+    the forward) with no red. This test pins the load-bearing direction:
+    the bootstrap's `practices.practice_type_id DROP NOT NULL` must keep
+    THIS migration as its counterpart, and the counterpart must stay
+    inside LEGACY_PROMOTION_FILES.
+    """
+    counterpart = "324_practices_practice_type_id_nullable.sql"
+    bootstrap = (
+        Path(__file__).resolve().parents[3] / "scripts" / "ci_bootstrap_schema.py"
+    ).read_text(encoding="utf-8")
+    # Whitespace-normalized containment: reformatting the bootstrap's SQL
+    # (or qualifying the table as public.practices) must not blind the
+    # tripwire in either direction (council round 2, codex finding 2).
+    stmt = "ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL"
+    assert stmt in " ".join(bootstrap.split()), (
+        "the bootstrap no longer issues the practices DROP NOT NULL — either the drift was "
+        "deliberately removed (then delete this test and migration 324 together) or the "
+        "bootstrap regressed and this tripwire caught it"
+    )
+    assert counterpart in LEGACY_PROMOTION_FILES, (
+        f"{counterpart} left LEGACY_PROMOTION_FILES while the bootstrap still issues the "
+        "DROP NOT NULL — the untracked-ALTER blindfold from 2026-08-26 is back; re-add the "
+        "migration counterpart to the tuple"
+    )
+    mig_path = MIG_DIR / counterpart
+    assert mig_path.is_file(), f"missing migration file: {counterpart}"
+    mig_sql = mig_path.read_text(encoding="utf-8")
+    forward, _ = _split(mig_sql)
+    assert stmt in " ".join(forward.split()), (
+        f"{counterpart}'s forward no longer issues the bootstrap's DROP NOT NULL — the "
+        "migration and the bootstrap have drifted apart"
     )

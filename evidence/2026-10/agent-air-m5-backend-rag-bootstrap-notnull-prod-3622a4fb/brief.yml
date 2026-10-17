@@ -1,0 +1,82 @@
+task_id: bootstrap-notnull-prod
+gear: 3
+l_level: L2
+gate_class: opus
+objective: |
+  Settle, with one read-only production query, what `practices.practice_type_id`
+  nullability prod actually enforces — `scripts/ci_bootstrap_schema.py` issues
+  `ALTER TABLE practices ALTER COLUMN practice_type_id DROP NOT NULL` on the
+  claim that it mirrors prod, and until now nothing corroborated that claim.
+  Of the three `DROP NOT NULL` families in the bootstrap, lkpm_reports
+  (migration 132) and team_members (migration 137) each have a committed
+  migration counterpart; this was the only one with none.
+
+  Verdict measured 2026-10-05 against the production leader, read-only,
+  information_schema.columns: `is_nullable = 'YES'` — prod enforces no NOT
+  NULL. Branch (2b) of the mandate therefore applies: promote the ALTER to a
+  tracked migration (324_practices_practice_type_id_nullable.sql, next free
+  number, `-- === ROLLBACK ===` marker) and record the census in
+  LEGACY_PROMOTION_README.md, instead of deleting the ALTER and fixing the
+  intake fixtures (branch 2a).
+
+  Gear 3 is the deterministic floor: the diff touches `migrations_v2/`, a
+  hot-zone path (floor 3, ceilings at 3).
+
+acceptance:
+  - text: >-
+      WHEN the production leader is asked, read-only,
+      `SELECT is_nullable FROM information_schema.columns WHERE
+      table_name='practices' AND column_name='practice_type_id'` THEN the
+      answer SHALL be quoted in the migration header and the PR body. Exactly
+      one such query was run; no data table was read.
+    probe: 'scripts/pg.sh -A -F''|'' -c "SELECT table_schema, is_nullable FROM information_schema.columns WHERE table_name=''practices'' AND column_name=''practice_type_id'';" → public|YES'
+  - text: >-
+      WHEN migration 324 is promoted THEN it SHALL carry the
+      `-- === ROLLBACK ===` marker, a non-empty forward block issuing the
+      DROP NOT NULL, and a rollback that never issues a bare SET NOT NULL
+      (conditional on no NULL rows existing).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/db/test_legacy_promotion_migrations.py
+      backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py
+  - text: >-
+      WHEN 324 is added to LEGACY_PROMOTION_FILES THEN the structural batch
+      tests (rollback marker, idempotency, no SET NOT NULL in forward, DROP
+      IF EXISTS in rollback, directory listing) SHALL pass over it, and the
+      post-D1 ownership guard SHALL scan it clean (`practices` is app-owned,
+      not in NON_APP_OWNED_TABLES).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/db/test_legacy_promotion_migrations.py
+      backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py → 54 passed
+  - text: >-
+      WHEN the intake suites run on this diff THEN their result SHALL be
+      identical to a clean origin/main run (the 12 UniqueViolation errors on
+      local Postgres are pre-existing thin-client drift, not caused by this
+      diff, which touches no intake code or fixtures).
+    probe: >-
+      cd apps/backend-rag && PYTHONPATH=. python -m pytest
+      backend/tests/services/intake/test_intake_routing.py
+      backend/tests/services/intake/test_intake_writer.py → 79 passed, 12
+      errors; identical after `git stash -u` on the same worktree.
+
+assumptions:
+  - text: >-
+      The single information_schema row for (public, practices,
+      practice_type_id) is authoritative for "what prod enforces"; no
+      query on data tables was permitted or run.
+    status: verified
+    probe: "the query above, run once via scripts/pg.sh (read-only path); output public|YES"
+  - text: >-
+      `practices` is owned by the app role, so a bare ALTER TABLE in a
+      post-D1 migration is allowed by the ownership guard.
+    status: verified
+    probe: "practices is absent from NON_APP_OWNED_TABLES in backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py"
+  - text: >-
+      324 is the next free migration number.
+    status: verified
+    probe: "ls backend/db/migrations_v2 | tail — 323 was highest at write time"
+
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

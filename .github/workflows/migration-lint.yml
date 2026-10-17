@@ -207,6 +207,22 @@ jobs:
             #                                  already-excluded constraint-missing-not-valid.
             #                                  The forward DDL in 175 uses a partial
             #                                  unique INDEX, not a constraint.
+            # Style-only exclusions (added 2026-10-06, mig 324):
+            #   ban-drop-not-null           — 324 promotes the bootstrap's
+            #                                 `practices.practice_type_id DROP
+            #                                 NOT NULL` into migrations_v2 after
+            #                                 the claim was MEASURED against the
+            #                                 production leader (read-only
+            #                                 information_schema: is_nullable =
+            #                                 'YES'). The migration records an
+            #                                 existing prod fact; it relaxes
+            #                                 nothing that was ever enforced, so
+            #                                 "may break existing clients" does
+            #                                 not apply. A FUTURE migration that
+            #                                 genuinely relaxes a live NOT NULL
+            #                                 column deserves this rule firing —
+            #                                 treat any new hit of it as needing
+            #                                 the same measured-evidence bar.
             squawk \
               --pg-version=15.0 \
               --exclude=require-concurrent-index-creation \
@@ -214,6 +230,7 @@ jobs:
               --exclude=require-concurrent-index-deletion \
               --exclude=ban-drop-table \
               --exclude=ban-drop-column \
+              --exclude=ban-drop-not-null \
               --exclude=ban-char-field \
               --exclude=prefer-bigint-over-smallint \
               --exclude=prefer-text-field \
