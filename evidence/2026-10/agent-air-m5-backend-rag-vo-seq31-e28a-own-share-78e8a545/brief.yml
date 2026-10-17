@@ -1,0 +1,46 @@
+task_id: visa-seq31-e28a-own-share
+mission: visa-oracle-38-visas
+gear: 3
+gear_reason: >-
+  The unsigned RulePack seq-31 candidate for the Visa Oracle production engine under apps/backend-rag/** (hot zone, a
+  pack change is what /evaluate answers once signed and activated). One content item: the E28A IDR 10 billion test is
+  re-keyed from the company-level investment.investment_capital_idr to the applicant's own shareholding value
+  investment.own_shareholding_idr; the old exclusion rule is retired and a renamed one inserted.
+l_level: L2
+gate_class: astra
+ruling: >-
+  Zero, 2026-10-15 (owner ruling 1 of 2, handoff row SEQ29-A1): the E28A 10 bn test is re-keyed to the applicant's OWN
+  shareholding value in the sponsoring company; the 2.5 bn paid-up bound stays as the PT PMA company prerequisite;
+  reason codes are renamed when the semantics change. Step C is the pack. The orchestrator signs after the gates.
+mission_text: >-
+  seq-31 candidate = deterministic content fold (fold_pack_seq31.py) chained on verified signed seq-30 (payload
+  972f339283e6a66962f3dd8f4dbb1c4a5014c5b16352234e425abfed988df413, 28 source_records byte-identical), plus the pack
+  gate tests, the census pins, the E28A gold persona, the mouth retired-replayable key and reason copy, the signed-state
+  observer and the runbook note. Nothing is signed, pushed or merged by this lane.
+objective: >-
+  rulepack-prod-031.source.json compiles with the repo compiler, equals the fold output byte for byte, differs from signed
+  seq-30 in exactly one modified rule (el.e28a.investment), one retired rule (hf.e28a.total-investment-below-min) and one
+  inserted rule (hf.e28a.own-shareholding-below-min), and answers the 9,999,999,999 / 10,000,000,000 / unknown boundary
+  witnesses as the saved official E28A page reads. Once signed, the highest signed pack reads seq-31.
+constraints:
+  - Nothing is signed by this lane (no sign_pack.py, no signing key read); the orchestrator signs after the gates.
+  - All 28 source_records and the 18 OFFICIAL_PORTAL stamps stay byte-identical to signed seq-30 (freshness boundary unchanged).
+  - No regulation number is written into the pack; the Pasal pinpoint for the shareholding figure is UNVERIFIED (TO VERIFY against source).
+appetite:
+  wall_clock_hours: 3
+acceptance:
+  - text: WHEN the committed seq-31 source is compared against fold_pack_seq31.py THEN it SHALL match byte for byte and keep all 28 source_records byte-identical to signed seq-30.
+    probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestCommittedSourceMatchesFold
+  - text: WHEN an applicant's own shareholding is 9,999,999,999 THEN E28A SHALL be excluded with E28A_OWN_SHAREHOLDING_BELOW_MIN, and at 10,000,000,000 (paid-up >= 2.5 bn, PT PMA committed) E28A SHALL be supported; an unknown value SHALL ask for it.
+    probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestE28ABoundaryWitnesses
+  - text: WHEN the signed seq-31 bundle exists THEN its payload SHALL equal the source, verify under the pinned prod key, anchor to the signed seq-30 digest, and a flipped byte SHALL break the signature.
+    probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource
+  - text: WHEN the census replays the 182-walk corpus on the candidate THEN exactly two walks SHALL lose E28A and no walk SHALL change state.
+    probe: backend/tests/services/visa_engine/test_interview_walk_census.py::test_every_walk_ends_in_its_pinned_outcome_on_the_candidate_pack
+bites:
+  consumer: >-
+    the Visa Oracle /evaluate path and the mouth reason copy once rulepack-prod-031.signed.json is the highest signed pack
+    (review_hold_inventory, the census, engine-adapter.test.ts all read it).
+  where: ci
+  observe: python3 scripts/ci/observe_visa_seq31_signed.py
+  expect: "contains:inventory reads seq-31 and all three consumers green"
