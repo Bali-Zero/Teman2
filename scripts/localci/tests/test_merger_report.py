@@ -60,7 +60,7 @@ class FakeGH:
 
 def pull(head, merged=False, state="open", merge_commit=M, merged_at="2026-10-07T09:00:00Z"):
     return {"merged": merged, "state": "closed" if merged else state, "head": {"sha": head}, "merge_commit_sha": merge_commit if merged else None,
-            "merged_at": merged_at if merged else None}
+            "merged_at": merged_at if merged else None, "closed_at": "2026-10-07T09:00:00Z" if merged or state == "closed" else None}   # GitHub always sends the key
 
 
 def run_report(tmp_path, monkeypatch, recs, gh, *extra):
