@@ -1041,6 +1041,23 @@ class HostedReads:
     def __init__(self, repo: str, cache: dict | None = None):
         self.repo = repo
         self._cache = {} if cache is None else cache   # (kind, run id) -> a read; the report shares one across decisions
+        self.pull: dict | None = None   # B43: the PR being judged (state, merged, closed_at); the report sets it per decision
+
+    def withdrawn(self, rid: int, completed_at) -> tuple[bool, str]:
+        """B43: was check run ``rid`` cancelled by an actor AFTER its PR was closed unmerged, with no step failed? Then the hosted side judged a PR
+        nobody was merging: no verdict. ALL must hold: the PR is closed, not merged, with a ``closed_at``; the run completed at or after it; every
+        failure annotation is the actor-cancel message or the runner's cancel line (at least one, no timeout); no job step failed or timed out."""
+        p = self.pull
+        if not (isinstance(p, dict) and p.get("state") == "closed" and p.get("merged") is False and is_ts(p.get("closed_at"))):
+            return False, "the PR is not known closed and unmerged"
+        if not is_ts(completed_at) or completed_at < p["closed_at"]:
+            return False, f"check run {rid} was not cancelled after the PR closed"
+        fails = self.failures(rid)
+        if not fails or any(not (WITHDRAW_CANCEL.fullmatch(m) or m == ABORT_CANCELED) for m in fails):
+            return False, f"check run {rid} carries no actor cancel alone: {len(fails)} failure annotation(s)"
+        if any(x.get("conclusion") in ("failure", "timed_out") for x in self.job_steps(rid)):
+            return False, f"check run {rid} had a step that failed"
+        return True, ""
 
     def failures(self, rid: int) -> list[str]:
         if ("annotations", rid) not in self._cache:
@@ -1153,6 +1170,8 @@ class GateJudge(HostedReads):
 
 SETUP_ACTIONS = ("actions/checkout", "actions/setup-python", "actions/setup-node", "actions/cache", "actions/download-artifact")   # B27, by repository
 ABORT_TIMEOUT, ABORT_CANCELED = "exceeded the maximum execution time", "The operation was canceled."
+WITHDRAW_CANCEL = re.compile(r"The run was canceled by @[A-Za-z0-9-]+\.")   # B43: GitHub's annotation when an actor cancels a run
+WITHDRAWN = "<withdrawn>"   # B43: the ``step`` a withdrawn run carries among the aborted ones, listed apart from the setup aborts
 
 
 class AbortJudge(HostedReads):
@@ -1277,6 +1296,9 @@ def context_cleared(reads: HostedReads, abort: "AbortJudge | None", runs: list[d
         elif rid in answered:
             qualified.add(rid)
             superseded.append(rid)
+        elif reads.withdrawn(rid, e.get("completed_at"))[0]:   # B43: after B17, so an answered cancel is still superseded
+            qualified.add(rid)
+            aborted.append({"check_run_id": rid, "step": WITHDRAWN})
     ok, why = hc.history_cleared(entries, app_id, qualified, red_ids)
     return {"clear": ok, "why": why, "aborted": aborted if ok else [], "superseded": superseded if ok else []}
 
@@ -2509,7 +2531,7 @@ def memo_final_pr(pr, newest) -> bool:
 def memo_pull_served(mem: "ReadMemo", repo: str, n) -> dict | None:
     """The stored pull of ``n`` without counting a hit: what the final-ness test looks at before the memo is asked for it."""
     got = mem.data["pulls"].get(f"{repo}#{n}") if mem.path is not None else None
-    return got if isinstance(got, dict) else None
+    return got if isinstance(got, dict) and "closed_at" in got else None   # B43: a pull stored before closed_at was kept is read again
 
 
 def mem_live(mem: "ReadMemo", key: str):
@@ -2524,7 +2546,7 @@ def project_pull(pr: dict) -> dict:
     """The fields ``report()`` reads of a pull (merged, state, merge_commit_sha, merged_at, head.sha): the rest of the payload is not kept."""
     head = pr.get("head") if isinstance(pr.get("head"), dict) else {}
     return {"merged": pr.get("merged"), "state": pr.get("state"), "merge_commit_sha": pr.get("merge_commit_sha"), "merged_at": pr.get("merged_at"),
-            "head": {"sha": head.get("sha")}}
+            "closed_at": pr.get("closed_at"), "head": {"sha": head.get("sha")}}
 
 
 def project_live(live: dict) -> dict:
@@ -2670,6 +2692,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                     prs[n] = hc.gh_get(f"repos/{a.repo}/pulls/{n}")
                     if settled(n):
                         mem.put("pulls", f"{a.repo}#{n}", project_pull(prs[n]))
+            abort.pull = prs[n]   # B43: the withdrawn clearance reads the PR's close
             sha = queue_sha(a, prs[n], d, parents, mem)
             # GitHub merged THIS candidate only when its merge commit sits on the decided base; a decision on another base is
             # judged by the head's own checks like any open PR
@@ -2796,7 +2819,9 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     fg = counts["FALSE_GREEN"] + ctx_counts["FALSE_GREEN"] + recorded_fg
     fg_breakdown = {"pr": counts["FALSE_GREEN"], "context": ctx_counts["FALSE_GREEN"], "recorded": recorded_fg}   # one event can show at several levels
     aborted = [{"pr": k[0], "head_sha": k[1], "context": k[2], "check_run_id": k[3], "step": v}
-               for k, v in sorted(aborted_seen.items(), key=lambda kv: tuple(str(x) for x in kv[0]))]   # B27
+               for k, v in sorted(aborted_seen.items(), key=lambda kv: tuple(str(x) for x in kv[0])) if v != WITHDRAWN]   # B27
+    withdrawn = [{"pr": k[0], "head_sha": k[1], "context": k[2], "check_run_id": k[3]}
+                 for k, v in sorted(aborted_seen.items(), key=lambda kv: tuple(str(x) for x in kv[0])) if v == WITHDRAWN]   # B43
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
     live_block = liveness(window, decisions, prs, merged_listing(a) if emit else None, clock)   # B24: apart from `ready`, which it never feeds
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
@@ -2831,7 +2856,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "false_green_breakdown": fg_breakdown, "hosted_aborted": {"count": len(aborted), "list": aborted},
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "false_green_breakdown": fg_breakdown, "hosted_aborted": {"count": len(aborted), "list": aborted}, "hosted_withdrawn": {"count": len(withdrawn), "list": withdrawn},
            "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:
@@ -2878,6 +2903,8 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
           "(one event can show at more than one level)")
     print(f"hosted_aborted (B27, no hosted verdict, never compared): {len(aborted)}" + "".join(
         f" | #{x['pr']} {str(x['head_sha'])[:12]} {x['context']}: check run {x['check_run_id']} died in {x['step']!r}" for x in aborted))
+    print(f"hosted_withdrawn (B43, cancelled by an actor after the PR closed unmerged, never compared): {len(withdrawn)}" + "".join(
+        f" | #{x['pr']} {str(x['head_sha'])[:12]} {x['context']}: check run {x['check_run_id']}" for x in withdrawn))
     lv = live_block
     print(f"liveness (B24, last {lv['window_h']} h): mergeable_rows={lv['mergeable_rows']} (merged_first={lv['merged_first']}" + (f", unread_pull={lv['merged_first_unread']}" if lv["merged_first_unread"] else "") + f") (needs >= {LIVENESS_MIN_ROWS}), coverage_decided={lv['coverage_decided']} "
           f"of {lv['merged_decided']} merged-and-decided PR(s) (needs >= {LIVENESS_MIN_COVERAGE}), label_ok_rows={lv['label_ok_rows']}, coverage_all_approx={lv['coverage_all_approx']} of {lv['merged_all_approx']} merged PR(s) (one page of 100 closed PRs; reported only)")
