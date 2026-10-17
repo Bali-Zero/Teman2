@@ -45,7 +45,8 @@ WORK_DIR=$(mktemp -d /tmp/nuzantara-restore-drill.XXXXXX)
 RUN_LABEL="com.nuzantara.restore-drill.run=${WORK_DIR##*/}"
 remove_own_containers() {
     for owned in $(docker ps -aq --filter "label=$RUN_LABEL" 2>/dev/null); do
-        docker rm -f "$owned" >/dev/null 2>&1 || true
+        # -v: the image's anonymous data volume holds the restored client DB; without it every removed container leaks it (2026-10-15 run left 3.8G)
+        docker rm -f -v "$owned" >/dev/null 2>&1 || true
     done
 }
 WATCHDOG_PID=""
@@ -205,7 +206,7 @@ PY
             return 75
         fi
     fi
-    docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+    docker rm -f -v "$CONTAINER_NAME" >/dev/null 2>&1 || true
     docker run --rm --detach --name "$CONTAINER_NAME" --label "$RUN_LABEL" \
         --memory "$CONTAINER_MEMORY" --cpus "$CONTAINER_CPUS" \
         --publish "127.0.0.1:${DRILL_PORT}:5432" \

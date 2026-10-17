@@ -133,7 +133,7 @@ def test_wrapper_and_payload_have_no_silent_or_racy_exits() -> None:
     assert "FINISHED" in wrapper and 'trap on_exit EXIT' in wrapper  # no exit without a trace
     assert "trap 'exit 143' TERM" in payload  # a signal cannot read green
     assert "nuzantara-fly-[0-9]{8}-[0-9]{4}" in payload and "MAX_DUMP_AGE_HOURS" in payload  # stale dump != PASS
-    assert "--memory" in payload and "docker rm -f" in payload
+    assert "--memory" in payload and "docker rm -f -v" in payload
 
 
 def test_verdict_needs_zero_exit_and_a_parsed_pass_and_a_sane_dump_date() -> None:
@@ -166,7 +166,7 @@ def test_cleanup_and_watchdog_remove_only_containers_carrying_this_runs_label() 
     cleanup = text[text.index("cleanup() {") : text.index("\n}\n", text.index("cleanup() {"))]
     watchdog = text[text.index('sleep "$TIMEOUT_SECONDS"') :]
     for block in (cleanup, watchdog):
-        assert 'docker rm -f "$CONTAINER_NAME"' not in block
+        assert 'docker rm -f -v "$CONTAINER_NAME"' not in block
         assert "remove_own_containers" in block
     assert 'docker run --rm --detach --name "$CONTAINER_NAME" --label "$RUN_LABEL"' in text
     assert 'docker ps -aq --filter "label=$RUN_LABEL"' in text
@@ -176,11 +176,22 @@ def test_cleanup_and_watchdog_remove_only_containers_carrying_this_runs_label() 
 def test_a_refused_run_creates_nothing_so_its_label_owns_nothing() -> None:
     text = _payload_text()
     refusal = text.index("return 75")
-    reap = text.index('docker rm -f "$CONTAINER_NAME"')
+    reap = text.index('docker rm -f -v "$CONTAINER_NAME"')
     create = text.index("docker run --rm --detach")
     # the only name-based removal is the stale reap, after the age guard and before creation
-    assert text.count('docker rm -f "$CONTAINER_NAME"') == 1
+    assert text.count('docker rm -f -v "$CONTAINER_NAME"') == 1
     assert refusal < reap < create
+
+
+def test_every_drill_container_removal_takes_its_anonymous_volume_with_it() -> None:
+    import re
+
+    text = _payload_text()
+    removals = re.findall(r"docker rm [^\n]*", text)
+    assert len(removals) == 2  # label-scoped cleanup + age-gated stale reap
+    # the postgres image's anonymous data volume holds the restored client DB: -v or it leaks
+    assert all(re.match(r"docker rm -f -v ", r) for r in removals), removals
+    assert not re.search(r"docker rm -f (?!-v)", text)
 
 
 def _run_payload_until_listing(
