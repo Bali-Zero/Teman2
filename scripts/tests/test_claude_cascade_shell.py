@@ -246,12 +246,13 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     bodies.update(
         {
             "token1": 'printf "authentication required\\n" >&2\nexit 0',
-            "token3": 'printf "weekly limit reached\\n"\nexit 0',
-            "token4": "exit 0",
-            "token5": 'printf "seat-five-success\\n"\nexit 0',
+            "token5": 'printf "weekly limit reached\\n"\nexit 0',
+            "token6": "exit 0",
+            "legacy": 'printf "seat-legacy-success\\n"\nexit 0',
         }
     )
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
+    env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
 
     result = _run_cascade(
         env,
@@ -262,9 +263,9 @@ def test_exit_zero_auth_quota_and_empty_rotate_to_later_seat(
     )
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "seat-five-success\n"
-    assert _labels(call_log) == ["token1", "token3", "token4", "token5"]
-    assert "used: claude-token-5-env" in result.stderr
+    assert result.stdout == "seat-legacy-success\n"
+    assert _labels(call_log) == ["token1", "token5", "token6", "legacy"]
+    assert "used: claude-token-legacy-env" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
 
@@ -301,7 +302,7 @@ def test_exit_zero_stdout_error_envelopes_rotate(
     bodies.update(
         {
             "token1": f"printf '%s\\n' '{diagnostic}'\nexit 0",
-            "token3": 'printf "seat-three-success\\n"\nexit 0',
+            "token5": 'printf "seat-five-success\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -309,8 +310,8 @@ def test_exit_zero_stdout_error_envelopes_rotate(
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "seat-three-success\n"
-    assert _labels(call_log) == ["token1", "token3"]
+    assert result.stdout == "seat-five-success\n"
+    assert _labels(call_log) == ["token1", "token5"]
 
 
 def test_exit_zero_innocent_stdout_may_discuss_auth_and_quota(
@@ -449,8 +450,6 @@ def test_explicit_order_reaches_team_then_legacy_then_keychain(
     assert result.stdout == "keychain-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token3",
-        "token4",
         "token5",
         # Team seat moved to slot 6 in the 2026-08-23 remap. CLAUDE_CODE_OAUTH_TOKEN_6
         # is never set by _fake_fleet, so the numbered slot-6 attempt is skipped and
@@ -482,15 +481,13 @@ def test_team_wrapper_is_only_used_when_explicit_team_token_is_absent(
     assert result.stdout == "protected-team-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token3",
-        "token4",
         "token5",
         "team-wrapper",
     ]
     assert "used: claude-token-6-team-wrapper" in result.stderr
 
 
-def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
+def test_numbered_team_slot_fires_only_after_the_max_seats_fail(
     tmp_path: Path,
 ) -> None:
     """The Team seat is LAST RESORT: it is reached, but only at the end.
@@ -506,9 +503,7 @@ def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
     bodies.update(
         {
             "token1": 'printf "authentication required\\n" >&2\nexit 0',
-            "token3": "exit 1",
-            "token4": 'printf "401 Unauthorized\\n" >&2\nexit 1',
-            "token5": "exit 1",
+            "token5": 'printf "401 Unauthorized\\n" >&2\nexit 1',
             "token6": 'printf "team-seat-success\\n"\nexit 0',
         }
     )
@@ -521,8 +516,6 @@ def test_numbered_team_slot_fires_only_after_the_five_max_seats_fail(
     assert result.stdout == "team-seat-success\n"
     assert _labels(call_log) == [
         "token1",
-        "token3",
-        "token4",
         "token5",
         "token6",
     ]
@@ -550,7 +543,7 @@ def test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds(
     reachable -- the pair is the guard, neither half alone.
     """
     bodies = _default_bodies()
-    bodies["token3"] = 'printf "seat-three-success\\n"\nexit 0'
+    bodies["token5"] = 'printf "seat-five-success\\n"\nexit 0'
     bodies["token6"] = 'printf "TEAM SEAT SPENT TOO EARLY\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
     env["CLAUDE_CODE_OAUTH_TOKEN_6"] = TOKEN_VALUES["token6"]
@@ -558,8 +551,8 @@ def test_team_slot_is_not_spent_when_an_earlier_max_seat_succeeds(
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "seat-three-success\n"
-    assert _labels(call_log) == ["token1", "token3"]
+    assert result.stdout == "seat-five-success\n"
+    assert _labels(call_log) == ["token1", "token5"]
     assert "token6" not in _labels(call_log)
 
 
@@ -612,7 +605,7 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
     bodies.update(
         {
             "token1": "sleep 5\nexit 0",
-            "token3": 'printf "after-timeout-success\\n"\nexit 0',
+            "token5": 'printf "after-timeout-success\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -625,7 +618,7 @@ def test_attempt_timeout_rotates_to_next_seat(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "after-timeout-success\n"
-    assert _labels(call_log) == ["token1", "token3"]
+    assert _labels(call_log) == ["token1", "token5"]
     assert elapsed < 6
 
 
@@ -664,7 +657,7 @@ def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
                 f'printf "%s\\n" "$!" > "{survivor_file}"\n'
                 "wait"
             ),
-            "token3": 'printf "after-group-kill\\n"\nexit 0',
+            "token5": 'printf "after-group-kill\\n"\nexit 0',
         }
     )
     call_log, _, env = _fake_fleet(tmp_path, bodies)
@@ -675,7 +668,7 @@ def test_attempt_timeout_kills_provider_descendants(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout == "after-group-kill\n"
-    assert _labels(call_log) == ["token1", "token3"]
+    assert _labels(call_log) == ["token1", "token5"]
     survivor_pid = int(survivor_file.read_text(encoding="utf-8").strip())
     for _ in range(20):
         try:
@@ -1421,12 +1414,12 @@ def test_headless_jump_hop_quota_banner_rotates_seat_without_partial_stdout(tmp_
         _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
         'printf "weekly limit reached\\n"; exit 0',
     )
-    bodies["token3"] = 'printf "from-three\\n"; exit 0'
+    bodies["token5"] = 'printf "from-five\\n"; exit 0'
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "from-three\n"
-    assert _labels(call_log) == ["token1", "token1", "token3"]
+    assert result.stdout == "from-five\n"
+    assert _labels(call_log) == ["token1", "token1", "token5"]
     assert "[retry] claude-token-1-env hop 1" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
@@ -1437,12 +1430,12 @@ def test_headless_jump_hop_failure_rotates_seat_without_partial_stdout(tmp_path:
         _JUMP_WRITER + '"$sid" headless; printf "partial-from-one\\n"; exit 0',
         'exit 3',
     )
-    bodies["token3"] = 'printf "from-three\\n"; exit 0'
+    bodies["token5"] = 'printf "from-five\\n"; exit 0'
     call_log, temp_dir, env = _fake_fleet(tmp_path, bodies)
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "from-three\n"
-    assert _labels(call_log) == ["token1", "token1", "token3"]
+    assert result.stdout == "from-five\n"
+    assert _labels(call_log) == ["token1", "token1", "token5"]
     assert "[error] claude-token-1-env hop 1 exit=3" in result.stderr
     assert list(temp_dir.iterdir()) == []
 
@@ -1685,47 +1678,54 @@ def _shell_array(script: Path, name: str) -> list[str]:
     return match.group(1).split()
 
 
-def test_retired_slot_is_never_attempted_even_when_its_token_is_set(tmp_path: Path) -> None:
+CLOSED_SLOTS = ("2", "3", "4")
+
+
+@pytest.mark.parametrize("slot", CLOSED_SLOTS)
+def test_retired_slot_is_never_attempted_even_when_its_token_is_set(tmp_path: Path, slot: str) -> None:
     bodies = _default_bodies()
-    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
-    bodies["token3"] = 'printf "slot-three-success\\n"\nexit 0'
+    bodies[f"token{slot}"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies["token5"] = 'printf "slot-five-success\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    assert env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+    assert env[f"CLAUDE_CODE_OAUTH_TOKEN_{slot}"]
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "slot-three-success\n"
-    assert _labels(call_log) == ["token1", "token3"]
-    assert "claude-token-2-env" not in result.stderr
+    assert result.stdout == "slot-five-success\n"
+    assert _labels(call_log) == ["token1", "token5"]
+    assert f"claude-token-{slot}-env" not in result.stderr
 
 
-def test_retired_slot_value_is_not_retried_under_the_legacy_name(tmp_path: Path) -> None:
+@pytest.mark.parametrize("slot", CLOSED_SLOTS)
+def test_retired_slot_value_is_not_retried_under_the_legacy_name(tmp_path: Path, slot: str) -> None:
     bodies = _default_bodies()
-    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies[f"token{slot}"] = 'printf "retired-seat-spent\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env["CLAUDE_CODE_OAUTH_TOKEN"] = env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+    env["CLAUDE_CODE_OAUTH_TOKEN"] = env[f"CLAUDE_CODE_OAUTH_TOKEN_{slot}"]
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert "retired-seat-spent" not in result.stdout
-    assert "token2" not in _labels(call_log)
+    assert f"token{slot}" not in _labels(call_log)
+    assert "legacy" not in _labels(call_log)
 
 
-def test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot(tmp_path: Path) -> None:
-    # Council refuter (tp1-qwen3.8-max) on 13875dc1b8: slot 1 ran before slot 2
-    # marked the retired value seen, so the same account was spent as slot 1.
+@pytest.mark.parametrize("slot", CLOSED_SLOTS)
+def test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot(tmp_path: Path, slot: str) -> None:
+    # Council refuter (tp1-qwen3.8-max) on 13875dc1b8: slot 1 ran before the
+    # retired slot marked its value seen, so the same account was spent as slot 1.
     bodies = _default_bodies()
-    bodies["token2"] = 'printf "retired-seat-spent\\n"\nexit 0'
-    bodies["token3"] = 'printf "slot-three-success\\n"\nexit 0'
+    bodies[f"token{slot}"] = 'printf "retired-seat-spent\\n"\nexit 0'
+    bodies["token5"] = 'printf "slot-five-success\\n"\nexit 0'
     call_log, _, env = _fake_fleet(tmp_path, bodies)
-    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = env["CLAUDE_CODE_OAUTH_TOKEN_2"]
+    env["CLAUDE_CODE_OAUTH_TOKEN_1"] = env[f"CLAUDE_CODE_OAUTH_TOKEN_{slot}"]
 
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "slot-three-success\n"
-    assert _labels(call_log) == ["token3"]
+    assert result.stdout == "slot-five-success\n"
+    assert _labels(call_log) == ["token5"]
 
 
 def test_cascade_retired_slots_equal_the_registry() -> None:
@@ -1765,18 +1765,19 @@ GOLDEN_SCENARIOS = {
     "first_slot_answers": {"token1": 'printf "answer-one\\n"\nexit 0'},
     "rate_limited_then_second_answers": {
         "token1": 'printf "Claude AI usage limit reached|1759651200\\n" >&2\nexit 1',
-        "token3": 'printf "answer-three\\n"\nexit 0',
+        "token5": 'printf "answer-five\\n"\nexit 0',
     },
     "dead_slot_then_answer": {
         "token1": f'printf "%s\\n" "{ORG_DISABLED_TEXT}" >&2\nexit 1',
-        "token3": 'printf "answer-three\\n"\nexit 0',
+        "token5": 'printf "answer-five\\n"\nexit 0',
     },
     "all_fail": {},
     "retired_slot_in_the_middle": {
         "token1": 'printf "rate limit exceeded\\n" >&2\nexit 1',
         "token2": 'printf "retired-seat-spent\\n"\nexit 0',
-        "token3": "exit 0",
-        "token4": 'printf "answer-four\\n"\nexit 0',
+        "token3": 'printf "retired-seat-spent\\n"\nexit 0',
+        "token4": 'printf "retired-seat-spent\\n"\nexit 0',
+        "token5": 'printf "answer-five\\n"\nexit 0',
     },
 }
 
@@ -1834,23 +1835,25 @@ def test_golden_attempts_stdout_exit_and_old_stderr_are_unchanged(tmp_path: Path
 GOLDEN_RECORDS = {
     "first_slot_answers": ([("1", "A1", "answered")], ("1", "A1", "0")),
     "rate_limited_then_second_answers": (
-        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "answered")],
-        ("3", "A3", "0"),
+        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "retired_skip"),
+         ("4", "A4", "retired_skip"), ("5", "A2", "answered")],
+        ("5", "A2", "0"),
     ),
     "dead_slot_then_answer": (
-        [("1", "A1", "auth_dead"), ("2", "A5", "retired_skip"), ("3", "A3", "answered")],
-        ("3", "A3", "0"),
+        [("1", "A1", "auth_dead"), ("2", "A5", "retired_skip"), ("3", "A3", "retired_skip"),
+         ("4", "A4", "retired_skip"), ("5", "A2", "answered")],
+        ("5", "A2", "0"),
     ),
     "all_fail": (
-        [("1", "A1", "other"), ("2", "A5", "retired_skip"), ("3", "A3", "other"),
-         ("4", "A4", "other"), ("5", "A2", "other"), ("6", "AZ", "other"),
+        [("1", "A1", "other"), ("2", "A5", "retired_skip"), ("3", "A3", "retired_skip"),
+         ("4", "A4", "retired_skip"), ("5", "A2", "other"), ("6", "AZ", "other"),
          ("legacy", "unmapped", "other"), ("keychain", "unmapped", "other")],
         ("none", "none", "1"),
     ),
     "retired_slot_in_the_middle": (
-        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "empty_output"),
-         ("4", "A4", "answered")],
-        ("4", "A4", "0"),
+        [("1", "A1", "rate_limited"), ("2", "A5", "retired_skip"), ("3", "A3", "retired_skip"),
+         ("4", "A4", "retired_skip"), ("5", "A2", "answered")],
+        ("5", "A2", "0"),
     ),
 }
 
@@ -1872,7 +1875,7 @@ def test_every_attempt_names_slot_seat_and_class_and_one_result_line(tmp_path: P
 def _first_slot(tmp_path: Path, body: str, *, env_extra: dict[str, str] | None = None):
     bodies = _default_bodies()
     bodies["token1"] = body
-    bodies["token3"] = 'printf "answer-three\\n"\nexit 0'
+    bodies["token5"] = 'printf "answer-five\\n"\nexit 0'
     _, _, env = _fake_fleet(tmp_path, bodies)
     env.update(env_extra or {})
     result = _run_cascade(env, "hermetic prompt", "--claude-only")
@@ -1964,7 +1967,7 @@ def test_global_deadline_is_timeout_not_rate_limited(tmp_path: Path) -> None:
 
 def test_seat_ledger_skip_is_rate_limited_from_the_ledger(tmp_path: Path) -> None:
     bodies = _default_bodies()
-    bodies["token3"] = 'printf "answer-three\\n"\nexit 0'
+    bodies["token5"] = 'printf "answer-five\\n"\nexit 0'
     _, _, env = _fake_fleet(tmp_path, bodies)
     lib = tmp_path / "seat_state_stub.sh"
     lib.write_text('seat_state_precheck_skip() { [ "$1" = claude-token-1-env ]; }\n', encoding="utf-8")

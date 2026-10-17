@@ -1,0 +1,2 @@
+{"seat": "codex-gpt-5.6-sol", "role": "review", "ok": true, "ts": "2026-10-16T21:24:00Z", "head": "70901350f7", "verdict": "FALSIFIED", "findings": 1, "log": "scratchpad council-codex.txt"}
+{"seat": "kimi-code/k3", "role": "review", "ok": true, "ts": "2026-10-16T21:43:00Z", "head": "08705869e8", "verdict": "HOLDS", "findings": 1, "log": "scratchpad council-kimi.txt"}

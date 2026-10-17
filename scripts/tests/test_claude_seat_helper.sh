@@ -66,6 +66,7 @@ run_helper() {  # $1 = fake binary, $2.. = env assignments; prints "rc|stdout|st
   # draft did exactly that — three checks passed on my own live token).
   env -u CLAUDE_CODE_OAUTH_TOKEN -u CLAUDE_CODE_OAUTH_TOKEN_1 -u CLAUDE_CODE_OAUTH_TOKEN_2 \
       -u CLAUDE_CODE_OAUTH_TOKEN_3 -u CLAUDE_CODE_OAUTH_TOKEN_4 -u CLAUDE_CODE_OAUTH_TOKEN_5 \
+      -u CLAUDE_CODE_OAUTH_TOKEN_6 \
       "$@" \
       CLAUDE_SEAT_BIN="$bin" \
       CLAUDE_SEAT_SECRETS_FILE=/dev/null \
@@ -75,28 +76,28 @@ run_helper() {  # $1 = fake binary, $2.. = env assignments; prints "rc|stdout|st
   LAST_ERR="$(cat "$err")"
 }
 
-# ── the world where seat 1 and 2 are revoked and seat 4 answers ───────────────
+# ── the world where seat 1 and 5 are revoked and seat 6 answers ───────────────
 W1="$(mktemp -d "$SANDBOX/world.XXXXXX")"
 BIN1="$(make_fake_claude "$W1" '
 case "$CLAUDE_CODE_OAUTH_TOKEN" in
-  dead1|dead2) echo "Failed to authenticate. API Error: 401 OAuth access token has been revoked."; exit 1 ;;
-  live4)       echo "THE ANSWER"; exit 0 ;;
+  dead1|dead5) echo "Failed to authenticate. API Error: 401 OAuth access token has been revoked."; exit 1 ;;
+  live6)       echo "THE ANSWER"; exit 0 ;;
   *)           echo "unexpected token"; exit 9 ;;
 esac')"
 
 echo "guilt — a refusing seat rotates to the next:"
 : > "$W1/seats-tried"
-run_helper "$BIN1" CLAUDE_CODE_OAUTH_TOKEN_1=dead1 CLAUDE_CODE_OAUTH_TOKEN_2=dead2 CLAUDE_CODE_OAUTH_TOKEN_4=live4
+run_helper "$BIN1" CLAUDE_CODE_OAUTH_TOKEN_1=dead1 CLAUDE_CODE_OAUTH_TOKEN_5=dead5 CLAUDE_CODE_OAUTH_TOKEN_6=live6
 check "the live seat's answer is returned on stdout" "$(yesno test "$LAST_OUT" = "THE ANSWER")"
 check "exit code is 0" "$(yesno test "$LAST_RC" -eq 0)"
 check "all three seats were actually tried, in order" \
-      "$(yesno test "$(tr '\n' ' ' < "$W1/seats-tried")" = "dead1 dead2 live4 ")"
+      "$(yesno test "$(tr '\n' ' ' < "$W1/seats-tried")" = "dead1 dead5 live6 ")"
 check "stderr names each rotation" \
-      "$(yesno eval 'has "token_1 refused" "$LAST_ERR" && has "token_2 refused" "$LAST_ERR"')"
+      "$(yesno eval 'has "token_1 refused" "$LAST_ERR" && has "token_5 refused" "$LAST_ERR"')"
 
 echo "innocence — a live first seat is used immediately, no needless rotation:"
 : > "$W1/seats-tried"
-run_helper "$BIN1" CLAUDE_CODE_OAUTH_TOKEN_1=live4
+run_helper "$BIN1" CLAUDE_CODE_OAUTH_TOKEN_1=live6
 check "only one seat tried" "$(yesno test "$(wc -l < "$W1/seats-tried" | tr -d ' ')" -eq 1)"
 check "no rotation message" "$(yesno eval '! has refused "$LAST_ERR"')"
 
@@ -106,7 +107,7 @@ BIN2="$(make_fake_claude "$W2" '
 echo "Your quota and rate limit questions are answered in the docs: a 429 means slow down."
 exit 0')"
 : > "$W2/seats-tried"
-run_helper "$BIN2" CLAUDE_CODE_OAUTH_TOKEN_1=s1 CLAUDE_CODE_OAUTH_TOKEN_2=s2
+run_helper "$BIN2" CLAUDE_CODE_OAUTH_TOKEN_1=s1 CLAUDE_CODE_OAUTH_TOKEN_5=s5
 check "the answer is returned, not discarded" "$(yesno has "429 means slow down" "$LAST_OUT")"
 check "the second seat was never touched" "$(yesno test "$(wc -l < "$W2/seats-tried" | tr -d ' ')" -eq 1)"
 
@@ -114,7 +115,7 @@ echo "innocence — a genuine NON-auth failure does not burn the remaining seats
 W3="$(mktemp -d "$SANDBOX/world.XXXXXX")"
 BIN3="$(make_fake_claude "$W3" 'echo "ENOENT: cannot read the prompt file" >&2; echo ""; exit 3')"
 : > "$W3/seats-tried"
-run_helper "$BIN3" CLAUDE_CODE_OAUTH_TOKEN_1=s1 CLAUDE_CODE_OAUTH_TOKEN_2=s2 CLAUDE_CODE_OAUTH_TOKEN_4=s4
+run_helper "$BIN3" CLAUDE_CODE_OAUTH_TOKEN_1=s1 CLAUDE_CODE_OAUTH_TOKEN_5=s5 CLAUDE_CODE_OAUTH_TOKEN_6=s6
 check "stopped after the first seat" "$(yesno test "$(wc -l < "$W3/seats-tried" | tr -d ' ')" -eq 1)"
 check "the underlying exit code is propagated" "$(yesno test "$LAST_RC" -eq 3)"
 
@@ -133,6 +134,17 @@ echo "guilt — a missing binary is named, not silently ignored:"
 run_helper "$SANDBOX/definitely-not-a-binary" CLAUDE_CODE_OAUTH_TOKEN_1=s1
 check "rc=2 and the reason mentions the binary" \
       "$(yesno eval 'test "$LAST_RC" -eq 2 && has "no claude binary" "$LAST_ERR"')"
+
+echo "guilt — a closed account is never spent, not even aliased into a live slot or the legacy name:"
+for retired in 2 3 4; do
+  W6="$(mktemp -d "$SANDBOX/world.XXXXXX")"
+  BIN6="$(make_fake_claude "$W6" 'echo "CLOSED ACCOUNT ANSWERED"; exit 0')"
+  : > "$W6/seats-tried"
+  run_helper "$BIN6" "CLAUDE_CODE_OAUTH_TOKEN_$retired=closed$retired" CLAUDE_CODE_OAUTH_TOKEN_1=closed$retired \
+      CLAUDE_CODE_OAUTH_TOKEN="closed$retired"
+  check "slot $retired value, aliased into slot 1 and legacy, is never invoked" \
+        "$(yesno eval 'test "$(wc -c < "$W6/seats-tried" | tr -d " ")" -eq 0 && test "$LAST_RC" -ne 0')"
+done
 
 echo "shared rule — the verdict comes from cron-agent.sh, not a copy:"
 copied=$(grep -c 'rate.?limit\|not logged in\|token_revoked' "$HELPER")

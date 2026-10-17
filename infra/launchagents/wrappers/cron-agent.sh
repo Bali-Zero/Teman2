@@ -7,7 +7,7 @@
 #
 # Features:
 #   - Telegram alert on failure (with cooldown)
-#   - Claude OAuth fallback (TOKEN_1 → ... → TOKEN_5 → TOKEN_6 [Team, last-resort] → legacy → keychain)
+#   - Claude OAuth fallback (TOKEN_1 → TOKEN_5 → TOKEN_6 [Team, last by position; slots 2,3,4 retired] → legacy → keychain)
 #   - Structured logging to ~/logs/cron-agent/
 #   - Timeout enforcement
 #   - Lock file (prevents concurrent runs of same job)
@@ -15,8 +15,8 @@
 #
 # Environment:
 #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID — alerts (loaded from ~/.nuzantara-secrets.env)
-#   CLAUDE_CODE_OAUTH_TOKEN_{1,2,3,4,5} — 5 Claude MAX subscription accounts for agent tier
-#   CLAUDE_CODE_OAUTH_TOKEN_6 — Claude Team seat (zero@balizero.com), weekly-capped, LAST RESORT ONLY
+#   CLAUDE_CODE_OAUTH_TOKEN_{1,5} — the 2 live Claude MAX subscription accounts (slots 2,3,4 retired 2026-10-17: accounts closed)
+#   CLAUDE_CODE_OAUTH_TOKEN_6 — Claude Team seat (zero@balizero.com), weekly-capped, tried after the MAX seats
 #   CRON_AGENT_TIMEOUT — override default timeout (default: 300s exec, 600s agent)
 #   CRON_AGENT_DRY_RUN — set to "1" to print commands without executing
 #
@@ -521,15 +521,29 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
     }
     [[ -z "$checkout_before" ]] && log "checkout guard OFF for this run: ${CRON_AGENT_CHECKOUT_DIR:-$HOME/nuzantara} has no measurable HEAD vs origin/main"
 
-    # Five MAX seats, then the Team seat (6, weekly-capped, last-resort by
-    # position — never reorder this ahead of 1-5), then legacy and keychain.
+    # Live MAX seats 1 and 5, then the Team seat (6, weekly-capped, last by
+    # position — never reorder this ahead of the MAX slots), then legacy and
+    # keychain. Retired slots (FLEET_TOPOLOGY.json status "retired": 2 = A5,
+    # 3 = A3, 4 = A4; pinned by scripts/tests/test_claude_cascade_shell.py) are
+    # never attempted, and their value counts as seen so the legacy name cannot
+    # spend the same closed account.
     local tokens=()
     local labels=()
+    local retired_tokens=()
+    local retired_i
+    for retired_i in 2 3 4; do
+        local retired_var="CLAUDE_CODE_OAUTH_TOKEN_${retired_i}"
+        [[ -n "${!retired_var:-}" ]] && retired_tokens+=("${!retired_var}")
+    done
     for i in 1 2 3 4 5 6; do
+        case " 2 3 4 " in *" $i "*) continue ;; esac
         local var_name="CLAUDE_CODE_OAUTH_TOKEN_${i}"
         local tok="${!var_name:-}"
         local is_dup=0
         local existing
+        for existing in "${retired_tokens[@]:-}"; do
+            [[ "$existing" == "$tok" ]] && is_dup=1
+        done
         for existing in "${tokens[@]:-}"; do
             [[ "$existing" == "$tok" ]] && is_dup=1
         done
@@ -541,7 +555,7 @@ this repo (nb-curator Mode C incident, PR #4161/#4155, and its recurrence in ind
     # Legacy fallback
     if [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
         local is_dup=0
-        for t in "${tokens[@]:-}"; do
+        for t in "${tokens[@]:-}" "${retired_tokens[@]:-}"; do
             [[ "$t" == "$CLAUDE_CODE_OAUTH_TOKEN" ]] && is_dup=1
         done
         if [[ $is_dup -eq 0 ]]; then

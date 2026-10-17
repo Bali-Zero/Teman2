@@ -1,0 +1,34 @@
+task_id: seat-roster-1017
+mission: LOCALCI-SOVEREIGN
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Make the closure of the A3, A4 and A5 Claude accounts (Zero 2026-10-17) operational: slots 2, 3, 4
+  are never attempted by the cron wrappers even when their token sits in the environment, not under
+  the legacy CLAUDE_CODE_OAUTH_TOKEN name and not aliased into a live numbered slot; the registry
+  records the closure and the Team seat AZ as launchable; no role chain names a closed account.
+constraints:
+  - No token is read, printed, copied or moved; every test uses dummy strings, probes list variable names only.
+  - ~/.claude/CLAUDE.md and ~/.nuzantara-secrets.env are not edited; docs/specs/localci-sovereign-2026-10-07.md is not touched.
+  - The live order stays 1, 5, 6; the Team seat stays last by position.
+  - The wrappers' live copies run from ~/scripts on Pro and Mini; merge does not make them live.
+appetite:
+  wall_clock_hours: 4
+acceptance:
+  - text: WHEN CLAUDE_CODE_OAUTH_TOKEN_2, _3 or _4 is set THEN claude-cascade.sh SHALL never attempt it and SHALL reach slot 5.
+    probe: scripts/tests/test_claude_cascade_shell.py::test_retired_slot_is_never_attempted_even_when_its_token_is_set
+  - text: WHEN the legacy name or an earlier numbered slot carries a closed account's value THEN no wrapper SHALL attempt it.
+    probe: test_retired_slot_value_is_not_retried_under_the_legacy_name + test_retired_slot_value_is_not_spent_by_an_earlier_numbered_slot + test_wr2_ig_metrics_analyst_wrapper.sh [R2] + test_claude_seat_pick.sh 8 + test_claude_seat_helper.sh
+  - text: WHEN a closed token would answer and every live seat is dead THEN cron-agent.sh SHALL end on the keychain after exactly four attempts.
+    probe: scripts/tests/test_cron_agent_oauth_cascade.sh "fail closed"
+  - text: WHEN FLEET_TOPOLOGY.json retires or un-retires a slot THEN every consumer's retired list SHALL be pinned to it and no role chain SHALL name a retired account.
+    probe: scripts/tests/test_closed_seats_never_selected.py
+  - text: WHEN only a retired token is set THEN claude_seat_pick SHALL SUSPEND instead of selecting it.
+    probe: scripts/tests/test_claude_seat_pick.sh 7
+consumer_map:
+  - infra/launchagents/wrappers/cron-agent.sh — about 134 Pro crontab lines; live copy ~/scripts/cron-agent.sh on Pro.
+  - infra/launchagents/wrappers/claude-cascade.sh — every Claude cron daemon's cascade; live copy ~/scripts on Pro and Mini.
+  - scripts/ai-dispatch.sh, scripts/lib/claude_seat.sh — operator and cron one-shot dispatch.
+  - infra/launchagents/wrappers/wr2-ig-metrics-analyst-run.sh — weekly WR2 IG metrics analyst.
+  - scripts/usage/seat_map.json — cswap profile map.

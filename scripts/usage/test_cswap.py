@@ -315,10 +315,10 @@ def test_cmd_auto_proceeds_once_lock_is_free(tmp_path):
 def test_cmd_auto_with_exclude_removes_seat_from_ranking(tmp_path, capsys):
     seat_map_path = _write_seat_map(tmp_path)
     rc = cswap.cmd_auto(seat_map_path, do_print=False, do_activate=False,
-                         exclude=["AZ", "A2", "A1"])
+                         exclude=["AZ", "A2"])
     assert rc == 0
     out = capsys.readouterr().out
-    assert "seat=A3" in out
+    assert "seat=A1" in out and "seat=A3" not in out  # A3 is closed (retired): never a pick
 
 
 def test_cmd_auto_no_eligible_seats_returns_3(tmp_path):
@@ -802,3 +802,29 @@ def test_exec_accepts_only_seat_ids_of_this_machine(door, tmp_path):
     assert door("A9") == 2
     assert door(str(tmp_path / "kaiser")) == 2  # a literal dir would hide which seat ran
     assert _calls(tmp_path) == []
+
+
+# ---------------------------------------------- closed seats (A3/A4/A5, 2026-10-17)
+
+
+def test_closed_seats_in_the_shipped_seat_map_carry_bare_retired_ids():
+    shipped = json.loads((Path(cswap.__file__).parent / "seat_map.json").read_text())
+    retired = cswap.retired_seats(cswap._default_topology_path())
+    assert {"A3", "A4", "A5"} <= retired
+    labels = {d: s for d, s in shipped["claude_profiles"].items()}
+    assert labels["~/.claude-acct3"] == "A3" and labels["~/.claude-acct4"] == "A4"
+    for block in (shipped["by_machine"]).values():
+        assert not (set(block["claude_profiles"].values()) & retired)
+
+
+def test_cmd_auto_never_picks_a_retired_seat(tmp_path, monkeypatch, capsys):
+    for d in ("a2", "acct3", "acct4"):
+        (tmp_path / d).mkdir()
+    p = tmp_path / "seat_map.json"
+    p.write_text(json.dumps({"claude_profiles": {
+        str(tmp_path / "a2"): "A2", str(tmp_path / "acct3"): "A3", str(tmp_path / "acct4"): "A4"}}))
+    # the closed seats look idle, so a ranking that admitted them would pick one
+    monkeypatch.setattr(cswap, "_collect_window",
+                        lambda pdir, since: {"total": 0 if "acct" in pdir else 1000})
+    cswap.cmd_auto(p, do_print=True, do_activate=False, exclude=[])
+    assert Path(capsys.readouterr().out.strip().splitlines()[-1].strip()).name == "a2"

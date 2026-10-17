@@ -941,11 +941,9 @@ def test_ai_dispatch_shell_tries_legacy_before_keychain(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert "legacy-success" in result.stdout
+    # Slots 2, 3, 4 hold sentinels too: closed accounts, never attempted.
     assert trace_file.read_text(encoding="utf-8").splitlines() == [
         "sentinel-1",
-        "sentinel-2",
-        "sentinel-3",
-        "sentinel-4",
         "sentinel-5",
         "legacy-sentinel",
     ]
@@ -959,11 +957,14 @@ def test_wr2_metrics_wrapper_declares_real_account_rotation() -> None:
 
     assert "run_claude_account" in source
     assert (
-        "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_3 "
-        "CLAUDE_CODE_OAUTH_TOKEN_4 CLAUDE_CODE_OAUTH_TOKEN_5"
+        "CLAUDE_CODE_OAUTH_TOKEN_1 CLAUDE_CODE_OAUTH_TOKEN_5 "
+        "CLAUDE_CODE_OAUTH_TOKEN_6"
     ) in source
-    # Slot 2 (A5) is retired: it stays out of the rotation list on purpose.
-    assert "RETIRED_TOKEN_VARS=(CLAUDE_CODE_OAUTH_TOKEN_2)" in source
+    # Slots 2, 3, 4 (A5, A3, A4) are retired: out of the rotation list on purpose.
+    assert (
+        "RETIRED_TOKEN_VARS=(CLAUDE_CODE_OAUTH_TOKEN_2 CLAUDE_CODE_OAUTH_TOKEN_3 "
+        "CLAUDE_CODE_OAUTH_TOKEN_4)"
+    ) in source
     assert "returned empty output" not in source or "grep -q '[^[:space:]]'" in source
     assert "ANTHROPIC_*" in source
 
@@ -1119,7 +1120,7 @@ def _base_shell_env(
     env.update(
         {
             "CLAUDE_CODE_OAUTH_TOKEN_1": "first-seat",
-            "CLAUDE_CODE_OAUTH_TOKEN_2": "second-seat",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "second-seat",
             "ANTHROPIC_API_KEY": "must-not-leak",
             "AWS_TEST_SENTINEL": "must-not-leak",
             "VERTEX_AI_TEST_SENTINEL": "must-not-leak",
@@ -1129,7 +1130,7 @@ def _base_shell_env(
         }
     )
     env.update(_cross_provider_shell_sentinels())
-    for slot in (3, 4, 5, 6):
+    for slot in (2, 3, 4, 6):
         env.pop(f"CLAUDE_CODE_OAUTH_TOKEN_{slot}", None)
     env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     return env
@@ -1286,7 +1287,7 @@ def test_cron_agent_rotates_exit_124_within_global_budget(
 
     assert result.returncode == 0, result.stderr
     assert "token_1: timed out, trying next account" in log
-    assert "used: tier2-claude-token_2" in log
+    assert "used: tier2-claude-token_5" in log
     assert trace.read_text(encoding="utf-8").splitlines() == ["second-seat"]
 
 
@@ -1311,8 +1312,8 @@ def test_cron_agent_all_retryable_attempts_fail_and_dedupe(
             "CRON_AGENT_TIMEOUT_BIN": str(fake_timeout),
             "FAKE_CLAUDE_MODE": "retry",
             "CLAUDE_CODE_OAUTH_TOKEN_1": "duplicate-seat",
-            "CLAUDE_CODE_OAUTH_TOKEN_2": "duplicate-seat",
-            "CLAUDE_CODE_OAUTH_TOKEN_3": "other-seat",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "duplicate-seat",
+            "CLAUDE_CODE_OAUTH_TOKEN_6": "other-seat",
             "CLAUDE_CODE_OAUTH_TOKEN": "duplicate-seat",
         }
     )
@@ -1357,8 +1358,8 @@ def test_ai_dispatch_deduplicates_numbered_and_legacy_tokens(
             "PATH": f"{fake_bin}:{env['PATH']}",
             "FAKE_CLAUDE_MODE": "dedupe",
             "CLAUDE_CODE_OAUTH_TOKEN_1": "duplicate-seat",
-            "CLAUDE_CODE_OAUTH_TOKEN_2": "duplicate-seat",
-            "CLAUDE_CODE_OAUTH_TOKEN_3": "unique-seat",
+            "CLAUDE_CODE_OAUTH_TOKEN_5": "duplicate-seat",
+            "CLAUDE_CODE_OAUTH_TOKEN_6": "unique-seat",
             "CLAUDE_CODE_OAUTH_TOKEN": "duplicate-seat",
         }
     )
