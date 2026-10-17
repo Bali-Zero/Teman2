@@ -1,0 +1,19 @@
+task_id: mini-janitor-followup-1018
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Close the fresh gate's findings on PR 8686 (mini.disk_janitor): watch the new janitor test
+  workflow on main pushes (F1), make the in-container /tmp handling newline-safe (F2), run the
+  leftover-trash sweep after the renames (F3), and pin -mindepth 1 on the empty-directory prune (F4).
+acceptance:
+  - text: >-
+      A /tmp entry whose name holds a newline is renamed and removed without touching an entry named
+      like its second line; the exec script runs idle re-check, renames, this run's trash, then the
+      sweep; an allowlisted top-level cache directory survives when it becomes empty.
+    probe: /bin/bash scripts/tests/test_mini_disk_janitor.sh
+  - text: Every live workflow, the janitor tests included, is watched on main pushes.
+    probe: python3 scripts/check_watcher_coverage.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 1
