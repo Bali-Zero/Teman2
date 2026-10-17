@@ -1,0 +1,25 @@
+gear: 2
+gear_reason: >-
+  Deterministic floor 1 from the changed-file set (three mouth files, ~55 net lines, no hot zone);
+  declared Gear 2 because the diff reshapes a public price surface (balizero.com/services/visa) and
+  so earns one adversarial read before it ships. No catalogue figure, backend or migration moves.
+mission: >-
+  Zero, 2026-10-17, interactive session: the E33 Second Home (5 years) and the E33F Second Home
+  Senior (1 year) families on the visa price ledger are kin ("per l'index sono affini") and belong
+  in one family; merge them.
+objective: >-
+  1) The KITAS chapter of /services/visa reads the three Second Home permits (E33, E33E senior,
+  E33F senior income-only) as ONE "Second Home" family with columns New permit / Extension.
+  2) Each permit stays one row; its duration and, for E33F, its channel (Offshore vs Onshore) read as variant lines under the row name - never as separate rows (owner rule of
+  2026-10-17). 3) The duration caption under a row name renders only for rows without variants,
+  because a variant label already carries the duration. 4) Every one of the 79 catalogue rows is
+  still placed exactly once (unit test + scripts/ci/observe_visa_price_ledger.py), the
+  public-service-price-card contract is untouched, and the page shows no overflow or console error
+  at 1440px and 390px.
+scope:
+  - apps/mouth/src/data/visa-price-ledger.ts
+  - apps/mouth/src/data/visa-price-ledger.test.ts
+  - apps/mouth/src/components/services/VisaPriceLedger.tsx
+appetite:
+  wall_clock_hours: 2
+  adversarial_rounds: 1

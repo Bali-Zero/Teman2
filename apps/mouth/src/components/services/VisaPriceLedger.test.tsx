@@ -72,6 +72,15 @@ describe("the visa price list renders as a chaptered ledger", () => {
     expect(within(dialog).getByText("All-inclusive pricing")).toBeVisible();
   });
 
+  it("lets the variant label carry the duration: no caption doubles it", () => {
+    render(<ServicePricing service={visa} slug="visa" />);
+    const secondHome = screen.getByRole("region", { name: "Second Home" });
+    expect(within(secondHome).getAllByText("5 years")).toHaveLength(2);
+    expect(within(secondHome).getAllByText(/^1 year, /)).toHaveLength(2);
+    const work = screen.getByRole("region", { name: "Work" });
+    expect(within(work).queryByText(/^\d+ years?$/)).toBeNull();
+  });
+
   it("leaves the card grid in place for the other service slugs", () => {
     render(<ServicePricing service={SERVICES_DATA.company} slug="company" />);
     expect(screen.queryByTestId("visa-price-ledger")).toBeNull();

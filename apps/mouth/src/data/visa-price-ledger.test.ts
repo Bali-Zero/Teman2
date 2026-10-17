@@ -128,6 +128,55 @@ describe("the visa price ledger places the live catalogue", () => {
         ?.cells.map((cell) => cell?.livePriceKey),
     ).toEqual(["C1 Tourism", "C1 Tourism Extension"]);
   });
+
+  it("reads the three Second Home permits as one family, durations and channels as variants", () => {
+    const kitas = ledger.chapters.find((chapter) => chapter.id === "kitas");
+    expect(kitas?.families.map((family) => family.id)).not.toContain(
+      "second-home-senior-1y",
+    );
+    const secondHome = kitas?.families.find(
+      (item) => item.id === "second-home",
+    );
+    expect(secondHome?.kind).toBe("matrix");
+    if (secondHome?.kind !== "matrix") return;
+    expect(secondHome.columns).toEqual(["New permit", "Extension"]);
+    expect(secondHome.rows.map((row) => row.name)).toEqual([
+      "E33 Second Home",
+      "E33E Second Home Senior",
+      "E33F Second Home Senior",
+    ]);
+    expect(
+      secondHome.rows.map((row) =>
+        row.variants?.map((variant) => variant.label),
+      ),
+    ).toEqual([
+      ["5 years"],
+      ["5 years"],
+      ["1 year, Offshore", "1 year, Onshore"],
+    ]);
+    expect(
+      secondHome.rows.map((row) =>
+        row.variants?.map((variant) =>
+          variant.cells.map((cell) => cell?.livePriceKey ?? null),
+        ),
+      ),
+    ).toEqual([
+      [["E33 Second Home (5 Years)", null]],
+      [
+        [
+          "E33E Second Home Senior (5 Years)",
+          "E33E Second Home Senior (Extend)",
+        ],
+      ],
+      [
+        ["E33F Second Home Senior (1 Year, Offshore)", null],
+        [
+          "E33F Second Home Senior (1 Year, Altus/Onshore)",
+          "E33F Second Home Senior (Extend)",
+        ],
+      ],
+    ]);
+  });
 });
 
 describe("the visa price ledger reports drift in both directions (guilt)", () => {

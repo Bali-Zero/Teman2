@@ -226,7 +226,7 @@ function MatrixFamily({
         ))}
       </div>
       {family.rows.map((row) => {
-        const validity = rowValidity(rowCells(row));
+        const validity = row.variants ? undefined : rowValidity(rowCells(row));
         const popular = rowCells(row).some((cell) => cell?.popular);
         const head = (
           <div className="min-w-0">
