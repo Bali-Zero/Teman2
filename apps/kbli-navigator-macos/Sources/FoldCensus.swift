@@ -49,7 +49,7 @@ enum FoldCensus {
                 lang.lang = l == "id" ? .id : .en
                 let marks = Marks()
                 state.selected = nil
-                let root = RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+                let root = RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(ThemeManager.launchMode()))
                     .environment(\.dynamicTypeSize, .large)
                     .frame(width: size.width, height: size.height, alignment: .top)
                     .background(Theme.antracite)

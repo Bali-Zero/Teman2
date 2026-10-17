@@ -8,6 +8,7 @@ struct ChatView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var lang: LanguageManager
     @State private var draft: String = ""
+    @Environment(\.themeEpoch) private var themeEpoch
     /// Legacy brain — kept compiled/reachable only behind `useLegacyOpenClawBrain` (design §4).
     private let legacyRunner = OpenClawRunner()
     /// The in-flight turn, if any. Cancelling it tears down the WHOLE codex process group, not
@@ -21,6 +22,7 @@ struct ChatView: View {
             messages
             inputBar
         }
+        .id(themeEpoch)
         .background(Theme.antracite)
         .onAppear(perform: consumePendingCode)
         .onDisappear { activeTask?.cancel() }
