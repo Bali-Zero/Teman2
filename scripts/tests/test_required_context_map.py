@@ -57,6 +57,135 @@ def test_required_mouth_job_compiles_contract_consumers() -> None:
     _assert_required_mouth_typecheck(workflow)
 
 
+FRESHNESS_STEP_NAME = "Check API schema.d.ts freshness (regenerate + diff)"
+FRESHNESS_GATE = "matrix.app == 'mouth' && steps.decide.outputs.run == 'true'"
+
+
+def _assert_mouth_schema_freshness(workflow: dict[str, Any]) -> None:
+    """Pin the schema.d.ts freshness gate in the required mouth leg
+    (PENDING-ARMS row 2026-08-24 part b) — same W69 reasoning as the
+    typecheck pin above: the check only gates merges as long as it stays a
+    non-advisory step of the already-required leg, between its three setup
+    steps and the neighbouring mouth-only contract checks."""
+    job = workflow["jobs"]["frontend-tests"]
+    steps = job["steps"]
+    matches = [
+        i
+        for i, entry in enumerate(steps)
+        if entry.get("name") == FRESHNESS_STEP_NAME
+    ]
+    assert len(matches) == 1, "freshness step missing or duplicated"
+    idx = matches[0]
+    step = steps[idx]
+    assert step["if"] == FRESHNESS_GATE
+    assert step.get("continue-on-error", False) is False
+    names = [entry.get("name") for entry in steps]
+    assert names.index("Check GARUDA generated contract") < idx
+    assert idx < names.index("Typecheck mouth contract consumers")
+    run = step["run"]
+    # The executable chain, pinned as a whole — substrings, not vibes: the
+    # council (codex-gpt-5.6-sol round 3) killed an earlier version of this
+    # pin by deleting the generator line alone, and by neutering the
+    # failure branch's `exit 1` alone, both while every other substring
+    # still matched.
+    assert "python -m scripts.generate_openapi" in run
+    assert "./node_modules/.bin/openapi-typescript" in run
+    assert "apps/backend-rag/openapi.json" in run
+    assert "--output apps/mouth/src/lib/api/schema.d.ts" in run
+    # Fixed diff targets and the delete-before-render guard: without the rm,
+    # a no-op or repointed renderer leaves the stale committed file in
+    # place and the diff goes green against itself (council findings,
+    # codex-gpt-5.6-sol rounds 2-3, of the arming PR).
+    assert "rm -f apps/mouth/src/lib/api/schema.d.ts" in run
+    assert "apps/mouth/src/lib/api/schema.d.ts" in run
+    assert "apps/mouth/src/lib/api/schema.d.ts.openapi-sha256" in run
+    assert "git diff --exit-code" in run
+    assert "|| true" not in run
+    assert "exit 1" in run
+    # The degraded-mode env the generation imports under (mirrors the
+    # backend shard's bootstrap-step env trio). `.get` throughout so a
+    # popped/missing env block reads as an assertion failure, never a
+    # KeyError escaping the pin.
+    env = step.get("env") or {}
+    assert env.get("DATABASE_URL") == "sqlite:///:memory:"
+    assert str(env.get("JWT_SECRET_KEY", "")).strip()
+    assert str(env.get("API_KEYS", "")).strip()
+    # Its three setup steps carry the identical gate — a Python setup that
+    # ran on a different matrix leg would leave the freshness step without
+    # its toolchain, reading as a skip, never as a red.
+    for setup_name in (
+        "Setup Python (API schema freshness)",
+        "Restore backend uv cache (API schema freshness)",
+        "Install backend deps (uv, API schema freshness)",
+    ):
+        setup_matches = [s for s in steps if s.get("name") == setup_name]
+        assert len(setup_matches) == 1, f"{setup_name} missing or duplicated"
+        assert setup_matches[0]["if"] == FRESHNESS_GATE
+
+
+def test_mouth_schema_freshness_gate_pinned() -> None:
+    workflow = mod.load_workflow(REPO_ROOT / ".github/workflows/tests.yml")
+    assert workflow is not None
+    _assert_mouth_schema_freshness(workflow)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "remove",
+        "advisory",
+        "wrong-gate",
+        "swallow-error",
+        "drop-rm-guard",
+        "move-after-typecheck",
+        "drop-env",
+        "drop-generator",
+        "neuter-exit",
+    ],
+)
+def test_mouth_schema_freshness_rejects_disarmed_mutations(mutation: str) -> None:
+    workflow = deepcopy(mod.load_workflow(REPO_ROOT / ".github/workflows/tests.yml"))
+    assert workflow is not None
+    job = workflow["jobs"]["frontend-tests"]
+    steps = job["steps"]
+    step = next(s for s in steps if s.get("name") == FRESHNESS_STEP_NAME)
+    if mutation == "remove":
+        steps.remove(step)
+    elif mutation == "advisory":
+        step["continue-on-error"] = True
+    elif mutation == "wrong-gate":
+        step["if"] = "matrix.app == 'admin-dashboard'"
+    elif mutation == "swallow-error":
+        step["run"] += " || true"
+    elif mutation == "drop-rm-guard":
+        step["run"] = step["run"].replace(
+            "rm -f apps/mouth/src/lib/api/schema.d.ts", "true"
+        )
+    elif mutation == "move-after-typecheck":
+        steps.remove(step)
+        typecheck_idx = next(
+            i for i, s in enumerate(steps) if s.get("id") == "mouth-typecheck"
+        )
+        steps.insert(typecheck_idx + 1, step)
+    elif mutation == "drop-env":
+        step.pop("env", None)
+    elif mutation == "drop-generator":
+        # Council kill (codex-gpt-5.6-sol round 3): an earlier pin matched
+        # on rendering substrings only, so deleting the OpenAPI generation
+        # line entirely — the check diffing a render of a STALE
+        # openapi.json — still passed every assertion.
+        step["run"] = step["run"].replace(
+            "PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1 python -m scripts.generate_openapi",
+            "true",
+        )
+    elif mutation == "neuter-exit":
+        # Same council kill on the failure branch: `exit 1` -> no-op colon
+        # makes any drift green while every benign substring still matches.
+        step["run"] = step["run"].replace("exit 1", ":")
+    with pytest.raises(AssertionError):
+        _assert_mouth_schema_freshness(workflow)
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

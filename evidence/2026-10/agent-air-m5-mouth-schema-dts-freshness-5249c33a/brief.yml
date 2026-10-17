@@ -1,0 +1,116 @@
+task: >-
+  PENDING-ARMS ledger row 2026-08-24, part (b): arm a CI freshness check for the committed,
+  generated apps/mouth/src/lib/api/schema.d.ts. Layer 1 (the backend OpenAPI JSON moving ahead
+  of the last regeneration) is already guarded by test_generate_openapi_schema_pin.py
+  (SHWEB-20260911 PR-RISYNC, backend shard) via the committed pin
+  schema.d.ts.openapi-sha256 — that PR explicitly left layer 2 (schema.d.ts being a faithful
+  RENDER of that JSON through the lockfile-pinned openapi-typescript + Prettier) as a stated
+  scope gap. This PR closes it: four new steps in the mouth leg of the already-required
+  frontend-tests job in .github/workflows/tests.yml (a hot zone) — setup Python 3.11,
+  restore the backend uv cache (same cache key as Backend Shard, restore-only), install
+  the backend env from the same uv lock (uv pip install --system), then regenerate the
+  backend OpenAPI via the repo's own
+  scripts.generate_openapi (create_app().openapi(), no DB, no network), re-render
+  schema.d.ts with the lockfile-pinned openapi-typescript invoked directly (fixed
+  input/output pair, same shape as the neighbouring GARUDA contract step — deliberately
+  not the candidate-controlled npm script), Prettier --write as lint-staged would, and
+  git diff --exit-code over schema.d.ts + the drift pin so any drift reds the required leg.
+lane: mouth
+machine:
+  m5 (Air-M5, thin client; the worktree's .venv and node_modules are read-only
+  symlinks into the main checkout — nothing was installed on M5)
+date: 2026-10-05
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 from the path term, measured:
+  `python3 scripts/evidence_pack_lint.py --print-floor --changed-files-file <merge-base
+  changed files> --numstat-file <merge-base numstat>` prints 3 with source=path — the only
+  changed code file is .github/workflows/tests.yml, a HOTZONE_PATTERNS path, and the delta adds
+  steps (not first-party `uses:` version pins), so the 2026-09-01 pin exemption does not
+  apply. The floor sets the gear, not the size: the code delta is 203 added lines —
+  tests.yml (+74) plus a mutation-pin test (+129) that keeps the new gate from being
+  disarmed silently (the remainder of the diff is this evidence directory).
+acceptance:
+  - text: >-
+      WHEN the step's exact commands run against a clean checkout at the merge base, the
+      regenerated + re-rendered + prettier-formatted schema.d.ts and drift pin SHALL be
+      byte-identical to the committed files (git diff --exit-code exits 0).
+    probe: >-
+      Innocence runs in the worktree (receipt R4): PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1
+      python -m scripts.generate_openapi → openapi-typescript apps/backend-rag/openapi.json
+      --output apps/mouth/src/lib/api/schema.d.ts → prettier --write → git diff --exit-code
+      on both files = rc 0, latest 2026-10-05T15:28:11Z→15:28:33Z on the final candidate.
+  - text: >-
+      WHEN the committed schema.d.ts is stale relative to a fresh render (simulated by a
+      local-only temp commit hand-editing one line), the step SHALL exit 1 with the fresh
+      render differing from the committed file.
+    probe: >-
+      Guilt run 2026-10-05T14:19:11Z (receipt R5): temp commit ee479d49a3-class
+      (`get: operations["root__get"]` → `get?: never;`), exact step commands →
+      git diff --exit-code rc=1; temp commit reset away immediately, never pushed,
+      working tree verified clean afterwards.
+  - text: >-
+      WHEN the backend app is imported with only the three env vars the step sets
+      (DATABASE_URL sqlite memory, JWT_SECRET_KEY, API_KEYS) and no .env file reachable,
+      schema generation SHALL succeed and produce the identical pin hash.
+    probe: >-
+      Receipt R6: `env -i` + the trio, cwd=/tmp (no .env on the path), venv python
+      -m scripts.generate_openapi → rc 0, pin byte-identical; the same run WITHOUT the
+      trio fails at Settings validation ("API_KEYS not set"), proving the env block is
+      load-bearing, not decorative.
+  - text: >-
+      WHEN the repo's own workflow guards run over the changed file they SHALL stay green:
+      actionlint clean, lint_workflow_timeout_floor clean (169 jobs), and
+      test_required_context_map (which pins the mouth-typecheck step's position between
+      "Check GARUDA generated contract" and "Run tests (with coverage)" — my steps sit
+      between them) SHALL pass.
+    probe: "Receipt R3, 2026-10-05T14:17:51Z: actionlint rc 0; floor lint rc 0; 21 passed."
+  - text: >-
+      Live after merge: a PR that changes the backend OpenAPI contract without running
+      `npm run contract:visa-oracle` SHALL see `Frontend Tests (Next.js) (mouth, true)`
+      red on this step (the fresh render differs from the committed schema.d.ts), naming
+      the regeneration command. First exercised by the first such PR; not claimable in
+      this PR's own runs.
+    probe: >-
+      The first backend-contract PR after this merges; observed via gh run view on the
+      red step's log. Owned by the verifying session.
+out_of_scope: >-
+  No change to the backend pin test, generate_openapi.py, the mouth package.json scripts,
+  or the committed schema.d.ts/pin (both byte-identical after a full regeneration — receipt
+  R4). The full backend test suite was NOT run (task contract). The CI step itself has not
+  run in GitHub Actions yet (the PR's own runs are the first live exercise; the exact
+  command text is proven locally, including the bare-`python` PATH shape via a venv shim —
+  in CI `uv pip install --system` puts fastapi et al. on the system python3, which
+  ubuntu-latest exposes as both python and python3). In scope beyond the workflow: one
+  test file, scripts/tests/test_required_context_map.py, gains a mutation pin for the new
+  gate (council finding M2) — no other test or product file changes.
+assumptions:
+  - text: >-
+      The Backend Shard uv cache (same key, hash of requirements.lock.txt) is warm on
+      main, so the mouth leg's restore-only cache hit keeps the added install to ~1 min;
+      cold-cache worst case is a full uv install of the lock (measured culture in this
+      repo: ~40 s cold on Backend Shard), still inside the 16-minute job budget given the
+      ~9m13s healthy path.
+    status: unverified
+    probe: the PR's own `Frontend Tests (Next.js) (mouth, true)` run duration vs the 16-minute cap
+  - text: >-
+      openapi-typescript 7.13.0 (lockfile-resolved from ^7.10.1) renders
+      deterministically across the CI runner and this M5 machine — the committed file is
+      byte-identical to the local fresh render, and the pin regeneration history
+      (generate_openapi.py's own docstring) records a determinism proof for the JSON side.
+    status: verified
+    note: byte-identity observed on every local regeneration this session (R4, R6, council spot-checks)
+    probe: git diff --exit-code after regeneration (R4)
+  - text: The change-map classifier runs frontend-tests on any apps/mouth or package-lock change, so an openapi-typescript bump (package-lock.json) triggers the freshness step.
+    status: verified
+    note: the GARUDA contract step directly above uses the identical gate and has been running on main
+    probe: same `if:` shape as the neighbouring mouth-only steps; tests.yml change-map domains
+named_follow_ups:
+  - >-
+    Node version skew: CI uses node 24 (setup-node), M5 verification used node 22.22.3.
+    openapi-typescript output showed no node-version sensitivity for this schema, but the
+    first live CI run is the authoritative check.
+  - >-
+    If the added ~1-3 minutes ever presses the 16-minute cap, the freshness steps can be
+    gated on a cheap relevance pre-check (mouth API surface / package-lock / backend-rag
+    backend paths) without touching the required-context name.

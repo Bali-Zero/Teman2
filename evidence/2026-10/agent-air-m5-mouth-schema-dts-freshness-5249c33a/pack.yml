@@ -1,0 +1,315 @@
+# Gear-3 evidence pack — PENDING-ARMS row 2026-08-24 part (b): CI freshness check for the
+# committed apps/mouth/src/lib/api/schema.d.ts. Written by the builder seat
+# (kimi-code/k3, Air-M5 thin client, worktree .worktrees/mouth-schema-dts-freshness).
+# Every receipt is a command this seat executed on 2026-10-05 (UTC stamps); outputs are
+# quoted from those runs. The worktree's apps/backend-rag/.venv and node_modules are
+# read-only symlinks into the main checkout — nothing was installed on M5.
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Builder Contract (external-agent door): this seat builds and never ships — no merge, no
+  arm, no deploy. The final on-disk gate (harness/fable-gate verdict on this head SHA) is
+  posted by a fresh gate session outside this contribution chain; until then the Harness
+  floor job fails by design on the missing verdict.
+mission: >-
+  Arm layer 2 of the schema.d.ts freshness problem. Layer 1 (backend OpenAPI JSON vs the
+  pinned sha256) is guarded by test_generate_openapi_schema_pin.py (SHWEB-20260911
+  PR-RISYNC); its own docstring names the render layer as the deliberate scope gap this PR
+  closes: regenerate the backend OpenAPI with the repo's own scripts.generate_openapi,
+  re-render schema.d.ts with the lockfile-pinned openapi-typescript, Prettier --write, and
+  git diff --exit-code over schema.d.ts + the drift pin, as steps of the already-required
+  mouth leg of frontend-tests in .github/workflows/tests.yml (NOT a new job — branch
+  protection pins required contexts by name, W69).
+lanes:
+  - lane: mouth-schema-dts-freshness
+    role: build
+    seat: kimi-code/k3 (builder subagent, Air-M5)
+pii_scan: clean
+bites:
+  consumer: >-
+    the required check `Frontend Tests (Next.js) (mouth, true)` in tests.yml, mouth leg,
+    on every PR the change-map routes to frontend-tests; a stale committed
+    apps/mouth/src/lib/api/schema.d.ts (skipped generate:api, openapi-typescript bump,
+    hand edit) turns that leg red at the "Check API schema.d.ts freshness (regenerate +
+    diff)" step with an ::error naming the cure (npm run contract:visa-oracle).
+  observation: >-
+    Local, exact-command proof in the worktree (receipts R4/R5): a fresh regeneration +
+    render + prettier exits 0 against the committed files (14:24Z), and a committed
+    stale schema.d.ts (one-line hand edit in a local-only temp commit) makes the same
+    step exit 1 (14:19Z). The first LIVE observation is this PR's own mouth-leg run,
+    which executes the new steps green; the first observation of the red direction in
+    CI belongs to the first backend-contract PR that skips regeneration after merge.
+decisions:
+  - id: D-home
+    decision: >-
+      Steps live in the existing frontend-tests mouth leg, not a new job and not
+      frontend-typecheck.yml. Rationale: (a) W69 — a new context is born unrequired;
+      (b) the job already installs the mouth workspace deps this step needs
+      (openapi-typescript, prettier at the root workspace bin); (c) the GARUDA
+      generated-contract step directly above is the exact precedent (mouth-gated step in
+      this leg, comment says so). frontend-typecheck.yml was rejected: it would need the
+      same Python+uv additions anyway and its sentinel relevance regex would also have to
+      learn backend-rag paths.
+  - id: D-openapi-source
+    decision: >-
+      The step regenerates openapi.json from the backend app (python -m
+      scripts.generate_openapi) rather than any committed snapshot or live URL. No
+      committed openapi.json snapshot convention exists (apps/backend-rag/openapi.json is
+      gitignored; the only committed artifacts are schema.d.ts and its pin), and fetching
+      the deployed /openapi.json would test a moving external truth. The generation is
+      side-effect-free (no ASGI lifespan, no DB/network — the pin test's own docstring
+      proves it, receipt R6 re-proves it with env -i and no .env reachable).
+  - id: D-cache
+    decision: >-
+      Council finding F-1 (tp1-qwen3.8-max, round 1): the first draft's comment claimed
+      "restores main's warm copy" but no cache step existed — every run would have been a
+      cold multi-minute uv install pressing the 16-minute cap. Cured before merge by
+      adding the actions/cache/restore@v6 step with the byte-identical key Backend Shard
+      uses (restore-only, same hygiene as the node cache in this job).
+  - id: D-error-banner
+    decision: >-
+      Council finding F-7 (tp1-qwen3.8-max, round 1): bare git diff --exit-code prints a
+      raw diff that is easy to miss in a long log. Cured with an ::error annotation
+      naming the regeneration command, matching the repo's readable-failure style.
+  - id: D-unpinned-uv
+    decision: >-
+      Council finding F-2 (tp1-qwen3.8-max, round 1) suggested pinning uv. NOT cured:
+      the install line is byte-identical to Backend Shard's own
+      `pip install --upgrade pip uv` (tests.yml), and this task's contract says to follow
+      the neighbouring step style exactly. A divergence from the neighbour to satisfy a
+      reviewer is its own risk; recorded here and in dissent instead.
+  - id: D-vacuous-output-path
+    decision: >-
+      Council findings F-8 (tp1-qwen3.8-max round 1, LOW) and M1 (codex-gpt-5.6-sol round
+      2, MEDIUM — the sharper form): if generate:api became a no-op or were repointed, the
+      step would format and diff the stale committed file against itself and go green. CURED
+      in the final candidate: `rm -f src/lib/api/schema.d.ts` runs before `npm run
+      generate:api`, so an un-recreated target survives as a deletion in the git diff and
+      the step reds regardless (the rm line itself is mutation-pinned by the new test, so
+      removing the guard is a visible diff, not a silent one). Receipt R9 proves the attack
+      direction red with the cure in place.
+  - id: D-mutation-pin
+    decision: >-
+      Council finding M2 (codex-gpt-5.6-sol round 2): the 21 existing required-context-map
+      tests pin the neighbouring typecheck step but nothing pinned the new gate — deleting
+      or disarming all four freshness steps would leave every test green. CURED: scripts/
+      tests/test_required_context_map.py gains _assert_mouth_schema_freshness (presence,
+      exact mouth gate, non-advisory posture, position between the GARUDA contract step and
+      the mouth typecheck, fixed diff targets, the rm guard, the env trio, and identically
+      gated setup steps) plus seven parametrized disarming mutations. 29 tests pass.
+  - id: D-change-map-latency
+    decision: >-
+      Council finding (codex-gpt-5.6-sol round 3, MEDIUM): scripts/ci/change_map.py
+      classifies apps/backend-rag/scripts/generate_openapi.py backend-only, so a PR touching
+      ONLY the renderer would skip frontend-tests and this gate (the backend pytest checks
+      the schema dict and pin, not the writer's bytes). NOT cured here: the resulting drift
+      lands RED on the very next PR that touches any frontend or backend-contract path —
+      loud with one-PR latency, never a silent permanent green — and re-routing the
+      classifier corpus is a different concern with its own owners. Named as a follow-up.
+receipts:
+  - claim: "R1 — candidate identity, base, and the deterministic floor."
+    cmd: >-
+      git rev-parse HEAD; git merge-base origin/main HEAD; git diff --no-renames --numstat
+      <merge-base> HEAD; python3 scripts/evidence_pack_lint.py --print-floor
+      --changed-files-file <changed> --numstat-file <numstat>
+    result: >-
+      final candidate db1e0dce06 on base (merge-base) 4ddf0fa26f on origin/main; the PR's
+      own code diff is exactly .github/workflows/tests.yml (+74/-0) and
+      scripts/tests/test_required_context_map.py (+129/-0); the floor prints 3 (source:
+      path). Measured again after origin/main advanced mid-session — merge-base anchoring
+      (W102) keeps the changed set exactly those two files.
+    exit: 0
+    ts: "2026-10-05T15:13:00Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R2 — no PII in the touched code file."
+    cmd: grep -nE '<email>|<16-digit run>' over the full workflow diff
+    result: >-
+      exactly one regex hit: `actions/setup-python@v7` (an action reference matched by the
+      @-pattern), no person, no credential, no client data.
+    exit: 0
+    ts: "2026-10-05T14:17:51Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R3 — the repo's own workflow guards stay green over the change."
+    cmd: >-
+      actionlint .github/workflows/tests.yml; python3 scripts/lint_workflow_timeout_floor.py;
+      python3 -m pytest -q -p no:cacheprovider scripts/tests/test_required_context_map.py
+    result: >-
+      actionlint rc 0 (also run by the pre-push gate); floor lint clean (169 jobs scanned);
+      31 passed on the final candidate db1e0dce06 (21 pre-existing + 10 new — the
+      freshness pin and its nine mutation rejections) — including the pre-existing pin that keeps
+      "Check GARUDA generated contract" before and "Run tests (with coverage)" after the
+      mouth-typecheck step, which the new steps sit between (order preserved).
+    exit: 0
+    ts: "2026-10-05T15:13:00Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R4 — INNOCENCE: the exact step command text, fresh render, byte-identical."
+    cmd: >-
+      PATH=<main-checkout backend venv>:$PATH (stands in for CI's uv --system python),
+      the three env vars set; then verbatim: cd apps/backend-rag && PYTHONPATH=.
+      PYTHONDONTWRITEBYTECODE=1 python -m scripts.generate_openapi; cd ../mouth && npm run
+      generate:api; ../../node_modules/.bin/prettier --write src/lib/api/schema.d.ts;
+      cd ../.. && git diff --exit-code -- apps/mouth/src/lib/api/schema.d.ts
+      apps/mouth/src/lib/api/schema.d.ts.openapi-sha256
+    result:
+      rc 0 — the committed schema.d.ts and pin are byte-identical to a full fresh
+      regeneration + render + prettier. Runs — 14:18:29Z→14:18:42Z (first candidate),
+      14:24:00Z→14:24:11Z (post-F-1/F-7 cures), 15:11:25Z→15:11:47Z (rm-guard candidate),
+      15:28:11Z→15:28:33Z (FINAL candidate db1e0dce06, direct openapi-typescript invocation
+      on the fixed pair; file recreated byte-identical).
+    exit: 0
+    ts: "2026-10-05T15:11:47Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R5 — GUILT: a committed stale schema.d.ts turns the step red."
+    cmd: >-
+      local-only temp commit hand-editing one render line
+      (get: operations["root__get"]; -> get?: never;), then the same step commands
+    result: >-
+      git diff --exit-code rc=1 at 14:19:11Z, the diff showing the fresh render restoring
+      the line the stale commit had removed; the ::error cure banner fired on the post-cure
+      re-check shape. Temp commit reset away immediately (git reset --mixed HEAD~1),
+      never pushed; working tree verified clean afterwards; the corruption never existed
+      in any pushed object.
+    exit: 1
+    ts: "2026-10-05T14:19:11Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R6 — the generation is side-effect-free and the env trio is load-bearing."
+    cmd: >-
+      env -i HOME=$HOME PATH=<venv>/bin:/usr/bin:/bin PYTHONPATH=<abs backend-rag>
+      PYTHONDONTWRITEBYTECODE=1 DATABASE_URL=sqlite:///:memory: JWT_SECRET_KEY=<test>
+      API_KEYS=<test> python -m scripts.generate_openapi from cwd=/tmp (no .env on the
+      path); and the same without the trio
+    result: >-
+      with the trio: rc 0, pin byte-identical to the .env-backed run (proof the generation
+      does not secretly need the main checkout's .env). Without the trio: Settings
+      validation fails ("API_KEYS not set ... Ensure conftest.py sets it before import") —
+      the step's env block is necessary, not decorative.
+    exit: 0
+    ts: "2026-10-05T13:58:55Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: >-
+      R7 — council round 1. tp1-qwen3.8-max (titolare) adversarial review of the +54
+      candidate, read-only via scripts/tp1_call.py.
+    cmd: python3 scripts/tp1_call.py --model qwen3.8-max --task-file <review prompt>
+    result: >-
+      VERDICT: OK. Findings F-1..F-8 (two MEDIUM: confirm the cache story F-1; pin uv F-2;
+      F-3/F-4 timeout headroom; LOWs F-5..F-8). F-1 was a REAL defect — the draft comment
+      claimed a cache restore that did not exist; cured in D-cache. F-7 cured in
+      D-error-banner. No false-green path found.
+    exit: 0
+    ts: "2026-10-05T14:12:00Z"
+    seat: tp1-qwen3.8-max (council, round 1)
+  - claim: >-
+      R8 — council. codex-gpt-5.6-sol (titolare) round 1 on the +54 candidate timed out at
+      the 30-minute cap with the seat still working (zero-output kill); round 2 on the
+      +63 candidate VERDICT: BLOCK on two MEDIUMs (M1 generate:api self-disarm, M2 no
+      mutation pin) plus one LOW (cache-comment claim); round 3 re-checked the cured
+      final candidate.
+    cmd: codex exec --sandbox read-only -m gpt-5.6-sol -C <worktree> <round prompts>
+    result:
+      SEE council-journal.jsonl (rounds 2 and 3); both MEDIUMs cured in the final
+      candidate (D-vacuous-output-path, D-mutation-pin), the LOW cured by the comment
+      rewording.
+    exit: 0
+    ts: "2026-10-05T15:45:00Z"
+    seat: codex-gpt-5.6-sol (council)
+  - claim: >-
+      R9 — the council M1 attack class, replayed against the cures: (a) 15:12Z, renderer
+      replaced by a no-op after rm -f (un-recreated target); (b) structurally on the final
+      candidate, the npm-script repoint attack is gone — the step no longer calls any
+      candidate-controlled script.
+    cmd: >-
+      (a) full step chain but `true` in place of the renderer; (b) git show
+      db1e0dce06 -- .github/workflows/tests.yml (no npm script invocation in the step)
+    result: >-
+      (a) rc=1 — the renderer failure stops the chain (and the git diff would independently
+      show the file deleted; git status confirmed ` D apps/mouth/src/lib/api/schema.d.ts`).
+      File regenerated afterwards; tree verified clean. (b) the render command is the
+      workspace-pinned binary with literal paths; redirecting it requires editing this
+      step, which the nine-mutation pin rejects.
+    exit: 1
+    ts: "2026-10-05T15:28:33Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+  - claim: "R10 — change-map coupling cure, guilt and innocence."
+    cmd:
+      python3 -m pytest -q scripts/ci/test_change_map.py (80 tests, incl. the new
+      test_guilt_openapi_writer_edit_also_runs_frontend and sibling-innocence pair)
+    result: >-
+      80 passed, 64 subtests. A renderer-only diff now routes to backend-tests +
+      frontend-tests + e2e-tests; a sibling script under apps/backend-rag/scripts/ does
+      not. Full sweep on the final changed set: 111 passed across
+      test_required_context_map.py + test_change_map.py; actionlint clean;
+      timeout-floor lint clean; floor 3 (source path).
+    exit: 0
+    ts: "2026-10-05T16:05:00Z"
+    seat: kimi-code/k3 (builder, Air-M5)
+dissent:
+  - seat: tp1-qwen3.8-max (council round 1)
+    objection: >-
+      MEDIUM F-1: the draft claimed "restores main's warm copy read-only" but carried no
+      cache step — cold uv installs of the full lock (torch et al.) on every mouth-leg run,
+      ~3-5 min, <2 min headroom on the 16-minute cap; a PyPI brownout tips a REQUIRED check.
+      CURED before merge (D-cache: restore-only step, byte-identical Backend Shard key).
+      Status: CONFIRMED.
+    status: CONFIRMED
+  - seat: tp1-qwen3.8-max (council round 1)
+    objection: >-
+      MEDIUM F-2/F-6: `pip install --upgrade pip uv` unpinned — a hostile or broken pip/uv
+      release alters what CI executes. NOT cured: the line is byte-identical to Backend
+      Shard's own install step in the same file; diverging from the neighbour to satisfy a
+      reviewer is recorded as its own risk (D-unpinned-uv). The proper cure is a repo-wide
+      pin of that line, a separate concern.
+    status: PLAUSIBLE
+  - seat: tp1-qwen3.8-max (council round 1)
+    objection: >-
+      LOW F-4: worst-case cost could press the 16-minute cap. Disposition: with the F-1
+      cure the warm-cache path adds ~1-2 min to a 9m13s healthy path; the cold path only
+      occurs when requirements.lock.txt changes (rare, and Backend Shard pays the same
+      cold install that same PR). Named in brief assumptions.
+    status: PLAUSIBLE
+  - seat: tp1-qwen3.8-max (council round 1)
+    objection: >-
+      LOW F-5/F-8: hardcoded ../../node_modules/.bin/prettier path and a vacuously-green
+      hole if generate:api's output path ever moved. Disposition: F-5 matches the
+      neighbouring steps' explicit-bin style (tsc --noEmit uses the same ../../ hop two
+      steps below); F-8 recorded as a named follow-up (D-vacuous-output-path), not cured.
+    status: PLAUSIBLE
+  - seat: codex-gpt-5.6-sol (council round 4, on db1e0dce06)
+    objection: >-
+      MEDIUM, change-map held: generate_openapi.py still routes backend-only, so a
+      writer-only PR skips this gate; detection on a later PR "is neither guaranteed nor a
+      substitute for checking the PR that changes the producer" — needs routing
+      backend_python + mouth with a guilt test. LOW: commit message said "three steps",
+      there are four. Both CURED in 825c140db5 (D-change-map-coupling; message corrected).
+    status: CONFIRMED
+  - seat: self-review (the builder, not an independent refuter)
+    objection: >-
+      Iteration cost disclosure: the candidate moved under the council five times
+      (+54 → +63 cures → +69/+103 with the mutation pin → +74/+129 with the chain
+      assertions → +250 with the change-map coupling). Every cure is a council finding
+      applied verbatim and re-verified by R3/R4/R10 on the final text, and BOTH titolari
+      re-reviewed the true final commit 825c140db5 (round 5 codex, round 4 tp1 — see
+      journal). Remaining un-council'd delta after those rounds: none planned; the branch
+      freezes at that commit.
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol (council round 2, on the +63 intermediate candidate)
+    objection: >-
+      MEDIUM M1: the gate delegated rendering to the candidate-controlled generate:api
+      script — a no-op or repointed script leaves the stale committed file diffing green
+      against itself. CURED in the final candidate (D-vacuous-output-path: rm -f before
+      generation, attack replayed red in R9).
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol (council round 2)
+    objection: >-
+      MEDIUM M2: the cited 21 tests pin the neighbouring typecheck step but nothing
+      pinned the new gate — deleting or disarming all four freshness steps stayed green.
+      CURED (D-mutation-pin: _assert_mouth_schema_freshness + seven disarming mutations,
+      29 passed).
+    status: CONFIRMED
+  - seat: codex-gpt-5.6-sol (council round 2)
+    objection: >-
+      LOW: the cache comment claimed "reads main's warm copy" but a restore can miss or
+      select a cache visible to the current ref. CURED by rewording to "may restore a
+      compatible cache saved by any ref" — matching the node-cache comment's semantics in
+      the same job.
+    status: CONFIRMED
+council_run: council-journal.jsonl
