@@ -119,8 +119,10 @@ def report(rows, say=print):
         if mg: say("    minimum margin below the band: %.0f pt (%s)" % mg[0])
         if lst: say("    least list left (pane less sheet): %.0f pt (%s)" % lst[0])
         fr = [r["frames"] for r in g if "sheet" in r.get("frames", {})]
-        say("    rows drawn: band only %d, band+plate %d, band+plate+official %d" % (
-            sum("plate" not in x for x in fr), sum("plate" in x and "official" not in x for x in fr), sum("official" in x for x in fr)))
+        # The official title row exists only in English (RegistryVerdictSheet: `if !isID`): in Indonesian the title is the official one.
+        say("    rows drawn: band only %d, band+plate %d, band+plate+official %s" % (
+            sum("plate" not in x for x in fr), sum("plate" in x and "official" not in x for x in fr),
+            "n/a (the official title row exists only in English)" if key[0] == "id" else sum("official" in x for x in fr)))
         sl = sorted((x["sheet"][1] + x["sheet"][3] - max(x[n][1] + x[n][3] for n in ("band", "plate", "official") if n in x), r["code"])
                     for r, x in ((r, r["frames"]) for r in g) if "sheet" in x and "band" in x)
         sp = sorted((x["strip"][3], r["code"]) for r, x in ((r, r["frames"]) for r in g) if "strip" in x)
