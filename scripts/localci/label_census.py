@@ -5,7 +5,7 @@
     label_census.py census --repo R [--json]            exit 0 none lacks it, 1 some do (listed), 2 unreadable
 
 "Valid" is the merger's own condition, `merger.label_arm`: the label is on the PR AND the last LabeledEvent for it was made by a user whose
-role is admin or maintain AND GitHub stamped it no earlier than the head's push (B2a). Nothing is redefined here, so the read-back and the
+role is admin or maintain (B42: or write, on its own same-repo PR) AND GitHub stamped it no earlier than the head's push (B2a). Nothing is redefined here, so the read-back and the
 merger cannot disagree."""
 from __future__ import annotations
 

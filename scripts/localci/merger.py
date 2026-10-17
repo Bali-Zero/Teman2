@@ -11,7 +11,7 @@ is never run twice. A fork PR is journalled ``refused: fork`` and never fetched.
 
 GitHub is read with bare ``gh api`` GETs (``hosted_compare.gh_get``) and one GraphQL query per verdict; the only other traffic
 is ``git fetch``. One write exists (C3a-2): after a verdict, ``enqueuePullRequest`` with ``expectedHeadOid`` = the decided head
-puts the PR in GitHub's merge queue — only when ``LOCALCI_MERGER_ARMED=1`` AND an admin or maintainer applied
+puts the PR in GitHub's merge queue — only when ``LOCALCI_MERGER_ARMED=1`` AND an admin or maintainer (or a write-role author, on its own same-repo PR) applied
 ``localci:merge-shadow-ok`` AND every sub-criterion of the enqueue criterion holds; otherwise that same criterion is journalled
 ``would_enqueue``. Nothing here merges, pushes, labels or comments, and no candidate code is imported — it runs only inside
 the BASE runner, contained as the runner does.

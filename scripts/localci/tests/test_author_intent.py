@@ -8,7 +8,9 @@ from localci import label_census as lc  # noqa: E402
 
 mg = lc.mg
 PUSH, BEFORE, AFTER = "2026-10-14T10:00:00Z", "2026-10-14T09:00:00Z", "2026-10-14T11:00:00Z"
-ROLES = {"boss": "admin", "maint": "maintain", "writer": "write", "Writer": "write", "triager": "triage", "reader": "read"}
+ROLES = {"boss": "admin", "maint": "maintain", "writer": "write", "Writer": "write", "triager": "triage", "reader": "read",
+         "UpperW": "WRITE", "padded": "write ", "custom": "contributor"}
+PERMS = {"permwrite": {"permission": "write", "role_name": "triage"}, "rolewrite": {"permission": "read", "role_name": "write"}}
 OWN = "no-other-actor"
 
 
@@ -33,7 +35,7 @@ def github(monkeypatch):
                 raise RuntimeError("HTTP 502")
             if login == "garbled":
                 return ["not", "a", "dict"]
-            return {"role_name": ROLES.get(login, "read")}
+            return PERMS.get(login) or {"role_name": ROLES.get(login, "read")}
         return {"total_count": 1, "check_suites": [{"created_at": PUSH}]}
     monkeypatch.setattr(mg.hc, "gh_get", get)
     return reads
@@ -99,3 +101,19 @@ def test_the_census_lets_a_write_authors_own_label_pass_and_still_names_the_rest
     other.update(number=2, title="other", isDraft=False, isInMergeQueue=False, autoMergeRequest=None)
     rows = lc.census("o/r", [own, other])
     assert [r["pr"] for r in rows] == [2] and "not admin or maintain" in rows[0]["reason"]
+
+
+@pytest.mark.parametrize("author", [("Mannequin", "writer"), ("EnterpriseUserAccount", "writer"), ("Organization", "writer"), ("User", None)],
+                         ids=["mannequin", "enterprise-user", "organization", "login-none"])
+def test_only_a_user_author_with_a_login_counts(author):
+    assert mg.label_arm("o/r", pull(author=author))[0] is not None
+
+
+@pytest.mark.parametrize("actor", [("User", "UpperW"), ("User", "padded"), ("User", "custom")], ids=["WRITE", "write-padded", "custom-role"])
+def test_the_role_is_exactly_write(actor):
+    assert mg.label_arm("o/r", pull(actor=actor))[0] is not None
+
+
+def test_the_role_is_read_from_role_name_and_never_from_permission():
+    assert mg.label_arm("o/r", pull(actor=("User", "permwrite")))[0] is not None   # permission "write", role_name "triage"
+    assert mg.label_arm("o/r", pull(actor=("User", "rolewrite"))) == (None, "rolewrite")   # permission "read", role_name "write"

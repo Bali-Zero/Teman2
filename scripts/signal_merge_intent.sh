@@ -2,7 +2,7 @@
 # signal_merge_intent.sh <PR> — the one ship gesture: label first, then arm.
 #
 # The LocalCI merger merges only a PR carrying `localci:merge-shadow-ok`, applied by an
-# admin/maintain User AFTER the head's push (scripts/localci/merger.py, B2a). GitHub
+# admin/maintain User (or a write-role author on its own same-repo PR, B42) AFTER the head's push (scripts/localci/merger.py, B2a). GitHub
 # auto-merge is armed on top of it ONLY while the base branch still has a `merge_queue`
 # rule; after the phase-F flip the rule is gone and the arm is skipped (a skip, not an error).
 #

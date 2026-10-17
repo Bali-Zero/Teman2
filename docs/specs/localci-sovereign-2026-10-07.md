@@ -40,7 +40,7 @@ refuses. The sub-criteria, each of which alone refuses and is named in the line'
   cancelled, timed out, action required, pending or missing refuses, while skipped and neutral pass as they do on GitHub;
 - the PR head is still the decided head; the PR is same-repo, not a draft, based on `main`, open and not in the queue (GraphQL
   `isInMergeQueue` / `mergeQueueEntry`); this head was not enqueued by an earlier tick;
-- the label `localci:merge-shadow-ok` is on the PR, applied last by an account whose repository role is admin or maintain.
+- the label `localci:merge-shadow-ok` is on the PR, applied last by an account whose repository role is admin or maintain, or write when that account is the author of its own same-repo PR (B42).
 
 The arm has two halves: that label, and `LOCALCI_MERGER_ARMED=1` in the tick's environment. Without both, the merger stays
 shadow and journals `would_enqueue` with the same criterion, every sub-criterion true or false, and the head oid. That line is
