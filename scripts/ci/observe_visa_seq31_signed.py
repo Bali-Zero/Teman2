@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # ruff: noqa: T201
-"""Observe the signed seq-30 bundle and its three downstream consumers.
+"""Observe the signed seq-31 bundle and its three downstream consumers.
 
 # bites-observable — no arguments are accepted; every command, path and floor is
 # a literal below, so nothing an invoker types can name a program to run, a file
 # to write or a database to reach.  The observation is red until
-# ``rulepack-prod-030.signed.json`` is on disk AND ``review_hold_inventory``
+# ``rulepack-prod-031.signed.json`` is on disk AND ``review_hold_inventory``
 # reads it as the highest signed pack.
 """
 
@@ -20,13 +20,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_RAG_DIR = REPO_ROOT / "apps" / "backend-rag"
-EXPECTED_SIGNED_SEQUENCE = 30
+EXPECTED_SIGNED_SEQUENCE = 31
 # (module, minimum passed, maximum skipped): a reduced count, a failure, an error,
 # an xfail or an extra skip is red.
 TEST_MODULES = (
-    ("backend/tests/services/visa_engine/test_seq30_pack.py", 51, 0),
-    ("backend/tests/services/visa_engine/test_e30_family_pricing.py", 50, 0),
-    ("backend/tests/services/visa_engine/test_interview_walk_census.py", 106, 14),
+    # Floors are the SIGNED-state counts: 39 = 35 unsigned-source tests + the 4 signed-bundle
+    # ties; the census is 125 collected, 14 of them candidate-mode tests that skip once no
+    # unsigned pack sits above the highest signed one (125 - 14 = 111 passed, 14 skipped).
+    ("backend/tests/services/visa_engine/test_seq31_pack.py", 39, 0),
+    ("backend/tests/services/visa_engine/test_interview_walk_census.py", 111, 14),
     ("backend/tests/scripts/visa_engine/test_review_hold_inventory.py", 7, 0),
 )
 _SUMMARY = re.compile(
@@ -71,7 +73,7 @@ def main() -> int:
         "backend.scripts.visa_engine.review_hold_inventory",
         "--json",
     ]
-    print(f"observe_visa_seq30_signed: running {_shown(inventory_cmd)} (cwd=apps/backend-rag)")
+    print(f"observe_visa_seq31_signed: running {_shown(inventory_cmd)} (cwd=apps/backend-rag)")
     result = subprocess.run(
         inventory_cmd,
         cwd=BACKEND_RAG_DIR,
@@ -81,23 +83,23 @@ def main() -> int:
         text=True,
     )
     if result.returncode != 0:
-        print(f"observe_visa_seq30_signed: review_hold_inventory exited {result.returncode}")
+        print(f"observe_visa_seq31_signed: review_hold_inventory exited {result.returncode}")
         return result.returncode
     inventory = json.loads(result.stdout)
     print(
-        f"observe_visa_seq30_signed: highest signed sequence={inventory['sequence']} "
+        f"observe_visa_seq31_signed: highest signed sequence={inventory['sequence']} "
         f"totals={json.dumps(inventory['totals'], sort_keys=True)}"
     )
     if inventory["sequence"] != EXPECTED_SIGNED_SEQUENCE:
         print(
-            f"observe_visa_seq30_signed: highest signed pack is seq-{inventory['sequence']}, "
+            f"observe_visa_seq31_signed: highest signed pack is seq-{inventory['sequence']}, "
             f"not seq-{EXPECTED_SIGNED_SEQUENCE}"
         )
         return 1
 
     for module, min_passed, max_skipped in TEST_MODULES:
         cmd = [interpreter, "-m", "pytest", module, "-p", "no:cacheprovider"]
-        print(f"observe_visa_seq30_signed: running {_shown(cmd)} (cwd=apps/backend-rag)")
+        print(f"observe_visa_seq31_signed: running {_shown(cmd)} (cwd=apps/backend-rag)")
         run = subprocess.run(
             cmd, cwd=BACKEND_RAG_DIR, env=env, check=False, capture_output=True, text=True
         )
@@ -106,11 +108,11 @@ def main() -> int:
         line = lines[-1] if lines else None
         if run.returncode != 0 or not summary_ok(line, min_passed, max_skipped):
             summary = _ANSI.sub("", line).strip() if line else "no pytest summary"
-            print(f"observe_visa_seq30_signed: {module} FAILED ({summary})")
+            print(f"observe_visa_seq31_signed: {module} FAILED ({summary})")
             print(_ANSI.sub("", out)[-1500:])
             return run.returncode or 1
-        print(f"observe_visa_seq30_signed: {module}: {_ANSI.sub('', line).strip()}")
-    print("observe_visa_seq30_signed: inventory reads seq-30 and all three consumers green")
+        print(f"observe_visa_seq31_signed: {module}: {_ANSI.sub('', line).strip()}")
+    print("observe_visa_seq31_signed: inventory reads seq-31 and all three consumers green")
     return 0
 
 

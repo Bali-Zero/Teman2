@@ -649,6 +649,7 @@ WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[26
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[27]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[29] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[28]
 WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[30] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[29]
+WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[31] = WALK_DEAD_END_ALLOWLIST_BY_SEQUENCE[30]
 #: PR-12: the three unsure work walks. Both questions ARE asked in each walk
 #: and the mapper refuses to certify "unsure" (`ANSWER_NEVER_CERTIFIED`), so
 #: the fact stays open; the sponsor-confirmation walk is the same shape as the
@@ -1342,6 +1343,23 @@ EXPECTED_OUTCOME_BY_SEQUENCE[30] = {
     **EXPECTED_OUTCOME_BY_SEQUENCE[29],
     **_SEQ30_OUTCOME_CHANGES,
 }
+# seq-31 (E28A own-shareholding): `el.e28a.investment` and the new
+# `hf.e28a.own-shareholding-below-min` read `investment.own_shareholding_idr` against IDR
+# 10,000,000,000 instead of the company-level `investment.investment_capital_idr`. Measured on
+# the candidate replay of the 182-walk corpus (whose default own-shareholding answer is
+# IDR 10,000,000,000): exactly one walk loses E28A, the 9,999,999,999 boundary witness one
+# rupiah under the floor, and no walk changes state. Walks on vehicles that never ask the
+# question leave the fact NOT_ASKED and do not move (see test_seq31_pack.py).
+_SEQ31_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
+    "offshore/invest/pt_pma/own_shareholding_9999999999": (
+        "SUPPORTED_CANDIDATES",
+        ("C2", "D12", "E28B", "E28D", "E28F"),
+    ),
+}
+EXPECTED_OUTCOME_BY_SEQUENCE[31] = {
+    **EXPECTED_OUTCOME_BY_SEQUENCE[30],
+    **_SEQ31_OUTCOME_CHANGES,
+}
 #: PR-12 (visa-night work family, 2026-10-13): the 12 E23-family work-tile walks.
 #: Every row is the engine's own replay on each pinned sequence's source pack
 #: (seq-20..29), never the audit's seq-27 prediction copied: seq-20 reads none
@@ -1671,11 +1689,14 @@ _EXPECTED_REASONS_ON_SEQ28: dict[str, ReasonPin] = {
 #: the field and by value in `test_seq29_pack.py`.
 _EXPECTED_REASONS_ON_SEQ29: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ28)
 _EXPECTED_REASONS_ON_SEQ30: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ29)
+# seq-31 moves one candidate list and no reason: the walk stays SUPPORTED_CANDIDATES.
+_EXPECTED_REASONS_ON_SEQ31: dict[str, ReasonPin] = dict(_EXPECTED_REASONS_ON_SEQ30)
 EXPECTED_REASONS_BY_SEQUENCE: dict[int, dict[str, ReasonPin]] = {
     27: _EXPECTED_REASONS_ON_SEQ27,
     28: _EXPECTED_REASONS_ON_SEQ28,
     29: _EXPECTED_REASONS_ON_SEQ29,
     30: _EXPECTED_REASONS_ON_SEQ30,
+    31: _EXPECTED_REASONS_ON_SEQ31,
 }
 EXPECTED_REASONS: dict[str, ReasonPin] = EXPECTED_REASONS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, {})
 
@@ -1800,6 +1821,8 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE[28] = {
 # seq-29 and seq-30 move products, never a state: measured again on the candidate replay.
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[29] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[28])
 EXPECTED_STATE_CENSUS_BY_SEQUENCE[30] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[29])
+# seq-31 moves candidates, never a state: measured on the candidate replay of the 182-walk corpus.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE[31] = dict(EXPECTED_STATE_CENSUS_BY_SEQUENCE[30])
 # T06 adds 27 visit walks to EVERY sequence (derived from `_T06_VISIT_OUTCOMES`, the one
 # table the replay test re-measures; seq-20 differs by the explorer's 361-day walk).
 _T06_STATE_DELTA = Counter(state for state, _candidates in _T06_VISIT_OUTCOMES.values())
@@ -1876,6 +1899,7 @@ EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27] = EXPECTED_DEAD_END_FACT_CENSUS_BY
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[27]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[29] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[28]
 EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[30] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[29]
+EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[31] = EXPECTED_DEAD_END_FACT_CENSUS_BY_SEQUENCE[30]
 # PR-12: the unsure payer / unsure sponsor-confirmation work walks dead-end on the fact
 # their own answered question refuses to certify (seq-20 also holds the old
 # `offshore/other/paid/sponsor_unsure` row on the sponsor fact).
@@ -2043,6 +2067,7 @@ STUDIO_HELD_WALKS_BY_SEQUENCE[27] = STUDIO_HELD_WALKS_BY_SEQUENCE[26]
 STUDIO_HELD_WALKS_BY_SEQUENCE[28] = STUDIO_HELD_WALKS_BY_SEQUENCE[27]
 STUDIO_HELD_WALKS_BY_SEQUENCE[29] = STUDIO_HELD_WALKS_BY_SEQUENCE[28]
 STUDIO_HELD_WALKS_BY_SEQUENCE[30] = STUDIO_HELD_WALKS_BY_SEQUENCE[29]
+STUDIO_HELD_WALKS_BY_SEQUENCE[31] = STUDIO_HELD_WALKS_BY_SEQUENCE[30]
 STUDIO_HELD_WALKS: frozenset[str] = STUDIO_HELD_WALKS_BY_SEQUENCE.get(_SIGNED_SEQUENCE, frozenset())
 STUDIO_REVIEW_REASON = "SECOND_HOME_BELOW_THRESHOLD_STUDIO"
 
