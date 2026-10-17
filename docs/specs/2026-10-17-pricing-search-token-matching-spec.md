@@ -104,7 +104,8 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
 
 Ranking/scoring of results, the Qdrant semantic search (`bali_zero_pricing_hybrid`), catalog
 content, the English "license" over-match (e.g. "driving license" → alcohol), which rule 3's
-noise words now cure ("driving license" → Driving License only).
+noise words now cure ("driving license" → no Alcohol License row; the Driving License row itself
+was retired by #8658).
 
 Accepted and documented, not fixed (council 2026-10-17, v4):
 
@@ -112,7 +113,7 @@ Accepted and documented, not fixed (council 2026-10-17, v4):
   "Chrome extensions").
 - A query whose every word is noise falls back to the raw-query path, so "license", "licenses",
   "prices" or "selling" ALONE still return the rows that carry that word (for "license": the three
-  Alcohol License rows and Driving License).
+  Alcohol License rows).
 - "toko minuman" / "jualan minuman ringan" no longer return the alcohol rows: "minuman" alone is
   generic, by design.
 - Typos such as "seha" do not match.

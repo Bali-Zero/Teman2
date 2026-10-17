@@ -825,16 +825,12 @@
    "query": "alcohol licence",
    "must_find": [
     "@alcohol"
-   ],
-   "must_not_find": [
-    "Driving License"
    ]
   },
   {
    "query": "license",
    "must_find": [
-    "@alcohol",
-    "Driving License"
+    "@alcohol"
    ]
   },
   {
