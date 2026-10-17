@@ -23,8 +23,12 @@
 #                 Race: inside each exec script, after the idle re-check, every target is first renamed
 #                 (atomic mv, same filesystem) to a `.janitor-trash-*` sibling and only then deleted, so a
 #                 job that starts mid-run finds an empty cache that pip/uv/setup actions recreate. The
-#                 residual window is the rename instant, not the delete. Leftover `.janitor-trash-*` from
-#                 an interrupted run are swept at the start of every script (maxdepth 1, exact prefix).
+#                 residual window is the rename instant, not the delete. Order inside each exec script: idle
+#                 re-check -> renames -> delete this run's trash -> sweep of earlier runs' leftovers.
+#                 NAMESPACE CONTRACT (bounds the sweep, which has no per-entry provenance check):
+#                 top-level entries named `.janitor-trash-*` directly under /home/runner/.cache and
+#                 /tmp inside the runner container are RESERVED for this janitor and are deleted on
+#                 sight (maxdepth 1, exact prefix); nothing else in the fleet writes that prefix.
 #   docker        `docker image prune -f` and `docker builder prune -f` (dangling images, build cache).
 #                 Never -a, never volume / container / system prune.
 #   vm_trim       `colima ssh -- sudo fstrim -av`: hands the freed guest blocks back to the host.

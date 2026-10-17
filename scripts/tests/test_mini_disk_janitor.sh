@@ -185,12 +185,16 @@ touch -t $OLD "$SC/tmp/tmpold"
 NLN="pip-unpack-nl
 victim"                              # one file name that spans two lines; line 2 is another entry's name
 : > "$SC/tmp/$NLN"
+NLO="tmpold-nl
+victim"                 # OLD tmp* name spanning two lines (second line = the victim entry)
+: > "$SC/tmp/$NLO"; touch -t $OLD "$SC/tmp/$NLO"
 printf '%s' "$S" | sed -e 's#/home/runner#@H@#g' -e 's#/tmp#@T@#g' -e "s#@H@#$SC/home/runner#g" -e "s#@T@#$SC/tmp#g" > "$ROOT/exec-sb.sh"
 ( cd "$SC/tmp" && PATH="$ROOT/ps-idle:$SYS_PATH" sh "$ROOT/exec-sb.sh" ); r=$?
 [ "$r" -eq 0 ] && ok "exec script runs clean against the scratch tree" || no "exec script rc=$r"
 { [ ! -e "$SC/tmp/pip-unpack-1" ] && [ ! -e "$SC/tmp/tmpold" ] && [ ! -e "$SC/home/runner/.cache/pip" ] && [ ! -e "$SC/home/runner/.cache/uv" ] && [ ! -e "$SC/tmp/pytest-of-runner" ]; } && ok "declared set removed" || no "declared set survived"
 { [ -d "$SC/tmp/tmpnew" ] && [ -d "$SC/tmp/keep-me" ] && [ -e "$SC/home/runner/.cache/other" ]; } && ok "fresh tmp*, other /tmp entries and other cache files survive" || no "undeclared entry removed"
 [ -d "$SC/tmp/victim" ] && ok "entry named like line 2 of a multi-line name is neither moved nor deleted" || no "newline name made the script delete an entry outside the set"
+[ ! -e "$SC/tmp/$NLO" ] && ok "old multi-line tmp* name removed whole; victim still survives" || no "old multi-line tmp* name left behind"
 [ ! -e "$SC/tmp/$NLN" ] && ok "the multi-line name itself is in the declared set and removed whole" || no "multi-line name left behind"
 { [ ! -e "$SC/tmp/.janitor-trash-leftover" ] && [ ! -e "$SC/home/runner/.cache/.janitor-trash-old" ] && [ -z "$(find "$SC/tmp" -mindepth 1 -maxdepth 1 -name ".janitor-trash-*")" ]; } && ok "leftover and own trash all swept" || no "trash left behind"
 build; runp --apply; S="$(clean_script)"; printf '%s' "$S" | grep -qE 'read -r|while ' && no "exec script re-splits lines (read/while loop)" || ok "no line loop in the exec script"
