@@ -1,25 +1,28 @@
 task_id: pricing-search-tokens-1017
-gear: 2
+gear: 3
 l_level: L2
 gate_class: opus
 objective: >-
   PricingService.search_service stops including a row when a query token is merely a SUBSTRING
-  of the row text. Descriptive text matches by word (prefix only for tokens of 4+ characters or
-  containing a digit); curated keywords match only as whole phrases contained in the query; short
-  function words join the noise list. Spec: docs/specs/2026-10-17-pricing-search-token-matching-spec.md.
+  of the row text. Descriptive text matches by word (prefix of 3+ characters or with a digit, a
+  row word of 4+ characters plus a closed light suffix, inside-word only for tokens of 5+
+  characters); curated keywords match as phrases (single words never inside-word); acronym aliases
+  itas, itap, tka; hyphen compounds as phrases; negators drop the next word; empty query returns no
+  rows; short function words join the noise list. Catalog gains keywords alkohol and beralkohol on
+  the three Alcohol License rows (Zero 2026-10-17 alcohol ruling). Spec: docs/specs/2026-10-17-pricing-search-token-matching-spec.md.
   This is the spec-level cure after two catalog-side corrections (PR 8632 blocked, PR 8633
   merged with a residual over-match measured by its gate).
 acceptance:
   - text: >-
-      A committed 86-query corpus (EN/ID/IT, codes, WhatsApp-style sentences) passes in both
+      A committed 120-query corpus (EN/ID/IT, codes, WhatsApp-style sentences) passes in both
       directions: every must-find row is found, every must-not row is absent (incl. alcohol rows
       for "izin usaha minuman ringan", "PIRT minuman", "berapa biaya NIB ke OSS", "SLHS as a
       restaurant").
-    probe: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing/test_search_token_matching_1017.py
+    probe: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
   - text: >-
       Existing pricing tests and the catalog decision pins stay green; no corpus query gains a
       row; every row lost is a substring-only match, listed and justified in the PR.
-    probe: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    probe: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
 assumptions:
   - text: >-
       The WhatsApp bot passes the client's message to search_service (wa_package_builder.py ~717),

@@ -1,58 +1,184 @@
-gear: 2
+gear: 3
 brief_ref: evidence/brief.yml
 ruling: >-
-  No new owner ruling: the matching cure the PR 8633 gate asked for (its finding 1-2), written as a
-  spec because the fix-of-a-fix depth on this surface was reached. Catalog content untouched.
+  Zero 2026-10-17 alcohol licence ruling (the one the pack of the mouth article-licence-prices PR
+  quotes verbatim): only the three alcohol licence prices exist, and a question that is not about
+  alcohol must not price one. This PR is the matching cure the PR 8633 gate asked for (bug 8632
+  blocked, because "izin" pulled the alcohol rows; follow-up 8633, where "minuman" alone still
+  pulled them), written as a spec because the fix-of-a-fix depth on this surface was reached.
 mission: >-
   A client's price question gets the rows it names, not rows that happen to contain its short
-  words as substrings; curated keywords stop widening unrelated queries.
+  words as substrings; the alcohol licence rows answer alcohol questions and only those.
 lanes:
   - lane: pricing-search-tokens
     role: build
     seat: claude-sonnet-5 (subagent, worktree; implemented the spec written by the orchestrator)
   - lane: pricing-search-tokens
     role: review
-    seat: claude-opus-5-5 (Claude Code session, M5; checked every lost row against the catalog)
+    seat: claude-opus-5-5 (Claude Code session, M5; checked every lost row against the catalogue)
+  - lane: pricing-search-tokens
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, rounds 1 and 2, review only by instruction; sandbox was workspace-write and git status was clean after each run, diff_stat empty)
+  - lane: pricing-search-tokens
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, round 2 on ea6a7c52bf)
+  - lane: pricing-search-tokens
+    role: review
+    seat: agy-gemini-4-argon (RESERVE, round 1 on eb0eba6e2b, VERDICT PASS with dissent; informational, not entered in the council journal and not counted toward quorum, which the two titolari meet)
+  - lane: pricing-search-tokens-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero's owner ruling of 2026-10-17 on the alcohol licence (the ruling field above) and the
+      catalogue rows of PR 8629 (three Alcohol License rows, golongan A, B + C, A + B + C).
+    nb: owner ruling 2026-10-17 (this pack's ruling field)
+    query_hash: "5d474584385804104ecc2a6315d9a51d6c15e64786832483e7500bed619d33cf" # pragma: allowlist secret
 pii_scan: clean
 bites: >-
-  Consumer: PricingService.search_service on nuzantara-rag, behind /api/pricing/search, Zantara's
-  PricingTool and the WhatsApp bot's price context. Observation after the deploy: live
-  /api/pricing/search for "izin usaha minuman ringan" returns no Alcohol License row and
-  "berapa biaya NIB ke OSS" returns New Company (PT PMA) without the alcohol rows, while
-  "miras" still returns the three alcohol rows.
+  Consumer: PricingService.search_service on nuzantara-rag (production, nuzantara-rag.fly.dev),
+  behind GET /api/pricing/search, Zantara's PricingTool and the WhatsApp bot's price context
+  (wa_package_builder). The route is authenticated (backend/app/routers/dynamic_pricing.py; only
+  /api/pricing/service is public), so the probe needs the service API key or a session token,
+  supplied from the environment and never printed. Observation after the deploy (a merge to
+  apps/backend-rag is the deploy; build_sha on /health must contain this PR): GET
+  /api/pricing/search?q=izin%20usaha%20minuman%20ringan returns no Alcohol License row;
+  ?q=berapa%20biaya%20izin%20alkohol returns the three Alcohol License rows; ?q=ITAS returns the
+  KITAS rows (38 on the catalogue of this branch). Not yet observed: nothing is merged or deployed.
 receipts:
-  - claim: The corpus, matcher unit cases and existing pricing tests pass.
-    cmd: cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
-    result: "225 passed in 9.71s"
+  - claim: The pricing suite (120-query corpus, matcher unit cases, existing pricing tests) passes on HEAD a08f78ca7f.
+    cmd: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
+    result: "330 passed in 1.95s"
     exit: 0
-    ts: "2026-10-17T01:33:58Z"
+    ts: "2026-10-17T08:29:07Z"
     seat: this session
-  - claim: Catalog decision pins and wider pricing/WhatsApp consumers pass (2 pre-existing order-pollution failures in test_data_invariant_tripwires.py fail identically on the original code and pass alone, 18/18).
-    cmd: tests/scripts/test_catalogue_decisions_1017*.py _1014.py; wa_package_builder, wa_package_router, agentic, zantara_tools, pricing_bridge, price_store_reconciliation, public_pricing_lookup, dynamic_pricing, data_invariant_tripwires
-    result: "56 passed; 2373 passed, 2 failed (pre-existing)"
-    exit: 1
-    ts: "2026-10-17T01:30:00Z"
-    seat: claude-sonnet-5 implementer
-  - claim: Mutants killed — substring matching restored (18 red), 2-char prefix allowed (7 red), keywords matched by any shared word (8 red); file restored byte-identical.
+  - claim: The catalogue decision pins pass (tests/scripts/test_catalogue_decisions_1017_followup.py is the one tests/scripts file this branch touches; run with its two siblings).
+    cmd: python -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py
+    result: "57 passed in 0.13s"
+    exit: 0
+    ts: "2026-10-17T08:29:07Z"
+    seat: this session
+  - claim: The frontend price mirror is in sync with the catalogue.
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK: apps/mouth/data/bali-zero-prices.json is in sync with PricingTool canonical"
+    exit: 0
+    ts: "2026-10-17T08:28:59Z"
+    seat: this session
+  - claim: Lint and format are clean on the three changed python files.
+    cmd: ruff check and ruff format --check on pricing_service.py, test_search_token_matching_1017.py, test_catalogue_decisions_1017_followup.py
+    result: "All checks passed!; 3 files already formatted"
+    exit: 0
+    ts: "2026-10-17T08:29:07Z"
+    seat: this session
+  - claim: Before/after over 140 queries, every row lost by a query that found it before is grouped by cause and justified (substring noise, acronym fragments, the alcohol keyword widening, negation, empty query); 7 queries gain rows from the light-suffix, alias and hyphen rules.
+    cmd: scratch comparison old code vs new code (search-after-v4.json), rendered into search-before-after.md in this pack
+    result: "28 queries lose rows (741 row-losses), 7 gain, 105 identical; table and causes in search-before-after.md"
+    exit: 0
+    ts: "2026-10-17T08:27:00Z"
+    seat: this session
+  - claim: Mutants killed on the first implementation (substring matching restored 18 red, 2-char prefix 7 red, keywords by any shared word 8 red; file restored byte-identical). Gear-2 receipt on eb0eba6e2b, not re-run after spec v2.
     cmd: cp backup, edit, pytest -B, cp back + cmp
     result: "18 / 7 / 8 red; restored"
     exit: 0
     ts: "2026-10-17T01:30:00Z"
     seat: claude-sonnet-5 implementer
-  - claim: Every row lost on the corpus is a substring-only match.
-    cmd: before/after hit lists (scratch search-before.json / search-after.json) + catalog text check
-    result: "PT PMA lost rows matched 'pt' in 'spt'/'rptka'; ERP lost KITAP + MERP ('erp' in 'merp'); izin kerja lost Cancel Wajib Lapor ('kerja' in 'ketenagakerjaan'); no query gained rows"
-    exit: 0
-    ts: "2026-10-17T01:33:00Z"
-    seat: this session
 decisions:
   - id: D-word-not-substring
-    text: Descriptive text matches whole words; prefix only for tokens of 4+ characters or containing a digit (keeps e33 -> e33g, visa -> visas).
-  - id: D-keyword-phrase-in-query
-    text: Curated keywords match only as whole phrases contained in the query, so one shared word never widens a query.
+    text: Descriptive text matches by word (prefix of 3+ characters or with a digit; a row word of 4+ characters prefixing the token only with a closed light-suffix remainder; inside-word only for tokens of 5+ characters), never as an arbitrary substring.
+  - id: D-keyword-phrase
+    text: Curated multi-word keywords count only when the whole phrase is in the query; single-word keywords never match inside a word. The Alcohol License rows gain keywords alkohol and beralkohol.
+  - id: D-acronym-aliases
+    text: itas to kitas, itap to kitap, tka to rptka, because the old substring match found them and clients type them.
+  - id: D-negators-and-empty
+    text: non, tanpa, senza and without drop the next word; hyphen compounds match as phrases; an empty query returns no rows (all nine callers checked, none relies on all-rows).
   - id: D-driving-license-out-of-scope
-    text: '"driving license" still returns the alcohol rows through the word "license" in their names; out of scope per the spec, reported.'
-dissent: []
+    text: '"driving license" still returns the alcohol rows through the word "license" in their names; license family out of scope per the spec, reported.'
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol (round 1 on eb0eba6e2b, round 2 on ea6a7c52bf) and
+  kimi-code/k3 (round 2). The journal timestamps are the moment the lines were written
+  (2026-10-17T08:30:47Z), after the runs; the dispatch times are in the seat logs
+  seat-build-codex-20261017T013454Z-90543, seat-build-codex-20261017T081441Z-69982 and
+  seat-build-kimi-20261017T081443Z-70320 under /Users/balizero/nuzantara/.worktrees/. The reserve
+  agy-gemini-4-argon (round 1, log seat-build-agy-20261017T014216Z-26274) is deliberately absent
+  from the journal so that no reserve counts toward quorum and no seat_fallback_reason is needed.
+  The codex runs used sandbox workspace-write (seat_build), review only by instruction, and git
+  status was clean after each (diff_stat empty). Codex round 2 closed CONCERNS, not PASS: its
+  three recall findings were fixed in a08f78ca7f after the round and that commit was not shown to
+  the seat again; the fix is covered by the corpus and the sweep, not by a third council round.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 1 on eb0eba6e2b, VERDICT CONCERNS: recall losses on berapa biaya izin alkohol, harga izin beralkohol, alkohol, polisi, sehat, certificato igiene, voa ext, kit, pensi, kitasnya.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by spec v2 and commits 8b221a4f6e and ea6a7c52bf (prefixes, closed light suffixes,
+      long infixes, alkohol and beralkohol keywords); all ten cases are found and the corpus pins them.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2 on ea6a7c52bf, VERDICT CONCERNS: regressions of recall on ITAS, ITAP and TKA.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by a08f78ca7f acronym aliases (ITAS finds 38 rows, ITAP 13, TKA 4). The
+      orchestrator session reported a systematic 235-token sweep in which only stm was lost (a
+      substring of system); that sweep is the orchestrator's, not re-run in this pack.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: non-alcoholic drinks (full messages) still reach the alcohol rows.
+    status: CONFIRMED
+    resolution: >-
+      Resolved by a08f78ca7f: hyphen compounds match as phrases and negators drop the next word;
+      non alcoholic and minuman tanpa alkohol return 0 alcohol rows (before/after table).
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: new false positives on full messages, send your addresses and Chrome extensions
+      (plural forms reach rows through the light-suffix rule).
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted. Word-level stemming cannot read context, the old code missed the legitimate plural
+      cases these come from, and the spec documents it. Not changed.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: the empty query behaviour (the corpus omitted it).
+    status: CONFIRMED
+    resolution: >-
+      Resolved: an empty query returns no rows and is pinned by a test. All nine callers were
+      checked, none relies on all-rows; /api/pricing/search has min_length=1.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2, VERDICT PASS with dissent: toko minuman and jualan minuman ringan now return zero
+      alcohol rows, so a client asking about a drinks shop's liquor licence gets no pricing
+      context; the spec blesses the loss only by analogy to PIRT minuman.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted. Generic minuman is deliberately not an alcohol signal (spec rule 2); a client
+      asking about a liquor licence types alkohol, beralkohol, miras, minuman keras or alcohol,
+      and all of them find the rows (corpus).
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2 observation: restaurant licenses returns Driving License (license family).
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted and reported: the license family is out of scope per the spec (D-driving-license-out-of-scope).
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2 observation: re-entry permit.
+    status: RETRACTED
+    resolution: >-
+      After a08f78ca7f (hyphen phrase) re-entry permit returns the same 20 rows as the old code,
+      so no behaviour change remains to discuss.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      Reserve, round 1 on eb0eba6e2b, VERDICT PASS with dissent: Indonesian alcohol queries
+      without the full phrase minuman beralkohol (berapa biaya izin alkohol, harga izin beralkohol,
+      minuman yang beralkohol) and voa ext miss their rows.
+    status: CONFIRMED
+    resolution: >-
+      Same recall losses as codex round 1, resolved by the same commits; the corpus pins
+      them, including voa ext.
+appetite_exceeded: >-
+  The brief set 2 hours and 1 adversarial round for a one-surface cure. The first implementation
+  drew two councils (round 1 on eb0eba6e2b and round 2 on ea6a7c52bf, each finding real recall
+  defects) and two fix commits afterwards, because the matcher is a fix-of-a-fix surface; the
+  wall clock is the elapsed time from the gear-2 pack to this pack including seat waits.
 spend:
-  wall_clock_hours: 0.5
-  adversarial_rounds: 0
+  wall_clock_hours: 7
+  adversarial_rounds: 2
