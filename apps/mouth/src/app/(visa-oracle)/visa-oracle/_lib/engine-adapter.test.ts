@@ -1543,18 +1543,42 @@ describe("support reasons are sentences, not machine codes", () => {
     const liveE28 = [...live].filter((key) => /^E28[A-Z]_/.test(key));
     expect(liveE28.length).toBeGreaterThanOrEqual(7);
     expect(liveE28.filter((key) => !(key in SUPPORT_REASON_COPY))).toEqual([]);
-    // E28A own-shareholding step B: the copy lands one step ahead of the pack
-    // that emits it (step C, seq-31). Step C deletes this list.
-    const PENDING_PACK_E28_KEYS = ["E28A_OWN_SHAREHOLDING_BELOW_MIN"];
-    const orphans = Object.keys(SUPPORT_REASON_COPY)
+    expect(e28CopyOrphans(Object.keys(SUPPORT_REASON_COPY), packs)).toEqual([]);
+  });
+
+  // E28A own-shareholding step B: the copy lands one step ahead of the pack
+  // that emits it (step C, seq-31). The exemption holds ONLY while the highest
+  // signed pack is seq-30 or lower; from seq-31 the pack must emit the reason,
+  // so a seq-31 pack that omits it (or a later pack that drops it) goes red.
+  const PENDING_PACK_E28_KEYS = ["E28A_OWN_SHAREHOLDING_BELOW_MIN"];
+  const PENDING_EXEMPTION_LAST_SEQUENCE = 30;
+  function e28CopyOrphans(
+    copyKeys: string[],
+    packs: Map<number, Set<string>>,
+  ): string[] {
+    const highest = Math.max(...packs.keys());
+    const live = packs.get(highest)!;
+    const pendingAllowed = highest <= PENDING_EXEMPTION_LAST_SEQUENCE;
+    return copyKeys
       .filter((key) => /^E28[A-Z]_/.test(key))
       .filter(
         (key) =>
           !live.has(key) &&
           !RETIRED_SUPPORT_REASON_KEYS.includes(key) &&
-          !PENDING_PACK_E28_KEYS.includes(key),
+          !(pendingAllowed && PENDING_PACK_E28_KEYS.includes(key)),
       );
-    expect(orphans).toEqual([]);
+  }
+
+  it("I-M01: the pending own-shareholding exemption expires at seq-31", () => {
+    const key = "E28A_OWN_SHAREHOLDING_BELOW_MIN";
+    const rest = new Set(["E28B_COMPANY_ESTABLISHMENT_ELIGIBLE"]);
+    // Guilt: a seq-31 pack that omits the reason is an orphan.
+    expect(e28CopyOrphans([key], new Map([[31, rest]]))).toEqual([key]);
+    // Innocence: seq-31 emitting it, or seq-30 still pending, passes.
+    expect(
+      e28CopyOrphans([key], new Map([[31, new Set([...rest, key])]])),
+    ).toEqual([]);
+    expect(e28CopyOrphans([key], new Map([[30, rest]]))).toEqual([]);
   });
 
   /**

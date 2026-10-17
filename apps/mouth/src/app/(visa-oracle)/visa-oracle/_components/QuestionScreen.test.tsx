@@ -182,3 +182,35 @@ describe("QuestionScreen country picker", () => {
     ).toBe("");
   });
 });
+
+describe("QuestionScreen whole-rupiah number question", () => {
+  function submit(raw: string) {
+    const onAnswer = vi.fn();
+    const { container, unmount } = render(
+      <QuestionScreen
+        language="en"
+        question={QUESTIONS.investment_own_shareholding_idr}
+        onAnswer={onAnswer}
+        onSkip={vi.fn()}
+        onBack={vi.fn()}
+        canGoBack
+      />,
+    );
+    const input = container.querySelector("input[type=number]")!;
+    fireEvent.change(input, { target: { value: raw } });
+    fireEvent.submit(container.querySelector("form")!);
+    unmount();
+    return onAnswer;
+  }
+
+  it.each(["9999999999.9999999", "1e10", "10000000000.0", "-5", ""])(
+    "never answers with %j",
+    (raw) => {
+      expect(submit(raw)).not.toHaveBeenCalled();
+    },
+  );
+
+  it("answers a plain whole-rupiah figure", () => {
+    expect(submit("10000000000")).toHaveBeenCalledWith("10000000000");
+  });
+});

@@ -1423,6 +1423,17 @@ function declaresIndonesianNationality(facts: OracleFacts): boolean {
     .includes("ID");
 }
 
+/** Global filters that shut every purpose: the calling-visa nationality that
+ * is not assessed, and an active overstay (settle it first, or beyond the 60
+ * days). The full replay of the corpus against the signed pack (38 walks)
+ * returns NO product under any purpose for these walks, so naming the tourist
+ * door there would be an over-match (red team B, finding 3). */
+const GLOBALLY_SHUT_NO_PATH_CODES: ReadonlySet<string> = new Set([
+  "CALLING_VISA_NATIONALITY_NOT_ASSESSED",
+  "ACTIVE_OVERSTAY_SETTLE_FIRST",
+  "OVERSTAY_EXCEEDS_60_DAYS",
+]);
+
 /**
  * A dead end names the door that IS open.
  *
@@ -1448,6 +1459,9 @@ export function buildNoPathDoors(
   // this answer at all, so there is no replay-proven alternative to name —
   // the CTA on this dead end is a consultation, never a category switch.
   if (noPathReasonCodes.some((code) => SOURCELESS_NO_PATH_CODES.has(code))) {
+    return doors;
+  }
+  if (noPathReasonCodes.some((code) => GLOBALLY_SHUT_NO_PATH_CODES.has(code))) {
     return doors;
   }
   const category = facts.category;

@@ -31,35 +31,35 @@ bites:
   observe: python3 scripts/ci/observe_visa_oracle_own_shareholding_question.py
   expect: "contains:own shareholding question holds"
 receipts:
-  - claim: "The whole visa-oracle Vitest tree and src/lib/api on the rebased HEAD (interview, mapper, copy, census, corpus determinism, no-path-doors)."
+  - claim: "The whole visa-oracle Vitest tree and src/lib/api on the cured HEAD (interview, mapper, copy, census, corpus determinism, no-path-doors, the parser and component tests)."
     cmd: cd apps/mouth && npx vitest run "src/app/(visa-oracle)/visa-oracle" src/lib/api
-    result: "Test Files 100 passed (100); Tests 2360 passed (2360)"
+    result: "Test Files 101 passed (101); Tests 2424 passed (2424)"
     exit: 0
-    ts: "2026-10-17T01:12:00Z"
+    ts: "2026-10-17T01:46:00Z"
     seat: this session
   - claim: "apps/mouth typechecks."
     cmd: cd apps/mouth && npx tsc --noEmit
     result: "no output"
     exit: 0
-    ts: "2026-10-17T01:12:30Z"
+    ts: "2026-10-17T01:46:30Z"
     seat: this session
-  - claim: "Backend census, seq-21 pack, rollout/registry, gold coverage and Sentry PII tests on the rebased HEAD."
+  - claim: "Backend census, seq-21 pack, rollout/registry, gold coverage and Sentry PII tests on the cured HEAD."
     cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_interview_walk_census.py backend/tests/services/visa_engine/test_seq21_pack.py backend/tests/services/visa_engine/test_sponsor_type_rollout.py backend/tests/services/visa_engine/test_fact_registry.py backend/tests/services/visa_engine/gold_coverage backend/tests/services/visa_engine/test_gold_coverage_floor.py backend/tests/unit/app/setup/test_sentry_pii_redaction.py"
-    result: "377 passed, 14 skipped in 184.56s (the 14 skips are the unsigned-candidate-pack replays)"
+    result: "377 passed, 14 skipped in 284.40s (the 14 skips are the unsigned-candidate-pack replays)"
     exit: 0
-    ts: "2026-10-17T01:11:00Z"
+    ts: "2026-10-17T01:51:00Z"
     seat: this session
-  - claim: "The observer passes and its summary parser rejects skipped, failed and reduced counts."
+  - claim: "The observer passes."
     cmd: python3 scripts/ci/observe_visa_oracle_own_shareholding_question.py
-    result: "Tests 6 passed (6); own shareholding question holds; parser tests 24 passed"
+    result: "Tests 6 passed (6); own shareholding question holds"
     exit: 0
-    ts: "2026-10-17T01:12:40Z"
+    ts: "2026-10-17T01:40:00Z"
     seat: this session
-  - claim: "Mutation: dropping the mapper's investment.own_shareholding_idr mapping (backup restored by cp) turns the tests red."
-    cmd: "replace facts.investment_own_shareholding_idr with undefined in fact-mapper.ts, then vitest own-shareholding-question.test.ts fact-mapper.test.ts"
-    result: "7 failed, 200 passed; after cp restore 207 passed"
+  - claim: "Mutations (backups restored by cp): accepting any non-blank raw string, asking the question on any commitment answer, and making the pending exemption never expire each turn tests red; dropping the mapper mapping did so in the first round."
+    cmd: "edit whole-number-input.ts / flow.ts / engine-adapter.test.ts together, run the focused vitest files, cp restore, rerun"
+    result: "11 failed, 258 passed; after restore 269 passed (mapper mutation, first round: 7 failed, 200 passed)"
     exit: 1
-    ts: "2026-10-17T01:03:00Z"
+    ts: "2026-10-17T01:30:00Z"
     seat: this session
 decisions:
   - id: D-no-not-sure
@@ -75,10 +75,42 @@ decisions:
       E28A_OWN_SHAREHOLDING_BELOW_MIN copy lands one step ahead of the seq-31 pack; the I-M01 orphan census
       carries a one-key PENDING list that step C deletes. The English copy says "personally own" rather than
       "held by you" because the client-copy jargon guard rejects the word "held".
-  - id: D-no-path-doors-fingerprint
+  - id: D-red-team-B-1-pt-pma-gate
     decision: >-
-      The no-path-doors replay fixture only changes its corpus fingerprint: walk files gained the NOT_ASKED key,
-      outcomes are unchanged. A full regeneration with the highest pack lists 38 walks against the committed 27
-      before and after this change identically, so the committed fixture predates this step and is carried
-      as is; flagged for the owner of that generator.
+      Codex red team (FIX-FIRST, 4 MEDIUM), finding 1: on the pt_pma vehicle the question was asked even after
+      investment_pt_pma "no". Cured: asked only after "yes", like capital_market and the explorer; innocence
+      test (no / unanswered commitment never asks it). No walk in the corpus answers "no" there, so the
+      regenerated corpus is byte-identical.
+  - id: D-red-team-B-2-raw-syntax
+    decision: >-
+      Finding 2: QuestionScreen converted the raw string first, so 9999999999.9999999 rounded to 10000000000.
+      Cured with parseWholeNumberInput (_lib/whole-number-input.ts): the raw string must be ASCII digits only,
+      then safe-integer and bounds. The shared number path serves every step-1 whole-number question; a test
+      pins that every number question has step 1 and min >= 0. The UI never accepted thousand separators
+      (input type=number), so none are accepted now. Component test submits 9999999999.9999999, 1e10,
+      10000000000.0, -5 and empty (never answered) and 10000000000 (answered).
+  - id: D-red-team-B-3-no-path-doors
+    decision: >-
+      Finding 3: the replay fixture is regenerated in full by replay-no-path-doors.py at the active pack's
+      signed_at (a valid census instant, no network): 38 non-supported walks (30 NO_SUPPORTED_PATH, 4
+      HUMAN_REVIEW_REQUIRED, 4 NEEDS_INPUT) against 27 recorded. The regeneration is the same before and after
+      this step on the base corpus, so the gap predates step B. Covering the missing walks exposed a real
+      over-match: the tourist door was named on the calling-visa and active-overstay dead ends, where the
+      replay shows every door shut. buildNoPathDoors now abstains for those three global-filter reason codes;
+      the door test asserts positive abstention where no door is open.
+  - id: D-red-team-B-4-pending-expiry
+    decision: >-
+      Finding 4: the PENDING exemption for E28A_OWN_SHAREHOLDING_BELOW_MIN is logic now, not a comment: it
+      holds only while the highest signed pack is seq-30 or lower; from seq-31 the pack must emit the reason.
+      Guilt and innocence cases pin it (seq-31 without the reason is an orphan; seq-31 with it, and seq-30,
+      pass).
+  - id: D-corpus-default-own-shareholding
+    decision: >-
+      Coordinator item: the generator's generic numeric default (IDR 1,000,000,000) sat below the E28A minimum, so
+      the seq-31 candidate would drop E28A from every qualifying walk. The default answer for
+      investment_own_shareholding_idr is now IDR 10,000,000,000; the two boundary witnesses keep 9,999,999,999 and
+      10,000,000,000. 16 walk fixtures changed that one answer (pt_pma, below_published_threshold, company_only,
+      foreign_branch_only, full_capital, ikn_subsidiary, no_route, offshore_application, sponsor_government,
+      sponsor_government/not_world_figure, capital_market, capital_market_only, business_exploring, the stay_361
+      explorer walk, onshore_invest). Seq-30 does not read the fact: census and gold-coverage pins unchanged and green.
 dissent: []

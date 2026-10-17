@@ -169,6 +169,10 @@ function ordinaryAnswerFor(
   if (question.kind === "number") {
     if (id === "overstay_days") return "0";
     if (id === "stay_days") return "121";
+    // E28A own shareholding: the rule's own bound (IDR 10,000,000,000), so a
+    // walk that reaches the question qualifies unless it says otherwise; the
+    // two boundary witnesses override it.
+    if (id === "investment_own_shareholding_idr") return "10000000000";
     return "1000000000";
   }
   if (question.kind === "country-codes") return "IT";

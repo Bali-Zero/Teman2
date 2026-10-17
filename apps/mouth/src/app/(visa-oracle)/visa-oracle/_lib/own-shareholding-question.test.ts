@@ -28,13 +28,6 @@ describe("E28A step B - the PT PMA investor interview asks the own shareholding"
     expect(ids[ids.indexOf("investment_paid_up_capital_idr") + 1]).toBe(
       "investment_own_shareholding_idr",
     );
-    const branch = getCategoryQuestionIds({
-      category: "invest",
-      investment_vehicle: "pt_pma",
-    });
-    expect(branch[branch.indexOf("investment_paid_up_capital_idr") + 1]).toBe(
-      "investment_own_shareholding_idr",
-    );
   });
 
   it("is a rupiah number with no not-sure option", () => {
@@ -86,6 +79,21 @@ describe("E28A step B - the PT PMA investor interview asks the own shareholding"
         investment_pt_pma: "yes",
       }),
     ).toContain("investment_own_shareholding_idr");
+    // Innocence: the `pt_pma` vehicle asks its capital questions regardless,
+    // but a "no" (or no answer yet) on the commitment never asks the own
+    // shareholding; only a "yes" does.
+    for (const answered of [{ investment_pt_pma: "no" }, {}] as Record<
+      string,
+      string
+    >[]) {
+      expect(
+        getCategoryQuestionIds({
+          category: "invest",
+          investment_vehicle: "pt_pma",
+          ...answered,
+        }),
+      ).not.toContain("investment_own_shareholding_idr");
+    }
     // On `capital_market` a "no" on the PT PMA commitment asks for no figure
     // at all (the `pt_pma` vehicle asks its capital questions unconditionally).
     expect(
