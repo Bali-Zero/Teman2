@@ -41,7 +41,7 @@ from pydantic import ValidationError
 from backend.services.visa_engine import enums
 from backend.services.visa_engine import models as M
 from backend.services.visa_engine.compiler import compile_rule_pack
-from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY
+from backend.services.visa_engine.fact_registry import DEFAULT_FACT_REGISTRY, FactValueKind
 from backend.tests.services.visa_engine.gold_harness import loader
 
 _UNKNOWN = {"status": "UNKNOWN", "reason": "NOT_ASKED"}
@@ -468,8 +468,10 @@ class TestFactVocabularyExtensionRolloutDefaultE28A:
     """The E28A own-shareholding Step A wire seam (2026-10-17).
 
     ``investment.own_shareholding_idr`` is the applicant's OWN shareholding
-    value in the sponsoring company (Permenkumham 22/2023 jo 11/2024 Pasal
-    38(2)(a)) — a different fact from the company-level paid-up and
+    value in the sponsoring company (saved official imigrasi E28A page,
+    ``research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt``
+    line 98; the Permenkumham 22/2023 jo 11/2024 Pasal 38(2)(a) citation is
+    TO VERIFY against source) — a different fact from the company-level paid-up and
     investment capital paths. The engine learns it before any pack rule or
     mouth question reads it.
     """
@@ -481,6 +483,7 @@ class TestFactVocabularyExtensionRolloutDefaultE28A:
         assert path.value == self._WIRE_KEY
         assert path in enums.APPLICANT_FACT_PATHS
         spec = DEFAULT_FACT_REGISTRY.spec(path)
+        assert spec.kind is FactValueKind.INTEGER
         assert spec.value_type == "money_idr"
         assert spec.pii_class is enums.PiiClass.SENSITIVE
 

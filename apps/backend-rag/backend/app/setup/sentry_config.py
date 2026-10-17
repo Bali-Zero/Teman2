@@ -68,6 +68,9 @@ _PII_KEY_SUBSTRINGS: tuple[str, ...] = (
     # fact. Match the exact semantic token rather than broad "income" or
     # "usd" substrings, which would erase legitimate diagnostic counters.
     "annual_foreign_income_usd",
+    # E28A Step A: the applicant's own shareholding value is a SENSITIVE
+    # financial fact (`investment.own_shareholding_idr` in the facts body).
+    "own_shareholding",
     # Added 2026-08-25 (GARUDA VOA L4 magic-link auth, CodeQL
     # py/clear-text-storage-sensitive-data #8755 review): covers
     # `account_session_secret` / `result_session_secret` / any future

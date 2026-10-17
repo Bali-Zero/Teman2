@@ -22150,7 +22150,7 @@ export interface components {
      *     comment for the grounding), and last by ``work.annual_foreign_income_usd``
      *     (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
      *     with a NOT_ASKED rollout default; the mouth question is step B and the
-     *     pack rule step C), and last by ``investment.own_shareholding_idr``
+     *     pack rule step C), and by ``investment.own_shareholding_idr``
      *     (2026-10-17, E28A own-shareholding Step A — contract-only: the engine
      *     accepts the fact with a NOT_ASKED rollout default; no pack rule and no
      *     mouth question read it yet).

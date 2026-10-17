@@ -532,7 +532,7 @@ class FactPath(str, Enum):
     comment for the grounding), and last by ``work.annual_foreign_income_usd``
     (2026-10-11, seq-28 step A — contract-only: the engine accepts the fact
     with a NOT_ASKED rollout default; the mouth question is step B and the
-    pack rule step C), and last by ``investment.own_shareholding_idr``
+    pack rule step C), and by ``investment.own_shareholding_idr``
     (2026-10-17, E28A own-shareholding Step A — contract-only: the engine
     accepts the fact with a NOT_ASKED rollout default; no pack rule and no
     mouth question read it yet).
@@ -645,9 +645,12 @@ class FactPath(str, Enum):
     # from. A figure arrives in the pack the day a source record states it.
     INVESTMENT_MEETS_PUBLISHED_THRESHOLD = "investment.meets_published_threshold"
     # investment.own_shareholding_idr — the APPLICANT'S OWN shareholding value
-    # in the sponsoring company, in whole IDR (Permenkumham 22/2023 jo 11/2024
-    # Pasal 38(2)(a): "Bukti kepemilikan saham paling sedikit
-    # Rp10.000.000.000,00 ... pada perusahaan penjamin"). It is a different
+    # in the sponsoring company, in whole IDR. Source: the saved official
+    # imigrasi E28A page (``research/visa/2026-10-15-e28-pages/text/
+    # df3ba889-20261015T142247Z.txt`` line 98): "Bukti kepemilikan saham paling
+    # sedikit Rp10.000.000.000,00 ... pada perusahaan penjamin ...". The
+    # regulation article (Permenkumham 22/2023 jo 11/2024, Pasal 38(2)(a)) is
+    # TO VERIFY against source — no primary text in the repo backs it. It is a different
     # fact from ``investment.paid_up_capital_idr`` / ``investment_capital_idr``,
     # which describe the COMPANY, not the applicant. The threshold lives only
     # in the pack rule, never in code.

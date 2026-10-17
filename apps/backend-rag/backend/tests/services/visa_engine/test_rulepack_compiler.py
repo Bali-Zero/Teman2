@@ -460,6 +460,7 @@ class TestOwnShareholdingFactIsCompilable:
             rules=[rule], products=[product], source_records=[source_record]
         )
         report = C.compile_rule_pack(make_rule_pack(payload))
+        assert report.ok is True, report.errors
         assert not any(e.code == "REQUIRED_FACT_NOT_IN_REGISTRY" for e in report.errors)
         assert not any(e.code.startswith("FACT_LITERAL") for e in report.errors)
 
