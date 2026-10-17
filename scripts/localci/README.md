@@ -272,7 +272,6 @@ objects the pack has, which is why the pack cannot change the commit, and why th
 in the driver (no verdict, never a silent fallback); a pack the host cannot build ships nothing, writes `# tree pack: unavailable
 (<why>) — the sandbox indexes the tree itself` in the log, and the driver takes the old path: speed is lost, never a verdict.
 
-
 ### Matrix parity (`policy.matrix_parity`)
 
 A PR that adds or changes a step of a workflow the matrix executes must carry that step's row in the same PR. Without it, the merge lands a
@@ -288,15 +287,15 @@ context's chain included). One problem string per context.
 | candidate vs BASE | status |
 | --- | --- |
 | a problem the candidate has and BASE does not (a step with no row, a row naming a step the workflow no longer has, a shape not emulated) | `FAIL`, naming each |
-| the candidate's matrix or a required workflow cannot be parsed, or the matrix is deleted | `FAIL`, naming why (the candidate broke it) |
+| the candidate's matrix or a required workflow cannot be parsed, is over 2 MiB or expands (YAML aliases) past 500,000 nodes, the matrix is deleted, or its data makes the reading raise (a list-typed `job_id`, say) | `FAIL`, naming why (the candidate broke it) |
 | every problem the candidate has, BASE already has (an innocent PR on a drifted base, or a PR that does not touch workflows or the matrix) | `NOT_APPLICABLE`, naming the inherited problems |
 | nothing unaccounted | `PASS` |
-| the check itself crashes | `BLOCKED` (our fault is no verdict on the candidate, never `FAIL`) |
+| our own code crashes outside the reading of candidate data | `BLOCKED` (our fault is no verdict on the candidate, never `FAIL`) |
 
 The check is cheap and always computed; "nothing relevant changed" needs no special case because identical files give identical problems. Scope:
 step accounting only, not the rest of a context's plan (trusted files, tool pins, expressions), which stay `plan`'s own BLOCKED reasons. The cure
 for a drift that already landed is a PR that carries the row: it has no new problem, so it passes. Pinned by `tests/test_matrix_parity.py`
-(the real workflows and matrix mutated into #8646's shape) and `tests/mutants/rows/mparity.py`.
+(the real workflows and matrix mutated into #8646's shape; a list-typed `job_id` with a dropped row and a YAML alias bomb both FAIL). The matrix itself uses anchors (`&codeql_version`), so aliases are capped by expanded size, not refused; the parity read parses and walks candidate YAML on the Pro host, hence the two caps and `tests/mutants/rows/mparity.py`.
 
 ## What a verdict covers, and what is no verdict (B3)
 

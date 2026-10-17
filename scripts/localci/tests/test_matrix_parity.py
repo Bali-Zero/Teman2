@@ -201,3 +201,60 @@ def test_a_candidate_that_renames_the_job_a_context_names_fails(tmp_path):
     doc["jobs"] = {("renamed-" + k if k == job_id else k): v for k, v in doc["jobs"].items()}
     v = verdict(build(tmp_path, cand_over={GUARD: dump(doc)}))
     assert v["status"] == "FAIL" and f"job {job_id!r} is absent from {GUARD}" in v["reason"]
+
+
+# ------------------------------------------------------------------------------ the candidate's data is hostile (gate-mparity L1, L2)
+BOMB = "a: &a [x, x, x, x, x, x, x, x, x, x]\n" + "".join(f"{c}: &{c} [{', '.join('*' + p for p in 'a' * 10)}]\n".replace("*a", f"*{prev}") for prev, c in zip("abcde", "bcdef"))
+
+
+def test_a_list_typed_job_id_with_a_dropped_row_is_a_fail_not_a_blocked_crash(tmp_path):
+    mx = yaml.safe_load(matrix_without_zsh_row())
+    ctx = next(c for c in mx["contexts"] if c.get("workflow_file") == GUARD and c["mapping"] == "executed" and c["local"].get("steps"))
+    ctx["job_id"] = [ctx["job_id"]]
+    v = verdict(build(tmp_path, cand_over={MATRIX: dump(mx)}))
+    assert v["status"] == "FAIL" and "cannot be read" in v["reason"] and "TypeError" in v["reason"]
+
+
+def test_a_list_typed_workflow_step_with_a_dropped_row_is_a_fail(tmp_path):
+    mx = yaml.safe_load(matrix_without_zsh_row())
+    ctx = next(c for c in mx["contexts"] if c.get("workflow_file") == GUARD and c["mapping"] == "executed" and c["local"].get("steps"))
+    ctx["local"]["steps"][0]["workflow_step"] = [ctx["local"]["steps"][0]["workflow_step"]]
+    assert verdict(build(tmp_path, cand_over={MATRIX: dump(mx)}))["status"] == "FAIL"
+
+
+def test_the_same_list_typed_job_id_already_at_base_is_inherited_not_the_candidates(tmp_path):
+    mx = yaml.safe_load((fr.REAL_REPO / MATRIX).read_text())
+    ctx = next(c for c in mx["contexts"] if c.get("workflow_file") == GUARD and c["mapping"] == "executed" and c["local"].get("steps"))
+    ctx["job_id"] = [ctx["job_id"]]
+    assert verdict(build(tmp_path, base_over={MATRIX: dump(mx)}))["status"] == "NOT_APPLICABLE"
+
+
+# 10**6 leaves: past the 500,000 cap, yet cheap enough that a mutant with no cap still ends
+def test_a_yaml_alias_bomb_in_a_workflow_fails_fast_with_bounded_memory(tmp_path):
+    import resource
+    import time
+
+    assert len(BOMB) < 2000
+    live = (fr.REAL_REPO / GUARD).read_text() + "\nx-bomb:\n" + "".join("  " + ln + "\n" for ln in BOMB.splitlines()) + "env:\n  BOMB: *f\n"
+    assert yaml.safe_load(live)["jobs"], "the fixture is a valid workflow whose top-level env is the bomb: only the cap stops it reaching str()"
+    fx = build(tmp_path, cand_over={GUARD: live})
+    rss0, t0 = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, time.monotonic()
+    v = verdict(fx)
+    grown = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - rss0   # bytes on macOS, KiB on Linux: a bomb would be 10^8 and up either way
+    assert v["status"] == "FAIL" and "unreadable" in v["reason"] and time.monotonic() - t0 < 20 and grown < 2 * 10**8, (v, grown)
+
+
+def test_a_yaml_alias_bomb_in_the_matrix_fails_naming_the_cap(tmp_path):
+    v = verdict(build(tmp_path, cand_over={MATRIX: BOMB}))
+    assert v["status"] == "FAIL" and "expands (YAML aliases)" in v["reason"]
+
+
+def test_an_oversized_candidate_file_fails_naming_the_cap(tmp_path):
+    v = verdict(build(tmp_path, cand_over={GUARD: "# " + "x" * runner.PARITY_MAX_BYTES + "\n" + (fr.REAL_REPO / GUARD).read_text()}))
+    assert v["status"] == "FAIL" and "unreadable" in v["reason"]
+
+
+def test_the_real_matrix_aliases_are_within_the_cap_and_the_cap_counts_a_tree():
+    assert "&codeql_version" in (fr.REAL_REPO / MATRIX).read_text() and runner.parity_yaml((fr.REAL_REPO / MATRIX).read_bytes(), MATRIX)
+    shared = ["x"] * 1000
+    assert runner.expanded_nodes_within([shared] * 10, 20_000) and not runner.expanded_nodes_within([shared] * 10, 9_000)

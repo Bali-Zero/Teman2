@@ -1595,16 +1595,50 @@ def full_dir_map(td: Path) -> dict:
 MATRIX_REL = "scripts/localci/contexts_matrix.yaml"
 
 
+PARITY_MAX_BYTES = 2 << 20   # a candidate file read for parity: the largest real one is 64 KiB; past this it is a finding, not a parse
+PARITY_MAX_NODES = 500_000   # YAML aliases share objects at load, so a bomb is cheap to parse and ruinous to str()/walk: expanded size is capped
+
+
+def expanded_nodes_within(obj, cap: int) -> bool:
+    """True when `obj` has at most `cap` nodes counted as a TREE (a shared alias counts every time it is reached); stops at the cap."""
+    stack, n = [obj], 0
+    while stack:
+        cur = stack.pop()
+        n += 1
+        if n > cap:
+            return False
+        if isinstance(cur, dict):
+            stack.extend(cur.keys())
+            stack.extend(cur.values())
+        elif isinstance(cur, (list, tuple)):
+            stack.extend(cur)
+    return True
+
+
+def parity_yaml(blob: bytes, what: str):
+    """Candidate YAML as data under a size cap and an expansion cap; ValueError names why (a finding about the candidate)."""
+    import yaml
+
+    if len(blob) > PARITY_MAX_BYTES:
+        raise ValueError(f"{what} is {len(blob)} bytes, over the {PARITY_MAX_BYTES} byte cap read for parity")
+    doc = yaml.safe_load(blob or b"")
+    if not expanded_nodes_within(doc, PARITY_MAX_NODES):
+        raise ValueError(f"{what} expands (YAML aliases) past {PARITY_MAX_NODES} nodes")
+    return doc
+
+
 def matrix_accounting(wt: Path, rev: str, scratch: Path) -> list[str]:
     """What the matrix at `rev` leaves unaccounted among the workflows at `rev`, both read from the object store as DATA: one problem
     string per executed context whose job `resolve_steps` cannot account for (a workflow step the matrix does not name, a matrix step
     the workflow no longer has, a shape it cannot emulate) — the runner's own computation, so what BLOCKS a context at plan time is
     exactly what this reports. An unreadable matrix or workflow is a problem too. Empty = every step of every executed context is accounted for."""
-    import yaml
-
     blob = _extract_base_file(wt, rev, MATRIX_REL)
     if blob is None:
         return [f"{MATRIX_REL} is absent"]
+    try:
+        parity_yaml(blob, MATRIX_REL)
+    except Exception as e:  # noqa: BLE001 — the candidate's own data: a finding, never our crash
+        return [f"{MATRIX_REL}: {type(e).__name__}: {e}"[:300]]
     scratch.mkdir(parents=True, exist_ok=True)
     mp = scratch / f"matrix-{rev[:12]}.yaml"
     mp.write_bytes(blob)
@@ -1616,30 +1650,38 @@ def matrix_accounting(wt: Path, rev: str, scratch: Path) -> list[str]:
     for cname, ctx in ctxs["map"].items():
         if ctx["mapping"] != "executed" or not ctx["local"].get("steps"):
             continue
-        wf, local = str(ctx.get("workflow_file")), ctx["local"]
-        if wf not in docs:
-            try:
-                docs[wf] = yaml.safe_load(_extract_base_file(wt, rev, wf) or b"")
-            except Exception:  # noqa: BLE001 — an unparseable workflow is a finding, never a crash
-                docs[wf] = None
-        doc = docs[wf]
-        if not isinstance(doc, dict) or not isinstance(doc.get("jobs"), dict):
-            problems.append(f"{cname}: workflow {wf} is unreadable")
+        try:   # whatever the candidate's data does to our reading of it is a problem with the candidate's data, so a NEW one is FAIL, not BLOCKED
+            problems.extend(_context_accounting(wt, rev, cname, ctx, docs))
+        except Exception as e:  # noqa: BLE001
+            problems.append(f"{cname}: its matrix data cannot be read ({type(e).__name__})")
+    return problems
+
+
+def _context_accounting(wt: Path, rev: str, cname: str, ctx: dict, docs: dict) -> list[str]:
+    problems: list[str] = []
+    wf, local = str(ctx.get("workflow_file")), ctx["local"]
+    if wf not in docs:
+        try:
+            docs[wf] = parity_yaml(_extract_base_file(wt, rev, wf) or b"", wf)
+        except Exception:  # noqa: BLE001 — an unparseable, oversized or bomb workflow is a finding, never a crash
+            docs[wf] = None
+    doc = docs[wf]
+    if not isinstance(doc, dict) or not isinstance(doc.get("jobs"), dict):
+        return [f"{cname}: workflow {wf} is unreadable (unparseable, oversized or over the expansion cap)"]
+    legs = [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}] if local.get("expressions") else [{**local, "job_id": ctx.get("job_id")}]
+    defaults = ((doc.get("defaults") or {}).get("run")) or {}
+    for jl in legs:   # a service context chains jobs: each has its own matrix steps, as plan_service_context reads them
+        job = doc["jobs"].get(jl.get("job_id"))
+        if not isinstance(job, dict):
+            problems.append(f"{cname}: job {jl.get('job_id')!r} is absent from {wf}")
             continue
-        legs = [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}] if local.get("expressions") else [{**local, "job_id": ctx.get("job_id")}]
-        defaults = ((doc.get("defaults") or {}).get("run")) or {}
-        for jl in legs:   # a service context chains jobs: each has its own matrix steps, as plan_service_context reads them
-            job = doc["jobs"].get(jl.get("job_id"))
-            if not isinstance(job, dict):
-                problems.append(f"{cname}: job {jl.get('job_id')!r} is absent from {wf}")
-                continue
-            if local.get("expressions"):
-                jenv = {str(k): str(v) for k, v in {**(doc.get("env") or {}), **(job.get("env") or {}), **(jl.get("env") or {})}.items()}
-                _, why = resolve_steps({**job, "env": jenv}, jl, "main", defaults, expressions=True)
-            else:
-                _, why = resolve_steps(job, jl, rev, defaults, doc.get("env") or {})
-            if why:
-                problems.append(f"{cname}: job {jl.get('job_id')}: {why}")
+        if local.get("expressions"):
+            jenv = {str(k): str(v) for k, v in {**(doc.get("env") or {}), **(job.get("env") or {}), **(jl.get("env") or {})}.items()}
+            _, why = resolve_steps({**job, "env": jenv}, jl, "main", defaults, expressions=True)
+        else:
+            _, why = resolve_steps(job, jl, rev, defaults, doc.get("env") or {})
+        if why:
+            problems.append(f"{cname}: job {jl.get('job_id')}: {why}")
     return problems
 
 
