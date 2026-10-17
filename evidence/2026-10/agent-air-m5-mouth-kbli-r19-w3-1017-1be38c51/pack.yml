@@ -1,0 +1,47 @@
+brief_ref: evidence/brief.yml
+seat_override: >-
+  BLUE mission. Builder and live verifier are one Claude session (Air-M5, headless Chrome); the lead ships
+  and a fresh gate judges the final candidate.
+plan_ref: docs/specs/2026-10-08-kbli-r19-wrapper-token-contract.md section 8.3 and the W3 mandate.
+lanes:
+  - lane: mouth-kbli-r19-w3-1017
+    role: build
+    seat: Claude Sonnet 5.5 builder
+pii_scan: clean
+pii_scan_note: Public UI CSS, public brand art and synthetic browser fixtures only; no client data.
+provenance: >-
+  Fresh origin/main 1be38c5122 (W2'''' merged). Changes only the R19 wrapper stylesheet, four mouth
+  components, two public image files, the census tests and fixture, and this pack.
+diff:
+  net_lines: Small CSS and class edits, one replaced image pair, two browser tests, one re-pinned fixture.
+  behaviour_change: >-
+    The explorer sidebar shows the official disc. The sticky handoff bar no longer covers the page inside R19.
+    The code hero loses its corner arcs and empty band. The active tier tab and search row carry a plate cue.
+receipts:
+  - claim: All 4 census parts run live on this head and replay together with all 15 exit lines at 0 and no INCOMPLETE.
+    cmd: python3 scripts/mouth/r19_wrapper_token_census.py --replay <the 4 live parts concatenated> --diff-base origin/main
+    result: "all 15 exit lines 0; captures: 54 ok, 0 failed; opened-surfaces: 51 ok, 0 failed"
+    exit: 0
+    ts: "2026-10-17T15:15:16Z"
+    seat: Claude session (Air-M5)
+  - claim: W1 live palette guard passes on 48/48 r19 captures.
+    cmd: cd apps/mouth && R19_WRAPPER_LIVE=1 npx vitest run src/test/r19-wrapper.test.ts
+    result: "6 passed (6); palette-outside-direction-a (r19 scope, 48/48 captures): 0"
+    exit: 0
+    ts: "2026-10-17T15:15:16Z"
+    seat: Claude session (Air-M5)
+  - claim: The whole mouth census suite passes, with the two new e2e tests included.
+    cmd: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider
+    result: 306 passed
+    exit: 0
+    ts: "2026-10-17T15:15:16Z"
+    seat: Claude session (Air-M5)
+  - claim: Hover and focus text sweep and icon-only control sweep find nothing below the bar on this head.
+    cmd: hover_sweep.py desktop/light and mobile/system-dark over the 9 pages; icon_sweep.py over 9 pages and 51 surfaces
+    result: "0 text pairs below AA in about 9785 pairs per run; 0 of 170 icon-only control instances below 4.5 (Send message disabled, exempt)"
+    exit: 0
+    ts: "2026-10-17T15:15:16Z"
+    seat: Claude session (Air-M5)
+dissent: []
+grader: >-
+  A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.

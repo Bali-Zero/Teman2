@@ -1,0 +1,43 @@
+task_id: kbli-r19-w3-1017
+gear: 2
+l_level: L1
+gate_class: opus
+objective: |
+  Mission kbli-nav-design-loop, lot W3 (Track W, BLUE). Design only, content frozen. The owner reviewed the
+  W2'''' renders and ordered the official Bali Zero disc in the explorer sidebar and passes of design cleanup.
+  This PR swaps the explorer logo content (same path), keeps the shared handoff bar out of the page
+  content, separates the persona cards from the stat pills, removes the code hero corner arcs and empty
+  band, gives the licensing tier tab and the search active row a cue beyond colour, lifts the follow-up chip
+  arrow to full opacity, and paints the canvas behind the wrapper paper.
+constraints:
+  - Content is frozen: no copy, string, aria, alt, title, placeholder, href or data change.
+  - Do not change scripts/mouth/r19_wrapper_token_census.py.
+  - No npm install or npm ci.
+  - Wrapper selectors follow the is(.kbli-r19, .kbli-r19 *) and escaped Tailwind conventions.
+acceptance:
+  - text:
+      WHEN the 4 census parts run live on this head and replay together, THEN all 15 section 8.8 exit lines
+      print 0 with 54/54 captures and 51/51 opened surfaces.
+    probe:
+      python3 scripts/mouth/r19_wrapper_token_census.py --replay scripts/mouth/tests/fixtures/r19_wrapper_census.jsonl
+      --diff-base origin/main
+  - text: WHEN the W1 live guard runs, THEN palette-outside-direction-a prints 0 on 48/48 captures.
+    probe: cd apps/mouth && R19_WRAPPER_LIVE=1 npx vitest run src/test/r19-wrapper.test.ts
+  - text:
+      WHEN the handoff bar and the canvas are loaded with the real wrapper CSS in Chrome, THEN the bar sits
+      below the page content and the canvas is paper; deleting each cure reproduces the overlap and the dark canvas.
+    probe: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider -k 'handoff_bar or canvas_behind'
+  - text: WHEN the whole mouth census suite runs, THEN every test passes.
+    probe: python3 -m pytest scripts/mouth/tests -q -p no:cacheprovider
+consumer_map:
+  - r19-wrapper-census-tests runs on every apps/mouth PR and gates the 15 exit lines against the re-pinned fixture.
+  - The two new test_e2e_ tests are selected by the browser job with -k e2e.
+  - The /kbli* routes and the explorer consume the wrapper rules and the new logo file in real Chrome.
+risks:
+  - The fixture is re-pinned because element counts and scroll positions moved with the layout; only line counts of
+    the replay change, no exit line.
+  - Logo art is the owner's order; the five logo proofs still hold on the same path.
+grader: A fresh Claude gate session verifies the candidate diff live and signs the final on-disk gate.
+brief_ref: evidence/brief.yml
+pii_scan: clean
+pii_scan_note: Public UI CSS, public brand art and synthetic browser fixtures only; no client data.
