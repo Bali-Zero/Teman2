@@ -5884,6 +5884,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/crm/member-obligations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Member Obligations
+     * @description Personal duties from CRM records; team overview is a separate read grant.
+     */
+    get: operations["get_member_obligations_api_crm_member_obligations_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/crm/notifications": {
     parameters: {
       query?: never;
@@ -23956,6 +23976,62 @@ export interface components {
       /** Session Jwt */
       session_jwt?: string | null;
     };
+    /** MemberObligation */
+    MemberObligation: {
+      /** Age Days */
+      age_days: number | null;
+      /** Assigned To */
+      assigned_to: string | null;
+      /** Can Open Process */
+      can_open_process: boolean;
+      /** Client Id */
+      client_id: number;
+      /** Client Name */
+      client_name: string;
+      /** Created At */
+      created_at: string | null;
+      /** Days Left */
+      days_left: number | null;
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "passport" | "process";
+      /** Passport Expiry */
+      passport_expiry: string | null;
+      /** Practice Id */
+      practice_id: number | null;
+      /** Practice Type Name */
+      practice_type_name: string | null;
+      /** Status */
+      status: string;
+    };
+    /** MemberObligationsOut */
+    MemberObligationsOut: {
+      /** Can View Register */
+      can_view_register: boolean;
+      /** Can View Team */
+      can_view_team: boolean;
+      /** Items */
+      items: components["schemas"]["MemberObligation"][];
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Owners */
+      owners: components["schemas"]["ObligationOwner"][];
+      /** Passport Count */
+      passport_count: number;
+      /** Process Count */
+      process_count: number;
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: "mine" | "team";
+      /** Total */
+      total: number;
+    };
     /**
      * MonthlySummary
      * @description Monthly work summary
@@ -24246,6 +24322,15 @@ export interface components {
       status: string;
       /** Updated At */
       updated_at: unknown | null;
+    };
+    /** ObligationOwner */
+    ObligationOwner: {
+      /** Email */
+      email: string | null;
+      /** Name */
+      name: string;
+      /** Total */
+      total: number;
     };
     /** ObservationPayload */
     ObservationPayload: {
@@ -38179,6 +38264,40 @@ export interface operations {
           "application/json": {
             [key: string]: unknown;
           };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HTTPValidationError"];
+        };
+      };
+    };
+  };
+  get_member_obligations_api_crm_member_obligations_get: {
+    parameters: {
+      query?: {
+        scope?: "mine" | "team";
+        assigned_to?: string | null;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MemberObligationsOut"];
         };
       };
       /** @description Validation Error */

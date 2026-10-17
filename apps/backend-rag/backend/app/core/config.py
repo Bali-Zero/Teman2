@@ -1053,6 +1053,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    member_obligations_supervisor_emails: str | None = Field(
+        default=None,
+        description=(
+            "Additional read-only viewers of the team member-obligations overview. "
+            "Grants no other CRM access. Unset or blank grants nobody."
+        ),
+    )
+
     developer_emails: str | None = Field(
         default=None,
         description=(
@@ -1124,6 +1132,14 @@ class Settings(BaseSettings):
         if not emails:
             return self._ADMIN_EMAILS_FALLBACK
         return frozenset(emails)
+
+    @property
+    def member_obligations_supervisor_emails_set(self) -> frozenset[str]:
+        """Explicit read-only overview grant; never inherit an admin fallback."""
+        raw = self.member_obligations_supervisor_emails
+        if not raw:
+            return frozenset()
+        return frozenset(e.strip().lower() for e in raw.split(",") if e.strip())
 
     @property
     def developer_emails_set(self) -> frozenset[str]:

@@ -1,603 +1,327 @@
 "use client";
 
-/**
- * Compliance obligations register — reviewer screen (kita workspace).
- *
- * Backend: apps/backend-rag/backend/app/routers/compliance_obligations.py,
- * prefix `/api/compliance/obligations`, EVERY route (reads included) gated
- * by `is_crm_admin` — a non-admin gets a plain 403, surfaced below as
- * "Admin only." rather than a generic failure.
- *
- * Flow (see the router's module docstring): `propose()` (PR A1) fills
- * `client_obligations` with `status='proposed'` rows. This page lets the tax
- * team list them, ask for more (`POST /generate`, idempotent), and decide
- * each one. Approve is the ONLY place a row becomes client-visible: the
- * backend bridges it into `compliance_alerts` in the SAME transaction as the
- * `proposed -> approved -> alerted` status flip, so a successful approve
- * always returns an `alert_id`. Reject is terminal and never touches
- * `compliance_alerts`.
- *
- * Both decisions are compare-and-swap on `status='proposed'` server-side — a
- * stale row (already decided by someone else, or re-clicked) comes back 409
- * with the current status in the message; that message is shown verbatim.
- *
- * Reviewer usability (U1): the table labels each row through the catalog read
- * `GET /obligations/catalog` (M3) — rule name, authority, verified badge, and
- * `legal_source` in the row detail — and resolves `client_id` to a display
- * name through `GET /api/crm/clients/{id}`. The catalog is never copied into
- * the frontend and a resolved client name never leaves the browser tab: no
- * log, no storage, no other request carries it (see `useClientNames`).
- *
- * Client profile (U2): with a client filter set, `ClientProfilePanel` reads
- * `GET /obligations/profile/{client_id}` and lets the reviewer fill in the
- * attributes the engine reads out of `companies.custom_fields`. A save PATCHes
- * only the touched keys — see that component for why sending the whole profile
- * back would destroy the `missing_keys` signal.
- *
- * Auth + transport reuse the shared `api` client (httpOnly cookie + bearer),
- * same as `(workspace)/review/page.tsx`.
- */
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { ApiError } from "@/lib/api/error-handler";
-import { logger } from "@/lib/logger";
+import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/utils";
 import {
-  DeskStrip,
   EmptyState,
   FOCUS,
   Masthead,
   Notice,
-  SERIF_SECTION,
   StatePill,
 } from "@/components/workspace/r19";
 
-import { ClientProfilePanel } from "./components/ClientProfilePanel";
-import { ObligationsTable } from "./components/ObligationsTable";
-import { StatusCounters } from "./components/StatusCounters";
-import { describeError } from "./components/describe-error";
-import {
-  STATUS_FILTER_OPTIONS,
-  type ApproveOut,
-  type GenerateOut,
-  type ObligationListOut,
-  type ObligationOut,
-  type StatusFilter,
-} from "./components/types";
-import { useClientNames } from "./components/useClientNames";
-import { useObligationsCatalog } from "./components/useObligationsCatalog";
-import { useStatusCounters } from "./components/useStatusCounters";
-
+type Obligations = components["schemas"]["MemberObligationsOut"];
+type Duty = components["schemas"]["MemberObligation"];
+type Scope = "mine" | "team";
 const LIMIT = 50;
+const BUTTON = cn(
+  "rounded border border-[var(--bz-border)] px-3 py-2 text-sm text-[var(--bz-text-1)] disabled:opacity-50",
+  FOCUS,
+);
 
-export default function ObligationsPage() {
-  const router = useRouter();
+function passportTiming(days: number): string {
+  if (days < 0) return `Expired ${Math.abs(days)} days ago`;
+  if (days === 0) return "Expires today";
+  return `Expires in ${days} days`;
+}
 
-  // ── register list ──────────────────────────────────────────────────────
-  const [items, setItems] = useState<ObligationOut[]>([]);
-  const [total, setTotal] = useState(0);
+function dutyDescription(duty: Duty): string {
+  if (duty.kind === "process") {
+    return `Open for ${duty.age_days} days · ${duty.practice_type_name ?? "Process"}`;
+  }
+  const expiry = new Date(
+    `${duty.passport_expiry}T00:00:00`,
+  ).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `${passportTiming(duty.days_left ?? 0)} · ${expiry}`;
+}
+
+export default function MemberObligationsPage() {
+  const [scope, setScope] = useState<Scope>("mine");
+  const [owner, setOwner] = useState("");
   const [offset, setOffset] = useState(0);
+  const [data, setData] = useState<Obligations | null>(null);
   const [loading, setLoading] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  // Bumped after every write so the counter strip follows the register.
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
 
-  // ── filters ─────────────────────────────────────────────────────────────
-  const [filterClientId, setFilterClientId] = useState("");
-  const [filterStatus, setFilterStatus] = useState<StatusFilter>("proposed");
-
-  // ── generate proposals ─────────────────────────────────────────────────
-  const [genClientId, setGenClientId] = useState("");
-  const [genHorizonDays, setGenHorizonDays] = useState("90");
-  const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  const [generateResult, setGenerateResult] = useState<GenerateOut | null>(
-    null,
-  );
-
-  // ── per-row decision state ─────────────────────────────────────────────
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [notes, setNotes] = useState<Record<number, string>>({});
-  const [evidenceRefs, setEvidenceRefs] = useState<Record<number, string>>({});
-  const [declarations, setDeclarations] = useState<Record<number, boolean>>({});
-  const [rowError, setRowError] = useState<Record<number, string>>({});
-
-  // ── catalog, client names, counters ────────────────────────────────────
-  const catalog = useObligationsCatalog();
-  const clientIds = useMemo(() => items.map((row) => row.client_id), [items]);
-  const clientNames = useClientNames(clientIds);
-  const trimmedClientFilter = filterClientId.trim();
-  const { counts, loading: countsLoading } = useStatusCounters(
-    trimmedClientFilter,
-    refreshTick,
-  );
-  // Grouping by due month only makes sense for one client's calendar; across
-  // clients the flat, server-ordered table is what the reviewer works through.
-  const groupByMonth = trimmedClientFilter !== "";
-
-  const loadList = useCallback(async () => {
+  const load = useCallback(async () => {
+    const id = ++requestId.current;
     setLoading(true);
-    setListError(null);
+    setError(null);
+    const query = new URLSearchParams({
+      scope,
+      limit: String(LIMIT),
+      offset: String(offset),
+    });
+    if (owner) query.set("assigned_to", owner);
     try {
-      const params = new URLSearchParams();
-      const cid = filterClientId.trim();
-      if (cid) params.set("client_id", cid);
-      params.set("status", filterStatus);
-      params.set("limit", String(LIMIT));
-      params.set("offset", String(offset));
-      const res = await api.get<ObligationListOut>(
-        `/api/compliance/obligations?${params.toString()}`,
+      const result = await api.get<Obligations>(
+        `/api/crm/member-obligations?${query}`,
       );
-      setItems(res.items ?? []);
-      setTotal(res.total ?? 0);
-    } catch (e) {
-      logger.error(
-        "obligations list load failed",
-        { component: "ObligationsPage", action: "loadList" },
-        e instanceof Error ? e : new Error(String(e)),
+      if (id !== requestId.current) return;
+      if (offset > 0 && result.items.length === 0 && result.total <= offset) {
+        setOffset(0);
+        return;
+      }
+      setData(result);
+    } catch (failure) {
+      if (id !== requestId.current) return;
+      setData(null);
+      setError(
+        failure instanceof ApiError && failure.statusCode === 403
+          ? "You do not have access to this overview."
+          : "Could not load obligations. Please try again.",
       );
-      setListError(
-        describeError(e, "Could not load the obligations register."),
-      );
-      setItems([]);
-      setTotal(0);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  }, [filterClientId, filterStatus, offset]);
+  }, [scope, owner, offset]);
 
   useEffect(() => {
-    void loadList();
-  }, [loadList]);
+    void load();
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      requestId.current += 1;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load]);
 
-  // A filter change starts back at the first page.
-  useEffect(() => {
+  function changeScope(next: Scope) {
+    if (next === scope) return;
+    setLoading(true);
+    setOwner("");
     setOffset(0);
-  }, [filterClientId, filterStatus]);
-
-  /**
-   * `clientIdOverride` lets the profile panel (U2) reuse this exact path after a
-   * save instead of owning a second generate implementation: same validation,
-   * same result banner, same list refresh. Omitted, it reads the form field.
-   */
-  const handleGenerate = useCallback(
-    async (clientIdOverride?: string) => {
-      setGenerateError(null);
-      const rawClientId = clientIdOverride ?? genClientId;
-      const cid = Number(rawClientId);
-      if (!rawClientId.trim() || !Number.isInteger(cid) || cid <= 0) {
-        setGenerateError("Enter a valid client id.");
-        return;
-      }
-      const horizon = Number(genHorizonDays);
-      if (!Number.isInteger(horizon) || horizon < 1 || horizon > 730) {
-        setGenerateError("Horizon days must be an integer between 1 and 730.");
-        return;
-      }
-      setGenerating(true);
-      setGenerateResult(null);
-      setNotice(null);
-      try {
-        const res = await api.post<GenerateOut>(
-          "/api/compliance/obligations/generate",
-          { client_id: cid, horizon_days: horizon },
-        );
-        setGenerateResult(res);
-        setRefreshTick((t) => t + 1);
-        await loadList();
-      } catch (e) {
-        logger.error(
-          "obligations generate failed",
-          { component: "ObligationsPage", action: "generate" },
-          e instanceof Error ? e : new Error(String(e)),
-        );
-        setGenerateError(describeError(e, "Could not generate proposals."));
-      } finally {
-        setGenerating(false);
-      }
-    },
-    [genClientId, genHorizonDays, loadList],
-  );
-
-  const handleApprove = useCallback(
-    async (row: ObligationOut) => {
-      setBusyId(row.id);
-      setRowError((prev) => ({ ...prev, [row.id]: "" }));
-      setNotice(null);
-      try {
-        const note = (notes[row.id] ?? "").trim();
-        const body: { note?: string } = {};
-        if (note) body.note = note;
-        const res = await api.post<ApproveOut>(
-          `/api/compliance/obligations/${row.id}/approve`,
-          body,
-        );
-        setNotice(`✓ Obligation #${row.id} approved → alert ${res.alert_id}.`);
-        setRefreshTick((t) => t + 1);
-        await loadList();
-      } catch (e) {
-        logger.error(
-          "obligation approve failed",
-          {
-            component: "ObligationsPage",
-            action: "approve",
-            metadata: { id: row.id },
-          },
-          e instanceof Error ? e : new Error(String(e)),
-        );
-        setRowError((prev) => ({
-          ...prev,
-          [row.id]: describeError(e, "Could not approve this obligation."),
-        }));
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [notes, loadList],
-  );
-
-  const handleReject = useCallback(
-    async (row: ObligationOut) => {
-      // RejectBody.reason is REQUIRED (min_length=1) server-side — unlike
-      // approve's optional note — so we enforce it client-side too rather
-      // than round-trip a guaranteed 422.
-      const reason = (notes[row.id] ?? "").trim();
-      if (!reason) {
-        setRowError((prev) => ({
-          ...prev,
-          [row.id]: "A reason is required to reject.",
-        }));
-        return;
-      }
-      setBusyId(row.id);
-      setRowError((prev) => ({ ...prev, [row.id]: "" }));
-      setNotice(null);
-      try {
-        await api.post(`/api/compliance/obligations/${row.id}/reject`, {
-          reason,
-        });
-        setNotice(`Obligation #${row.id} rejected.`);
-        setRefreshTick((t) => t + 1);
-        await loadList();
-      } catch (e) {
-        logger.error(
-          "obligation reject failed",
-          {
-            component: "ObligationsPage",
-            action: "reject",
-            metadata: { id: row.id },
-          },
-          e instanceof Error ? e : new Error(String(e)),
-        );
-        setRowError((prev) => ({
-          ...prev,
-          [row.id]: describeError(e, "Could not reject this obligation."),
-        }));
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [notes, loadList],
-  );
-
-  const handleComplete = useCallback(
-    async (row: ObligationOut) => {
-      const evidenceRef = (evidenceRefs[row.id] ?? "").trim();
-      if (!evidenceRef || evidenceRef.length > 500 || !declarations[row.id])
-        return;
-      setBusyId(row.id);
-      setRowError((prev) => ({ ...prev, [row.id]: "" }));
-      setNotice(null);
-      try {
-        await api.post(`/api/compliance/obligations/${row.id}/complete`, {
-          evidence_ref: evidenceRef,
-          declaration: true,
-        });
-        setNotice(
-          `Completion recorded for obligation #${row.id} (internal evidence).`,
-        );
-        setEvidenceRefs((prev) => ({ ...prev, [row.id]: "" }));
-        setDeclarations((prev) => ({ ...prev, [row.id]: false }));
-        setRefreshTick((t) => t + 1);
-        await loadList();
-      } catch (e) {
-        // The evidence reference stays in this form and the authorized audit
-        // record. Do not send the request or exception payload to telemetry.
-        setRowError((prev) => ({
-          ...prev,
-          [row.id]: describeError(e, "Could not record completion.", {
-            409: e instanceof ApiError ? (e.detail ?? e.message) : "",
-          }),
-        }));
-        if (e instanceof ApiError && e.statusCode === 409) {
-          setNotice(
-            `Completion not recorded for obligation #${row.id}: ${e.detail ?? e.message}`,
-          );
-          setRefreshTick((t) => t + 1);
-          await loadList();
-        }
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [evidenceRefs, declarations, loadList],
-  );
-
-  const handleNoteChange = useCallback((id: number, value: string) => {
-    setNotes((prev) => ({ ...prev, [id]: value }));
-  }, []);
-
-  const pageStart = total === 0 ? 0 : offset + 1;
-  const pageEnd = Math.min(offset + LIMIT, total);
+    setScope(next);
+  }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="space-y-5 p-4 md:p-6">
       <Masthead
-        eyebrow="Compliance"
-        title="Obligations register"
-        subtitle="Generate and review compliance obligations, then record completion with an internal evidence reference."
-        className="mb-6"
-        right={
+        eyebrow="Operations"
+        title="Obligations"
+        sub="Follow up on passports and review open processes. Update the original record to clear an item."
+        actions={
           <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className={cn(
-              "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
-              FOCUS,
-            )}
+            className={BUTTON}
+            onClick={() => void load()}
+            disabled={loading}
           >
-            ← Back
+            Refresh
           </button>
         }
       />
 
-      {notice && (
-        <Notice tone="ok" role="status" className="mb-4">
-          {notice}
-        </Notice>
-      )}
-
-      {/* ── Generate proposals ───────────────────────────────────────── */}
-      <section className="mb-6 border-t border-[var(--bz-border)] pt-4">
-        <h2
-          className="mb-3 text-[19px] leading-[1.2] tracking-[-0.02em] text-[var(--tx-pure)]"
-          style={SERIF_SECTION}
-        >
-          Generate proposals
-        </h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
-            Client id
-            <input
-              type="number"
-              min={1}
-              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
-              value={genClientId}
-              onChange={(e) => setGenClientId(e.target.value)}
-              placeholder="e.g. 42"
-            />
-          </label>
-          <label className="text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
-            Horizon days
-            <input
-              type="number"
-              min={1}
-              max={730}
-              className="mt-1 block h-9 w-32 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
-              value={genHorizonDays}
-              onChange={(e) => setGenHorizonDays(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={generating}
-            onClick={() => void handleGenerate()}
-            className={cn(
-              "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
-              FOCUS,
-            )}
-            style={{ opacity: generating ? 0.6 : 1 }}
-          >
-            {generating ? "Generating…" : "Generate proposals"}
-          </button>
-        </div>
-
-        {generateError && (
-          // Copper: the viewer must fix the input or retry — they are the
-          // next actor on their own blocked action, not on a record's status.
-          <Notice tone="you" role="alert" className="mt-2">
-            {generateError}
-          </Notice>
-        )}
-
-        {generateResult && (
-          <div className="mt-3 space-y-1">
-            <p className="text-sm" style={{ color: "var(--bz-text-2)" }}>
-              Inserted {generateResult.inserted_count} new proposal
-              {generateResult.inserted_count === 1 ? "" : "s"} for client{" "}
-              {generateResult.client_id} — company type{" "}
-              <strong>{generateResult.company_type}</strong>.
-            </p>
-            {generateResult.needs_manual_classification && (
-              <div
-                className="rounded-md border px-3 py-2 text-sm"
-                role="alert"
-                style={{
-                  borderColor: "var(--state-warning)",
-                  color: "var(--bz-text-1)",
-                }}
-              >
-                ⚠ {generateResult.warning}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* ── Client profile (U2) ──────────────────────────────────────────
-          Only meaningful for ONE client, so it follows the client filter the
-          same way the counter strip does. It sits under the generate card
-          because its "Generate proposals" action reports into that card. */}
-      {trimmedClientFilter !== "" && (
-        <ClientProfilePanel
-          // `key` on the client id, deliberately: the panel holds an unsaved
-          // DRAFT. Without a remount, switching the filter from one client to
-          // another keeps the previous client's edits on screen and a save would
-          // write them to the new client. Remounting throws the draft away with
-          // the client it belonged to.
-          key={trimmedClientFilter}
-          clientId={trimmedClientFilter}
-          generating={generating}
-          onGenerate={(cid) => void handleGenerate(cid)}
-        />
-      )}
-
-      {/* ── Status counters ──────────────────────────────────────────── */}
-      <StatusCounters
-        counts={counts}
-        loading={countsLoading}
-        clientId={trimmedClientFilter}
-        activeStatus={filterStatus}
-        onSelect={setFilterStatus}
-      />
-
-      {/* ── Filters ──────────────────────────────────────────────────── */}
-      <DeskStrip
-        className="mb-4"
-        filters={
-          // DeskStrip clips its filter group with overflow-hidden and lets
-          // `right` keep its width, so at 390 the pills past the fold were
-          // neither visible NOR scrollable — six filters, and a phone reader
-          // could reach the first one or two. The primitive is not this
-          // window's to edit, so the scroller is page-local, inside the slot
-          // it hands us. Same finding and same cure as /review and
-          // /notifications; the strip itself still owes this.
-          <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {STATUS_FILTER_OPTIONS.map((s) => (
-              <StatePill
-                key={s}
-                tone="wait"
-                label={s}
-                pressed={filterStatus === s}
-                onClick={() => setFilterStatus(s)}
-              />
-            ))}
-          </div>
-        }
-        right={
-          <>
-            <label className="flex items-center gap-2 text-[10px] font-[650] uppercase tracking-[0.12em] text-[var(--tx-secondary)]">
-              Client id
-              <input
-                type="number"
-                min={1}
-                className="h-9 w-28 border border-[var(--line-control)] bg-transparent px-2 text-[12px] normal-case tracking-normal text-[var(--tx-pure)] focus:border-[var(--bz-copper)] focus:outline-none"
-                value={filterClientId}
-                onChange={(e) => setFilterClientId(e.target.value)}
-                placeholder="all clients"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                setRefreshTick((t) => t + 1);
-                void loadList();
-              }}
-              disabled={loading}
-              className={cn(
-                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)]",
-                FOCUS,
-              )}
-            >
-              {loading ? "Refreshing…" : "Refresh"}
-            </button>
-          </>
-        }
-      />
-
-      {catalog.error && (
-        <p className="mb-3 text-xs" style={{ color: "var(--state-warning)" }}>
-          {catalog.error}
-        </p>
-      )}
-
-      {listError && (
-        // Copper: the viewer must retry — nothing else on the page can move
-        // until this load succeeds again.
-        <Notice tone="you" role="alert" className="mb-4">
-          {listError}
-        </Notice>
-      )}
-
-      {/* ── Table ────────────────────────────────────────────────────── */}
-      {loading ? (
-        <p style={{ color: "var(--bz-text-3)" }}>Loading…</p>
-      ) : !listError && items.length === 0 ? (
-        <EmptyState>No obligations found.</EmptyState>
-      ) : (
-        !listError && (
-          <ObligationsTable
-            items={items}
-            catalog={catalog.byId}
-            clientNames={clientNames}
-            groupByMonth={groupByMonth}
-            notes={notes}
-            evidenceRefs={evidenceRefs}
-            declarations={declarations}
-            rowError={rowError}
-            busyId={busyId}
-            onNoteChange={handleNoteChange}
-            onApprove={(row) => void handleApprove(row)}
-            onReject={(row) => void handleReject(row)}
-            onComplete={(row) => void handleComplete(row)}
-            onEvidenceChange={(id, value) =>
-              setEvidenceRefs((prev) => ({ ...prev, [id]: value }))
-            }
-            onDeclarationChange={(id, value) =>
-              setDeclarations((prev) => ({ ...prev, [id]: value }))
-            }
-          />
-        )
-      )}
-
-      {/* ── Pagination ───────────────────────────────────────────────── */}
-      {!listError && total > 0 && (
+      <div className="flex flex-wrap items-center gap-3">
         <div
-          className="mt-3 flex items-center justify-between text-xs"
-          style={{ color: "var(--bz-text-3)" }}
+          role="group"
+          aria-label="Obligation scope"
+          className="flex flex-wrap gap-2"
         >
-          <span>
-            Showing {pageStart}-{pageEnd} of {total}
-          </span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={offset === 0 || loading}
-              onClick={() => setOffset((o) => Math.max(0, o - LIMIT))}
-              className={cn(
-                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
-                FOCUS,
-              )}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={offset + LIMIT >= total || loading}
-              onClick={() => setOffset((o) => o + LIMIT)}
-              className={cn(
-                "inline-flex min-h-11 items-center border border-[var(--line-control)] bg-transparent px-3.5 text-[12px] font-[650] text-[var(--tx-pure)] hover:bg-[var(--bz-card-hover)] disabled:opacity-40",
-                FOCUS,
-              )}
-            >
-              Next
-            </button>
-          </div>
+          <StatePill
+            tone="you"
+            label="My obligations"
+            pressed={scope === "mine"}
+            onClick={() => changeScope("mine")}
+          />
+          {(data?.can_view_team || scope === "team") && (
+            <StatePill
+              tone="ink"
+              label="Team overview"
+              pressed={scope === "team"}
+              onClick={() => changeScope("team")}
+            />
+          )}
         </div>
+        {scope === "team" && data && (
+          <select
+            aria-label="Team member"
+            className={BUTTON}
+            value={owner}
+            onChange={(event) => {
+              setLoading(true);
+              setOwner(event.target.value);
+              setOffset(0);
+            }}
+          >
+            <option value="">All team members</option>
+            {owner &&
+              !data.owners.some(
+                (member) => (member.email ?? "__unassigned__") === owner,
+              ) && (
+                <option value={owner}>
+                  {owner === "__unassigned__" ? "Unassigned" : owner} (0)
+                </option>
+              )}
+            {data.owners.map((member) => (
+              <option
+                key={member.email ?? "__unassigned__"}
+                value={member.email ?? "__unassigned__"}
+              >
+                {member.name} ({member.total})
+              </option>
+            ))}
+          </select>
+        )}
+        {data?.can_view_register && (
+          <Link
+            className={cn(
+              "text-sm underline text-[var(--bz-text-2)] md:ml-auto",
+              FOCUS,
+            )}
+            href="/obligations/register"
+          >
+            Compliance register
+          </Link>
+        )}
+      </div>
+
+      {error ? (
+        <Notice role="alert">{error}</Notice>
+      ) : loading ? (
+        <p role="status" className="text-sm text-[var(--bz-text-2)]">
+          Loading obligations…
+        </p>
+      ) : (
+        data && (
+          <>
+            <div className="grid grid-cols-3 gap-3 border-y border-[var(--bz-border)] py-4">
+              {[
+                ["To review", data.total],
+                ["Passports", data.passport_count],
+                ["Processes", data.process_count],
+              ].map(([label, count]) => (
+                <div key={label}>
+                  <p className="text-xs text-[var(--bz-text-2)]">{label}</p>
+                  <p
+                    aria-label={`${label}: ${count}`}
+                    className="text-2xl tabular-nums text-[var(--bz-text-1)]"
+                  >
+                    {count}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {data.items.length === 0 ? (
+              <EmptyState>
+                {scope === "mine"
+                  ? "No obligations need your attention."
+                  : "No obligations need attention for this selection."}
+              </EmptyState>
+            ) : (
+              <ul
+                aria-label="Obligations to review"
+                className="divide-y divide-[var(--bz-border)]"
+              >
+                {data.items.map((duty) => {
+                  const member = data.owners.find(
+                    (entry) => entry.email === duty.assigned_to,
+                  );
+                  const canOpen =
+                    duty.kind === "passport" || duty.can_open_process;
+                  const href =
+                    duty.kind === "passport"
+                      ? `/clients/${duty.client_id}?tab=overview`
+                      : `/process/${duty.practice_id}`;
+                  return (
+                    <li
+                      key={`${duty.kind}:${duty.practice_id ?? duty.client_id}`}
+                      className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatePill
+                            tone="wait"
+                            label={
+                              duty.kind === "passport"
+                                ? "Passport"
+                                : "Process review"
+                            }
+                          />
+                          <span className="text-xs text-[var(--bz-text-2)]">
+                            {dutyDescription(duty)}
+                          </span>
+                        </div>
+                        <p className="break-words font-medium text-[var(--bz-text-1)]">
+                          {duty.client_name}
+                        </p>
+                        <p className="text-sm text-[var(--bz-text-2)]">
+                          {duty.kind === "passport"
+                            ? "Contact the client or update their passport."
+                            : "Review in Process: complete it if finished, or cancel it if it will not proceed."}
+                        </p>
+                        {scope === "team" && (
+                          <p className="text-xs text-[var(--bz-text-2)]">
+                            Responsible:{" "}
+                            {member?.name ?? duty.assigned_to ?? "Unassigned"}
+                          </p>
+                        )}
+                      </div>
+                      {canOpen ? (
+                        <Link
+                          href={href}
+                          className={cn(
+                            BUTTON,
+                            "shrink-0 self-start sm:self-center",
+                          )}
+                        >
+                          {duty.kind === "passport"
+                            ? "Open client"
+                            : "Open process"}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-[var(--bz-text-2)]">
+                          Review with the responsible team member
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {data.total > LIMIT && (
+              <nav
+                aria-label="Obligation pages"
+                className="flex items-center justify-between gap-3"
+              >
+                <button
+                  className={BUTTON}
+                  disabled={offset === 0}
+                  onClick={() => {
+                    setLoading(true);
+                    setOffset(Math.max(0, offset - LIMIT));
+                  }}
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-[var(--bz-text-2)]">
+                  {offset + 1}–{Math.min(offset + LIMIT, data.total)} of{" "}
+                  {data.total}
+                </span>
+                <button
+                  className={BUTTON}
+                  disabled={offset + LIMIT >= data.total}
+                  onClick={() => {
+                    setLoading(true);
+                    setOffset(offset + LIMIT);
+                  }}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
+          </>
+        )
       )}
     </div>
   );

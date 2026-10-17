@@ -1125,7 +1125,10 @@ async def get_practice(
                     WHERE p.id = $1
             """
             if practices_filter:
-                base_query += " AND (c.assigned_to = $2 OR p.created_by = $2)"
+                base_query += (
+                    " AND (c.assigned_to = $2 OR p.created_by = $2 "
+                    "OR LOWER(p.assigned_to) = $2)"
+                )
                 row = await conn.fetchrow(base_query, practice_id, practices_filter)
                 if not row:
                     logger.info(
