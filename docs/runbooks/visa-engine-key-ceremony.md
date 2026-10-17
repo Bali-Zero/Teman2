@@ -417,8 +417,10 @@ What the pack contains (one content item, owner ruling 1 of 2026-10-15, handoff 
    `research/visa/2026-10-15-e28-pages/text/df3ba889-20261015T142247Z.txt` states no company
    total-investment figure) instead of `investment.investment_capital_idr`. The IDR 2.5bn paid-up bound
    and the PT PMA commitment stay. Its SUPPORT reason code is renamed `E28A_INVESTMENT_ELIGIBLE` to
-   `E28A_OWN_SHAREHOLDING_ELIGIBLE` (the sentence changes meaning); the mouth copy for the new code must be
-   live before activation, because an unknown SUPPORT code on the client could break the result page.
+   `E28A_OWN_SHAREHOLDING_ELIGIBLE` (the sentence changes meaning); the mouth copy for the new code was
+   promoted before activation (an unknown SUPPORT code is not fatal: the live client falls back to
+   `UNMAPPED_REASON_COPY` and shows a generic sentence, as two reviewers found, but that sentence is not the
+   intended copy).
 2. `hf.e28a.total-investment-below-min` (`E28A_TOTAL_INVESTMENT_BELOW_MIN`) is retired and
    `hf.e28a.own-shareholding-below-min` (`E28A_OWN_SHAREHOLDING_BELOW_MIN`) is appended: the semantics
    changed, so the code is renamed, and the old code stays replayable in the mouth copy table.
@@ -443,7 +445,11 @@ the other bundles); the repo verifier still verifies the bundle under the pinned
 Activation ordering: the SUPPORT code of `el.e28a.investment` is renamed to `E28A_OWN_SHAREHOLDING_ELIGIBLE`,
 so activation must wait until the mouth deploy carrying that copy is live.
 
-**Activation: PENDING.** Merge, deploy and the two-login activation ceremony from Pro are not done.
+**Activation: done 2026-10-17T05:39Z**, `activation_id` `45f5e1b8-5437-480d-9cc8-3cc03ca5d60d` (merged as #8650,
+`01cb59e6dc`, mouth promoted before activation; ceremony script `~/.tmp/visa-ceremony/ceremony-seq31.sh` on Pro).
+Active pack before: `30|972f3392…|bf4f5f6a…`; after: `31|7a5d80c6…|45f5e1b8…`. Proof: a synthetic /evaluate on
+sequence 31 (IDR 10 billion `E28A_OWN_SHAREHOLDING_ELIGIBLE`, IDR 9,999,999,999
+`E28A_OWN_SHAREHOLDING_BELOW_MIN`) and the sentinel OK pack_sequence 31 at 05:40:22Z.
 
 ## Rotation
 

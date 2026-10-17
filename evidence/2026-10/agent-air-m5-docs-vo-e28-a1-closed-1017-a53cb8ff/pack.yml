@@ -1,0 +1,55 @@
+gear: 1
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, standing rule 2026-10-11 - the /visaoracle corner-skill ledger is updated at every merge; Zero 2026-10-15
+  E28 close-out ruling 1 (E28A tests the applicant's own shareholding). BLUE mission; local commit only.
+mission: >-
+  Record seq-31 (#8650, activation 45f5e1b8-5437-480d-9cc8-3cc03ca5d60d at 2026-10-17T05:39Z) in the ledger and
+  keep row E open for the handoff items that were never folded.
+lanes:
+  - lane: vo-e28-a1-closed-1017
+    role: build
+    seat: claude-sonnet-5-5 (M5 builder)
+pii_scan: clean
+bites: >-
+  Consumer: every session that loads /visaoracle and reads PENDING-ARMS, through the seq-29 ledger observer.
+  Observation: python3 scripts/ci/observe_visa_ledger_seq29.py prints '63 passed' and 'seq-29 ledger holds'.
+receipts:
+  - claim: The ledger, observer and pending-arms report test suites pass with the updated E row, log entry, skill position and runbook note pinned.
+    cmd: python3 -m pytest -p no:cacheprovider -q tests/scripts/test_visa_ledger_seq28.py tests/scripts/test_visa_ledger_seq29.py tests/scripts/test_observe_visa_ledger_seq28.py tests/scripts/test_observe_visa_ledger_seq29.py scripts/tests/test_pending_arms_report.py tests/scripts/test_observe_visa_seq31_signed.py
+    result: "300 passed in 8.42s"
+    exit: 0
+    ts: "2026-10-17T05:50:00Z"
+    seat: this session
+  - claim: The seq-29 observer holds with its floor raised from 61 to 63, the true count of the ledger test file; the seq-28 observer holds.
+    cmd: python3 scripts/ci/observe_visa_ledger_seq29.py; python3 scripts/ci/observe_visa_ledger_seq28.py
+    result: "63 passed in 1.63s, seq-29 ledger holds; 12 passed in 0.08s, seq-28 ledger holds"
+    exit: 0
+    ts: "2026-10-17T05:50:00Z"
+    seat: this session
+  - claim: The PENDING-ARMS ratchet is clean against origin/main (the row stays open, count unchanged).
+    cmd: python3 scripts/pending_arms_report.py --ratchet --base-ref origin/main
+    result: "ratchet CLEAN: base 615 -> head 615 (delta 0)"
+    exit: 0
+    ts: "2026-10-17T05:50:00Z"
+    seat: this session
+  - claim: "The seq-31 activation facts (activation 45f5e1b8-5437-480d-9cc8-3cc03ca5d60d at 05:39Z, signed 04:10:55Z, synthetic evaluate on sequence 31, sentinel OK pack_sequence 31 at 05:40:22Z, PRs #8644, #8649, #8650) were measured by the session that ran the ceremony and are stated in the ledger as given, not re-measured by this builder."
+    cmd: ceremony-seq31.sh on Pro, synthetic /evaluate, sentinel - run by the owning session
+    result: "as quoted in the task brief"
+    exit: 0
+    ts: "2026-10-17T05:50:00Z"
+    seat: owning session (not this builder)
+decisions:
+  - id: D-row-e-stays-open
+    text: >-
+      Row E is kept open, not closed: SEQ29-A1 is delivered and live in seq-31, but B1, B2, C1, X1, P2, I-T04 and the
+      optional A2 notice from handoff key e28-seq30-1015 were never folded by seq-30 or seq-31; B1, C1 and I-T04 need
+      new facts and interview questions, and the Pro conductor has been silent since 2026-10-15T12:40Z.
+  - id: D-label-correction
+    text: >-
+      The earlier row text called the missing own-shareholding test SEQ29-A2; the item was SEQ29-A1 (SEQ29-A2 is the
+      role-conjunct drop, delivered in seq-30). The row, log entry and tests now say so.
+dissent: []
+spend:
+  wall_clock_hours: 0.5
+  adversarial_rounds: 0

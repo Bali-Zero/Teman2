@@ -52,17 +52,18 @@ def test_live_state_log_entry_carries_activation_merge_and_proof():
 def test_live_state_log_entry_is_the_newest():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[0].startswith("- 2026-10-17 (M5, visaoracle E28 lane, ledger row E narrowed")
-    assert dated[1].startswith("- 2026-10-16 (M5, visaoracle E28 lane, ledger E28 family CLOSED")
-    assert dated[2].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane)")
-    assert dated[3].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
-    assert dated[4].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
-    assert "ledger addendum after the E33 closure" in dated[5]
-    assert "ledger wave 5 — the E33 family closes" in dated[6]
-    assert "ledger after E33 wave 4" in dated[7]
-    assert "ledger after E33 wave 3" in dated[8]
+    assert dated[0].startswith("- 2026-10-17 (M5, visaoracle E28 lane, ledger A1 delivered")
+    assert dated[1].startswith("- 2026-10-17 (M5, visaoracle E28 lane, ledger row E narrowed")
+    assert dated[2].startswith("- 2026-10-16 (M5, visaoracle E28 lane, ledger E28 family CLOSED")
+    assert dated[3].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane)")
+    assert dated[4].startswith("- 2026-10-15 (M5, visaoracle E28 lane, ledger E28 close-out part 1")
+    assert dated[5].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane)")
+    assert "ledger addendum after the E33 closure" in dated[6]
+    assert "ledger wave 5 — the E33 family closes" in dated[7]
+    assert "ledger after E33 wave 4" in dated[8]
+    assert "ledger after E33 wave 3" in dated[9]
     waves12 = [ln for ln in dated if "ledger after the E33 audit waves 1-2" in ln]
-    assert len(waves12) == 1 and dated.index(waves12[0]) == 9
+    assert len(waves12) == 1 and dated.index(waves12[0]) == 10
     seq29 = [ln for ln in dated if ln.startswith("- 2026-10-13 (M5")]
     assert seq29 and "seq-29 active" in seq29[0]
 
@@ -652,8 +653,8 @@ def test_qdrant_backfill_row_is_closed_once_and_the_old_open_needle_is_gone():
 def test_qdrant_backfill_log_entry_is_second_and_carries_the_apply_facts():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[4].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
-    start = text.index(dated[4])
+    assert dated[5].startswith("- 2026-10-15 (M5, Qdrant pricing backfill lane): **the pricing collection has a point for every public catalog row")
+    start = text.index(dated[5])
     body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
     for token in ("`b93adf342d`", "CREATED 66", "in_sync=116", "`6321afd152`"):
         assert body.count(token) >= 1, token
@@ -663,10 +664,11 @@ def test_skill_live_state_second_bullet_is_the_qdrant_backfill_and_only_one_says
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
     bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
-    assert bullets[0].startswith("- **2026-10-16 (E28 family CLOSED, newest)**")
-    assert bullets[1].startswith("- **2026-10-16 (Qdrant pricing cleanup)**")
-    assert bullets[2].startswith("- **2026-10-15 (E28 close-out part 1)**")
-    assert bullets[3].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
+    assert bullets[0].startswith("- **2026-10-17 (seq-31 ACTIVE, newest)**")
+    assert bullets[1].startswith("- **2026-10-16 (E28 family CLOSED)**")
+    assert bullets[2].startswith("- **2026-10-16 (Qdrant pricing cleanup)**")
+    assert bullets[3].startswith("- **2026-10-15 (E28 close-out part 1)**")
+    assert bullets[4].startswith("- **2026-10-15 (Qdrant pricing backfill)**")
     assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
@@ -718,7 +720,7 @@ def test_skill_live_state_leads_with_the_e28_closeout_and_stays_an_index():
 
 
 E28_OPENED = (
-    ("E (narrowed 2026-10-17): seq-30 is signed and ACTIVE in production", "SEQ29-D1", "owner: me (next session, visa-night conductor and signer)"),
+    ("E (narrowed 2026-10-17, SEQ29-A1 delivered and live): seq-30 is signed and ACTIVE", "SEQ29-D1", "owner: me (next session, visa-night conductor and signer)"),
     ("BACKLOG of the E28 close-out", "F73", "owner: me (nuzantara-57)"),
 )
 
@@ -813,8 +815,8 @@ def test_qdrant_cleanup_row_is_closed_once_and_the_old_open_needle_is_gone():
 def test_qdrant_cleanup_log_entry_is_first_and_carries_the_apply_facts():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[2].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane): **the two stale-data items in bali_zero_pricing_hybrid are CLOSED on Zero's go")
-    start = text.index(dated[2])
+    assert dated[3].startswith("- 2026-10-16 (M5, Qdrant pricing cleanup lane): **the two stale-data items in bali_zero_pricing_hybrid are CLOSED on Zero's go")
+    start = text.index(dated[3])
     body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
     for token in ("`d85145eb8b0fcc00df9e8cb4229b722c36fa2449`", "DELETED 17 orphan point(s)", "kept_identical 116 of 116",
                   "SCROLL_TOTAL=116 stale_3465_159=0 ari_3454_721=116", "pull/8594#issuecomment-6209555948", "b7ffd20208733d7b92ac5c86ef94b5d3379ddace928d7514547202ae2ca80179"):
@@ -825,16 +827,16 @@ def test_skill_live_state_first_bullet_is_the_qdrant_cleanup_and_only_one_says_n
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
     bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
-    assert bullets[1].startswith("- **2026-10-16 (Qdrant pricing cleanup)**")
-    assert "#8594" in bullets[1] and "`d85145eb8b`" in bullets[1] and "points_without_catalog_row=0" in bullets[1]
+    assert bullets[2].startswith("- **2026-10-16 (Qdrant pricing cleanup)**")
+    assert "#8594" in bullets[2] and "`d85145eb8b`" in bullets[2] and "points_without_catalog_row=0" in bullets[2]
     assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
 def test_e28_closed_log_entry_is_first_and_carries_pr_d_and_prove_live_facts():
     text = LOG.read_text(encoding="utf-8")
     dated = [ln for ln in text.splitlines() if ln.startswith("- 20")]
-    assert dated[1].startswith("- 2026-10-16 (M5, visaoracle E28 lane, ledger E28 family CLOSED; recorded 2026-10-16T09:38Z")
-    start = text.index(dated[1])
+    assert dated[2].startswith("- 2026-10-16 (M5, visaoracle E28 lane, ledger E28 family CLOSED; recorded 2026-10-16T09:38Z")
+    start = text.index(dated[2])
     body = " ".join(text[start:text.index("\n- 20", start + 1)].split())
     for token in ("#8607", "`457de4b60bd2c5ced8dfb53e24451d9133e0307c`",
                   "dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D", "pull/8607#issuecomment-6212617160",
@@ -855,13 +857,13 @@ def test_e28_d_and_wave5_id_render_rows_are_closed_once_with_proof():
     assert not [r for r in ARMS_LINES if r.startswith("- opened") and "the E28A Indonesian article does not render in Indonesian" in r]
 
 
-def test_skill_live_state_first_bullet_is_e28_family_closed_and_only_one_says_newest():
+def test_skill_live_state_second_bullet_is_e28_family_closed_and_only_one_says_newest():
     text = SKILL.read_text(encoding="utf-8")
     block = text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")]
     bullets = [ln for ln in block.splitlines() if ln.startswith("- **")]
-    assert bullets[0].startswith("- **2026-10-16 (E28 family CLOSED, newest)**")
+    assert bullets[1].startswith("- **2026-10-16 (E28 family CLOSED)**")
     for token in ("#8607", "`457de4b60b`", "dpl_6Np8hwmEDJw3MCwHzo3Erf8Yop3D", "pull/8607#issuecomment-6212617160", "NO_USB_PHONE", "**Open:** E, narrowed 2026-10-17"):
-        assert token in bullets[0], token
+        assert token in bullets[1], token
     assert len([ln for ln in bullets if "newest" in ln]) == 1
 
 
@@ -874,9 +876,9 @@ def test_observer_floor_is_the_true_count_of_this_file():
 
 
 def test_e_row_is_narrowed_to_the_own_shareholding_clause_and_seq30_is_recorded_active():
-    row = _rows("E (narrowed 2026-10-17): seq-30 is signed and ACTIVE in production")[0]
+    row = _rows("E (narrowed 2026-10-17, SEQ29-A1 delivered and live): seq-30 is signed and ACTIVE")[0]
     for token in ("`3f23a84da7`", "2026-10-16T14:20:35Z", "2e113982-c3ec-59f4-bfe5-88ec87f298a2", "2026-10-16T14:35:48Z", "`7163570a88`",
-                  "`el.e28d.branch-or-subsidiary`", "`el.e28f.ikn-subsidiary`", "`el.e28a.investment`", "STILL MISSING", "df3ba889-20261015T142247Z.txt` line 98", "ruling 1 of the E28 close-out", "the seq-31 rule item"):
+                  "`el.e28d.branch-or-subsidiary`", "`el.e28f.ikn-subsidiary`", "`el.e28a.investment`", "WAS MISSING in seq-30", "df3ba889-20261015T142247Z.txt` line 98", "ruling 1 of the E28 close-out"):
         assert row.count(token) >= 1, token
     assert "LOW confidence" not in row and "ruling that the company thresholds stay" not in row
     assert "seq-30 is owned by the Pro conductor" not in ARMS.read_text(encoding="utf-8")
@@ -884,3 +886,39 @@ def test_e_row_is_narrowed_to_the_own_shareholding_clause_and_seq30_is_recorded_
     assert len(entry) == 1 and "NOT delivered" in entry[0] and "`3f23a84da7`" in entry[0]
     lead = SKILL.read_text(encoding="utf-8").split("## LIVE STATE", 1)[1].split("SUPERSEDED by seq-29", 1)[0]
     assert "**Open:** E, narrowed 2026-10-17" in lead and "READY-TO-SIGN" not in lead.split("- **2026-10-16 (Qdrant pricing cleanup)**", 1)[0]
+
+
+SEQ31_ACTIVATION = "45f5e1b8-5437-480d-9cc8-3cc03ca5d60d"
+SEQ31_RULE_PACK = "4bff6af7-395d-5c98-9b43-0a45e04ee651"
+SEQ31_UNFOLDED = ("SEQ29-B1", "SEQ29-B2", "SEQ29-C1", "SEQ29-X1", "SEQ29-P2", "OD-I12 / I-T04", "optional A2 notice", "e28-seq30-1015")
+
+
+def test_e_row_records_seq31_a1_delivered_and_stays_open_for_the_unfolded_items():
+    rows = _rows("E (narrowed 2026-10-17, SEQ29-A1 delivered and live): seq-30 is signed and ACTIVE")
+    assert len(rows) == 1 and rows[0].startswith("- opened 2026-10-15 (M5, VISA-ORACLE E28 close-out)")
+    row = rows[0]
+    for token in ("#8644 (`57102d0897`)", "#8649 (`fa7e45ca1f`)", "#8650 (`01cb59e6dc`)", "`investment.own_shareholding_idr`",
+                  "04:10:55Z", SEQ31_ACTIVATION, "05:39Z", "`E28A_OWN_SHAREHOLDING_ELIGIBLE`", "`E28A_OWN_SHAREHOLDING_BELOW_MIN`",
+                  "IDR 9,999,999,999", "OK pack_sequence 31 at 05:40:22Z", "mislabelled it as SEQ29-A2",
+                  "silent since 2026-10-15T12:40Z", "B1, C1 and I-T04 each need new facts and new interview questions") + SEQ31_UNFOLDED:
+        assert row.count(token) >= 1, token
+    fields = row.split(" | ")
+    assert len(fields) == 5 and "SEQ29-D1" in fields[1] and "the remaining handoff items" in fields[2]
+    assert "the seq-31 rule item" not in row and "STILL MISSING: `el.e28a.investment`" not in row
+
+
+def test_seq31_activation_is_in_the_log_the_skill_position_and_the_runbook():
+    log = [ln for ln in LOG.read_text(encoding="utf-8").splitlines() if ln.startswith("- 2026-10-17 (M5, visaoracle E28 lane, ledger A1 delivered")]
+    assert len(log) == 1
+    for token in (SEQ31_ACTIVATION, SEQ31_RULE_PACK, "`7a5d80c6…`", "`prod-2026-07-1`", "#8644", "#8649", "#8650", "05:40:22Z",
+                  "`~/.tmp/visa-ceremony/ceremony-seq31.sh`", "not SEQ29-A2") + SEQ31_UNFOLDED:
+        assert token in log[0], token
+    text = SKILL.read_text(encoding="utf-8")
+    bullets = [ln for ln in text[text.index("## LIVE STATE"):text.index("SUPERSEDED by seq-29")].splitlines() if ln.startswith("- **")]
+    assert "production pack seq-31 since 2026-10-17T05:39Z" in bullets[0] and SEQ31_ACTIVATION in bullets[0] and "READY-TO-SIGN" not in bullets[0]
+    assert len(bullets[0]) < 1500
+    note = RUNBOOK.read_text(encoding="utf-8").split("## Signing + activation note (2026-10-17, seq-31)", 1)[1].split("\n## Rotation", 1)[0]
+    for token in ("**Activation: done 2026-10-17T05:39Z**", SEQ31_ACTIVATION, "`30|972f3392…|bf4f5f6a…`", "`31|7a5d80c6…|45f5e1b8…`",
+                  "`UNMAPPED_REASON_COPY`", "05:40:22Z"):
+        assert token in note, token
+    assert "Activation: PENDING" not in note and "could break the result page" not in note

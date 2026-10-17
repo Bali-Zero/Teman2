@@ -1,0 +1,26 @@
+gear: 1
+gear_reason: >-
+  Docs, ledger and test pins only: two skill files, one pending-arms file, one runbook note, two test files and the
+  observer floor constant. No production runtime code path or live data mutation in this PR; the production facts
+  quoted in the ledger (seq-31 activation) were measured by the owning session and are stated as given.
+mission: >-
+  Reconcile the PENDING-ARMS E28 row E, the corner-skill LIVE STATE, the live-state log and the key-ceremony runbook
+  with seq-31 active in production: SEQ29-A1 (the applicant's own-shareholding test) is delivered and live, and the
+  row stays open for the handoff items seq-30 and seq-31 never folded.
+objective: >-
+  PENDING-ARMS row E names SEQ29-A1 (not SEQ29-A2) as the delivered item with the A to B to C chain and proof, and
+  lists B1, B2, C1, X1, P2, I-T04 and the optional A2 notice as still open; live-state-log.md has a dated 2026-10-17
+  newest entry; SKILL.md LIVE STATE reads production pack seq-31 since 2026-10-17T05:39Z; the runbook seq-31 note
+  carries the measured activation and the softened UNMAPPED_REASON_COPY sentence; the seq-29 observer floor equals
+  63, the file's test count.
+scope:
+  - .claude/skills/modus/PENDING-ARMS.md
+  - .agents/skills/visaoracle/references/live-state-log.md
+  - .agents/skills/visaoracle/SKILL.md
+  - docs/runbooks/visa-engine-key-ceremony.md
+  - tests/scripts/test_visa_ledger_seq29.py
+  - tests/scripts/test_observe_visa_ledger_seq29.py
+  - scripts/ci/observe_visa_ledger_seq29.py
+appetite:
+  wall_clock_hours: 1
+  adversarial_rounds: 0
