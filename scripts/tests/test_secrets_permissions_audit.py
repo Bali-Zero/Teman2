@@ -1990,3 +1990,568 @@ def test_n20_the_real_gateway_still_speaks_the_status_vocabulary_we_parse() -> N
         f"the gateway can now return {sorted(unexpected)}, which this script "
         "reads as 'unknown-status' and counts as NOT handed over"
     )
+
+
+# --------------------------------------------------------------------------
+# Mutation-sweep survivors (2026-10-12): decisions the suite did not pin.
+# Each guilt fixture has an innocence twin; expected values come from the
+# documented contract (docstrings / spec comments), not read back from code.
+# --------------------------------------------------------------------------
+
+
+def _nest(base: Path, levels: int, name: str = "api_secret.key", mode: int = 0o644) -> Path:
+    directory = base
+    for index in range(levels):
+        directory = directory / f"d{index}"
+    return _touch(directory / name, mode)
+
+
+def test_s1_default_walk_depth_cap_is_four(tmp_path: Path) -> None:
+    inside = _nest(tmp_path / "in", 4)  # file in a directory at depth 4
+    beyond = _nest(tmp_path / "out", 5)  # directory at depth 5: never visited
+
+    assert inside in _paths(audit.scan([tmp_path / "in"]))
+    assert beyond not in _paths(audit.scan([tmp_path / "out"]))
+
+
+@pytest.mark.parametrize(
+    "depth,expect_levels,deny_levels",
+    [(0, 0, 1), (1, 1, 2), (2, 2, 3)],
+)
+def test_s2_explicit_depth_cap_boundary(
+    tmp_path: Path, depth: int, expect_levels: int, deny_levels: int
+) -> None:
+    # "Depth 0 = files directly in root ... files at that depth are still
+    # yielded; its subdirectories are not visited."
+    seen = _nest(tmp_path / "a", expect_levels)
+    hidden = _nest(tmp_path / "b", deny_levels)
+
+    assert seen in _paths(audit.scan([tmp_path / "a"], max_depth=depth))
+    assert hidden not in _paths(audit.scan([tmp_path / "b"], max_depth=depth))
+
+
+def test_s3_strip_backup_suffix_is_bounded_and_never_empties_a_name() -> None:
+    assert audit.strip_backup_suffix("x.bak.bak.bak.bak") == "x"
+    # bounded: a fifth chained suffix is left alone, not looped on
+    assert audit.strip_backup_suffix("x.bak.bak.bak.bak.bak") == "x.bak"
+    # a name that IS a suffix has no base to inherit sensitivity from
+    assert audit.strip_backup_suffix(".bak") == ".bak"
+    assert audit.strip_backup_suffix("~") == "~"
+    assert audit.strip_backup_suffix("plain.txt") == "plain.txt"
+
+
+def _tokens_of_size(size: int) -> str:
+    frame = '{"a": ""}'
+    return '{"a": "' + "x" * (size - len(frame)) + '"}'
+
+
+def test_s4_design_tokens_size_bound_is_256_kib_inclusive(tmp_path: Path) -> None:
+    limit = 256 * 1024
+    ok = _touch(tmp_path / "skills" / "ok" / "tokens.json", 0o644, _tokens_of_size(limit))
+    big = _touch(
+        tmp_path / "skills" / "big" / "tokens.json", 0o644, _tokens_of_size(limit + 1)
+    )
+
+    found = _paths(audit.scan([tmp_path], max_depth=8))
+    assert ok not in found  # innocence: exactly at the bound is still design data
+    assert big in found  # guilt: one byte over is not a bounded token file
+
+
+@pytest.mark.parametrize("content", ['["#fff", "1px"]', '"just a string"', "42"])
+def test_s5_design_tokens_must_be_a_json_object(tmp_path: Path, content: str) -> None:
+    target = _touch(tmp_path / "skills" / "x" / "tokens.json", 0o644, content)
+
+    assert target in _paths(audit.scan([tmp_path], max_depth=8))
+
+
+def test_s6_file_root_is_judged_by_name_and_counted(tmp_path: Path) -> None:
+    named = _touch(tmp_path / "api_secret.key", 0o644)
+    plain = _touch(tmp_path / "notes.txt", 0o644)
+    stats: dict = {}
+
+    findings = audit.scan([named, plain], stats=stats)
+
+    assert _paths(findings) == {named}  # innocence: the plain file is not a candidate
+    assert stats["files_traversed"] == 2
+    assert stats["roots_existing"] == 2
+    # strict (custody) semantics: every file root is a candidate
+    assert list(audit._iter_candidate_paths([plain], 4, all_files=True)) == [plain]
+    assert list(audit._iter_candidate_paths([plain], 4)) == []
+    # no stats dict is a supported call
+    assert list(audit._iter_candidate_paths([named], 4)) == [named]
+
+
+def test_s7_special_file_root_is_not_yielded(tmp_path: Path) -> None:
+    fifo = tmp_path / "api_secret.key"
+    os.mkfifo(fifo)
+
+    assert list(audit._iter_candidate_paths([fifo], 4)) == []
+    assert list(audit._iter_candidate_paths([fifo], 4, all_files=True)) == []
+
+
+def test_s8_a_root_named_twice_is_walked_and_counted_once(tmp_path: Path) -> None:
+    _touch(tmp_path / "r" / "api_secret.key", 0o644)
+    once: dict = {}
+    twice: dict = {}
+
+    one = audit.scan([tmp_path / "r"], stats=once)
+    two = audit.scan([tmp_path / "r", tmp_path / "r"], stats=twice)
+
+    assert _paths(one) == _paths(two)
+    assert twice["files_traversed"] == once["files_traversed"] == 1
+
+
+def test_s9_a_file_named_twice_is_one_finding(tmp_path: Path) -> None:
+    target = _touch(tmp_path / "api_secret.key", 0o644)
+
+    findings = audit.scan([target, target])
+
+    assert [f.path for f in findings] == [target]
+
+
+def test_s10_unreadable_counts_only_for_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    custody_file = _touch(tmp_path / "c" / ".secrets" / "a.json", 0o600)
+    plain_file = _touch(tmp_path / "p" / "api_secret.key", 0o644)
+    real_lstat = os.lstat
+    vanished = {str(custody_file), str(plain_file)}
+
+    def fake_lstat(path, *args, **kwargs):
+        if str(path) in vanished:
+            raise PermissionError(13, "denied")
+        return real_lstat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "lstat", fake_lstat)
+    custody_stats: dict = {}
+    plain_stats: dict = {}
+
+    assert audit.scan([tmp_path / "c" / ".secrets"], stats=custody_stats, strict=True) == []
+    assert audit.scan([tmp_path / "p"], stats=plain_stats) == []
+
+    assert custody_stats["unreadable"] == 1  # guilt: a blind custody file is counted
+    assert plain_stats.get("unreadable", 0) == 0  # innocence: a plain one is not
+
+
+@pytest.mark.parametrize("strict", [True, False])
+def test_s11_any_single_group_or_other_bit_is_a_finding(tmp_path: Path, strict: bool) -> None:
+    # "any group/other bit on the file is a finding" - even other-exec alone
+    only_x = _touch(tmp_path / "api_secret.key", 0o601)
+
+    assert only_x in _paths(audit.scan([tmp_path], strict=strict))
+
+
+@pytest.mark.parametrize(
+    "mode,reach,exposed",
+    [
+        (0o640, (True, False), True),
+        (0o604, (False, True), True),
+        (0o640, (False, True), False),  # group can read but only 'other' reaches
+        (0o604, (True, False), False),  # other can read but only 'group' reaches
+        (0o610, (True, False), True),  # group-exec alone, reachable by group
+        (0o601, (False, True), True),  # other-exec alone, reachable by other
+        (0o601, (True, False), False),
+        (0o610, (False, True), False),
+    ],
+)
+def test_s12_exposure_needs_the_bit_and_the_matching_reach(
+    tmp_path: Path, mode: int, reach: tuple, exposed: bool
+) -> None:
+    module = _load_module()
+    module.reachable_by = lambda path, cache=None: reach
+    target = _touch(tmp_path / "api_secret.key", mode)
+
+    assert (target in _paths(module.scan([tmp_path]))) is exposed
+
+
+def test_s13_unresolvable_parent_fails_open_and_walk_terminates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module = _load_module(open_chain=False)
+    target = _touch(tmp_path / "api_secret.key", 0o644)
+
+    def boom(self, *args, **kwargs):
+        raise OSError("cannot resolve")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "resolve", boom)
+        assert module.reachable_by(target) == (True, True)
+
+    calls = []
+
+    def always_open(directory, cache=None):
+        calls.append(directory)
+        assert len(calls) < 500, "chain walk did not stop at the filesystem root"
+        return (True, True)
+
+    monkeypatch.setattr(module, "_dir_traversal", always_open)
+    assert module.reachable_by(target) == (True, True)
+
+
+def test_s14_audit_with_nothing_to_see_is_clean_not_blind(tmp_path: Path) -> None:
+    result = audit.audit([tmp_path / "nope", tmp_path / "nope" / ".secrets"])
+
+    assert result.roots_existing == 0
+    assert result.files_traversed == 0
+    assert result.findings == []
+    assert result.custody == []
+    assert result.blind is False
+
+
+def test_s15_missing_custody_root_leaves_no_report_beside_a_real_one(
+    tmp_path: Path,
+) -> None:
+    real = tmp_path / "a" / ".secrets"
+    _touch(real / "k.json", 0o600)
+    missing = tmp_path / "b" / ".secrets"
+
+    result = audit.audit([real, missing])
+
+    assert [r.root for r in result.custody] == [real]
+
+
+def test_s16_unstatable_custody_root_is_a_blind_zero_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / ".secrets"
+    _touch(root / "k.json", 0o600)
+    real_stat = os.stat
+
+    def fake_stat(path, *args, **kwargs):
+        if str(path) == str(root):
+            raise PermissionError(13, "denied")
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "stat", fake_stat)
+
+    result = audit.audit([root])
+
+    assert result.custody == [audit.CustodyRootReport(root, 0, 0, None, True)]
+    assert result.blind is True
+
+
+def test_s17_report_only_finding_is_never_chmoded_even_by_innocent_name(
+    tmp_path: Path,
+) -> None:
+    target = _touch(tmp_path / "api_secret.key", 0o644)
+    flagged = audit.Finding(path=target, mode=0o644, custody=False, report_only=True)
+
+    assert audit.fix_findings([flagged]) == (0, 0, [])
+    assert _mode_of(target) == 0o644  # guilt: flag alone protects it
+
+    plain = audit.Finding(path=target, mode=0o644)
+    assert audit.fix_findings([plain]) == (1, 0, [])  # innocence twin
+    assert _mode_of(target) == 0o600
+
+
+def test_s18_fix_never_chmods_through_a_symlink(tmp_path: Path) -> None:
+    real = _touch(tmp_path / "real.txt", 0o644)
+    link = tmp_path / "api_secret.key"
+    link.symlink_to(real)
+
+    fixed, failed, failures = audit.fix_findings([audit.Finding(path=link, mode=0o644)])
+
+    assert (fixed, failed) == (0, 1)
+    assert failures == [f"{link}: NotARegularFile"]
+    assert _mode_of(real) == 0o644
+
+
+def test_s19_fix_counts_a_vanished_file_as_one_failure(tmp_path: Path) -> None:
+    gone = tmp_path / "gone_secret.key"
+
+    fixed, failed, failures = audit.fix_findings([audit.Finding(path=gone, mode=0o644)])
+
+    assert (fixed, failed) == (0, 1)
+    assert failures == [f"{gone}: FileNotFoundError"]
+
+
+@pytest.mark.parametrize(
+    "mode,expected",
+    [
+        (0o040, ["group-read"]),
+        (0o020, ["group-write"]),
+        (0o010, ["group-exec"]),
+        (0o004, ["other-read"]),
+        (0o002, ["other-write"]),
+        (0o001, ["other-exec"]),
+        (0o644, ["group-read", "other-read"]),
+        (0o700, []),
+    ],
+)
+def test_s20_mode_classes_names_exactly_the_bits_set(mode: int, expected: list) -> None:
+    assert audit.mode_classes(mode) == expected
+
+
+def test_s21_heartbeat_creates_its_directory_bounds_note_and_reports_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    last_seen = tmp_path / "a" / "b" / "last"
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(last_seen))
+
+    assert audit.organism_heartbeat("ok", note="n" * 600) is True
+    written = json.loads((last_seen / f"{audit.ORGAN_ID}.json").read_text())
+    assert len(written["note"]) == 500
+    assert audit.organism_heartbeat("ok") is True  # directory already there
+
+    blocker = _touch(tmp_path / "blocker", 0o600)
+    monkeypatch.setenv("ORGANISM_LAST_SEEN_DIR", str(blocker))
+    assert audit.organism_heartbeat("ok") is False  # never raises, says so
+
+
+def test_s22_gateway_timeout_or_oserror_fails_that_alert_and_goes_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import subprocess
+    from types import SimpleNamespace
+
+    alerts = [
+        audit.Alert(tier="p0", dedup_key="k1", text="t1"),
+        audit.Alert(tier="digest", dedup_key="k2", text="t2"),
+    ]
+    seen_kwargs: list = []
+
+    def make_run(first_error):
+        calls = {"n": 0}
+
+        def fake_run(cmd, **kwargs):
+            seen_kwargs.append(kwargs)
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise first_error
+            return SimpleNamespace(returncode=0, stderr=b"tg_notify: sent\n")
+
+        return fake_run
+
+    for error, label in (
+        (subprocess.TimeoutExpired(cmd="x", timeout=60), "TimeoutExpired"),
+        (FileNotFoundError(2, "no such"), "FileNotFoundError"),
+    ):
+        audit.LAST_OUTCOMES.clear()
+        monkeypatch.setattr(audit.subprocess, "run", make_run(error))
+
+        handed, failures = audit.send_alerts(alerts)
+
+        assert handed == 1
+        assert failures == [f"p0: {label}"]
+        assert audit.LAST_OUTCOMES == ["digest:sent"]
+
+    assert all(kw.get("capture_output") is True for kw in seen_kwargs)
+    audit.LAST_OUTCOMES.clear()
+
+
+def test_s23_resolve_roots_adds_defaults_unless_told_not_to(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(audit, "default_roots", lambda: [Path("/d1")])
+
+    assert audit.resolve_roots(None) == [Path("/d1")]
+    assert audit.resolve_roots(["/x"]) == [Path("/d1"), Path("/x")]
+    assert audit.resolve_roots(["/x"], no_defaults=True) == [Path("/x")]
+
+
+def test_s24_kill_switch_json_payload_is_exactly_schema_and_disabled(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("SECRETS_PERMISSIONS_AUDIT_ENABLED", "false")
+
+    rc, payload = _json_main(audit, ["--notify", "--json"], capsys)
+
+    assert rc == 0
+    assert payload == {"schema": 1, "disabled": True}
+
+
+def test_s25_json_payload_schema_and_run_blocks_follow_notify(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    _touch(tmp_path / "r" / "api_secret.key", 0o600)
+    base = ["--no-default-roots", "--root", str(tmp_path / "r"), "--json"]
+
+    rc, plain = _json_main(audit, base, capsys)
+    assert rc == 0
+    assert plain["schema"] == 1
+    assert "run" not in plain and "notify" not in plain  # innocence: no --notify
+
+    rc, notified = _json_main(audit, base + ["--notify"], capsys)
+    assert rc == 0
+    assert notified["schema"] == 1
+    assert set(notified["run"]) == {"ts", "machine", "launcher", "ppid", "service"}
+    assert notified["notify"]["handed"] == 0  # nothing to send: not "1"
+    assert notified["notify"]["p0"] == 0
+    assert notified["notify"]["digest"] == 0
+
+
+def _custody_plus_env(tmp_path: Path) -> list:
+    _touch(tmp_path / ".secrets" / "probe.json", 0o644, "{}\n")
+    _touch(tmp_path / ".env.local", 0o644, "A=1\n")
+    return ["--no-default-roots", "--root", str(tmp_path / ".secrets"),
+            "--root", str(tmp_path)]
+
+
+def test_s26_notify_counts_p0_and_digest_separately_in_json_and_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    args = _custody_plus_env(tmp_path)
+
+    rc, payload = _json_main(audit, args + ["--notify", "--json"], capsys)
+    assert rc == 0
+    assert payload["notify"]["p0"] == 1
+    assert payload["notify"]["digest"] == 1
+    assert payload["notify"]["handed"] == 2
+
+    rc = audit.main(args + ["--notify"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "NOTIFY p0=1 digest=1 handed=2 failed=0" in out
+    assert out.startswith("RUN ")
+    assert "RUN-END rc=0" in out
+
+
+def test_s27_text_report_without_notify_has_no_run_or_notify_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    _touch(tmp_path / "r" / "api_secret.key", 0o600)
+
+    rc = audit.main(["--no-default-roots", "--root", str(tmp_path / "r")])
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "RUN " not in out and "NOTIFY" not in out and "RUN-END" not in out
+    assert "BLIND" not in out and "FIXED:" not in out
+
+
+def test_s28_custody_line_is_home_relative_only_under_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    home = tmp_path / "home"
+    elsewhere = tmp_path / "elsewhere"
+    inside = home / ".secrets"
+    outside = elsewhere / ".secrets"
+    for scr in (inside, outside):
+        _touch(scr / "k.json", 0o600)
+        scr.chmod(0o700)
+    monkeypatch.setenv("HOME", str(home))
+
+    audit.main(["--no-default-roots", "--root", str(inside)])
+    under_home = capsys.readouterr().out
+    audit.main(["--no-default-roots", "--root", str(outside)])
+    not_home = capsys.readouterr().out
+
+    assert "CUSTODY ~/.secrets: 1 file(s) checked, 0 finding(s), dir 0700\n" in under_home
+    assert str(home) not in under_home
+    assert f"CUSTODY {outside}: 1 file(s) checked" in not_home
+    assert "BLIND" not in under_home  # innocence: a listable dir is not blind
+
+
+def test_s29_blind_scan_text_and_fix_line_are_mutually_exclusive(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    full = tmp_path / "full"
+    _touch(full / "api_secret.key", 0o600)
+
+    rc = audit.main(["--no-default-roots", "--root", str(empty), "--fix"])
+    blind_out = capsys.readouterr().out
+    assert rc == 2
+    assert "BLIND SCAN" in blind_out
+    assert "FIXED:" not in blind_out  # a blind run never claims to have fixed
+
+    rc = audit.main(["--no-default-roots", "--root", str(empty)])
+    assert "FIXED:" not in capsys.readouterr().out and rc == 2
+
+    rc = audit.main(["--no-default-roots", "--root", str(full), "--fix"])
+    clean_out = capsys.readouterr().out
+    assert rc == 0
+    assert "FIXED: 0  FAILED: 0  REPORT-ONLY: 0" in clean_out
+    assert "BLIND" not in clean_out
+
+
+def test_s30_unlistable_custody_dir_says_so_in_its_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    scr = tmp_path / ".secrets"
+    _touch(scr / "a.json", 0o600)
+    scr.chmod(0o000)
+    try:
+        rc = audit.main(["--no-default-roots", "--root", str(scr)])
+    finally:
+        scr.chmod(0o700)
+    out = capsys.readouterr().out
+
+    assert rc == 2
+    assert "CUSTODY ~/.secrets:" in out
+    assert "BLIND: directory cannot be listed" in out
+
+
+def test_s31_chmod_that_did_not_stick_is_a_verification_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = _touch(tmp_path / "api_secret.key", 0o644)
+    monkeypatch.setattr(os, "chmod", lambda *args, **kwargs: None)
+
+    fixed, failed, failures = audit.fix_findings(
+        [audit.Finding(path=target, mode=0o644)]
+    )
+
+    assert (fixed, failed) == (0, 1)
+    assert failures == [f"{target}: ModeVerificationMismatch"]
+
+
+def test_s32_reach_is_the_intersection_down_the_chain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # group is shut one level up, other one level further: the file is
+    # reachable by NEITHER, even though the nearest directory admits "other".
+    module = _load_module(open_chain=False)
+    target = _touch(tmp_path / "api_secret.key", 0o604)
+    answers = iter([(False, True), (False, False)])
+    calls = []
+
+    def walk(directory, cache=None):
+        calls.append(directory)
+        assert len(calls) < 50
+        return next(answers, (False, False))
+
+    monkeypatch.setattr(module, "_dir_traversal", walk)
+
+    assert module.reachable_by(target) == (False, False)
+    assert len(calls) >= 2
+
+
+@pytest.mark.parametrize(
+    "files,p0,digest",
+    [
+        ("custody", 1, 0),
+        ("env", 0, 1),
+    ],
+)
+def test_s33_notify_counts_distinguish_p0_from_digest(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+    files: str,
+    p0: int,
+    digest: int,
+) -> None:
+    _fake_gateway(tmp_path, monkeypatch)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    if files == "custody":
+        _touch(tmp_path / ".secrets" / "probe.json", 0o644, "{}\n")
+        roots = ["--root", str(tmp_path / ".secrets")]
+    else:
+        _touch(tmp_path / "r" / ".env.local", 0o644, "A=1\n")
+        roots = ["--root", str(tmp_path / "r")]
+    args = ["--no-default-roots", *roots, "--notify"]
+
+    rc, payload = _json_main(audit, args + ["--json"], capsys)
+    assert rc == 0
+    assert (payload["notify"]["p0"], payload["notify"]["digest"]) == (p0, digest)
+
+    audit.main(args)
+    assert f"NOTIFY p0={p0} digest={digest} handed=1 failed=0" in capsys.readouterr().out
