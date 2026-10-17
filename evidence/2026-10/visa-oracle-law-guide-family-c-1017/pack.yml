@@ -27,7 +27,7 @@ lanes:
     role: ground_truth
     seat: nlm
     nb: cff93ab0-813a-42f2-a8de-36987e724271
-    query_hash: 57f67b52c88c424954915d736165f62544bda9bdff26423d472f90840722f765 # pragma: allowlist secret
+    query_hash: "57f67b52c88c424954915d736165f62544bda9bdff26423d472f90840722f765" # pragma: allowlist secret
     notebook_name: "NB-2: Immigration & Visa — Indonesia 2025"
     profile: default
     ts: "2026-10-17T14:20:12Z"
