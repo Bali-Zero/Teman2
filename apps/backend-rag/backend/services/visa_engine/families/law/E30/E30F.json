@@ -1,0 +1,56 @@
+{
+  "code": "E30F",
+  "official_name_id": "E30F Visa Pertukaran Pelajar",
+  "source_url": "https://www.imigrasi.go.id/wna/daftar-visa-indonesia/E30F",
+  "retrieved_at": "2026-10-17T13:27:13Z",
+  "page_sha256": "25826c19ede8f3a582bbd70f1077f1ea26fe53b82ad4e5ec004d9ff7d022b3b1",
+  "definition_verbatim": null,
+  "jenis_visa_verbatim": null,
+  "stay_days": null,
+  "extendable": null,
+  "entry": null,
+  "where_to_apply": null,
+  "sponsor_required": {
+    "as_stated_boolean": null,
+    "verbatim": null,
+    "invitation_requirement_see": "requirements_verbatim"
+  },
+  "requirements_verbatim": null,
+  "pengajuan_intro_verbatim": null,
+  "allowed_activities": null,
+  "prohibited_or_conditions_verbatim": null,
+  "ketentuan_lain_verbatim": null,
+  "pnbp_verbatim_for_reference_only": null,
+  "notes": [
+    "NOT_FOUND: the official URL returned HTTP 200 with the message Data Belum Tersedia and no substantive visa sections. The title is retained as observed; legal fields remain null. TO_VERIFY."
+  ],
+  "status": "NOT_FOUND",
+  "itap_verbatim": null,
+  "itap_assessment": {
+    "itas_to_itap_eligible_as_stated": null,
+    "status": "TO_VERIFY",
+    "direct_itap_context_present": false,
+    "family_evidence": "law/E30/ITAP.json"
+  },
+  "total_max_verbatim": null,
+  "subjek_verbatim": null,
+  "persyaratan_khusus_verbatim": null,
+  "requirements_context_verbatim": null,
+  "requirements_reference_verbatim": null,
+  "sections_verbatim": [],
+  "verification_issues": [],
+  "to_verify": [
+    "where_to_apply",
+    "itas_to_itap_eligible_as_stated",
+    "stay_days",
+    "extendable",
+    "entry",
+    "total_max_verbatim",
+    "jenis_visa_verbatim",
+    "pnbp_verbatim_for_reference_only",
+    "sponsor_required.as_stated_boolean"
+  ],
+  "http_status": 200,
+  "raw_path": "raw/E30F.html",
+  "not_found_evidence_verbatim": "Data Belum Tersedia"
+}

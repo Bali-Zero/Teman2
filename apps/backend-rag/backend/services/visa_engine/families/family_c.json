@@ -1,5 +1,8 @@
 {
   "family": "C",
+  "category": "Visit Visa",
+  "permit_class": "VISIT_SINGLE",
+  "entry_type": "SINGLE",
   "name": "Single-entry visit visas",
   "law_dir": "law/C",
   "questions": {

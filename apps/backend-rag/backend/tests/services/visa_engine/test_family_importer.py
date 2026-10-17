@@ -110,3 +110,83 @@ def test_migration_starts_with_case_duplicate_guard():
     assert guard < sql.index("INSERT INTO visa_types")
     assert "code <> upper(code)" in sql[guard : sql.index("$guard$;")]
     assert "'C1'" in sql[guard : sql.index("$guard$;")]
+
+
+E30_ROWS = importer.build_rows("E30")
+E30_BY_CODE = {r["code"]: r for r in E30_ROWS}
+E30_MIGRATION = MIGRATIONS_DIR / "333_visa_types_law_family_e30.sql"
+
+
+@pytest.mark.parametrize("row", E30_ROWS, ids=lambda r: r["code"])
+def test_e30_row_satisfies_330_rules(row: dict) -> None:
+    assert row["family"] == "E30"
+    assert row["permit_class"] == "ITAS"
+    assert row["category"] == "KITAS/Limited Stay"
+    assert row["entry_type"] in {None, "MULTIPLE"}
+    assert row["sponsor"] in {None, "REQUIRED"}
+    assert row["apply_channel"] is None
+    assert row["initial_stay_days"] is None
+    assert row["max_total_days"] is None and row["max_total_months"] is None
+    assert row["itap"] is None
+    assert isinstance(row["price_keys"], list)
+    for key in ("page_sha256", "card_sha256"):
+        assert SHA.fullmatch(row[key])
+    for key in ("law_card", "source_url", "retrieved_at"):
+        assert row[key]
+    card = row["law_card"]
+    assert row["page_sha256"] == card["page_sha256"]
+    assert row["official_name_id"] == card["official_name_id"]
+    path = importer.HERE / "law" / "E30" / f"{row['code']}.json"
+    assert row["card_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert row["verification_status"] == (
+        "TO_VERIFY" if card["status"] == "NOT_FOUND" else "VERIFIED"
+    )
+
+
+def test_e30_secondary_codes_remain_unknown() -> None:
+    assert set(E30_BY_CODE) == {"E30", "E30A", "E30B", "E30E", "E30F"}
+    for code in ("E30", "E30E", "E30F"):
+        row = E30_BY_CODE[code]
+        assert row["verification_status"] == "TO_VERIFY"
+        for key in ("sponsor", "entry_type", "extendable", "stay_options", "is_sold"):
+            assert row[key] is None
+        assert row["price_keys"] == []
+
+
+def test_e30_discrete_year_options_and_exact_price_keys() -> None:
+    expected = {
+        "E30A": ("E30A Education Visa", [1, 2]),
+        "E30B": ("E30B Higher Education", [1, 2, 4]),
+    }
+    prices = importer.load_prices()
+    for code, (label, years) in expected.items():
+        row = E30_BY_CODE[code]
+        assert row["is_sold"] is True
+        assert row["stay_options"] == [{"value": year, "unit": "YEAR"} for year in years]
+        assert row["price_keys"] == [
+            {
+                "category": "kitas_permits",
+                "item_key": f"{label} ({year} {'Year' if year == 1 else 'Years'})",
+            }
+            for year in years
+        ]
+        for pk in row["price_keys"]:
+            assert pk["item_key"] in prices[pk["category"]]
+
+
+def test_e30_migration_matches_importer_and_preserves_legacy() -> None:
+    sql = importer.emit_sql("E30")
+    assert E30_MIGRATION.read_text() == sql
+    guard = sql[sql.index("DO $guard$") : sql.index("$guard$;")]
+    assert all(f"'{code}'" in guard for code in E30_BY_CODE)
+    assert sql.index("DO $guard$") < sql.index("INSERT INTO visa_types")
+    assert "stay_options = EXCLUDED.stay_options" in sql
+    rollback = sql.split("-- === ROLLBACK ===", 1)[1]
+    assert "stay_options = NULL" in rollback
+    for column in ("name", "category", "duration", "requirements", "metadata", "cost_visa"):
+        assert f"{column} = EXCLUDED" not in sql
+    assert "stay_options" not in importer.emit_sql("C")
+
+
+def test_e30_importer_cli_check() -> None:
+    assert importer.main(["--family", "E30", "--check", str(E30_MIGRATION)]) == 0
