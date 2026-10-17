@@ -1,0 +1,38 @@
+task_id: article-licence-polish-1017
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Follow-up of PR 8631's gate, same owner ruling of 2026-10-17: the client articles and the
+  committed llms exports still quote a standalone MERP price, and two KITAS budgets (e25b, e31e)
+  carry totals that no longer equal their components. Keep the government MERP fee in the
+  exit-reentry table, put Bali Zero's MERP on request, recompute the budget totals with the
+  re-entry permit "on request" outside the sums, separate market ranges from Bali Zero's fee in
+  the halal article, re-stamp only locales that match the new EN body, replace the affected llms
+  sections byte-for-byte from a scratch regeneration, and restore and strengthen the guard test.
+acceptance:
+  - text: >-
+      The guard passes on the corpus and both llms exports, and the content and llms suites stay
+      green.
+    probe: cd apps/mouth && vitest run src/content/licence-prices-1017.test.ts (then description-fields-integrity, llms-article-exports, kbli-llms-corpus, llms-public-file-guard, pt-pma-setup-price)
+  - text: >-
+      Neither llms export contains "MERP (IDR 4-5M)" nor "MERP 1 Anno: IDR 4.000.000".
+    probe: grep -c on apps/mouth/public/llms-full.txt and llms-id.txt
+  - text: >-
+      After the merge and the Vercel promotion, the live e25b page shows the recomputed total with
+      the re-entry permit on request.
+    probe: curl https://balizero.com/visas/e25b-director-kitas-guide
+assumptions:
+  - text: >-
+      The public URL of the e25b article is /visas/e25b-director-kitas-guide (category immigration
+      maps to the visas path).
+    status: verified
+    probe: 'grep "^URL: .*e25b-director" apps/mouth/public/llms-full.txt, run 2026-10-17 (generator emits a.url).'
+  - text: >-
+      Locale bodies are overwritten by the hourly translator when their source_sha256 stamp is
+      stale, so a locale is re-stamped only when its body matches the new EN body.
+    status: verified
+    probe: scripts/translate-articles.py STAMP_FIELD source_sha256, read for PR 8631 (same pipeline).
+appetite:
+  wall_clock_hours: 4
+  adversarial_rounds: 1
