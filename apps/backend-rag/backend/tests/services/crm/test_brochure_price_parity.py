@@ -518,9 +518,7 @@ def _iter_service_entries(
                 yield from _iter_service_entries(val, prefix + (key,))
 
 
-def _assert_parity(
-    filled_html: str, raw_template: str, pricing: dict
-) -> list[tuple[str, str]]:
+def _assert_parity(filled_html: str, raw_template: str, pricing: dict) -> list[tuple[str, str]]:
     """Verify every printed price cell and its row label/qualifiers match EXPECTED_ROWS."""
     assert len(EXPECTED_ROWS) == 50
     template_placeholders = set(GEN.PLACEHOLDER_RE.findall(raw_template))
@@ -546,9 +544,7 @@ def _assert_parity(
             assert placeholder in EXPECTED_ROWS, f"Unmapped placeholder {placeholder}"
             assert placeholder in GEN.PRICE_MAP, f"Unmapped placeholder {placeholder}"
 
-            exp_label, exp_qualifiers, exp_col, exp_path, exp_name = EXPECTED_ROWS[
-                placeholder
-            ]
+            exp_label, exp_qualifiers, exp_col, exp_path, exp_name = EXPECTED_ROWS[placeholder]
             assert GEN.PRICE_MAP[placeholder] == (exp_path, exp_name), (
                 f"PRICE_MAP[{placeholder!r}] drifted from EXPECTED_ROWS"
             )
@@ -615,9 +611,7 @@ PDF_PARITY_CURE = (
     "then commit apps/mouth/public/static/brochure_balizero_en.pdf - that PDF is what clients receive."
 )
 
-STALE_E33E_14M_RE = re.compile(
-    r"E33E Second Home Senior, 5 years[^R]{0,40}Rp 14\.000\.000"
-)
+STALE_E33E_14M_RE = re.compile(r"E33E Second Home Senior, 5 years[^R]{0,40}Rp 14\.000\.000")
 
 
 def _pdf_prints_stale_e33e_14m(pdf_text: str) -> bool:
@@ -630,8 +624,7 @@ def _assert_pdf_parity(pdf_text: str, pricing: dict) -> None:
     for placeholder in EXPECTED_ROWS:
         anchored = _anchored_pdf_sequence(placeholder, pricing)
         assert re.search(re.escape(anchored), pdf_text) is not None, (
-            f"Missing anchored sequence in PDF for {placeholder}: {anchored!r}. "
-            f"{PDF_PARITY_CURE}"
+            f"Missing anchored sequence in PDF for {placeholder}: {anchored!r}. {PDF_PARITY_CURE}"
         )
 
 
@@ -909,3 +902,13 @@ def test_guilt_g_hardcoded_idr_in_paragraph_is_flagged() -> None:
     assert len(hits) >= 2
     assert any("rp" in h.lower() for h in hits)
     assert any("idr" in h.lower() for h in hits)
+
+
+def test_brochure_pdf_no_longer_quotes_urgent_handling() -> None:
+    """Zero, 2026-10-17: with the Urgent 1/2/3 Hari surcharges retired, the
+    brochure's "urgent handling is quoted separately" sentence went too. The
+    committed PDF is what clients download, so it is read here, not just the
+    template it is generated from."""
+    # pypdf 6.12 splits words of this PDF ("urgen t"): compare without any whitespace.
+    text = re.sub(r"\s+", "", _extract_normalised_pdf_text()).lower()
+    assert "urgent" not in text, "the committed brochure PDF still mentions urgent handling"
