@@ -2,7 +2,7 @@
 
 **Effective:** 2026-01-01
 **Version:** 2026.1
-**Last updated:** 2026-10-15
+**Last updated:** 2026-10-17
 
 > zero@balizero.com · +62 821 3454 721 · balizero.com · Kerobokan, Bali, Indonesia
 
@@ -20,8 +20,7 @@
 - **VI.** [Company Services](#company-services)
 - **VII.** [Bali Zero Consultant Services](#consultant-services)
 - **VIII.** [Other Process](#other-process)
-- **IX.** [Urgent Processing](#urgent-processing)
-- **X.** [Compliance Retainers](#compliance-retainers)
+- **IX.** [Compliance Retainers](#compliance-retainers)
 
 ---
 
@@ -218,7 +217,6 @@ _Passports, identity documents and miscellaneous immigration filings._
 | Service                                              | Description                                                                                                                                                     | Price         |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
 | **Reset Molina**                                     | Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies. _(+ Rp 400.000 for urgent processing)_               | 1.000.000 IDR |
-| **Created Molina Express**                           | Express creation of immigration record on the Molina (immigration) database.                                                                                    | 500.000 IDR   |
 | **Passport 5 Years**                                 | Indonesian standard passport issuance for 5-year validity.                                                                                                      | 1.300.000 IDR |
 | **Passport 10 Years**                                | Indonesian standard passport issuance for 10-year validity.                                                                                                     | 2.200.000 IDR |
 | **Electronic Passport 5 Years**                      | Indonesian electronic passport (e-passport) issuance for 5-year validity.                                                                                       | 2.200.000 IDR |
@@ -237,29 +235,12 @@ _Passports, identity documents and miscellaneous immigration filings._
 | **Process IMTA &amp; RPTKA Only (6 Months or Less)** | Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.                                                                     | 6.000.000 IDR |
 | **EPO (Exit Permit Only)**                           | Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit. _(+ Rp 300.000 for urgent processing)_      | 700.000 IDR   |
 | **ERP (Exit Re-entry Permit)**                       | Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry. _(+ Rp 500.000 for urgent processing)_            | 800.000 IDR   |
-| **Driving License**                                  | Indonesian driving license (SIM) issuance for foreign nationals.                                                                                                | 1.600.000 IDR |
-
----
-
-<a id="urgent-processing"></a>
-
-## IX. Urgent Processing
-
-![Urgent Processing](./assets/2026/heros/06_urgent.png)
-
-_Express processing tiers for time-sensitive filings._
-
-| Service           | Description                                                                        | Price         |
-| ----------------- | ---------------------------------------------------------------------------------- | ------------- |
-| **Urgent 1 Hari** | Urgent processing surcharge for 1-day turnaround on eligible immigration services. | 3.000.000 IDR |
-| **Urgent 2 Hari** | Urgent processing surcharge for 2-day turnaround on eligible immigration services. | 2.500.000 IDR |
-| **Urgent 3 Hari** | Urgent processing surcharge for 3-day turnaround on eligible immigration services. | 1.000.000 IDR |
 
 ---
 
 <a id="compliance-retainers"></a>
 
-## X. Compliance Retainers
+## IX. Compliance Retainers
 
 ![Compliance Retainers](./assets/2026/heros/04_company.png)
 

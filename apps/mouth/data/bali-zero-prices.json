@@ -1180,18 +1180,6 @@
         "icon_id": "other-molina",
         "tier_range": null
       },
-      "Created Molina Express": {
-        "category": "other_process",
-        "key": "Created Molina Express",
-        "name": "Created Molina Express",
-        "price": "500.000 IDR",
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Express creation of immigration record on the Molina (immigration) database.",
-        "icon_id": "other-molina",
-        "tier_range": null
-      },
       "Passport 5 Years": {
         "category": "other_process",
         "key": "Passport 5 Years",
@@ -1406,56 +1394,6 @@
         "notes": "+ Rp 500.000 for urgent processing",
         "description_en": "Exit Permit Only (Offshore) for KITAS/KITAP holders who are already abroad and will not return to Indonesia, terminating their stay permit remotely (offshore). Distinct from EPO (onshore). Note: re-entry is now automatically included in the KITAS/KITAP per UU 63/2024 — no separate re-entry product.",
         "icon_id": "other-erp",
-        "tier_range": null
-      },
-      "Driving License": {
-        "category": "other_process",
-        "key": "Driving License",
-        "name": "Driving License",
-        "price": "1.600.000 IDR",
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Indonesian driving license (SIM) issuance for foreign nationals.",
-        "icon_id": "other-boarding",
-        "tier_range": null
-      }
-    },
-    "urgent_processing": {
-      "Urgent 1 Hari": {
-        "category": "urgent_processing",
-        "key": "Urgent 1 Hari",
-        "name": "Urgent 1 Hari",
-        "price": "3.000.000 IDR",
-        "duration": "1 day",
-        "validity": "",
-        "notes": "",
-        "description_en": "Urgent processing surcharge for 1-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-1day",
-        "tier_range": null
-      },
-      "Urgent 2 Hari": {
-        "category": "urgent_processing",
-        "key": "Urgent 2 Hari",
-        "name": "Urgent 2 Hari",
-        "price": "2.500.000 IDR",
-        "duration": "2 days",
-        "validity": "",
-        "notes": "",
-        "description_en": "Urgent processing surcharge for 2-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-2day",
-        "tier_range": null
-      },
-      "Urgent 3 Hari": {
-        "category": "urgent_processing",
-        "key": "Urgent 3 Hari",
-        "name": "Urgent 3 Hari",
-        "price": "1.000.000 IDR",
-        "duration": "3 days",
-        "validity": "",
-        "notes": "",
-        "description_en": "Urgent processing surcharge for 3-day turnaround on eligible immigration services.",
-        "icon_id": "urgent-3day",
         "tier_range": null
       }
     },

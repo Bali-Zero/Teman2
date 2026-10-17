@@ -234,15 +234,17 @@ def test_qualified_form_reaches_end_to_end_through_the_public_router() -> None:
 
 
 def test_every_unambiguous_real_key_still_resolves_unchanged(svc: PricingService) -> None:
-    """The 117 keys that were never ambiguous must resolve exactly as
+    """The 112 keys that were never ambiguous must resolve exactly as
     before: same key, category, name, price, validity and notes. (105 until
     2026-09-11, when the five `compliance_retainers` rows were added — all
     five are unique keys, so the 4-collision set below is unchanged; 110
     until 2026-10-15, when the unique `D2 Business (5 Years)` row was added;
     111 until 2026-10-17, when the six unique alcohol-licence / SLHS / Halal /
-    PIRT `company_services` rows were added.)"""
+    PIRT `company_services` rows were added; 117 until 2026-10-17, when the
+    owner retired the five unique Urgent 1/2/3 Hari, Driving License and
+    Created Molina Express rows — none of them in the collision set.)"""
     unambiguous = _unambiguous_real_entries(svc.prices["services"])
-    assert len(unambiguous) == 117, (
+    assert len(unambiguous) == 112, (
         "the real catalogue's unambiguous-key count moved — re-verify the "
         "4-collision assumption this whole file rests on before touching "
         "this number"

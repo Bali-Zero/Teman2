@@ -1,0 +1,232 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero, 2026-10-17, direct session order: "fai sparire immediatamente dal web site e poi da tutte le
+  superfici di sistema" the Urgent 1/2/3 Hari surcharges, the Driving License (SIM) service and the
+  Created Molina Express service. Reset Molina was not named and stays.
+mission: >-
+  Retire five catalogue rows from balizero.com first and then from every system surface.
+lanes:
+  - lane: build
+    role: build
+    seat: Claude Fable 5.1 (owner-opened interactive window), worktree backend-rag-pricing-retire-5-1017 on Air-M5.
+  - lane: backend-tests
+    role: review
+    seat: claude-sonnet-5 subagent, read-only test runner (main checkout .venv, worktree sources).
+  - lane: mouth-tests
+    role: review
+    seat: claude-sonnet-5 subagent, read-only test runner (shared node_modules symlink, no install).
+  - lane: owner-ruling-ground-truth
+    role: ground_truth
+    seat: >-
+      Zero, owner ruling given directly in the interactive session on 2026-10-17 ("fai sparire
+      immediatamente dal web site e poi da tutte le superfici di sistema"), pasting the five live
+      cards; no regulation is interpreted, only the owner's catalogue decision is executed.
+    nb: apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+    query_hash: "198ef485ef5b3a839c3dcb0aff06715f8cc919045084e999e37349db72223955" # pragma: allowlist secret
+    note: >-
+      query_hash is sha256(json.dumps(sort_keys=True)) of the exact rows retired, read from
+      origin/main before the edit: other_process/"Driving License", other_process/"Created Molina
+      Express" and the whole urgent_processing category (Urgent 1/2/3 Hari).
+pii_scan: clean
+cloud_ok: "Builder Contract 4 / SYMBIOSIS Law 2: code, catalogue text and migration SQL only; no client data reached any seat (crm_practices.py is touched as code, no CRM rows were read)."
+seat_fallback_reason: >-
+  agy-gemini-4-argon replaced codex-gpt-5.6-sol: the Codex red-team run dispatched by the council-run
+  subagent on 2026-10-17 died on "workspace routing discovery timed out" (network) before returning a
+  verdict; a second Codex attempt was still running when the pack closed. tp1-qwen3.8-max was not
+  dispatched (no headless wrapper in this loop). kimi-code/k3 (titolare) did sit and returned findings.
+bites:
+  consumer: >-
+    balizero.com/services/visa renders apps/mouth/data/bali-zero-prices.json and the anonymous
+    /api/pricing/service route reads bali_zero_official_prices_2026.json; the CRM catalogue route reads
+    practice_types WHERE is_active = true. The observer proves every repo-side surface agrees (catalogue,
+    mirror, price list, brochure template and generator, migration 327) and that Reset Molina survives.
+    Live proof after deploy: the page shows 0 hits and the route answers 404 (baseline 2026-10-17T01:43Z:
+    4 hits per item on the page, 200 on the route), recorded in the mission close row.
+  where: ci
+  observe: python3 scripts/ci/observe_pricing_retire_1017.py
+  expect: "contains:retired rows of 2026-10-17 hold"
+receipts:
+  - claim: Mirror regenerated and in sync with the canonical catalogue (117 exact rows).
+    cmd: python3 scripts/sync_frontend_prices.py --check
+    result: "OK, in sync with PricingTool canonical"
+    exit: 0
+    ts: "2026-10-17T09:58:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: Backend pricing, brochure parity, public lookup and dynamic pricing suites pass after the count updates (117->112 unambiguous keys, 51->50 brochure rows).
+    cmd: cd apps/backend-rag && PYTHONPATH=. JWT_SECRET_KEY=<test value> API_KEYS=<test value> .venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing backend/tests/services/crm/test_brochure_price_parity.py backend/tests/routers/test_public_pricing_lookup.py backend/tests/routers/test_dynamic_pricing.py
+    result: "174 passed in 17.67s"
+    exit: 0
+    ts: "2026-10-17T09:56:00+08:00"
+    seat: backend-tests (claude-sonnet-5)
+  - claim: Revenue estimator, migration lint suites (uniqueness, dependencies, ledger-owned DDL) and data-invariant tripwires pass with migration 327 present.
+    cmd: same interpreter; pytest backend/tests/services/compliance/test_revenue_estimator.py backend/tests/db/test_migration_uniqueness.py backend/tests/db/test_migration_dependencies.py backend/tests/db/test_post_d1_migrations_guard_ledger_owned_ddl.py backend/tests/test_data_invariant_tripwires.py
+    result: "194 passed (first run, incl. revenue estimator); 73 passed; 18 passed"
+    exit: 0
+    ts: "2026-10-17T09:55:00+08:00"
+    seat: backend-tests (claude-sonnet-5)
+  - claim: Root catalogue observers and the 2026-10-14 decisions still hold.
+    cmd: python3 -m pytest -q -p no:cacheprovider tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_e33_price_descriptions.py tests/scripts/test_retirement_price_descriptions.py tests/scripts/test_c1_c6_price_descriptions.py; python3 scripts/ci/observe_catalogue_decisions_1014.py
+    result: "86 passed; 17 passed, catalogue decisions of 2026-10-14 hold"
+    exit: 0
+    ts: "2026-10-17T09:55:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: Price-list generator suite passes; the committed price list was edited surgically (section IX removed, Compliance Retainers renumbered IX, two rows removed) because a full regeneration drops the hand-maintained Compliance Retainers section the generator does not know.
+    cmd: PYTHONPATH=. python3 -m pytest -q scripts/pricelist_2026/tests -p no:cacheprovider; prettier --check docs/pricing/Bali_Zero_Price_List_2026.md
+    result: "18 passed; All matched files use Prettier code style"
+    exit: 0
+    ts: "2026-10-17T09:57:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017 + mouth-tests
+  - claim: Mouth pricing snapshot parity (122->117 rows), legacy card parity, services data, /book, ServicePricing and JSON-LD suites pass; typecheck clean.
+    cmd: cd apps/mouth && npx vitest run src/lib/pricing-snapshot.test.ts src/lib/bali-zero-prices.test.ts src/data src/components/services/ServicePricing.test.tsx src/components/book src/components/seo/DynamicJsonLd.test.tsx; npx tsc --noEmit -p .
+    result: "9 files, 54 passed; tsc exit 0"
+    exit: 0
+    ts: "2026-10-17T09:57:00+08:00"
+    seat: mouth-tests (claude-sonnet-5)
+  - claim: Qdrant bali_zero_pricing_hybrid dry run names exactly the five points as orphans of the new catalogue, 117 points in sync, 0 refusals (apply deferred to after merge).
+    cmd: python3 -I <scratch wrapper loading only QDRANT_URL/QDRANT_API_KEY from apps/backend-rag/.env> scripts/sync_pricing_collection_prices.py --delete-orphans
+    result: "SUMMARY updates=0 deletes=5 internal_points=0 refused=0 in_sync=117 catalog_rows_without_point=0 points_without_catalog_row=5"
+    exit: 0
+    ts: "2026-10-17T09:54:51+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: Production practice_types carries the five rows active and live practices reference three of them, so migration 327 soft-retires instead of deleting.
+    cmd: scripts/pg.sh -c "SELECT practice_type_id, count(*) FROM practices WHERE practice_type_id IN (78,79,80,122,125) GROUP BY 1"
+    result: "78:1, 80:2, 125:7"
+    exit: 0
+    ts: "2026-10-17T09:50:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: Siblings checked before build; the only worktree on pricing_service.py (pricing-search-tokens-1017) names none of the five rows and this PR does not touch that file; open migrations 324/325 motivate number 327.
+    cmd: gh pr list --state open --json number,files (filtered on pricing paths); python3 scripts/agent_start.py --list
+    result: "#8372 (325), #7938 (324); lease pricing-search-tokens-1017 active, no overlap"
+    exit: 0
+    ts: "2026-10-17T09:47:33+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: >-
+      Rebased onto origin/main (#8655 landed its word-matching search corpus naming two retired rows): the
+      three retired queries were removed from search_corpus_1017.json (120 -> 117 queries); pricing suites
+      and both CRM practice suites pass with the create_practice guard.
+    cmd: >-
+      cd apps/backend-rag && PYTHONPATH=. JWT_SECRET_KEY=<test> API_KEYS=<test> .venv/bin/python -m pytest
+      -p no:cacheprovider backend/tests/services/pricing backend/tests/unit/routers/test_crm_practices.py
+      backend/tests/routers/test_crm_practices.py
+    result: "332 passed in 4.50s (search-token file + CRM suites); 445 passed across the pricing tree"
+    exit: 0
+    ts: "2026-10-17T17:53:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: >-
+      Reconciliation test now asserts is_active is False for RETIRED declarations once migration 327 is in
+      _schema_versions (local database: ledger max 326, assertion dormant; CI scratch applies 327).
+    cmd: >-
+      pytest backend/tests/db/test_price_store_reconciliation.py; scripts/pg.sh -c "SELECT max(migration_number)
+      FROM _schema_versions"
+    result: "2 passed; 326"
+    exit: 0
+    ts: "2026-10-17T17:54:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+  - claim: Observer ignores SQL comments in the forward section; sync parity and observer green after the rebase.
+    cmd: python3 scripts/sync_frontend_prices.py --check; python3 scripts/ci/observe_pricing_retire_1017.py
+    result: "OK, in sync with PricingTool canonical; retired rows of 2026-10-17 hold"
+    exit: 0
+    ts: "2026-10-17T17:51:00+08:00"
+    seat: agent-air-m5-backend-rag-pricing-retire-5-1017
+council_run: council-journal.jsonl
+dissent:
+  - seat: kimi-code/k3
+    objection: >-
+      create_practice (crm_practices.py:486) resolved the practice type code without is_active = true, so a
+      retired code could still open a new practice with quoted_price taken from base_price.
+    severity: high
+    status: CONFIRMED
+    resolution: >-
+      The create query now filters AND is_active = true and answers 404 "not found or retired"; the migration
+      327 header names the create path; CRM practice suites green.
+  - seat: kimi-code/k3
+    objection: >-
+      docs/pricing/Bali_Zero_Price_List_2026.md kept an orphan <a id="urgent-processing"> anchor and lost
+      <a id="compliance-retainers"> while the TOC links it.
+    severity: medium
+    status: CONFIRMED
+    resolution: Anchor renamed to compliance-retainers above the Compliance Retainers heading.
+  - seat: kimi-code/k3
+    objection: >-
+      Four other_process rows (Reset Molina, EPO, ERP, one more) keep notes "+ Rp ... for urgent processing",
+      served by the mirror, the public route and the price list.
+    severity: medium
+    status: CONFIRMED
+    resolution: >-
+      Owner decision: the ruling named the three Urgent Hari cards, not per-row urgent surcharges; the
+      website already strips monetary notes from cards. Question put to Zero in the mission close.
+  - seat: kimi-code/k3
+    objection: >-
+      research/operations/2026-05-31-bali-zero-pricing-and-kbli-nlm-source.md still lists the three Urgent
+      prices.
+    severity: medium
+    status: CONFIRMED
+    resolution: >-
+      The research note needs adversarial_review frontmatter to change; follow-up with the NotebookLM
+      source refresh (PENDING-ARMS row).
+  - seat: kimi-code/k3
+    objection: >-
+      Migration 327 postcondition is one-sided (does not assert the five rows exist); the observer
+      string-matches the SQL.
+    severity: low
+    status: PLAUSIBLE
+    resolution: >-
+      A scratch database without the seed rows must not fail apply-all; production existence is a receipt
+      (ids 78/79/80/122/125). The observer now ignores SQL comments; the count-based tests constrain the
+      catalogue.
+  - seat: kimi-code/k3
+    objection: >-
+      pricing_service.py still emits an empty "## URGENT PROCESSING" header in format_for_llm_context and
+      get_tax_urgent_overview returns urgent_processing {}.
+    severity: low
+    status: CONFIRMED
+    resolution: >-
+      The sibling rewrite (#8655) has landed; the cosmetic cleanup is a separate follow-up PR (PENDING-ARMS).
+  - seat: kimi-code/k3
+    objection: >-
+      brochure_en.html line 57 still says "urgent handling is quoted separately"; six driving-licence MDX
+      articles keep a sales CTA; garuda_ops/adapters_pg.py resolves practice codes without is_active.
+    severity: low
+    status: CONFIRMED
+    resolution: >-
+      Brochure wording and editorial CTAs are owner/editorial decisions listed in the close; the Garuda
+      adapter never derives a retired code (VOA flows) and its tests pin that SQL - follow-up.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      UNRECONCILED entries marked RETIRED could mask is_active = true in test_price_store_reconciliation.
+    severity: minor
+    status: CONFIRMED
+    resolution: >-
+      The test asserts is_active is False for RETIRED declarations once migration 327 is in _schema_versions.
+  - seat: agy-gemini-4-argon
+    objection: >-
+      Migration 327 postcondition is tautological after the UPDATE; the observer checked raw SQL including
+      comments and only the PRICE_SIM placeholder in the brochure.
+    severity: minor
+    status: PLAUSIBLE
+    resolution: >-
+      Postcondition kept one-sided by design (see above); the observer strips comments; brochure row
+      absence is pinned by test_brochure_price_parity (50 rows).
+decisions:
+  - id: D-full-removal-not-internal-flag
+    decision: >-
+      The rows are deleted from the catalogue (not marked internal) because the ruling covers every
+      system surface, including the conversational paths that the internal flag deliberately keeps.
+  - id: D-soft-retire-practice-types
+    decision: >-
+      practice_types rows are set is_active=false and keep base_price: practices 78/80/125 are
+      referenced by live practices; the CRM catalogue route already filters on is_active.
+  - id: D-pricing-service-untouched
+    decision: >-
+      pricing_service.py keeps the urgent_processing name in _FLAT_CATEGORIES and format_for_llm_context
+      (tolerant .get with {} defaults); the sibling worktree pricing-search-tokens-1017 is rewriting that
+      file; it landed as #8655 during this PR, so the cosmetic cleanup is a separate follow-up.
+  - id: D-price-list-surgical
+    decision: >-
+      docs/pricing/Bali_Zero_Price_List_2026.md edited by hand instead of regenerated; the committed
+      file is already stale against the catalogue and carries a Compliance Retainers section the
+      generator lacks. Separate follow-up.
+spend:
+  wall_clock_hours: 1
+  adversarial_rounds: 1

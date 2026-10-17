@@ -266,7 +266,6 @@ PRICE_MAP: dict[str, tuple[tuple[str, ...], str]] = {
     "PRICE_PP10":          (('other_process', 'Passport 10 Years'), 'Passport 10 Years'),
     "PRICE_MUT_PP":        (('other_process', 'Mutation Passport'), 'Mutation Passport'),
     "PRICE_MUT_ADDR":      (('other_process', 'Mutation Address'), 'Mutation Address'),
-    "PRICE_SIM":           (('other_process', 'Driving License'), 'Driving License'),
     "PRICE_EPO":           (('other_process', 'EPO (Exit Permit Only)'), 'EPO (Exit Permit Only)'),
     "PRICE_ERP":           (('other_process', 'ERP (Exit Re-entry Permit)'), 'ERP (Exit Permit Only — Offshore)'),
 }

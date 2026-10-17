@@ -48,9 +48,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 _SHEET = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "data"
-    / "bali_zero_official_prices_2026.json"
+    pathlib.Path(__file__).resolve().parents[2] / "data" / "bali_zero_official_prices_2026.json"
 )
 
 #: practice_types.code -> the label carrying its price in the JSON sheet.
@@ -63,7 +61,6 @@ CODE_TO_SHEET_LABEL: dict[str, str] = {
     "visa_c1_tourism": "C1 Tourism",
     "visa_c2_business": "C2 Business",
     "visa_c18_work_trial": "C18 Work Trial",
-    "other_create_molina_express": "Created Molina Express",
 }
 
 #: Priced rows that reconcile against NOTHING, each with the reason. This is a
@@ -101,6 +98,15 @@ UNRECONCILED: dict[str, str] = {
     "tax_monthly_bundled_100_200": "Sheet keys these by tier ('Tier 100-200'); mapping not verified.",
     "tax_monthly_bundled_200_plus": "Sheet keys these by tier ('Tier 200+'); mapping not verified.",
     "tax_monthly_basic_200_plus": "Unbundled variant; no sheet entry.",
+    # Retired by the owner on 2026-10-17 (migration 327 sets is_active=false;
+    # the rows keep base_price because live practices still reference them).
+    # The sheet no longer carries these services, so there is nothing to
+    # reconcile against — by design, not by omission.
+    "other_create_molina_express": "RETIRED 2026-10-17: removed from the sheet, inactive in practice_types.",
+    "other_driving_license": "RETIRED 2026-10-17: removed from the sheet, inactive in practice_types.",
+    "urgent_1_day": "RETIRED 2026-10-17: urgent surcharges removed from the sheet, inactive in practice_types.",
+    "urgent_2_days": "RETIRED 2026-10-17: urgent surcharges removed from the sheet, inactive in practice_types.",
+    "urgent_3_days": "RETIRED 2026-10-17: urgent surcharges removed from the sheet, inactive in practice_types.",
 }
 
 #: Inactive rows carrying implausible prices (1.000-3.000 IDR). They cannot
@@ -222,9 +228,19 @@ async def test_every_priced_row_is_either_reconciled_or_declared(
     one machine and vacuous on the other.
     """
     sheet = _sheet_prices()
+    # The RETIRED declarations lean on migration 327; a developer database
+    # migrated behind it (see the docstring) must not turn them into noise.
+    retired_applied = await db_tx.fetchval(
+        "SELECT 1 FROM _schema_versions WHERE migration_number = 327"
+    )
     undeclared: list[str] = []
     for row in await _priced_rows(db_tx):
         code = row["code"]
+        if retired_applied and code in UNRECONCILED and UNRECONCILED[code].startswith("RETIRED"):
+            # Declared retired: the declaration must not mask a row still on sale.
+            assert row["is_active"] is False, (
+                f"{code} is declared RETIRED in UNRECONCILED but is still active"
+            )
         if code in UNRECONCILED or code in _INACTIVE_ONLY:
             continue
         if code in CODE_TO_SHEET_LABEL or row["name"] in sheet:

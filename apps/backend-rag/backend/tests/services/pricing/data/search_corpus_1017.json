@@ -290,18 +290,6 @@
    ]
   },
   {
-   "query": "driving license",
-   "must_find": [
-    "Driving License"
-   ]
-  },
-  {
-   "query": "SIM",
-   "must_find": [
-    "Driving License"
-   ]
-  },
-  {
    "query": "SKCK",
    "must_find": [
     "SKCK"
@@ -347,12 +335,6 @@
    ],
    "must_not_find": [
     "Lapor Lahir (Up)"
-   ]
-  },
-  {
-   "query": "urgent 1 hari",
-   "must_find": [
-    "Urgent 1 Hari"
    ]
   },
   {

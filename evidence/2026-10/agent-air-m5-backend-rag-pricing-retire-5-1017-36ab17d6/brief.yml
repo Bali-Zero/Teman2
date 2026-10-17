@@ -1,0 +1,36 @@
+gear: 3
+gear_reason: >-
+  Deterministic floor 3 (hot-zone: pricing catalogue + migrations_v2). Client-facing price surfaces on a ground-truth path: the pricing catalogue JSON, its mouth mirror,
+  the price-list and brochure generators, the anonymous pricing route and a practice_types migration;
+  deploys on merge (backend via zero sync, mouth staged on Vercel until promote).
+mission: >-
+  Zero's 2026-10-17 ruling: the Urgent 1/2/3 Hari surcharges, the Driving License (SIM) service and
+  the Created Molina Express service disappear from balizero.com immediately and then from every
+  system surface (catalogue, mirror, price list, brochure, public lookup, Postgres practice_types,
+  Qdrant pricing collection, NotebookLM source note).
+objective: >-
+  1) The five rows are gone from bali_zero_official_prices_2026.json (the urgent_processing category
+  is removed outright) and from the mouth mirror; balizero.com/services/visa no longer renders them.
+  2) /api/pricing/service returns 404 for the five keys.
+  3) docs/pricing/Bali_Zero_Price_List_2026.md and the brochure template no longer carry them.
+  4) Migration 327 sets is_active=false on the five practice_types rows (soft retirement: live
+  practices reference three of them); Reset Molina stays active.
+  5) The Qdrant bali_zero_pricing_hybrid points for the five rows are deleted after merge
+  (scripts/sync_pricing_collection_prices.py --delete-orphans).
+scope:
+  - apps/backend-rag/backend/data/bali_zero_official_prices_2026.json
+  - apps/backend-rag/backend/db/migrations_v2/327_practice_types_retire_urgent_sim_molina_express.sql
+  - apps/backend-rag/backend/tests/db/test_price_store_reconciliation.py
+  - apps/backend-rag/backend/tests/services/crm/test_brochure_price_parity.py
+  - apps/backend-rag/backend/tests/services/pricing/test_pricing_router.py
+  - apps/backend-rag/scripts/brochure/brochure_en.html
+  - apps/backend-rag/scripts/generate_brochure.py
+  - apps/backend-rag/CLAUDE.md
+  - apps/mouth/data/bali-zero-prices.json
+  - apps/mouth/src/data/services_data.ts
+  - apps/mouth/src/lib/pricing-snapshot.test.ts
+  - docs/pricing/Bali_Zero_Price_List_2026.md
+  - scripts/ci/observe_pricing_retire_1017.py
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

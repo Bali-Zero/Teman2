@@ -28,7 +28,6 @@ const PUBLIC_VISA_PRICING_CATEGORIES = [
   "kitas_permits",
   "kitap_permits",
   "other_process",
-  "urgent_processing",
 ] as const;
 const HARDCODED_SERVICE_MONEY =
   /(?:\bIDR\s*\d|\b\d[\d.,]*\s*IDR\b|\bRp\.?\s*\d)/i;
@@ -118,7 +117,7 @@ describe("generated PricingTool snapshot", () => {
         (count, rows) => count + Object.keys(rows).length,
         0,
       ),
-    ).toBe(122);
+    ).toBe(117);
   });
 
   it("omits internal Retirement rows from the mirror while keeping them in canonical", () => {
