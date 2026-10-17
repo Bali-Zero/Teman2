@@ -1,6 +1,6 @@
 gear: 2
 gear_reason: >-
-  Size floor (43 files, +485/-39, above the 400-churn line) and a hot zone: apps/backend-rag visa_engine
+  Size floor (49 files, +721/-41, above the 400-churn line) and a hot zone: apps/backend-rag visa_engine
   contract (request model, fact registry, OpenAPI and generated schema), where merging is the Fly deploy.
 mission: >-
   The Visa Oracle engine accepts the fact investment.own_shareholding_idr on /evaluate so the E28A test can be
