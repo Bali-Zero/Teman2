@@ -38,30 +38,30 @@ bites: >-
   the probe uses the service API key from the environment, never printed. Observation after the
   deploy (a merge to apps/backend-rag is the deploy; /health build_sha must contain this PR):
   ?q=Which%20licenses%20do%20I%20need%20for%20a%20restaurant returns no Alcohol License row;
-  ?q=driving%20license returns Driving License and no Alcohol License row; ?q=liquor%20license
+  ?q=driving%20license returns no Alcohol License row (PR 8658 retired the Driving License row); ?q=liquor%20license
   returns the three Alcohol License rows. Not yet observed: nothing is merged or deployed.
 receipts:
-  - claim: The pricing suite (142+ query corpus incl. the licence/sale, alcohol-keyword and over-match probes, matcher unit cases, existing pricing tests) passes on HEAD 6794e3ba66.
+  - claim: The pricing suite (142+ query corpus incl. the licence/sale, alcohol-keyword and over-match probes, matcher unit cases, existing pricing tests) passes on HEAD 26f5240aee (rebased onto origin/main b68797826d, PR 8658).
     cmd: cd apps/backend-rag && PYTHONPATH=. /Users/balizero/nuzantara/apps/backend-rag/.venv/bin/python -m pytest -p no:cacheprovider backend/tests/services/pricing
-    result: "380 passed in 2.33s"
+    result: "378 passed in 2.27s"
     exit: 0
-    ts: "2026-10-17T10:41:17Z"
+    ts: "2026-10-17T10:53:03Z"
     seat: this session
   - claim: The catalogue decision pins pass.
     cmd: PYTHONPATH=apps/backend-rag python -m pytest -p no:cacheprovider -q tests/scripts/test_catalogue_decisions_1014.py tests/scripts/test_catalogue_decisions_1017.py tests/scripts/test_catalogue_decisions_1017_followup.py
-    result: "57 passed in 0.12s"
+    result: "57 passed in 0.15s"
     exit: 0
-    ts: "2026-10-17T10:41:17Z"
+    ts: "2026-10-17T10:53:03Z"
     seat: this session
   - claim: Lint and format are clean on the changed python files, and the frontend price mirror is in sync with the catalogue (keywords are not mirrored).
     cmd: ruff check and ruff format --check on pricing_service.py and test_search_token_matching_1017.py; python3 scripts/sync_frontend_prices.py --check
     result: "All checks passed!; 2 files already formatted; OK in sync"
     exit: 0
-    ts: "2026-10-17T10:41:17Z"
+    ts: "2026-10-17T10:53:03Z"
     seat: this session
-  - claim: Before/after of origin/main vs HEAD over 172 queries; no corpus query of the previous corpus gains an unrelated row; rows lost matched only through license, sell or price; the alcohol keywords add the three Alcohol License rows to alcohol queries only (the five over-match probes are unchanged).
+  - claim: Before/after of origin/main (b68797826d) vs HEAD over 170 queries; no corpus query of the previous corpus gains an unrelated row; rows lost matched only through license, sell or price; the alcohol keywords add the three Alcohol License rows to alcohol queries only (the five over-match probes are unchanged).
     cmd: scratch comparison old code and catalogue (git show origin/main) vs HEAD, search-after-D.json in the session scratchpad
-    result: "losses: Driving License on alcohol license-family queries, Alcohol License x3 on licence/sale sentences, 7 price-only rows on prices for KITAS; gains: Alcohol License x3 on licenza alcolici, liquor store permit, izin jual bir, bir and the inflected alcohol words"
+    result: "losses: Alcohol License x3 on licence/sale sentences and on driving license, 7 price-only rows on prices for KITAS; gains: Alcohol License x3 on licenza alcolici, liquor store permit, izin jual bir, bir and the inflected alcohol words"
     exit: 0
     ts: "2026-10-17T10:39:00Z"
     seat: claude-sonnet-5 implementer
@@ -95,11 +95,17 @@ decisions:
       The three Alcohol License rows carry the words a client types for the product in English,
       Italian and Indonesian (liquor, beer, wine, alcol, alcolici, alcolico, bir, and the phrases
       spirits license / spirits licence); keywords only, no price, name or note changed. spirit
-      alone and vodka are deliberately absent.
+      alone and vodka are deliberately absent (vodka license goes from 3 to 0, accepted).
   - id: D-noise-only-fallback
     text: >-
       A query made only of noise words keeps the raw-query fallback, so license, licenses, prices
       or selling alone still return the rows carrying that word; documented in the spec.
+  - id: D-rebase-8658
+    text: >-
+      Rebased onto origin/main b68797826d (PR 8658, Zero 2026-10-17: Driving License, Urgent 1/2/3
+      Hari and Created Molina Express retired). The corpus keeps 8658's deletions; no expectation
+      names a retired row (26f5240aee); the council ran on the pre-rebase 025e2ee9c9, whose matcher
+      code is unchanged by the rebase.
 dissent:
   - seat: codex-gpt-5.6-sol
     objection: >-
@@ -107,7 +113,7 @@ dissent:
       License rows to zero.
     status: CONFIRMED
     resolution: >-
-      Resolved by ebbc2a03ac, fbd441ad17 and 6794e3ba66: liquor license, wine license, beer
+      Resolved by 3ec4c38538, ffd554b8b5 and 94d64f17a0 (rebased SHAs): liquor license, wine license, beer
       licence, liquor store permit, spirits license, licenza alcolici and izin jual bir find the
       three rows; the corpus pins them and a mutant removing liquor turns three cases red.
   - seat: kimi-code/k3
