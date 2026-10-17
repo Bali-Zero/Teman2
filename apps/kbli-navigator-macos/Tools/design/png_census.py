@@ -315,7 +315,43 @@ def c27(im, fr, arg):
     if not sh or sh.get("expanded") is not False: bad.append("the record does not say the sheet is collapsed (%r): this is not the collapsed sheet" % (sh,))
     if len(fr["band"]) != 1: bad.append("%d verdict bands: the sheet has one" % len(fr["band"]))
     if b[3] > edge - 12 * s + 1: bad.append("the verdict band ends at %d pt, below the fold or short of its 12 pt margin: the sheet's bottom edge is at %d pt, the reader must scroll for the verdict (it must end at %d pt)" % (round(b[3] / s), round(edge / s), round(edge / s) - 12))
-    return not bad, "band bottom %d pt, sheet bottom %d pt: %s" % (round(b[3] / s), round(edge / s), "; ".join(bad) or "none")
+    # H1d O1, whole rows only: the plate and the EN official title are drawn whole or not at all, 12 pt apart, and the sheet ends 12 pt under the last
+    # one drawn (no slack for the next row to show in: a 1 pt border of it is a slice). A row not drawn is not marked (`when:`), so the marks are the set.
+    for n in ("plate", "official"):
+        if len(fr.get(n, [])) > 1: bad.append("%d %s frames: the collapsed head has one" % (len(fr[n]), n))
+    if fr.get("official") and not fr.get("plate"): bad.append("the official title is drawn and the plate is not: a row below a row that was left out")
+    prev = b; last = b[3]
+    for n in ("plate", "official"):
+        if not fr.get(n): continue
+        m = fr[n][0][1]
+        if abs(m[1] - prev[3] - 12 * s) > .5 * s + .5: bad.append("%s starts %.1f pt under the row above, not 12" % (n, (m[1] - prev[3]) / s))
+        if m[3] > edge - 12 * s + 1: bad.append("%s ends at %d pt: it crosses the sheet's margin (the edge is at %d pt): a sliced row" % (n, round(m[3] / s), round(edge / s)))
+        prev, last = m, m[3]
+    if abs((edge - last) - 12 * s) > .5 * s + .5: bad.append("the sheet's bottom edge is %.1f pt under the last drawn row, not 12: slack for the next row to show in" % ((edge - last) / s))
+    # and the margin is empty sheet: nothing is drawn in the strip between the last row (and its shadow) and the sheet's own stroke
+    x0, x1, y0, y1 = b[0] + int(10 * s), b[2] - int(10 * s), int(last + 5 * s), int(edge - 3 * s)
+    px = im.load(); ref = px[x0 - int(6 * s), (y0 + y1) // 2]
+    dirty = [(x, y) for y in range(y0, y1) for x in range(x0, x1, 2) if sum(abs(a - c) for a, c in zip(px[x, y], ref)) > 12]
+    if dirty: bad.append("%d px of ink in the sheet's bottom margin (first at x %d, y %d: %s against the sheet's %s): the next row shows" % (
+        len(dirty), dirty[0][0], dirty[0][1], px[dirty[0]], ref))
+    return not bad, "band bottom %d pt, last row bottom %d pt, sheet bottom %d pt: %s" % (round(b[3] / s), round(last / s), round(edge / s), "; ".join(bad) or "none")
+
+def c28(im, fr, arg):
+    """the selected code stays in view (H1d O2): in the COLLAPSED sheet the selected row is drawn, one row tall, whole inside the list's scroll
+    view (the `strip` mark), which ends at the sheet's top: the reader sees which code the sheet answers for. The window mounts with the code
+    already selected, so this is the path that needs the list's own scroll on mount; the fold census (fold_census.py) selects after the
+    mount, the way a click does."""
+    rec, s, band = arg; sh = (rec or {}).get("_sheet"); bad = []
+    if not sh or sh.get("expanded") is not False: bad.append("the record does not say the sheet is collapsed (%r)" % (sh,))
+    for n in ("row.selected", "strip", "sheet"):
+        if len(fr[n]) != 1: bad.append("%d %s frames: there is one" % (len(fr[n]), n))
+    if bad: return False, "; ".join(bad)
+    r, t, sheet = fr["row.selected"][0][1], fr["strip"][0][1], fr["sheet"][0][1]
+    if r[3] - r[1] < 28 * s: bad.append("row.selected is %.0f pt tall: not a row (at least 28)" % ((r[3] - r[1]) / s))
+    if t[3] > sheet[1] + 1: bad.append("the strip ends at %d pt, under the sheet's top at %d pt" % (round(t[3] / s), round(sheet[1] / s)))
+    if r[1] < t[1] - 1: bad.append("the selected row starts at %.0f pt, above the strip's top at %.0f pt" % (r[1] / s, t[1] / s))
+    if r[3] > t[3] + 1: bad.append("the selected row ends at %.0f pt, under the strip's bottom at %.0f pt: the sheet covers it" % (r[3] / s, t[3] / s))
+    return not bad, "selected row %.0f..%.0f pt in the strip %.0f..%.0f pt (sheet top %.0f pt): %s" % (r[1] / s, r[3] / s, t[1] / s, t[3] / s, sheet[1] / s, "; ".join(bad) or "none")
 
 def c25(im, fr, arg):
     """live mount (G2, #8290 gate): the sheet the app mounts, rendered through SearchListView as the user reaches it (live/),
@@ -366,13 +402,13 @@ def n1(im, fr, arg):
         if cr < 4.5: bad.append("the title's ink %s on %s is %.2f:1, under 4.5:1" % (ink, g, cr))
     return not bad, "%.1f%% opposite surface, title read against %s: %s" % (share * 100, g, "; ".join(bad) or "none")
 
-CHECKS = {"C%d" % n: f for n, f in zip(range(11, 28), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27))}
+CHECKS = {"C%d" % n: f for n, f in zip(range(11, 29), (c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28))}
 # The frames each check reads (C23: the ARMED row's own list of chips), and those it reads when present.
 NEEDS = {"C11": ("matrix.head", "matrix.chip"), "C12": ("headsup.label",), "C13": ("cap", "chip.bali", "bali.label"),
          "C14": ("cap",), "C15": ("basis.lead", "basis.body"), "C16": ("bar",), "C17": ("figure", "figure.peak", "card.peak"),
          "C18": ("census", "card"), "C19": ("uraian.item",), "C20": ("row.code", "row.title", "row.chip"),
-         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",), "C26": ("title", "plate", "chip.national", "source"), "C27": ("band", "head.compact", "sheet"), "N1": ("title",)}
-OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",), "C26": ("cap", "glyph", "rule", "band", "head.compact")}
+         "C21": ("ladder", "matrix"), "C22": ("group.digits", "row.code"), "C23": (), "C24": ("matrix.chip", "ring", "detail"), "C25": ("matrix.head",), "C26": ("title", "plate", "chip.national", "source"), "C27": ("band", "head.compact", "sheet"), "C28": ("row.selected", "strip", "sheet"), "N1": ("title",)}
+OPTIONAL = {"C12": ("headsup.sentence",), "C24": ("hint",), "C26": ("cap", "glyph", "rule", "band", "head.compact"), "C27": ("plate", "official")}
 # The census grammar (#8250 gate binding 2): a frame's name is one of these, and its value matches the name's pattern —
 # a tone, a step ("0"…"3" in `scaleOrder`), an ordinal, a fraction, or nothing. Never drawn text.
 TONE, STEP, ORD, FRAC = r"open|restricted|closed|neutral", r"[0-3]", r"[1-9]?", r"0(?:\.\d+)?|1(?:\.0+)?|\.\d+"
@@ -381,7 +417,7 @@ NAMES = {**dict.fromkeys(("matrix.head", "matrix.cell"), STEP), "matrix.chip": S
          **dict.fromkeys(("chip.national", "chip.bali", "headsup"), TONE), "bar": FRAC,
          **dict.fromkeys(("matrix", "ladder", "cap", "bali.label", "basis.lead", "basis.body", "reason.lead", "reason.body",
                           "figure", "figure.peak", "card.peak", "census", "card", "uraian.item", "row.code", "row.title",
-                          "row.chip", "group.digits", "hint", "title", "plate", "glyph", "rule", "band", "head.compact", "sheet", "pane"), ""), "source": r"open|closed"}
+                          "row.chip", "group.digits", "hint", "title", "plate", "glyph", "rule", "band", "head.compact", "sheet", "pane", "official", "row.selected", "strip", "plate.hidden", "official.hidden"), ""), "source": r"open|closed"}
 
 NOVALUE = object()
 
@@ -474,6 +510,8 @@ def judge(im, fr, s, c, arg, band="", record=None):
     off = [n for n in names if not fr.get(n) and n in (record or {}).get("_dropped", ())]
     if c == "C27" and "band" in off:
         return False, "the verdict band runs off the canvas: it is below the fold, the reader must scroll for the verdict"
+    if c == "C28" and "row.selected" in off:
+        return False, "the selected row is off the canvas: the list is not scrolled to it, the reader cannot see which code the sheet answers for"
     missing = [n for n in names if not fr.get(n)]
     if missing: raise Miss("missing frame %s: the View must mark it" % ", ".join(missing))
     if c == "N1": return n1(im, fr, (record, s, band))   # reads the title by its own rule: the ink test below would call an invisible title "an empty area"
@@ -482,7 +520,7 @@ def judge(im, fr, s, c, arg, band="", record=None):
         for _, b in fr.get(n, []):
             if inked(im, b) < INK_MIN: raise Miss("frame %s at %s holds no ink: a mark on an empty area" % (n, b))
             if n in MEASURE and not MEASURE[n][0](im, b, s, band): raise Miss("frame %s at %s is not %s" % (n, b, MEASURE[n][1](band)))
-    return CHECKS[c](im, fr, (record, s, band) if c in ("C26", "C27") else (record, s) if c == "C24" else arg)   # C25's arg is (png, s), made by armed()
+    return CHECKS[c](im, fr, (record, s, band) if c in ("C26", "C27", "C28") else (record, s) if c == "C24" else arg)   # C25's arg is (png, s), made by armed()
 # (PNG path relative to the set, as a regex; check; its argument). Each View PR arms its own bands here when it names
 # the frames its checks read (lead ruling 2026-10-11): none is armed by the harness itself.
 LEDGER56 = r"(?:imm/)?sheet-ledger-(?:day|night)-(?:en|id)\.png|tall/sheet-ledger-56101-(?:day|night)-en\.png"
@@ -491,7 +529,7 @@ OPEN = r"tall/registry-sheet-open-\d+-(?:day|night)-(?:en|id)\.png|imm/sheet-ope
 TONES = ("chip.national", "chip.bali")
 ARMED = [(LEDGER56, "C11", 6), (LEDGER56, "C12", None), (LEDGER56, "C13", None), (LEDGER56, "C14", None), (LEDGER56, "C21", None),
          (LEDGER56, "C23", TONES), (TALL71, "C12", None), (TALL71, "C13", None), (TALL71, "C14", None), (TALL71, "C23", TONES),
-         (OPEN, "C24", None), (OPEN, "C26", None), (r"live/min-collapsed-\d+-day-(?:en|id)\.png|live/root-collapsed-\d+-day-(?:en|id)-\d+\.png", "C27", None), (r"imm/sheet-head-\d+-(?:day|night)-(?:en|id)\.png", "C26", None), (r"live/root-collapsed-\d+-(?:day|night)-(?:en|id)-\d+\.png", "N1", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
+         (OPEN, "C24", None), (OPEN, "C26", None), (r"live/min-collapsed-\d+-day-(?:en|id)\.png|live/root-collapsed-\d+-day-(?:en|id)-\d+\.png", "C27", None), (r"live/min-collapsed-\d+-day-(?:en|id)\.png|live/root-collapsed-\d+-day-(?:en|id)-\d+\.png", "C28", None), (r"live/root-collapsed-\d+-(?:day|night)-(?:en|id)-\d+\.png", "N1", None), (r"imm/sheet-head-\d+-(?:day|night)-(?:en|id)\.png", "C26", None), (r"live/sheet-open-\d+-(?:day|night)-en\.png", "C25", None)]
 
 def frames(png, im):
     """({name: [(value, px box)]} of the frames drawn whole on the canvas, px per pt, the record's own state or None)."""
@@ -687,15 +725,39 @@ def c_cases():
                   # a band mark that does not hold its rule
                   (1, dict(glyph_b=None, compact=True, expanded=True)), (1, dict(glyph_b=None, compact=True, nosheet=True)), (1, dict(band_off=100))):
         ops, fr, rec = headcase(**kw); yield "C26", rec, k, ops, fr
-    def fold(band_b, edge=320, expanded=False, bandless=False, dropped=()):
-        o3, f3 = word("sheet", "", (10, 10, 390, edge)); o2, f2 = word("head.compact", "", (20, 56, 80, 76))
-        o, f = ([], {}) if bandless else word("band", "", band_b)
+    def solid(name, b):   # a mark with its ink inside it, the frame exactly b (not padded: the check reads positions to the pixel)
+        return ink((b[0] + 4, b[1] + 3, b[2] - 4, b[3] - 3)), {name: [("", b)]}
+    sheetm = lambda top, bottom: (ink((14, top + 2, 386, top + 14)), {"sheet": [("", (10, top, 390, bottom))]})   # the sheet: its frame, ink only along its top (its margin is empty, as C27 reads it)
+    def fold(band_b, edge=None, expanded=False, bandless=False, dropped=(), plate_b=None, official_b=None, junk=None):
+        last = (official_b or plate_b or band_b or (0, 0, 0, 308))[3]; edge = edge or last + 12
+        o3, f3 = sheetm(10, edge); o2, f2 = word("head.compact", "", (20, 56, 80, 76))
+        o, f = ([], {}) if bandless else solid("band", band_b)
+        for n, mb in (("plate", plate_b), ("official", official_b)):
+            if mb: on, fn = solid(n, mb); o += on; f.update(fn)
+        if junk: o += [(junk, (0xD9, 0xD7, 0xD0))]
         return o + o2 + o3, {**f, **f2, **f3}, {"_sheet": {"expanded": expanded, "immersive": True}, "_dropped": list(dropped)}
-    for k, kw in ((0, dict(band_b=(20, 100, 380, 180))), (0, dict(band_b=(20, 200, 380, 260))), (0, dict(band_b=(20, 240, 380, 308))),
-                  (1, dict(band_b=(20, 250, 380, 316))), (1, dict(band_b=(20, 250, 380, 320))), (1, dict(band_b=(20, 260, 380, 335))),
+    B = (20, 100, 380, 160)
+    for k, kw in ((0, dict(band_b=(20, 100, 380, 180))), (0, dict(band_b=(20, 200, 380, 260))), (0, dict(band_b=(20, 240, 380, 308), edge=320)),
+                  (1, dict(band_b=(20, 250, 380, 316), edge=320)), (1, dict(band_b=(20, 250, 380, 320), edge=320)), (1, dict(band_b=(20, 260, 380, 335), edge=320)),
                   (1, dict(band_b=(20, 100, 380, 180), expanded=True)),   # not the collapsed sheet: nothing here can be read as its fold
-                  (1, dict(band_b=None, bandless=True, dropped=("band",)))):   # a band that ran off the canvas: below the fold, by name
+                  (1, dict(band_b=None, bandless=True, dropped=("band",), edge=320)),   # a band that ran off the canvas: below the fold, by name
+                  # H1d O1, whole rows only: the band alone, with the plate, with the plate and the official title (innocent); a plate that crosses the
+                  # sheet's margin, slack under the last row (max(470, ...)), the next row 10 pt under (a sliver), the official title with no plate,
+                  # a mark that is not the sheet's own empty margin
+                  (0, dict(band_b=B, plate_b=(20, 172, 380, 230))), (0, dict(band_b=B, plate_b=(20, 172, 380, 230), official_b=(20, 242, 380, 270))),
+                  (1, dict(band_b=B, plate_b=(20, 172, 380, 230), edge=222)), (1, dict(band_b=B, plate_b=(20, 172, 380, 230), edge=300)),
+                  (1, dict(band_b=B, plate_b=(20, 170, 380, 228))), (1, dict(band_b=B, official_b=(20, 172, 380, 200))),
+                  (1, dict(band_b=B, plate_b=(20, 172, 380, 230), junk=(60, 236, 300, 238))),
+                  (1, dict(band_b=B, plate_b=(20, 172, 380, 230), official_b=(20, 242, 380, 270), edge=270))):
         o, f, rec = fold(**kw); yield "C27", rec, k, o, f
+    # C28 (H1d O2): the selected row whole in the strip above the sheet; the guilts: the row under the sheet, sliced at the strip's top, a wrapper
+    # (group header and row) marked, a strip that runs under the sheet, an expanded sheet
+    def sel(row_b=(20, 110, 380, 147), strip_b=(0, 60, 400, 200), sheet_top=200, expanded=False):
+        o1, f1 = solid("row.selected", row_b); o2, f2 = solid("strip", strip_b); o3, f3 = sheetm(sheet_top, 380)
+        return o2 + o1 + o3, {**f1, **f2, **f3}, {"_sheet": {"expanded": expanded, "immersive": True}}
+    for k, kw in ((0, {}), (0, dict(row_b=(20, 60, 380, 97), strip_b=(0, 60, 400, 97), sheet_top=97)), (1, dict(row_b=(20, 180, 380, 217))),
+                  (1, dict(row_b=(20, 40, 380, 77))), (1, dict(row_b=(20, 100, 380, 112))), (1, dict(strip_b=(0, 60, 400, 260))), (1, dict(expanded=True))):
+        o, f, rec = sel(**kw); yield "C28", rec, k, o, f
     # a chip whose own colours touch it on both sides: its seen box is 20 px wider, the centre unmoved (B2, #8276 gate)
     yield "C11", 4, 1, *m(*[word("matrix.head", str(i), (x - 10, 10, x + 10, 20)) for i, x in enumerate(xs)],
                           *[([((x - 25, 46, x - 15, 58), OP), ((x + 15, 46, x + 25, 58), OP)] + chip("matrix.chip", str(i), (x - 15, 40, x + 15, 64), OP)[0],
@@ -743,7 +805,7 @@ def c_selftest():
     def run(c, arg, ops, fr):
         im = Image.new("RGB", (400, 400), PAPER); d = ImageDraw.Draw(im)
         for b, col in ops: d.rectangle([b[0], b[1], b[2] - 1, b[3] - 1], fill=col)
-        try: return judge(im, fr, 1, c, arg, "", arg if c in ("C24", "C26", "C27") else None)   # a C26 case names an immersive band by "_band": "imm"
+        try: return judge(im, fr, 1, c, arg, "", arg if c in ("C24", "C26", "C27", "C28") else None)   # a C26 case names an immersive band by "_band": "imm"
         except Miss as e: return False, str(e)
     for c, arg, k, ops, fr in c_cases():
         ok, detail = run(c, arg, ops, fr); n += 1

@@ -326,6 +326,7 @@ extension Snapshot {
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
         case "root-sheet":
+            if let sb = flag("--sidebar") { setenv("KBLI_CENSUS_SIDEBAR", sb, 1) }
             // The sheet in the REAL window (#8492 gate): RootView with its sidebar (default width) and toolbar at the window's size, a code
             // selected. The app's minimum window is 1040 pt wide, which leaves the main pane about 807 pt, not the 1040 of `live-sheet`.
             // `--width` / `--height` are the WINDOW's. png_census C27 reads it against the window's bottom edge.
@@ -337,6 +338,13 @@ extension Snapshot {
                 content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
                     .frame(width: w, height: h, alignment: .top))
             } else { content = notFound }
+        case "root-browse":
+            // The browse in the REAL window with NO code selected (H1d): the before/after proof that the masthead stands where it did.
+            state.browsedSector = nil
+            state.selected = nil
+            UserDefaults.pinThemeOverride(Theme.mode)
+            content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(ThemeManager(Theme.mode))
+                .frame(width: w, height: h, alignment: .top))
         case "sheet-ledger":
             // The registry sheet/ledger (KBLIVerdict.swift's own name for this surface) — the mono
             // UPPERCASE label↔value LedgerPlate table, `KBLIRegistryView`.
@@ -388,6 +396,7 @@ extension Snapshot {
 
         let host = NSHostingView(rootView: framedView)
         host.frame = NSRect(x: 0, y: 0, width: w, height: h)
+        if ["live-sheet", "root-sheet", "root-browse"].contains(band) { CensusWindow.attach(host, size: CGSize(width: w, height: h)) }
         guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return true }
         // The live sheet sizes itself from what it measures (`SheetFit`, `PaneKey`): a preference read into @State lays the window out
         // once more, which a single draw never reaches. The window the user has settles; these two bands render it settled.

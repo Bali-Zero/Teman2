@@ -49,11 +49,11 @@ if [ -n "${IMM:-}" ]; then
   # The collapsed sheet at the app's minimum window (1040x700): C27 reads the verdict band against the sheet's bottom edge.
   for spec in "87202 id" "77520 en" "56101 en"; do
     shot live-sheet --theme day --lang ${spec#* } --code ${spec% *} --width 1040 --height 700 "$OUT/live/min-collapsed-${spec% *}-day-${spec#* }.png"; done
-  # The collapsed sheet in the REAL window (#8492 gate): RootView with its sidebar at the minimum width (1040), three heights. The main pane is
+  # The collapsed sheet in the REAL window (#8492 gate): RootView with its sidebar at the minimum width (1040), three heights (700 is the app's minimum: KBLINavigatorApp's minHeight). The main pane is
   # about 807 pt there, not the 1040 of the bare pane above. C27 reads the band against the window's bottom edge.
   # The codes are the WORST shapes the fold census measured (fold_census.py, all 1,559 codes x en/id, 2026-10-14: the three tallest head+band per
   # language: 56306, 56102 and 38110 en; 56306, 56102 and 70201 id) and the three of the #8492 gate (87202 id, 77520 en, 56101 en).
-  for spec in "56306 en" "56102 en" "38110 en" "56306 id" "56102 id" "70201 id" "87202 id" "77520 en" "56101 en"; do for h in 648 700 752; do
+  for spec in "56306 en" "56102 en" "38110 en" "56306 id" "56102 id" "70201 id" "87202 id" "77520 en" "56101 en"; do for h in 700 752 800; do
     shot root-sheet --theme day --lang ${spec#* } --code ${spec% *} --width 1040 --height $h "$OUT/live/root-collapsed-${spec% *}-day-${spec#* }-$h.png"; done; done
   # Night is night (N1): the same window at night, at the minimum height. png_census N1 reads the chrome and the sheet title against the night anthracite.
   for spec in "55203 en" "56101 en" "56306 en"; do

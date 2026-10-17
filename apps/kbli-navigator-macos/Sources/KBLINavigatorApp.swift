@@ -41,6 +41,11 @@ struct KBLINavigatorApp: App {
         // live or snapshot — asks for one. `ATSApplicationFontsPath` (Info.plist) is the second route;
         // a cut it already registered makes this call report a harmless "already registered".
         Self.registerBundledFonts()
+        // The QA harness modes (a census, a snapshot) are not an app: no Dock icon, no menu bar, never frontmost. They mount real windows far
+        // off every screen (CensusWindow), and an app that may activate takes the owner's focus once per band.
+        if !Set(CommandLine.arguments).isDisjoint(with: ["--fold-census", "--snapshot-band", "--snapshot"]) {
+            NSApplication.shared.setActivationPolicy(.prohibited)
+        }
         // Off-screen QA snapshot mode (no GUI session needed). Must run before the scene.
         // `--snapshot-band` (design-baseline renderer, 2026-09-17) is checked FIRST and is a
         // distinct flag from legacy `--snapshot`, so both keep working independently.
