@@ -24,7 +24,7 @@ watch_run() { # <label> <command...>: runs it in the background and polls until 
       t=$(lsappinfo info "$asn" 2>/dev/null | sed -n 's/.* type="\([^"]*\)".*/\1/p' | head -1)
       # Launch Services lists a process as Foreground until KBLINavigatorApp.init runs (Info.plist cannot say "harness"): that opening prefix is
       # tolerated and counted apart. Foreground AFTER the type has once been something else, or still Foreground when the run ends, is a FAIL.
-      if [ "$t" = Foreground ]; then if [ $settled -eq 0 ]; then lead=$((lead+1)); else fg=$((fg+1)); fi; else settled=1; fi
+      if [ "$t" = Foreground ]; then if [ $settled -eq 0 ]; then lead=$((lead+1)); else fg=$((fg+1)); fi; elif [ -n "$t" ]; then settled=1; fi   # an EMPTY type (the process is exiting) is not settled
     fi
     fpid=$(lsappinfo info "$(lsappinfo front 2>/dev/null)" 2>/dev/null | sed -n 's/.*pid = \([0-9]*\).*/\1/p' | head -1)
     [ "$fpid" = "$pid" ] && front=$((front+1))
@@ -32,8 +32,9 @@ watch_run() { # <label> <command...>: runs it in the background and polls until 
   done
   wait $pid; local rc=$?
   [ $settled -eq 0 ] && [ $lead -gt 0 ] && fg=$((fg+lead))   # never left Foreground
+  local unobserved=0; [ $settled -eq 0 ] && [ $lead -eq 0 ] && unobserved=1   # Launch Services never showed a type: nothing was proven
   ran=$((ran+1))
-  local verdict=ok; { [ $front -gt 0 ] || [ $fg -gt 0 ]; } && { verdict=FAIL; bad=$((bad+1)); }
+  local verdict=ok; { [ $front -gt 0 ] || [ $fg -gt 0 ] || [ $unobserved -gt 0 ]; } && { verdict=FAIL; bad=$((bad+1)); [ $unobserved -gt 0 ] && echo "FAIL $label: Launch Services never showed the harness with a type: too short to observe"; }
   echo "$verdict $label: rc=$rc polls=$polls seen-by-LaunchServices=$seen frontmost=$front type-Foreground=$fg (opening prefix $lead)"
   [ $rc -eq 0 ] || { verdict=FAIL; bad=$((bad+1)); echo "FAIL $label: the harness exited $rc"; tail -3 $T/out.log; }
 }
