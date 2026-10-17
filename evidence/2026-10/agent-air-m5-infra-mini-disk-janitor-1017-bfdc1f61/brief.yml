@@ -1,0 +1,37 @@
+task_id: mini-disk-janitor-1017
+gear: 3
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner request of 2026-10-17 ("crea un demon automatico che fa pulizia giornaliera"): a daily organ
+  mini.disk_janitor on the Mini that prunes the regenerable accumulators measured that day (the
+  runner container zero-runner-1's pip/uv caches and /tmp, its _work/_tool above a threshold,
+  dangling Docker images and build cache, an allowlist of ~/Library/Caches entries, npm and uv
+  caches), returns the freed VM blocks to the host with fstrim, and reports the host and runner disk
+  levels through a heartbeat and a P0 page when critical.
+acceptance:
+  - text: >-
+      Dry-run removes nothing and issues no mutating command; apply removes only the declared
+      targets; a busy runner is never cleaned; unlisted cache entries (ms-playwright, unknown apps)
+      and com.apple.* survive; docker prune argv is exactly image prune -f and builder prune -f; the
+      floor receptor maps host free GiB and runner use% to ok/warning/critical and pages once on
+      critical; the wrapper writes a heartbeat on every exit path.
+    probe: bash scripts/tests/test_mini_disk_janitor.sh
+  - text: >-
+      The organ is declared (registry entry, declared pairs, plist without KeepAlive) and passes the
+      organ, plist and home-fork lints.
+    probe: lint_plist_keepalive.py, lint_plist_daemon_cron_xor.py, check_organ_conformance.py, validate_organs_registry, plutil -lint
+assumptions:
+  - text: >-
+      The Mini checkout ~/nuzantara tracks main, so the wrapper's repo payload is current after the
+      merge (observed 2026-10-17: Mini HEAD b9c5fb73d7 == origin/main).
+    status: verified
+    probe: ssh mini git -C ~/nuzantara log -1
+  - text: >-
+      Freed blocks inside the Colima VM return to the host only after fstrim (36.9 GiB returned on
+      2026-10-17).
+    status: verified
+    probe: colima ssh -- sudo fstrim -av output on the Mini, 2026-10-17
+appetite:
+  wall_clock_hours: 3
+  adversarial_rounds: 1

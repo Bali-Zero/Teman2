@@ -975,6 +975,16 @@
       "machines": ["mini"]
     },
     {
+      "live": "~/scripts/mini-disk-janitor.sh",
+      "repo": "infra/launchagents/wrappers/mini-disk-janitor.sh",
+      "machines": ["mini"]
+    },
+    {
+      "live": "~/Library/LaunchAgents/com.nuzantara.mini-disk-janitor.plist",
+      "repo": "infra/launchagents/com.nuzantara.mini-disk-janitor.plist",
+      "machines": ["mini"]
+    },
+    {
       "live": "~/Library/LaunchAgents/com.nuzantara.secrets-perms-sweep.plist",
       "repo": "infra/launchagents/com.nuzantara.secrets-perms-sweep.plist",
       "machines": ["mini"]

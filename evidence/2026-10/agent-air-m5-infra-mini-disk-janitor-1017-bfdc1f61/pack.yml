@@ -1,0 +1,129 @@
+gear: 3
+brief_ref: evidence/brief.yml
+ruling: >-
+  Zero 2026-10-17, after the Mini disk reached 97% and the runner container 100%: "vai subito a
+  recuperare tanto spazio", then "crea un demon automatico che fa pulizia giornaliera". Standing
+  rules that bound it: never kill or restart processes or containers, PII is an output boundary,
+  M5 ~/Backups and owner data are never cleanup targets.
+mission: >-
+  The Mini cleans its regenerable disk accumulators every night and tells the owner when the host
+  or the CI runner disk is running out, so a full runner never again blocks backend deploys
+  silently.
+lanes:
+  - lane: mini-disk-janitor
+    role: build
+    seat: claude-sonnet-5 (subagent, worktree; implemented the orchestrator's task and three cure rounds)
+  - lane: mini-disk-janitor
+    role: review
+    seat: claude-opus-5-5 (Claude Code session, M5; reviewed the destructive commands, found the ms-playwright over-match that led to the allowlist, wrote the cure specs)
+  - lane: mini-disk-janitor
+    role: review
+    seat: codex-gpt-5.6-sol (scripts/seat_build.sh, rounds 1 and 2, review only by instruction; diff_stat empty after both)
+  - lane: mini-disk-janitor
+    role: review
+    seat: kimi-code/k3 (scripts/seat_build.sh, rounds 1 and 2, review only; diff_stat empty after both)
+  - lane: mini-disk-janitor-ground-truth
+    role: ground_truth
+    seat: >-
+      Live measurements on the Mini on 2026-10-17 (runner container df and du, host df, the
+      fstrim output, the journey-sentinel failure log) recorded in the receipts below.
+    nb: owner request 2026-10-17 (this pack's ruling field)
+    query_hash: "4c1d47f0f81ce3e6abb90977ec63c4476feebab33630a1632bb4813fa43421e8" # pragma: allowlist secret
+pii_scan: clean
+bites: >-
+  Consumer: the Mini's launchd job com.nuzantara.mini-disk-janitor (wrapper ~/scripts/mini-disk-janitor.sh
+  running ~/nuzantara/scripts/ops/mini_disk_janitor.sh --apply daily at 03:30 WITA). After the merge
+  and the install on the Mini, a kickstarted run writes ~/.organism/last_seen/mini.disk_janitor.json
+  with status ok and a receipt line in ~/logs/mini-disk-janitor.receipts.jsonl naming every step, and
+  the runner container df stays below 80%. Not yet observed: nothing is merged or installed.
+receipts:
+  - claim: The janitor corpus passes on HEAD 3d2e373244 under macOS /bin/bash 3.2 (dry-run purity, allowlist, busy and fail-closed idle checks, rename-then-delete, no _work, docker argv, floor levels and notifications, inspect tri-state, wrapper heartbeat mapping, stale lock, deadline, plist shape).
+    cmd: /bin/bash scripts/tests/test_mini_disk_janitor.sh
+    result: "mini_disk_janitor: 92 passed, 0 failed"
+    exit: 0
+    ts: "2026-10-17T16:49:26Z"
+    seat: this session
+  - claim: Syntax, shellcheck and plist lints are clean.
+    cmd: bash -n on payload and wrapper; shellcheck -S warning on payload, wrapper, test; plutil -lint; scripts/lint_plist_keepalive.py; scripts/lint_plist_daemon_cron_xor.py
+    result: "bash-n-ok; shellcheck-ok; plist OK; keepalive clean; zero W67 crash-loop-class committed plist"
+    exit: 0
+    ts: "2026-10-17T16:49:26Z"
+    seat: this session
+  - claim: Organ conformance, the registry validator and the Telegram direct-sender lint pass.
+    cmd: infra/organ-conformance/check_organ_conformance.py; apps/organism/organism/tools/validate_organs_registry.py; scripts/lint_tg_direct_senders.py
+    result: "181 plists scanned, 0 regressions, 0 non-conformant births; organs_registry.yaml valid; lint_tg clean"
+    exit: 0
+    ts: "2026-10-17T16:49:26Z"
+    seat: this session
+  - claim: Mutants killed across the rounds (com.apple exclusion dropped 1 red; busy treated as idle 3 red; allowlist replaced by every entry 7 red; warning mapped back to heartbeat warning 1 red; direct rm instead of rename-then-delete 3 red; fail-open ps recheck 3 red; any live pidfile accepted 1 red), each on a mutated copy with the real file's shasum unchanged.
+    cmd: mutated copies run through the corpus (MJ_PAYLOAD and wrapper injection)
+    result: "all killed"
+    exit: 0
+    ts: "2026-10-17T16:45:00Z"
+    seat: claude-sonnet-5 implementer
+decisions:
+  - id: D-allowlist-caches
+    text: >-
+      ~/Library/Caches is cleaned only for an allowlist of self-refilling caches (Homebrew, Google,
+      Codex, ollama, pip, go-build, the Windsurf updater); a manual wipe on 2026-10-17 deleted
+      ms-playwright browser binaries and broke the production journey-sentinel until they were
+      reinstalled, so unknown entries are fail-closed.
+  - id: D-no-work-dir
+    text: >-
+      The runner's _work tree, _work/_tool included, is never touched: recreating _tool from docker
+      exec can give it the wrong owner, and a job mid tool-setup breaks harder than one that loses a
+      pip cache. pip and uv caches and old /tmp entries carry the measured growth.
+  - id: D-rename-then-delete
+    text: >-
+      Inside the container each target is renamed to a same-parent trash sibling right after a
+      fail-closed idle re-check, then deleted; the residual race is the rename instant, not the
+      deletion, and no runner lock exists to close it fully.
+  - id: D-heartbeat-vocabulary
+    text: >-
+      The Mini healer treats only ok-class statuses as alive, so level warning, a busy runner and a
+      fresh previous run write ok with the condition in the note (warning also sends a digest-tier
+      notify); error is reserved for errors, level unknown, level critical (which also pages p0) and
+      a deadline kill.
+  - id: D-no-brew
+    text: >-
+      No brew command runs: a brew autoremove once killed node on this Mini; the Homebrew download
+      cache is covered by the allowlist.
+council_run: council-journal.jsonl
+council_note: >-
+  Titolari in the journal: codex-gpt-5.6-sol and kimi-code/k3, round 1 on febd691e8c (both
+  CONCERNS) and round 2 on 07f1470e31 (codex CONCERNS, kimi PASS). Round 2 findings on the cures
+  were resolved by simplification (the _tool step removed) plus three small fail-closed fixes in
+  987956e0da and 6f5a38689a, under the fix-of-a-fix depth-1 rule, not by a third review round; the
+  fresh Opus gate grades the final state. Logs under /Users/balizero/nuzantara/.worktrees/:
+  seat-build-codex-20261017T160612Z-60556, seat-build-kimi-20261017T160612Z-60557,
+  seat-build-codex-20261017T162508Z-53759, seat-build-kimi-20261017T162508Z-53760.
+dissent:
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Rounds 1 and 2: the busy-runner guarantee is probabilistic; no re-check proves a busy runner is
+      never touched without atomic coordination with job admission.
+    status: PLAUSIBLE
+    resolution: >-
+      Accepted as residual: rename-then-delete shrinks the window to the rename instant, the run is
+      scheduled at 03:30 WITA, and the worst case is a job that re-downloads its pip or uv cache.
+  - seat: kimi-code/k3
+    objection: >-
+      Round 2: the mv plus mkdir of _work/_tool assumes the docker-exec uid equals Runner.Worker's.
+    status: CONFIRMED
+    resolution: Resolved by removing the _tool step entirely (987956e0da); a test asserts no exec script mentions _work.
+  - seat: codex-gpt-5.6-sol
+    objection: >-
+      Round 2: ok-with-note can hide a stale pidfile forever, the in-exec ps re-check failed open,
+      and a docker inspect failure read as a stopped container.
+    status: CONFIRMED
+    resolution: >-
+      Resolved in 987956e0da and 6f5a38689a: pidfile older than 120 minutes is stale and removed, a
+      90-minute payload deadline writes error, the re-check exits 74 when ps fails or is empty, and
+      inspect is tri-state (absent, error, running).
+spend:
+  wall_clock_hours: 2.5
+  adversarial_rounds: 2
+appetite_exceeded: >-
+  Two adversarial rounds instead of one: round 1 found the healer vocabulary mismatch and the runner
+  race, and round 2 found a defect introduced by the round-1 cure (the _tool recreation), which was
+  resolved by removing the step.
