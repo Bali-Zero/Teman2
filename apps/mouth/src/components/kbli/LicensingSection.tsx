@@ -408,16 +408,16 @@ function TierTabs({
   return (
     <div
       className="flex flex-wrap gap-1 rounded-lg p-1"
-      style={{ background: "var(--kbli-bg-surface)" }}
+      style={{ background: "var(--kbli-bg-secondary)" }}
     >
       {tiers.map((tier, i) => (
         <button
           key={i}
           onClick={() => onSelect(i)}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+          className={`rounded-md border px-3 py-1.5 text-xs transition-all ${
             activeTier === i
-              ? "bg-[var(--kbli-bg-surface)] text-[var(--foreground)] "
-              : "text-[var(--foreground-muted)] hover:text-[var(--foreground-secondary)]"
+              ? "border-[var(--border)] bg-[var(--kbli-bg-surface)] font-bold text-[var(--foreground)]"
+              : "border-transparent font-medium text-[var(--foreground-muted)] hover:text-[var(--foreground-secondary)]"
           }`}
         >
           {tier.scales.join(" + ")}

@@ -615,7 +615,7 @@ const AIMessageContent = ({
                 >
                   <ArrowRight
                     size={10}
-                    className="opacity-60 group-hover:opacity-100"
+                    className="opacity-100 group-hover:opacity-100"
                   />
                   <span>{sq}</span>
                 </button>
