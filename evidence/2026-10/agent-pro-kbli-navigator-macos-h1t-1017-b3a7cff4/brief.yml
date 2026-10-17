@@ -1,0 +1,31 @@
+task_id: kbli-nav-design-h1t
+mission: kbli-nav-design-loop (Track A, build, lot H1t - the theme never paints mixed, at launch and on a runtime flip; successor of the H1d finding)
+colour: BLUE
+gear: 2
+gear_reason: >-
+  Visible app change on every theme path (launch seed, the toolbar toggle, the window chrome under an override) with a committed offscreen
+  guard, shipped under the fresh-gate lane. No fact, verdict, layout or content changes: the diff touches the theme seed, an environment value
+  and `.id` over four state-owning views. Stacked on H1d (64ad9c30bc), opens after it merges.
+l_level: L1
+gate_class: opus
+objective: >-
+  One concern: no view paints a token of one theme on a surface of the other. The first frame is built in the mode the launch lands in
+  (ThemeManager.launchMode(), shared by the App and the census/render host), and a mode change rebuilds every token-reading view
+  (ThemeEpoch as `.id` over SearchListView, ChatView, MediaView, MediaDetailHost), with NSApp.appearance following an explicit override.
+constraints:
+  - The selected code (AppState) survives a toggle; the state a struct owns (filters, sheetExpanded, the chat draft) survives it too.
+  - The PDF viewer takes no id (a rebuild reloads a 49 MB document; PDFKit paints no token).
+  - No real-display launch anywhere in the check (owner rule, 2026-10-17: a launch takes the owner's focus).
+acceptance:
+  - text: A1. A mode flip after the first render (the toolbar toggle) leaves no stale token, both directions.
+    probe: "Pro offscreen: theme_flip_check.py PASS 4/4 on the head; the head minus `.id(themeEpoch)` FAILs flip day>night and night>day (chip fill and title 1.05:1 / 1.16:1)"
+  - text: A2. The instrument is itself guilty and innocent.
+    probe: "theme_flip_check.py --selftest 4/4 (a day render judged as night fails surface+chip; judged as day passes; and back)"
+  - text: A3. No render of the forced-theme set changes.
+    probe: "render_set IMM=1 head vs H1d 64ad9c30bc: 141 of 141 PNGs byte-identical"
+  - text: A4. The harness still takes no focus.
+    probe: "no_focus_check.sh PASS 4/4 on the head binary"
+deferred:
+  - id: launch-order-offscreen
+    to: none
+    text: The offscreen host does not reproduce a launch built in the wrong mode (the seed reverted alone passes there); the cause is closed at the seed, measured on a real display before the owner's no-launch rule (origin/main 5/5 launches defective under override light and system, 0/5 with the seed).
