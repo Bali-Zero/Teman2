@@ -147,21 +147,34 @@ CREATE INDEX IF NOT EXISTS visa_types_family_idx ON visa_types (family);
 
 -- Removes only what this migration added; legacy columns and rows are untouched.
 DROP INDEX IF EXISTS visa_types_family_idx;
--- squawk-ignore ban-drop-constraint
 ALTER TABLE visa_types
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_family_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_permit_class_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_price_keys_array_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_entry_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_sponsor_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_apply_channel_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_stay_positive_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_one_total_unit_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_itap_only_itas_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_card_is_object_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_sha_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_status_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_verified_needs_source_chk,
+    -- squawk-ignore ban-drop-constraint
     DROP CONSTRAINT IF EXISTS vt_validity_chk,
     DROP COLUMN IF EXISTS family,
     DROP COLUMN IF EXISTS official_name_id,
