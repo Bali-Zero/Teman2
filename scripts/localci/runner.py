@@ -1592,6 +1592,77 @@ def full_dir_map(td: Path) -> dict:
     return {str(f.relative_to(td)): sha256_file(f) for f in sorted(td.rglob("*")) if f.is_file()} if td.is_dir() else {}
 
 
+MATRIX_REL = "scripts/localci/contexts_matrix.yaml"
+
+
+def matrix_accounting(wt: Path, rev: str, scratch: Path) -> list[str]:
+    """What the matrix at `rev` leaves unaccounted among the workflows at `rev`, both read from the object store as DATA: one problem
+    string per executed context whose job `resolve_steps` cannot account for (a workflow step the matrix does not name, a matrix step
+    the workflow no longer has, a shape it cannot emulate) — the runner's own computation, so what BLOCKS a context at plan time is
+    exactly what this reports. An unreadable matrix or workflow is a problem too. Empty = every step of every executed context is accounted for."""
+    import yaml
+
+    blob = _extract_base_file(wt, rev, MATRIX_REL)
+    if blob is None:
+        return [f"{MATRIX_REL} is absent"]
+    scratch.mkdir(parents=True, exist_ok=True)
+    mp = scratch / f"matrix-{rev[:12]}.yaml"
+    mp.write_bytes(blob)
+    ctxs = load_contexts(str(mp))
+    if ctxs["status"] != "ok":
+        return [f"{MATRIX_REL}: {ctxs['reason']}"]
+    problems: list[str] = []
+    docs: dict = {}
+    for cname, ctx in ctxs["map"].items():
+        if ctx["mapping"] != "executed" or not ctx["local"].get("steps"):
+            continue
+        wf, local = str(ctx.get("workflow_file")), ctx["local"]
+        if wf not in docs:
+            try:
+                docs[wf] = yaml.safe_load(_extract_base_file(wt, rev, wf) or b"")
+            except Exception:  # noqa: BLE001 — an unparseable workflow is a finding, never a crash
+                docs[wf] = None
+        doc = docs[wf]
+        if not isinstance(doc, dict) or not isinstance(doc.get("jobs"), dict):
+            problems.append(f"{cname}: workflow {wf} is unreadable")
+            continue
+        legs = [*(local.get("jobs") or []), {**local, "job_id": ctx.get("job_id")}] if local.get("expressions") else [{**local, "job_id": ctx.get("job_id")}]
+        defaults = ((doc.get("defaults") or {}).get("run")) or {}
+        for jl in legs:   # a service context chains jobs: each has its own matrix steps, as plan_service_context reads them
+            job = doc["jobs"].get(jl.get("job_id"))
+            if not isinstance(job, dict):
+                problems.append(f"{cname}: job {jl.get('job_id')!r} is absent from {wf}")
+                continue
+            if local.get("expressions"):
+                jenv = {str(k): str(v) for k, v in {**(doc.get("env") or {}), **(job.get("env") or {}), **(jl.get("env") or {})}.items()}
+                _, why = resolve_steps({**job, "env": jenv}, jl, "main", defaults, expressions=True)
+            else:
+                _, why = resolve_steps(job, jl, rev, defaults, doc.get("env") or {})
+            if why:
+                problems.append(f"{cname}: job {jl.get('job_id')}: {why}")
+    return problems
+
+
+def matrix_parity_check(wt: Path, base: str, cand: str, scratch: Path) -> dict:
+    """policy.matrix_parity: the PR that adds or changes a step of a workflow the matrix executes must carry its matrix row.
+
+    Candidate files are read as data (never executed); the code is BASE's. FAIL names every problem the candidate has that BASE does
+    not (a drift the candidate introduces, or fails to cure while touching it). A problem BASE already has is not the candidate's:
+    NOT_APPLICABLE names it (an innocent PR on a drifted base is never blocked by someone else's drift). PASS when nothing is unaccounted."""
+    try:
+        was, now_ = matrix_accounting(wt, base, scratch), matrix_accounting(wt, cand, scratch)
+    except Exception as e:  # noqa: BLE001 — our own failure is no verdict on the candidate: BLOCKED, never FAIL
+        return _blocked(f"matrix parity could not be computed: {type(e).__name__}: {e}")
+    new = [p for p in now_ if p not in was]
+    if new:
+        return {"kind": "record", "status": "FAIL",
+                "reason": "the candidate leaves the matrix out of step with the workflows it executes (add the row in the SAME PR): " + " | ".join(new)}
+    if now_:
+        return {"kind": "record", "status": "NOT_APPLICABLE",
+                "reason": f"{len(now_)} problem(s) already present at BASE, none introduced by the candidate: " + " | ".join(now_)}
+    return {"kind": "record", "status": "PASS", "reason": "every step of every executed context is accounted for by the candidate's matrix and workflows"}
+
+
 def cmd_plan(a):
     run_dir, wt = Path(a.run_dir).resolve(), Path(a.worktree).resolve()
     store = Store(run_dir)
@@ -1641,6 +1712,7 @@ def cmd_plan(a):
                        else "mouth domain not touched per trusted change_map")},
         "review.independent": {"kind": "review", "purpose": "a seat != builder signs the reviewed candidate identity; BLOCKED until a matching review is imported"},
     }
+    checks["policy.matrix_parity"] = matrix_parity_check(wt, base, ident["candidate_sha"], run_dir / "state" / "parity")
     checks["security.pysa_python"] = pysa_check_spec(wt, base, ident["candidate_sha"], trusted, run_dir, changed, a.pysa_home)
     tp_files = [BAN_TEST] + [f for f in (a.trusted_pytest or []) if f != BAN_TEST]
     for rel in tp_files:
