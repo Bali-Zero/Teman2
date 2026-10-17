@@ -268,7 +268,9 @@ extension Snapshot {
         let state = AppState()
         let lang = LanguageManager()
         lang.lang = (langArg == "id") ? .id : .en
-        Theme.mode = (themeArg == "day") ? .light : .dark
+        // `--theme launch`: no forcing. The preferences of THIS process (`-themeOverride`, `-AppleInterfaceStyle` in the argument domain) seed the
+        // ThemeManager exactly as the App does, so a render starts in the mode a launch would.
+        Theme.mode = themeArg == "launch" ? ThemeManager.launchMode(override: Self.cliPref("themeOverride"), system: Self.cliPref("AppleInterfaceStyle")) : (themeArg == "day") ? .light : .dark
         let dynamicSize: DynamicTypeSize = (textSizeArg == "xxxlarge") ? .xxxLarge : .large
 
         let w = CGFloat(flag("--width").flatMap(Double.init) ?? 1280)
@@ -279,6 +281,7 @@ extension Snapshot {
         let imm = Motion.configure(args)   // --imm: the immersive twin of the band; hooks: --at-ms --reduce-motion --ribbon --scale-focus
         let content: AnyView
         var textView: AnyView?
+        var seedMode: String?   // root-sheet --theme launch: the mode the manager was seeded in, before any render
         var flipManager: ThemeManager?   // root-sheet --flip: the manager the toolbar toggle would set
         switch band {
         case "registry-table":
@@ -335,8 +338,9 @@ extension Snapshot {
                 if args.contains("--sheet-open") { setenv("KBLI_SHEET_EXPANDED", "1", 1) }
                 state.browsedSector = KBLIStore.sectorLetter(for: code) ?? "A"
                 state.selected = k
-                UserDefaults.pinThemeOverride(Theme.mode)
-                let tm = ThemeManager(ThemeManager.launchMode())
+                if themeArg != "launch" { UserDefaults.pinThemeOverride(Theme.mode) }
+                let tm = ThemeManager(themeArg == "launch" ? Theme.mode : ThemeManager.launchMode())
+                seedMode = "\(tm.mode)"
                 flipManager = tm
                 content = AnyView(RootView().environmentObject(state).environmentObject(lang).environmentObject(tm)
                     .frame(width: w, height: h, alignment: .top))
@@ -450,6 +454,7 @@ extension Snapshot {
             let frames = marks.frames.map { f -> [String: Any] in
                 ["name": f.name, "value": f.value, "frame": [f.rect.minX, f.rect.minY, f.rect.width, f.rect.height]] }
             var doc: [String: Any] = ["width": w, "frames": frames]
+            if let sm = seedMode { doc["seedMode"] = sm }
             // The record's own state as the harness reads it, beside the frames (PR 3-h-2b): a mark's value comes from
             // the record, never from the function that paints the element, and png_census FAILs one that disagrees.
             if ["detail-card", "dossier", "sheet-ledger", "chat", "registry-sheet"].contains(band), let k = state.store.code(code) {
@@ -514,6 +519,16 @@ private struct SearchResultsBand: View {
             SearchFieldBar(focusedField: $focus) { }
             SearchListView(focusedField: $focus)
         }
+    }
+}
+
+extension Snapshot {
+    /// `-key value` on the harness's command line, read from `CommandLine.arguments`: AppKit takes `AppleInterfaceStyle` out of the argument
+    /// domain once the application starts, so the harness reads the line itself and hands the values to `ThemeManager.launchMode(override:system:)`.
+    static func cliPref(_ key: String) -> String? {
+        let a = CommandLine.arguments
+        guard let i = a.firstIndex(of: "-" + key), i + 1 < a.count else { return nil }
+        return a[i + 1]
     }
 }
 

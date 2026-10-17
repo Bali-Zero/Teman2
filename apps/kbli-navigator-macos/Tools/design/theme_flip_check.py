@@ -6,6 +6,8 @@ changed keeps the old mode's colours: cream title on paper, night chips on a day
 with the theme FORCED before the first frame and so cannot see it. This one reproduces the launch order and the toggle:
 
   launch  `--snapshot-band root-sheet --theme day|night`  the window as the app builds it (ThemeManager.launchMode() seed)
+  seeded  `--theme launch` + `-themeOverride`/`-AppleInterfaceStyle` args: the manager is seeded from them as the App does; the harness also reports
+          the mode of that seed BEFORE any render (`seedMode`), which the render alone cannot show (RootView's sync repaints it)
   flip    the same with `--flip`: after the window settled, the mode is flipped the way the toolbar toggle flips it
 
 and reads pixels in the render, against the tokens parsed from Sources/Theme.swift for the mode the window must END in:
@@ -14,7 +16,7 @@ and reads pixels in the render, against the tokens parsed from Sources/Theme.swi
   title     the sheet's title vs the sheet fill >= 4.5:1
   activity  the selected row's Activity text vs the row fill >= 4.5:1
 
-  theme_flip_check.py BIN            4 cases (offscreen: the launch order of a real window is not reproducible here, see git log) (launch day, launch night, day then flip, night then flip); exit 1 on a FAIL
+  theme_flip_check.py BIN            8 cases, offscreen (forced launch day/night, the two flips, then 4 launches seeded from the process's own preferences); exit 1 on a FAIL
   theme_flip_check.py BIN --selftest the instrument: a day render judged as night FAILS, judged as day PASSES (and the reverse)
 
 The geometry is the app's own: the row's and the title's frames come from `--layout-json`, the chip sits where KBLIRegistryRow puts it
@@ -74,14 +76,20 @@ def judge(png, frames, mode, tok):
     res.append(("activity", c >= AA, "activity %.2f:1" % c))
     return res
 
-def render(binp, out, theme, flip):
+def render(binp, out, theme, flip, prefs=()):
     js = out.with_suffix(".json")
     cmd = [binp, "--snapshot-band", "root-sheet", "--theme", theme, "--lang", "en", "--code", CODE,
-           "--width", str(W), "--height", str(H), "--layout-json", str(js)] + (["--flip"] if flip else []) + [str(out)]
+           "--width", str(W), "--height", str(H), "--layout-json", str(js)] + (["--flip"] if flip else []) + list(prefs) + [str(out)]
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     if r.returncode != 0 or not out.exists():
         sys.exit("theme_flip_check: render failed (%s): %s" % (" ".join(cmd[1:6]), r.stderr[-300:]))
-    return json.loads(js.read_text())["frames"]
+    doc = json.loads(js.read_text())
+    return doc["frames"], doc.get("seedMode")
+
+LAUNCHES = [("launch: override light, system dark", ("-themeOverride", "light", "-AppleInterfaceStyle", "Dark"), "day"),
+            ("launch: override dark, system light", ("-themeOverride", "dark"), "night"),
+            ("launch: no override, system dark", ("-themeOverride", "system", "-AppleInterfaceStyle", "Dark"), "night"),
+            ("launch: no override, system light", ("-themeOverride", "system"), "day")]
 
 def main():
     if len(sys.argv) < 2: sys.exit(__doc__)
@@ -93,7 +101,7 @@ def main():
     if selftest:
         for theme in ("day", "night"):
             png = tmp / ("self-%s.png" % theme)
-            frames = render(binp, png, theme, False)
+            frames, _ = render(binp, png, theme, False)
             for want in ("day", "night"):
                 fails = [n for n, ok, _ in judge(png, frames, want, tok) if not ok]
                 should_fail = want != theme
@@ -104,11 +112,25 @@ def main():
         sys.exit(1 if bad else 0)
     for label, theme, flip, final in cases:
         png = tmp / ("%s-%s.png" % (theme, "flip" if flip else "launch"))
-        res = judge(png, render(binp, png, theme, flip), final, tok)
+        frames, _ = render(binp, png, theme, flip)
+        res = judge(png, frames, final, tok)
         failed = [n for n, ok, _ in res if not ok]
         bad += bool(failed)
         print("%s %-15s ends %-5s %s" % ("FAIL" if failed else "PASS", label, final, "; ".join(d for _, ok, d in res if not ok) or
               "; ".join(d for _, _, d in res)))
+    # The LAUNCH: no forcing (`--theme launch`), the process's own preferences seed the manager as the App does. The args after the
+    # output path are the argument domain (`-themeOverride system` = no override, stated so a saved override on the host cannot leak in)
+    # (the host may hold a saved override of its own: the no-override cases say so on the line, so it cannot leak in)
+    for label, prefs, final in LAUNCHES:
+        png = tmp / ("launch-%s.png" % label.replace(" ", "_").replace("/", "_"))
+        frames, seed = render(binp, png, "launch", False, prefs)
+        res = judge(png, frames, final, tok)
+        res.insert(0, ("seed", seed == ("dark" if final == "night" else "light"), "seeded %s, want %s" % (seed, "dark" if final == "night" else "light")))
+        failed = [n for n, ok, _ in res if not ok]
+        bad += bool(failed)
+        print("%s %-34s ends %-5s %s" % ("FAIL" if failed else "PASS", label, final, "; ".join(d for _, ok, d in res if not ok) or
+              "; ".join(d for _, _, d in res)))
+    cases = cases + LAUNCHES
     print("theme_flip_check: %d of %d cases FAIL (renders in %s)" % (bad, len(cases), tmp))
     sys.exit(1 if bad else 0)
 
