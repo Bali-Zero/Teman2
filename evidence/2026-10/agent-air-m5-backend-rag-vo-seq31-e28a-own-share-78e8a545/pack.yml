@@ -1,6 +1,6 @@
-# Gear-3 evidence pack - seq-31 UNSIGNED candidate (E28A own-shareholding re-key), step C of the E28A chain
+# Gear-3 evidence pack - seq-31 SIGNED (E28A own-shareholding re-key), step C of the E28A chain
 # (step A: engine fact 089d9fca48; step B: interview question 960895959d). Receipts are this session's own runs on M5 on
-# 2026-10-17 (UTC). Nothing is signed, pushed or merged by this lane: the orchestrator signs after the gates.
+# 2026-10-17 (UTC). The owner signed on M5 after the council SIGN verdicts; nothing is pushed or merged by this lane.
 gear: 3
 brief_ref: evidence/brief.yml
 pii_scan: clean
@@ -104,10 +104,43 @@ receipts:
     exit: 1
     ts: "2026-10-17T09:28:00Z"
     seat: this session
-council_run: pending
-council_note: >-
-  PENDING - no council or journal entry is fabricated here. The orchestrator runs the gates (generator is never grader)
-  and attaches journal.jsonl before signing; council_run is set to journal.jsonl at that point.
+  - claim: The owner signed seq-31 on M5; sign_pack self-verified. Pre-Prettier file sha256 prefix 827c7977a1039710, one post-sign Prettier pass, post-Prettier prefix 4c29ee47390124c9, file mode 0644.
+    cmd: "sign_pack (owner, offline CLI, kid prod-2026-07-1); then npx prettier --write rulepack-prod-031.signed.json"
+    result: "signed_at 2026-10-17T04:10:55.436728Z; rule_pack_id 4bff6af7-395d-5c98-9b43-0a45e04ee651; payload_sha256 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4; public key gZoo1nzMsRpwWgw4HCzV_2YYxU0Vbt5FMfLWeOzAchA"
+    exit: 0
+    ts: "2026-10-17T04:10:55Z"
+    seat: owner (M5)
+  - claim: The repo verifier verifies the post-Prettier bundle under the pinned prod key; payload_sha256 unchanged; the JCS payload equals the source.
+    cmd: "verify_rule_pack(rulepack-prod-031.signed.json, StaticTrustStore.from_env()) and canonicalize_json(payload) == canonicalize_json(source)"
+    result: "payload_sha256 7a5d80c670c61b5c63d18e8d07c1368173e0f954a319962d0064b57dc4efdff4; kid prod-2026-07-1; True"
+    exit: 0
+    ts: "2026-10-17T04:20:00Z"
+    seat: this session
+  - claim: With the signed bundle on disk the 4 TestSignedBundleTiesToSource tests run and pass (39 passed, 0 skipped).
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m pytest backend/tests/services/visa_engine/test_seq31_pack.py -p no:cacheprovider  # probe: backend/tests/services/visa_engine/test_seq31_pack.py::TestSignedBundleTiesToSource"
+    result: "39 passed in 19.11s"
+    exit: 0
+    ts: "2026-10-17T04:22:00Z"
+    seat: this session
+  - claim: Signed-state census (14 candidate-mode tests skip) and the real observer run.
+    cmd: "python3 scripts/ci/observe_visa_seq31_signed.py"
+    result: "highest signed sequence=31; test_seq31_pack.py 39 passed; census 111 passed, 14 skipped in 335.25s; test_review_hold_inventory.py 7 passed; inventory reads seq-31 and all three consumers green"
+    exit: 0
+    ts: "2026-10-17T04:40:00Z"
+    seat: this session
+  - claim: The 4 previously red mouth tests are green with the signed bundle; fixture freshness and no-path-doors pass after the header-only bump (file, sequence 31, version 2026.10.17, as_of = signed_at); tsc clean.
+    cmd: "cd apps/mouth && npx vitest --run engine-adapter.test.ts no-path-doors.test.tsx no-path-doors-fixture-freshness.test.ts copy-truth.test.ts walk-corpus-determinism.test.ts; npx tsc --noEmit"
+    result: "Test Files 5 passed (5); Tests 657 passed (657); tsc no output"
+    exit: 0
+    ts: "2026-10-17T04:45:00Z"
+    seat: this session
+  - claim: Seq-30 gate, compiler, compiled-pack, rollout, negative personas, fact registry; gold harness and coverage, seq-28 and seq-29 gates; observer constants tests.
+    cmd: "pytest test_seq30_pack.py test_rulepack_compiler.py test_compiler_build_compiled_pack.py test_sponsor_type_rollout.py test_gold_coverage_negative_personas.py test_fact_registry.py; pytest gold_harness gold_coverage test_gold_coverage_floor.py ... test_seq28_pack.py test_seq29_pack.py; pytest tests/scripts/test_observe_visa_seq31_signed.py"
+    result: "316 passed; 539 passed; 14 passed"
+    exit: 0
+    ts: "2026-10-17T04:50:00Z"
+    seat: this session
+council_run: journal.jsonl
 dissent:
   - seat: codex-gpt-5.6-sol (council on 5221456ba0, FIX-FIRST; the journal line is the orchestrator's, not written here)
     objection: "HIGH - rulepack-prod-031.source.json created_at 2026-10-17T12:00:00Z was in the future; the signer's chronology check rejects it."
@@ -121,6 +154,14 @@ dissent:
     objection: "LOW - brief.yml acceptance said two walks lose E28A; implementation, tests and replay show one."
     status: CONFIRMED
     note: "Cured: acceptance now says exactly one walk."
+  - seat: kimi-code/k3 (round 1 on 5221456ba0, FIX-FIRST)
+    objection: "HIGH x2 - the pinned candidate could not pass the signer chronology check before 12:00Z, and the working tree was mid-mutation with a digest-changing fix and a reason-code rename."
+    status: CONFIRMED
+    note: "Both cured in b4af6f6d21 (past created_at, E28A_OWN_SHAREHOLDING_ELIGIBLE rename, refreshed pins); round 2 of both seats on b4af6f6d21 returned SIGN."
+  - seat: kimi-code/k3 (rounds 1 and 2)
+    objection: "LOW - stale census comment said two walks move; exclusion copy omits the page's work-visa redirect; copy-before-pack window."
+    status: CONFIRMED
+    note: "Census comment fixed (one walk); the redirect omission is pre-existing advisory copy and the window is bounded by the activation ordering (mouth copy live before activation)."
 decisions:
   - id: D-retire-and-insert
     decision: >-
