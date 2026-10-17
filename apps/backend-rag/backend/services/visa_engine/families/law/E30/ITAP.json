@@ -1,0 +1,142 @@
+{
+  "family": "E30",
+  "itas_codes_stated_can_convert": null,
+  "status": "TO_VERIFY",
+  "family_category_verbatim": null,
+  "conversion_verbatim": [
+    {
+      "text": "- Orang Asing dapat diberikan alih status Izin Tinggal Terbatas (ITAS) menjadi Izin Tinggal Tetap (ITAP) berdasarkan permohonan.\n- Permohonan alih status ITAS menjadi ITAP diajukan dalam waktu paling lama 30 hari sebelum jangka waktu ITAS berakhir.\n- Permohonan alih status ITAS menjadi ITAP diajukan oleh Orang Asing, Penjamin, atau Penanggung Jawab melalui aplikasi kepada Kepala Kantor Imigrasi.\n- Alih status Izin Tinggal Terbatas (ITAS) menjadi Izin Tinggal Tetap (ITAP) dapat diberikan kepada Orang Asing yang merupakan pemegang Izin Tinggal Terbatas yang melakukan kegiatan:\n- sebagai pekerja;\n- sebagai rohaniwan;\n- penanaman modal asing;\n- penyatuan keluarga;\n- repatriasi;\n- rumah kedua, yang terdiri atas:\n- rumah kedua;\n- keahlian khusus;\n- tokoh dunia;\n- lanjut usia berusia 60 tahun atau lebih.",
+      "url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/izin-tinggal-terbatas-menjadi-izin-tinggal-tetap",
+      "section": "Informasi Umum",
+      "retrieved_at": "2026-10-17T13:28:21Z",
+      "page_sha256": "a5ee7428e45eced64604ee27fcae0b3ffab09d42e1be3ef69c179afee520b912",
+      "raw_path": "raw/itap/itas-itap.html"
+    }
+  ],
+  "code_mapping": [
+    {
+      "code": "E30",
+      "itas_to_itap_eligible_as_stated": null,
+      "status": "TO_VERIFY"
+    },
+    {
+      "code": "E30A",
+      "itas_to_itap_eligible_as_stated": null,
+      "status": "TO_VERIFY"
+    },
+    {
+      "code": "E30B",
+      "itas_to_itap_eligible_as_stated": null,
+      "status": "TO_VERIFY"
+    },
+    {
+      "code": "E30E",
+      "itas_to_itap_eligible_as_stated": null,
+      "status": "TO_VERIFY"
+    },
+    {
+      "code": "E30F",
+      "itas_to_itap_eligible_as_stated": null,
+      "status": "TO_VERIFY"
+    }
+  ],
+  "itap_direct_verbatim": null,
+  "sources_reviewed": [
+    {
+      "key": "itas-itap",
+      "source_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/izin-tinggal-terbatas-menjadi-izin-tinggal-tetap",
+      "effective_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/izin-tinggal-terbatas-menjadi-izin-tinggal-tetap",
+      "retrieved_at": "2026-10-17T13:28:21Z",
+      "http_status": 200,
+      "curl_exit_code": 0,
+      "raw_path": "raw/itap/itas-itap.html",
+      "bytes": 58950,
+      "page_sha256": "a5ee7428e45eced64604ee27fcae0b3ffab09d42e1be3ef69c179afee520b912",
+      "attempts": [
+        {
+          "http_status": 200,
+          "curl_exit_code": 0,
+          "retrieved_at": "2026-10-17T13:28:21Z"
+        }
+      ]
+    },
+    {
+      "key": "itap-direct",
+      "source_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/perpanjangan-izin-tinggal-kunjungan-2",
+      "effective_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/perpanjangan-izin-tinggal-kunjungan-2",
+      "retrieved_at": "2026-10-17T13:28:21Z",
+      "http_status": 200,
+      "curl_exit_code": 0,
+      "raw_path": "raw/itap/itap-direct.html",
+      "bytes": 74892,
+      "page_sha256": "5f722aa36ae952c96348680ebcc60d88869fee4e09b295e159e8fe2117522791",
+      "attempts": [
+        {
+          "http_status": 200,
+          "curl_exit_code": 0,
+          "retrieved_at": "2026-10-17T13:28:21Z"
+        }
+      ]
+    },
+    {
+      "key": "itap-extension",
+      "source_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/perpanjangan-izin-tinggal-terbatas-2",
+      "effective_url": "https://www.imigrasi.go.id/wna/izin-tinggal-keimigrasian/perpanjangan-izin-tinggal-terbatas-2",
+      "retrieved_at": "2026-10-17T13:28:21Z",
+      "http_status": 200,
+      "curl_exit_code": 0,
+      "raw_path": "raw/itap/itap-extension.html",
+      "bytes": 54842,
+      "page_sha256": "27910bf6e027b0729e0c591425701f7a9f950b9a273fd2ef9b8517cf94a21042",
+      "attempts": [
+        {
+          "http_status": 200,
+          "curl_exit_code": 0,
+          "retrieved_at": "2026-10-17T13:28:21Z"
+        }
+      ]
+    },
+    {
+      "key": "depok",
+      "source_url": "https://depok.imigrasi.go.id/alih-status-izin-tinggal/",
+      "effective_url": "https://depok.imigrasi.go.id/alih-status-izin-tinggal/",
+      "retrieved_at": "2026-10-17T13:27:28Z",
+      "http_status": 200,
+      "curl_exit_code": 0,
+      "raw_path": "raw/itap/depok.html",
+      "bytes": 194358,
+      "page_sha256": "87a3d1c910341bf9914e8ec0b022ce6117293780bcf195ddc56982f1cb4756ad",
+      "attempts": [
+        {
+          "http_status": 200,
+          "curl_exit_code": 0,
+          "retrieved_at": "2026-10-17T13:27:28Z"
+        }
+      ]
+    },
+    {
+      "key": "gci-2026",
+      "source_url": "https://jakartapusat.imigrasi.go.id/berita/imigrasi-resmikan-global-citizen-of-indonesia-di-hari-bakti-imigrasi-ke-76",
+      "effective_url": "https://jakartapusat.imigrasi.go.id/berita/imigrasi-resmikan-global-citizen-of-indonesia-di-hari-bakti-imigrasi-ke-76",
+      "retrieved_at": "2026-10-17T13:29:33Z",
+      "http_status": 200,
+      "curl_exit_code": 0,
+      "raw_path": "raw/itap/gci-2026.html",
+      "bytes": 52915,
+      "page_sha256": "d2005de66a49fe07ed453d001d6be51eb617ad4f63b0b1fc7811ecb21696cd88",
+      "attempts": [
+        {
+          "http_status": 200,
+          "curl_exit_code": 0,
+          "retrieved_at": "2026-10-17T13:29:33Z"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "The conversion page names activity categories, not visa indices. No per-code conversion eligibility is inferred from a family/category label or from absence in a list.",
+    "Direct ITAP issuance, ITAP extension and ITAS-to-ITAP conversion are separate source contexts.",
+    "The GCI news is contextual supplemental evidence. Its application to visa-page routes is TO_VERIFY; it does not establish ITAS-to-ITAP eligibility.",
+    "Education is not named in the reviewed conversion activity list. This is not an express per-code prohibition; eligibility stays null + TO_VERIFY."
+  ]
+}

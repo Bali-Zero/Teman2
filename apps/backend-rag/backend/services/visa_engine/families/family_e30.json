@@ -1,0 +1,135 @@
+{
+  "family": "E30",
+  "name": "Study visas",
+  "category": "KITAS/Limited Stay",
+  "permit_class": "ITAS",
+  "entry_type": null,
+  "law_dir": "law/E30",
+  "start_question": "study_level",
+  "questions": {
+    "study_level": {
+      "text_en": "At which level will you study in Indonesia?",
+      "options": {
+        "secondary_or_below": "E30A",
+        "undergraduate": "E30B",
+        "postgraduate": "E30B",
+        "doctoral": "E30B"
+      }
+    },
+    "admission": {
+      "text_en": "Have you been accepted by the educational institution?",
+      "options": {
+        "yes": true,
+        "no": false
+      }
+    },
+    "sponsor": {
+      "text_en": "Who will sponsor your studies in Indonesia?",
+      "options": {
+        "individual": true,
+        "education_institution": true,
+        "other": false,
+        "none": false
+      }
+    },
+    "stay_months": {
+      "text_en": "How many months do you need to study in Indonesia?",
+      "kind": "integer"
+    }
+  },
+  "visas": {
+    "E30": {
+      "sponsor_required": null,
+      "entry_type": null,
+      "is_sold": null,
+      "extendable": null,
+      "stay_options": null,
+      "price_keys": []
+    },
+    "E30A": {
+      "sponsor_required": true,
+      "entry_type": "MULTIPLE",
+      "is_sold": true,
+      "extendable": true,
+      "stay_options": [
+        {
+          "value": 1,
+          "unit": "YEAR"
+        },
+        {
+          "value": 2,
+          "unit": "YEAR"
+        }
+      ],
+      "price_keys": [
+        {
+          "category": "kitas_permits",
+          "item_key": "E30A Education Visa (1 Year)"
+        },
+        {
+          "category": "kitas_permits",
+          "item_key": "E30A Education Visa (2 Years)"
+        }
+      ],
+      "requires_question": "admission"
+    },
+    "E30B": {
+      "sponsor_required": true,
+      "entry_type": "MULTIPLE",
+      "is_sold": true,
+      "extendable": true,
+      "stay_options": [
+        {
+          "value": 1,
+          "unit": "YEAR"
+        },
+        {
+          "value": 2,
+          "unit": "YEAR"
+        },
+        {
+          "value": 4,
+          "unit": "YEAR"
+        }
+      ],
+      "price_keys": [
+        {
+          "category": "kitas_permits",
+          "item_key": "E30B Higher Education (1 Year)"
+        },
+        {
+          "category": "kitas_permits",
+          "item_key": "E30B Higher Education (2 Years)"
+        },
+        {
+          "category": "kitas_permits",
+          "item_key": "E30B Higher Education (4 Years)"
+        }
+      ],
+      "requires_question": "admission"
+    },
+    "E30E": {
+      "sponsor_required": null,
+      "entry_type": null,
+      "is_sold": null,
+      "extendable": null,
+      "stay_options": null,
+      "price_keys": []
+    },
+    "E30F": {
+      "sponsor_required": null,
+      "entry_type": null,
+      "is_sold": null,
+      "extendable": null,
+      "stay_options": null,
+      "price_keys": []
+    }
+  },
+  "notes": [
+    "Only E30A and E30B have substantive official pages; E30, E30E and E30F are NOT_FOUND and excluded from Guide paths.",
+    "Discrete initial stays retain YEAR units. Guide comparison uses exactly 12 months per year and returns the smallest fitting choice.",
+    "No cumulative extension limit or per-code ITAP conversion entitlement is stated; both remain null + TO_VERIFY. See law/E30/ITAP.json.",
+    "E30B stay punctuation is ambiguous; the fee headings separately confirm 1, 2 and 4 years. Source text is unchanged.",
+    "Vocational-only study is not explicitly named by the E30B activity text; no eligibility is inferred from its title."
+  ]
+}

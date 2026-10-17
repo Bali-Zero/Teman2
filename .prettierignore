@@ -199,3 +199,6 @@ apps/backend-rag/backend/tests/benchmarks/evidence_sufficiency/query_vectors_b1_
 # unterminated strikethrough delimiter on render. Same failure class as the W104
 # corruption documented at the cicatrix-superscar.md entry below, different token.
 evidence/2026-09/agent-air-m5-infra-dynamic-workflow-3c2-1ca98371/reviews/**
+
+# Verbatim council/ground-truth receipts inside evidence packs (must stay byte-identical to the seat output)
+evidence/**/council/

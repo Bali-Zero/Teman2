@@ -37,6 +37,7 @@ LAW_COLUMNS = (
     "superseded_by",
 )
 CASTS = {
+    "stay_options": "jsonb",
     "price_keys": "jsonb",
     "itap": "jsonb",
     "law_card": "jsonb",
@@ -44,7 +45,7 @@ CASTS = {
     "valid_from": "date",
     "valid_until": "date",
 }
-JSON_COLUMNS = {"price_keys", "itap", "law_card"}
+JSON_COLUMNS = {"price_keys", "itap", "law_card", "stay_options"}
 
 SHA_COLUMNS = ("page_sha256", "card_sha256")
 
@@ -85,15 +86,22 @@ def build_rows(family: str) -> list[dict]:
         rows.append(
             {
                 "code": code,
+                "category": data["category"],
                 "family": fam,
                 "official_name_id": card["official_name_id"],
-                "permit_class": "VISIT_SINGLE",
-                "is_sold": True,
+                "permit_class": None if card.get("status") == "NOT_FOUND" else data["permit_class"],
+                "is_sold": guide.get("is_sold", True),
                 "price_keys": price_keys,
-                "entry_type": "SINGLE",
-                "sponsor": "REQUIRED" if guide["sponsor_required"] else "CONDITIONAL",
+                "entry_type": guide.get("entry_type", data["entry_type"]),
+                "sponsor": (
+                    None
+                    if guide["sponsor_required"] is None
+                    else "REQUIRED"
+                    if guide["sponsor_required"]
+                    else "CONDITIONAL"
+                ),
                 "apply_channel": None,
-                "initial_stay_days": guide["stay_days"],
+                "initial_stay_days": guide.get("stay_days"),
                 "extendable": guide["extendable"],
                 "max_total_days": guide.get("max_total_days"),
                 "max_total_months": guide.get("max_total_months"),
@@ -103,12 +111,16 @@ def build_rows(family: str) -> list[dict]:
                 "page_sha256": card["page_sha256"],
                 "retrieved_at": card["retrieved_at"],
                 "card_sha256": hashlib.sha256(raw).hexdigest(),
-                "verification_status": "VERIFIED",
+                "verification_status": (
+                    "VERIFIED" if card.get("status") == "VERIFIED_FROM_SOURCE" else "TO_VERIFY"
+                ),
                 "valid_from": None,
                 "valid_until": None,
                 "superseded_by": None,
             }
         )
+        if "stay_options" in guide:
+            rows[-1]["stay_options"] = guide["stay_options"]
     return rows
 
 
@@ -135,13 +147,15 @@ def literal(column: str, value: Any) -> str:
 
 def emit_sql(family: str) -> str:
     fam = family.upper()
+    rows = build_rows(fam)
+    law_columns = _law_columns(rows)
     parts = [HEADER.format(family=fam, lower=fam.lower())]
-    parts.append(_case_guard_sql(sorted(build_rows(fam), key=lambda r: r["code"])))
-    cols = ("code", "name", "category", *LAW_COLUMNS)
-    updates = ",\n    ".join(f"{c} = EXCLUDED.{c}" for c in LAW_COLUMNS)
-    for row in build_rows(fam):
-        vals = [_text(row["code"]), _text(row["official_name_id"]), _text("Visit Visa")]
-        vals += [literal(c, row[c]) for c in LAW_COLUMNS]
+    parts.append(_case_guard_sql(rows))
+    cols = ("code", "name", "category", *law_columns)
+    updates = ",\n    ".join(f"{c} = EXCLUDED.{c}" for c in law_columns)
+    for row in rows:
+        vals = [_text(row["code"]), _text(row["official_name_id"]), _text(row["category"])]
+        vals += [literal(c, row[c]) for c in law_columns]
         lines = []
         for col, val in zip(cols, vals, strict=True):
             sep = "," if col != cols[-1] else ""
@@ -153,8 +167,13 @@ def emit_sql(family: str) -> str:
             + "\n    ".join(lines)
             + f"\n)\nON CONFLICT (code) DO UPDATE SET\n    {updates};\n"
         )
-    parts.append(_rollback_sql(build_rows(fam)))
+    parts.append(_rollback_sql(rows))
     return "".join(parts)
+
+
+def _law_columns(rows: list[dict]) -> tuple[str, ...]:
+    # C's applied migration remains byte-identical; stay options are opt-in per family.
+    return (*LAW_COLUMNS, "stay_options") if any("stay_options" in r for r in rows) else LAW_COLUMNS
 
 
 def _case_guard_sql(rows: list[dict]) -> str:
@@ -172,7 +191,7 @@ def _case_guard_sql(rows: list[dict]) -> str:
 
 def _rollback_sql(rows: list[dict]) -> str:
     resets = []
-    for c in LAW_COLUMNS:
+    for c in _law_columns(rows):
         if c == "price_keys":
             resets.append("price_keys = '[]'::jsonb")
         elif c == "verification_status":

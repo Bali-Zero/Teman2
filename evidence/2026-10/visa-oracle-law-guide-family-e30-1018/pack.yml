@@ -1,0 +1,161 @@
+# Gear-3 evidence pack: visa oracle Law + Guide model, family E30 (student), migrations 332/333.
+# Council round on PR 8687 head 76d90ef6a5, then fixes in commit 5ac4fc349a. Receipt timestamps are read in the shell call that ran each command.
+# The independent gate has NOT run yet; it is dispatched by the coordinator on the final head and its verdict is not asserted here.
+gear: 3
+council_run: council-journal.jsonl
+seat_fallback_reason: >-
+  No titolare was replaced. codex-gpt-5.6-sol and kimi-code/k3 (two titolari) both answered; agy-gemini-4-argon sat beside them as an additional third
+  reviewer, not instead of anyone. tp1-qwen3.8-max was not dispatched this round (no liveness probe was run for it).
+brief_ref: evidence/brief.yml
+ruling: >-
+  Owner ruling (Zero): keep the visa oracle simple, two sides only: a Law card per code verbatim from imigrasi.go.id and a Guide per family.
+  Initial stays given in years stay discrete options (never converted to days). Coordinator rulings on the council round, 2026-10-18: null stay_options falls
+  through to stay_days; an extendable visa above its largest option returns OK_WITH_EXTENSION with total_max_known false; NOT_FOUND cards project permit_class NULL;
+  verbatim card content is not edited (ITAP URL mismatch and the duplicated prohibited element are recorded as dissent).
+mission: >-
+  Ship the Law + Guide model for family E30: five Law cards (E30A, E30B substantive; E30, E30E, E30F NOT_FOUND / TO_VERIFY), the Guide resolver,
+  migration 332 (nullable stay_options JSONB with validator and CHECK) and migration 333 (generated from the cards), without touching legacy columns or readers.
+lanes:
+  - lane: council-codex
+    role: review
+    seat: codex-gpt-5.6-sol (codex exec --profile astra-deep, read-only sandbox, on the PR diff)
+  - lane: council-argon
+    role: review
+    seat: agy-gemini-4-argon (agy -p --model gemini-4-argon-high --mode plan, same diff)
+  - lane: council-kimi
+    role: review
+    seat: kimi-code/k3 (kimi -m kimi-code/k3 -p, same diff)
+  - lane: ground-truth-nb2
+    role: ground_truth
+    seat: nlm
+    nb: cff93ab0-813a-42f2-a8de-36987e724271
+    query_hash: "a521625c9d7eedf9e1ed81524049d1d142b08cc48220e1af30a8dbaf8708564e" # pragma: allowlist secret
+    notebook_name: "NB-2: Immigration & Visa — Indonesia 2025"
+    profile: default
+    ts: "2026-10-17T18:07:42Z"
+  - lane: build
+    role: build
+    seat: Claude Sonnet 5.5 (implementer; not a grader here)
+  - lane: independent-gate
+    role: review
+    seat: opus independent gate (fresh agent, coordinator-dispatched; pending, it built nothing)
+seat_diversity: >-
+  Builder: Claude Sonnet 5.5. Gate: a fresh Opus agent with no shared context, dispatched by the coordinator (gate_class opus), pending. The council added three
+  reviewers of other families (OpenAI codex, Google argon, Moonshot kimi); none built anything.
+pii_scan: clean
+pii_scan_note: >-
+  Public visa regulation text from imigrasi.go.id, SQL and tests. No client data. Proof databases were throwaway local clusters.
+what_changed: |
+  Council fixes (commit 5ac4fc349a): guide.py uses a truthy visa.get("stay_options") so a null value falls through to stay_days; above the largest option an
+  extendable visa returns OK_WITH_EXTENSION with the largest option and total_max_known false (not extendable still gives STAY_TOO_LONG); importer projects
+  permit_class NULL for NOT_FOUND cards and 333 was regenerated with the CLI (3 lines); the stay_options shape tests in test_family_e30_postgres.py use a fixture
+  that creates the table, column and E30A row when absent, so they no longer depend on test order; E30 GUIDE.md and tests updated. Family C 331 is byte-identical.
+  Earlier content: families importer and Guide generalised, family_e30.json, five Law cards, ITAP.json, INDEX.md, GUIDE.md, migrations 332 and 333, tests.
+proof: |
+  224 tests pass with the PostgreSQL tests running (24 cases in test_family_e30_postgres.py, 0 skipped) on Pro; importer drift check clean for C and E30.
+  Council verdict SHIP from 3 of 3 seats (receipts under council/). NB-2 ground truth recorded below with its divergence on E30A.
+bites:
+  consumer: >-
+    apps/backend-rag apply-all on deploy runs 332 and 333; no existing reader imports the new families package.
+  observation: >-
+    Owed to the shipping session after merge: five E30 rows in visa_types (E30A and E30B VERIFIED, E30/E30E/E30F TO_VERIFY with permit_class NULL), legacy columns unchanged.
+ground:
+  ts: "2026-10-17T18:07:30Z"
+  siblings: >-
+    Council dispatched on PR 8687 head 76d90ef6a5; migrations 330 and 331 are already live on origin/main.
+spend:
+  adversarial_rounds: 1
+  wall_clock_hours: 3
+decisions:
+  - id: D-extendable-over-max
+    decision: >-
+      Above the largest published initial stay an extendable visa returns OK_WITH_EXTENSION with the largest option and total_max_known false, because the Law says
+      "dapat diperpanjang" but publishes no cumulative total; STAY_TOO_LONG only when the visa is not extendable. Family C behaviour is unchanged.
+  - id: D-notfound-permit-class
+    decision: >-
+      Cards with status NOT_FOUND project permit_class NULL (they already project entry_type, sponsor and is_sold as NULL).
+receipts:
+  - claim: "R1 — the five test files pass with the PostgreSQL tests running, not skipped: family C and E30 Guides, importer, E30 PostgreSQL proof, Golden Rules."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. PATH=/opt/homebrew/opt/postgresql@16/bin:$PATH .venv/bin/python -m pytest backend/tests/services/visa_engine/test_family_c_guide.py backend/tests/services/visa_engine/test_family_e30_guide.py backend/tests/services/visa_engine/test_family_importer.py backend/tests/services/visa_engine/test_family_e30_postgres.py backend/tests/compliance/test_golden_rules.py -p no:cacheprovider -rs"
+    result: "224 passed in 9.06s, no skip line; test_family_e30_postgres.py alone: 24 passed in 2.65s"
+    exit: 0
+    ts: "2026-10-17T18:16:33Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "R2 — importer drift check: family C against 331 and family E30 against 333 (regenerated after the NOT_FOUND permit_class change) report no drift; 331 is byte-identical."
+    cmd: "cd apps/backend-rag && PYTHONPATH=. .venv/bin/python -m backend.services.visa_engine.families.importer --family C --check backend/db/migrations_v2/331_visa_types_law_family_c.sql; ... --family E30 --check backend/db/migrations_v2/333_visa_types_law_family_e30.sql"
+    result: "both rc=0"
+    exit: 0
+    ts: "2026-10-17T18:16:46Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "R3 — ruff check and ruff format --check clean on the five changed Python files; prettier --check clean on the changed GUIDE.md."
+    cmd: "ruff check <5 files>; ruff format --check <5 files>; node_modules/.bin/prettier --check GUIDE.md"
+    result: "All checks passed; 5 files already formatted; prettier clean (re-run on the committed tree)"
+    exit: 0
+    ts: "2026-10-17T18:20:49Z"
+    seat: Claude Sonnet 5.5 (implementer)
+  - claim: "C1 — council round on the PR diff @76d90ef6a5 (council-journal.jsonl): codex-gpt-5.6-sol, agy-gemini-4-argon, kimi-code/k3 each returned VERDICT SHIP; outputs copied verbatim to council/out_{codex,argon,kimi}.md."
+    cmd: "codex exec --profile astra-deep --sandbox read-only; agy -p --model gemini-4-argon-high --mode plan; kimi -m kimi-code/k3 -p (prompt: read REVIEW.md, adversarial read-only review of pr.diff)"
+    result: "3 of 3 seats exit 0 (codex 18:07:30Z-18:12:23Z, argon 18:07:30Z-18:10:26Z, kimi 18:07:30Z-18:10:45Z, 2026-10-17); verdict SHIP each, with the findings and dissent listed below"
+    exit: 0
+    ts: "2026-10-17T18:12:23Z"
+    seat: codex-gpt-5.6-sol, agy-gemini-4-argon, kimi-code/k3
+  - claim: "G1 — NotebookLM ground truth, NB-2 Immigration & Visa Indonesia 2025, profile default, on the E30 facts (question sha256 a521625c9d7eedf9e1ed81524049d1d142b08cc48220e1af30a8dbaf8708564e). The query was repeated after adding source 31412619-d97d-47a5-bc41-87dbabd9e5a3 (official E30 pages) to NB-2. Both answers still state E30A as 1, 2 or 4 years citing Permenkumham 11/2024 Pasal 102 ayat 7; the official E30A page states 1 or 2 years. Code follows the official page; status TO_VERIFY against the regulation text."
+    cmd: "nlm notebook query cff93ab0-813a-42f2-a8de-36987e724271 <contents of council/nlm_question.txt> (answers council/nlm_answer.json before and council/nlm_answer_after.json after adding the source)"
+    result: "answers received; E30A/E30B/E30E 1, 2 or 4 years per NB-2 versus E30A 1 or 2 and E30B 1, 2 or 4 per the official pages; divergence recorded in dissent"
+    exit: 0
+    ts: "2026-10-17T18:07:42Z" # first query; the post-source query time was not recorded
+    seat: nlm (NB-2)
+  - claim: "V1 — kimi dissent on session-scoped lock_timeout/statement_timeout: the runner executes the whole forward part of a migration in one session and one transaction."
+    cmd: "read apps/backend-rag/backend/db/migration_base.py lines 1056 (split_migration_sql), 1112 (await conn.execute(sql_forward)), 1141 (run_with_lock_retry), 478-479 (async with conn.transaction() then SET LOCAL lock_timeout)"
+    result: "sql_forward is passed to a single conn.execute inside run_with_lock_retry's one transaction per attempt; 332 SET lock_timeout/statement_timeout (lines 5-6) therefore apply to the whole migration; not split per statement"
+    exit: 0
+    ts: "2026-10-17T18:20:39Z"
+    seat: Claude Sonnet 5.5 (implementer)
+dissent:
+  - seat: agy-gemini-4-argon
+    objection: "guide.py:75 tested key presence, so a null stay_options raised TypeError instead of falling through to stay_days (also kimi finding 1)."
+    status: CONFIRMED
+    disposition: "CURED in 5ac4fc349a: truthy visa.get(stay_options); unit test test_null_stay_options_falls_through_to_stay_days."
+  - seat: agy-gemini-4-argon
+    objection: "Design: above the largest option with extendable true and no published total, STAY_TOO_LONG tells a 3-year E30A student they are ineligible although the card says the stay can be extended."
+    status: CONFIRMED
+    disposition: "CURED in 5ac4fc349a (coordinator ruling): OK_WITH_EXTENSION with the largest option and total_max_known false; STAY_TOO_LONG only if not extendable; GUIDE.md and tests updated; family C tests unchanged."
+  - seat: agy-gemini-4-argon
+    objection: "importer.py:92 copies permit_class ITAS onto the NOT_FOUND cards E30, E30E, E30F."
+    status: CONFIRMED
+    disposition: "CURED in 5ac4fc349a: permit_class NULL when the card status is NOT_FOUND; 333 regenerated with the CLI; test_family_importer updated."
+  - seat: agy-gemini-4-argon
+    objection: "ITAP.json sources_reviewed maps itap-direct to the visit-permit extension page and itap-extension to the limited-stay extension page, contradicting notes[1]."
+    status: PLAUSIBLE
+    disposition: "NOT changed: verbatim evidence file, not edited by hand; TO_VERIFY. Every ITAP value stays NULL, so no Guide or DB value depends on it."
+  - seat: agy-gemini-4-argon
+    objection: "The first element of prohibited_or_conditions_verbatim in E30A and E30B duplicates the allowed activity (parser matched the word ketentuan)."
+    status: PLAUSIBLE
+    disposition: "NOT changed: parser artifact of the verbatim capture; the cards are left verbatim; no value is read from that element."
+  - seat: kimi-code/k3
+    objection: "Valid/invalid stay_options shape tests depended on the first test having populated E30A (module-scoped cluster, file order)."
+    status: CONFIRMED
+    disposition: "CURED in 5ac4fc349a: e30a fixture creates the table, column and row when absent; the 23 shape cases pass when run alone with -k stay_options."
+  - seat: kimi-code/k3
+    objection: "SET lock_timeout/statement_timeout are session-scoped; if the runner split the file per statement the protection would not apply."
+    status: RETRACTED
+    disposition: "Verified (V1): the runner executes the whole forward part in one conn.execute inside one transaction (migration_base.py:1112, 1141, 478-479); no per-statement split."
+  - seat: kimi-code/k3
+    objection: "The stay_options validator permits duplicate options such as two {1, YEAR}."
+    status: PLAUSIBLE
+    disposition: "DEFERRED: harmless for the Guide (it picks the first fit); a uniqueness rule is a later tightening of 332."
+  - seat: codex-gpt-5.6-sol
+    objection: "No attestation of live database execution: the PostgreSQL tests were inspected but not run in its read-only sandbox."
+    status: PLAUSIBLE
+    disposition: "Answered by R1: the PostgreSQL proof was run on Pro against a throwaway cluster, 24 passed, 0 skipped; no production database was touched."
+  - seat: nlm (NB-2) vs official imigrasi.go.id E30A page
+    objection: "NB-2 states E30A (and E30B, E30E) stay 1, 2 or 4 years citing Permenkumham 11/2024 Pasal 102 ayat 7; the official E30A page states 1 or 2 years. The divergence persists after adding the official pages to NB-2 (G1)."
+    status: PLAUSIBLE
+    disposition: "NOT followed: the card and the Guide follow the official E30A page (1 or 2 years); TO_VERIFY against the regulation text of Pasal 102 ayat 7. E30B 1, 2 or 4 years agrees with both."
+  - seat: carried from family C
+    objection: "The C1/C2 listed-countries sponsor exception list is not yet in the cards."
+    status: PLAUSIBLE
+    disposition: "TO_VERIFY, unchanged by this PR (family C behaviour untouched)."
+gate:
+  status: pending
+  note: "Opus independent gate to be run on the final head by the coordinator; no verdict exists yet."
