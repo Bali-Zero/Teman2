@@ -467,3 +467,72 @@ def test_vocabulary_falls_back_to_the_reference_rule_for_non_word_tokens(m):
     for token in ("kit\nas", "kit as", "ext-ension", "alk\n", "kitas\n", "e*t", "\nkitas"):
         expected = {w for w in vocab.words if m._token_matches_words(token, {w})}
         assert vocab.matching(token) == expected, repr(token)
+
+
+# --- owner ruling 2026-10-17: a bare generic licence/sale word is not an alcohol question -----
+
+_GENERIC_ONLY = [
+    "license",
+    "licenses",
+    "licence",
+    "licences",
+    "licensing",
+    "sell",
+    "sells",
+    "selling",
+    "seller",
+    "sellers",
+    "license license",
+    "selling licenses",
+    "berapa harga license",
+]
+
+
+@pytest.mark.parametrize("query", _GENERIC_ONLY)
+def test_bare_generic_trade_words_match_no_row(pricing_service, m, query):
+    assert m._query_terms(query)[1] == []
+    result = pricing_service.search_service(query)
+    # The normal "no match" shape: the router answers 200, not 503 (it raises only on "error").
+    assert "error" not in result
+    assert "results" not in result
+    assert result["message"] == f"No service found for '{query}'"
+
+
+@pytest.mark.parametrize(
+    "query", ["prices", "berapa harga", "bali", "how much", "quanto costa", "harga"]
+)
+def test_other_all_noise_queries_keep_the_whole_query_fallback(m, query):
+    tokens = m._words(query)
+    assert m._query_terms(query) == (tokens, [])
+
+
+def test_generic_trade_word_beside_a_real_term_is_still_just_noise(m):
+    assert m._query_terms("driving license") == (["driving", "license"], ["driving"])
+    assert m._query_terms("selling alcohol") == (["selling", "alcohol"], ["alcohol"])
+
+
+def test_generic_trade_forms_are_inside_the_noise_forms(m):
+    assert m._GENERIC_TRADE_FORMS <= m._NOISE_FORMS
+    assert not m._GENERIC_TRADE_FORMS & {"price", "prices", "bali", "harga"}
+
+
+@pytest.mark.parametrize(
+    ("token", "caught"),
+    [
+        ("bar", True),
+        ("birra", True),
+        ("vino", True),
+        ("minol", True),
+        ("minolnya", True),
+        ("bars", False),  # 3-character keyword: equality only
+        ("barista", False),
+        ("barang", False),
+        ("birre", False),
+        ("vini", False),
+        ("vinod", False),
+        ("minimal", False),
+    ],
+)
+def test_new_alcohol_keywords_match_the_inflections_the_rule_gives_them(m, token, caught):
+    keywords = ["bar", "birra", "vino", "minol"]
+    assert (_count(m, token, ["Other"], keywords) > 0) == caught

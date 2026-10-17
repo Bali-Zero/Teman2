@@ -829,9 +829,10 @@
   },
   {
    "query": "license",
-   "must_find": [
+   "must_not_find": [
     "@alcohol"
-   ]
+   ],
+   "expect_no_hits": true
   },
   {
    "query": "prices for KITAS",
@@ -938,6 +939,115 @@
   {
    "query": "spirits licence for my bar",
    "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenses",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "licences",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "selling",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "sells",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "seller",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "license license",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "berapa harga license",
+   "must_not_find": [
+    "@alcohol"
+   ],
+   "expect_no_hits": true
+  },
+  {
+   "query": "bar license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "I want to open a bar in Canggu",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenza birra",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenza per vendita vino",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin minol",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin minolnya berapa",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "barang impor",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "barista training visa",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "vinod",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "minimal order",
+   "must_not_find": [
     "@alcohol"
    ]
   },
