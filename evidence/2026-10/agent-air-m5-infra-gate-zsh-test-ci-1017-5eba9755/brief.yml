@@ -1,5 +1,5 @@
 task_id: gate-zsh-test-ci-1017
-gear: 2
+gear: 3
 l_level: L2
 gate_class: opus
 objective: >-
