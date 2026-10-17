@@ -90,9 +90,12 @@ enum CensusWindow {
         win.contentView = view
         // A window draws its sidebar and toolbar in ITS appearance, the system one (light on Pro) unless told: a night render was day chrome (N1).
         if Theme.mode == .dark { win.appearance = NSAppearance(named: .darkAqua) }
+        // Far offscreen and out of every window list: ordered in so it lays out and scrolls as a window does, but never key, never activating
+        // the app (the harness is not frontmost: see KBLINavigatorApp.init) and never in Mission Control, the Window menu or cycling.
+        win.collectionBehavior = [.transient, .ignoresCycle, .stationary]
+        win.isExcludedFromWindowsMenu = true
+        win.hidesOnDeactivate = false
         win.orderFrontRegardless()
-        NSApp.activate(ignoringOtherApps: true)
-        win.makeKey()
         kept.append(win)
     }
 
