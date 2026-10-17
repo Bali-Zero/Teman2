@@ -1,0 +1,22 @@
+task_id: article-reentry-remove-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  Owner ruling of 2026-10-17: Bali Zero's re-entry permit is priced on request, so no line in the
+  E25B, E31E and E31B KITAS guides (any locale) gives it an amount. Remove the cost-list lines
+  ("IDR 500,000-1,000,000", "Re-entry permit renewal (if traveling): IDR 500,000") and the E25B
+  step sub-bullet "Cost: ~IDR 500,000-1,000,000" in every locale, refresh the affected llms export
+  sections, re-stamp the locales that were fresh, and guard the rule (guilt and innocence) over
+  the articles and both llms exports. Totals stay "plus re-entry permit on request".
+acceptance:
+  - text: >-
+      No re-entry permit amount remains in the three guides or their llms sections; government fee
+      rows, single-trip ERP facts and "on request" lines are untouched; totals unchanged.
+    probe: cd apps/mouth && npx vitest run src/content/licence-prices-1017.test.ts src/i18n/secondhome-article-claims.test.ts
+  - text: >-
+      The content and i18n suites stay green (E33 claim ratchet unchanged).
+    probe: cd apps/mouth && npx vitest run src/content src/i18n
+appetite:
+  wall_clock_hours: 1.5
+  adversarial_rounds: 1
