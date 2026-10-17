@@ -268,6 +268,23 @@ async def post_outcome(
 
     async with pool.acquire() as conn:
         async with conn.transaction():
+            # Completion locks this same alert. Read the obligation in a NEW
+            # statement after acquiring the lock so a concurrent completion is
+            # visible under READ COMMITTED, not hidden by an older snapshot.
+            locked = await conn.fetchval(
+                "SELECT alert_id FROM compliance_alerts WHERE alert_id = $1 FOR UPDATE", alert_id
+            )
+            if locked is None:
+                raise HTTPException(status_code=404, detail="alert not found")
+            completed = await conn.fetchval(
+                "SELECT EXISTS (SELECT 1 FROM client_obligations "
+                "WHERE alert_id = $1 AND status = 'done')",
+                alert_id,
+            )
+            if completed:
+                raise HTTPException(
+                    status_code=409, detail="Obligation completion is already recorded."
+                )
             repo = AlertRepository.with_connection(conn)
             updated = await repo.update_status(alert_id, new_status=new_status)
             await conn.execute(

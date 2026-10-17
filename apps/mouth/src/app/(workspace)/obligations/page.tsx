@@ -42,6 +42,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/api/error-handler";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import {
@@ -101,6 +102,8 @@ export default function ObligationsPage() {
   // ── per-row decision state ─────────────────────────────────────────────
   const [busyId, setBusyId] = useState<number | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
+  const [evidenceRefs, setEvidenceRefs] = useState<Record<number, string>>({});
+  const [declarations, setDeclarations] = useState<Record<number, boolean>>({});
   const [rowError, setRowError] = useState<Record<number, string>>({});
 
   // ── catalog, client names, counters ────────────────────────────────────
@@ -281,6 +284,49 @@ export default function ObligationsPage() {
     [notes, loadList],
   );
 
+  const handleComplete = useCallback(
+    async (row: ObligationOut) => {
+      const evidenceRef = (evidenceRefs[row.id] ?? "").trim();
+      if (!evidenceRef || evidenceRef.length > 500 || !declarations[row.id])
+        return;
+      setBusyId(row.id);
+      setRowError((prev) => ({ ...prev, [row.id]: "" }));
+      setNotice(null);
+      try {
+        await api.post(`/api/compliance/obligations/${row.id}/complete`, {
+          evidence_ref: evidenceRef,
+          declaration: true,
+        });
+        setNotice(
+          `Completion recorded for obligation #${row.id} (internal evidence).`,
+        );
+        setEvidenceRefs((prev) => ({ ...prev, [row.id]: "" }));
+        setDeclarations((prev) => ({ ...prev, [row.id]: false }));
+        setRefreshTick((t) => t + 1);
+        await loadList();
+      } catch (e) {
+        // The evidence reference stays in this form and the authorized audit
+        // record. Do not send the request or exception payload to telemetry.
+        setRowError((prev) => ({
+          ...prev,
+          [row.id]: describeError(e, "Could not record completion.", {
+            409: e instanceof ApiError ? (e.detail ?? e.message) : "",
+          }),
+        }));
+        if (e instanceof ApiError && e.statusCode === 409) {
+          setNotice(
+            `Completion not recorded for obligation #${row.id}: ${e.detail ?? e.message}`,
+          );
+          setRefreshTick((t) => t + 1);
+          await loadList();
+        }
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [evidenceRefs, declarations, loadList],
+  );
+
   const handleNoteChange = useCallback((id: number, value: string) => {
     setNotes((prev) => ({ ...prev, [id]: value }));
   }, []);
@@ -293,7 +339,7 @@ export default function ObligationsPage() {
       <Masthead
         eyebrow="Compliance"
         title="Obligations register"
-        subtitle="Generate, review and decide compliance obligation proposals before they become client-visible deadline alerts."
+        subtitle="Generate and review compliance obligations, then record completion with an internal evidence reference."
         className="mb-6"
         right={
           <button
@@ -500,11 +546,20 @@ export default function ObligationsPage() {
             clientNames={clientNames}
             groupByMonth={groupByMonth}
             notes={notes}
+            evidenceRefs={evidenceRefs}
+            declarations={declarations}
             rowError={rowError}
             busyId={busyId}
             onNoteChange={handleNoteChange}
             onApprove={(row) => void handleApprove(row)}
             onReject={(row) => void handleReject(row)}
+            onComplete={(row) => void handleComplete(row)}
+            onEvidenceChange={(id, value) =>
+              setEvidenceRefs((prev) => ({ ...prev, [id]: value }))
+            }
+            onDeclarationChange={(id, value) =>
+              setDeclarations((prev) => ({ ...prev, [id]: value }))
+            }
           />
         )
       )}
