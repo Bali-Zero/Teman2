@@ -60,6 +60,7 @@ JUDGE_BASE_OK = "judge_rewritten_base_ok"
 LABEL = "localci:merge"
 ARM_LABEL, ARM_ENV, ARM_ROLES = "localci:merge-shadow-ok", "LOCALCI_MERGER_ARMED", ("admin", "maintain")   # the two halves of the arm
 AUTHOR = "localci-merger"
+ESCALATIONS_ENV = "LOCALCI_ESCALATIONS_FILE"   # the Pro escalation board the false-green alarm appends to; default the checkout's shared/escalations_pro.jsonl under $HOME/nuzantara (never the Desktop path: TCC denies it to a launchd job, W84)
 PHASE_F_ENV, KEY_FILE, HALT_FILE = "LOCALCI_MERGER_PHASE_F", "deploy_key", "phase_f_halt"   # F2: the env half of the arm, the key and the sticky halt in the state dir
 PUSH_TIMEOUT_S = 120
 READBACK_SETTLE_S = 5      # B21: (b) needs two reads this far apart to agree
@@ -1805,8 +1806,29 @@ def read_ready(state: Path) -> tuple[str | None, dict]:
     if not 0 <= age < READY_MAX_AGE_S:
         return f"READY stale: computed {age}s ago", facts
     if doc.get("phase_e_ready") is not True:
-        return (f"{doc['reason']} (cache)" if isinstance(doc.get("reason"), str) and doc["reason"] else "READY false (cache)"), facts
+        if not (os.environ.get(PHASE_F_ENV) == "1" and doc.get("phase_e_ready_ex_false_green") is True):   # B44: after the flip a FALSE_GREEN alone is an alarm (alarm_false_green), not a refusal
+            return (f"{doc['reason']} (cache)" if isinstance(doc.get("reason"), str) and doc["reason"] else "READY false (cache)"), facts
     return None, facts
+
+
+def alarm_false_green(state: Path, keys: list) -> None:
+    """Phase F, the owner's ruling of 2026-10-17: a FALSE_GREEN after the flip raises an alarm and blocks nothing. One alarm per key never
+    alarmed before (the journal's ``false_green_alarm`` rows are the memory): a HIGH line on the Pro escalation board, then the journal
+    row. A board that cannot be written is said in the row (``escalated`` false), never retried: the row is the trail."""
+    seen = {r.get("key") for r in read_journal(state) if r.get("kind") == "false_green_alarm"}
+    board = Path(os.environ.get(ESCALATIONS_ENV) or Path.home() / "nuzantara" / "shared" / "escalations_pro.jsonl")
+    for key in (k for k in keys if k not in seen):
+        ts, ok = time.time(), True
+        line = {"job": f"localci:false-green:{key}", "type": "localci_false_green", "priority": "HIGH", "status": "pending", "ts": ts, "machine": "pro",
+                "_writer": "localci-merger", "error_summary": f"FALSE_GREEN {key}: the local judge was green and the hosted side red; phase F kept merging (alarm, not halt). "
+                "Read `merger.py report`; the manual halt is the phase_f_halt file in the state dir."}
+        try:
+            with board.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(line, ensure_ascii=False) + "\n")
+        except OSError:
+            ok = False
+        journal(state, {"kind": "false_green_alarm", "key": key, "escalated": ok, "result": "alarm"})
+        print(f"merger: FALSE_GREEN alarm {key} (merging continues; escalated={ok})", file=sys.stderr)
 
 
 def ready_refresh_due(state: Path, recs: list[dict]) -> bool:
@@ -1848,10 +1870,13 @@ def refresh_ready(a, state: Path, lease_id: str) -> None:
         return
     win = rep.get("window") if isinstance(rep.get("window"), dict) else {}
     facts = {"computed_at": started, "completed_at": time.time(), "phase_e_ready": False if early else rep["phase_e_ready"], "refused": None,
+             "phase_e_ready_ex_false_green": False if early else rep.get("phase_e_ready_ex_false_green") is True, "false_green_keys": [] if early else list(rep.get("false_green_keys") or []),
              "reason": early, "compared_merges": win.get("compared_merges"), "compared_days": win.get("compared_days"), "journal_rows": rows,
              "false_green": (rep.get("counts") or {}).get("FALSE_GREEN", 0) + (rep.get("context_counts") or {}).get("FALSE_GREEN", 0)
                             + (rep.get("recorded_context_false_green") or 0)}
     atomic_write(state / READY_CACHE_FILE, json.dumps(facts, sort_keys=True) + "\n")
+    if os.environ.get(PHASE_F_ENV) == "1":
+        alarm_false_green(state, facts["false_green_keys"])
     result = "precheck_false" if early else "true" if facts["phase_e_ready"] else "false"
     journal(state, {"kind": "ready_refreshed", "result": result, **seen})
     print(f"merger: READY refreshed: {result} compared_merges={facts['compared_merges']} in {seen['duration_s']}s (memo {memo.hits} hit, {memo.misses} read) — this tick decides nothing else")
@@ -2663,6 +2688,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     rows = []
     ctx_counts = dict.fromkeys(hc.CLASSES, 0)
     recorded_fg, recorded_raw, reclassified, kept_fg = 0, 0, [], []   # B10: a recorded FALSE_GREEN the evidence shows was a stale hosted verdict
+    fg_keys: set = set()   # the decisions that stand behind a FALSE_GREEN at any level: the alarm's identity (``#pr@head12``)
     judges: dict = {}
     gate_reads: dict = {}   # B12b: one annotation and one job read per hosted check run, whichever decisions name it
     aborted_seen: dict = {}   # B27: (pr, head, context, check run id) -> the setup step it died in, from the live rows and the recorded ones
@@ -2731,7 +2757,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
             for k, v in (d.get("durations") if isinstance(d.get("durations"), dict) else {}).items():
                 if is_num(v):
                     check_max_s[k] = max(check_max_s.get(k, 0), v)
-            compared_ctx, not_full, skip_agreed = 0, {"partial": [], "unrecorded": []}, []
+            compared_ctx, not_full, skip_agreed, ctx_fg = 0, {"partial": [], "unrecorded": []}, [], 0
             if d.get("contexts_status") is not None:   # the gate ran: set its per-context verdicts beside the hosted ones
                 # coverage as the tick journalled it from the BASE runner; a line that predates it carries none: unrecorded, never full
                 cov = d.get("coverage") if isinstance(d.get("coverage"), dict) else {}
@@ -2748,6 +2774,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                     github = "PENDING"   # B27: every red required context is a job that died in setup: the PR has no hosted verdict yet, so no pr-level class
                 for k, v in rep["counts"].items():
                     ctx_counts[k] += v
+                ctx_fg = rep["counts"].get("FALSE_GREEN", 0)
                 compared_ctx = rep["coverage"]["compared_full"]   # a partial AGREE is an agreement on a subset: shown, never counted
                 not_full = {"partial": rep["coverage"]["compared_partial"], "unrecorded": rep["coverage"]["compared_unrecorded"]}
                 skip_agreed = rep["coverage"]["compared_skip_agreed"]   # full: the decision compared, counted apart from executions
@@ -2766,6 +2793,8 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                          "elapsed_s": d.get("elapsed_s") if is_num(d.get("elapsed_s")) else None,
                          "compared_merge": merged_here and github != "PENDING" and d.get("contexts_status") == "ok"
                                            and compared_enough(compared_ctx, len(not_full["partial"]))})
+            if rows[-1]["class"] == "FALSE_GREEN" or ctx_fg or raw - len(got) > 0:
+                fg_keys.add(f"#{n}@{head[:12]}")
         # GitHub merged a red required check: a HOSTED failure, read on every merged PR's own merge commit whichever candidate the
         # merger decided (#8026 was decided on an older base and is judged above on its green head), counted apart, never a class
         hosted_red_merged, merged_without_sha = [], []
@@ -2823,6 +2852,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
     withdrawn = [{"pr": k[0], "head_sha": k[1], "context": k[2], "check_run_id": k[3]}
                  for k, v in sorted(aborted_seen.items(), key=lambda kv: tuple(str(x) for x in kv[0])) if v == WITHDRAWN]   # B43
     ready = fg == 0 and compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # lead's ruling 2026-10-07: both, never either
+    ready_ex_fg = compared_merges >= READY_MIN_MERGES and compared_days >= READY_MIN_DAYS   # the same two terms apart: after the flip the merge reads this and a FALSE_GREEN is an alarm
     live_block = liveness(window, decisions, prs, merged_listing(a) if emit else None, clock)   # B24: apart from `ready`, which it never feeds
     skipped = dict(sorted(Counter(str(r.get("why")) for r in window if r.get("kind") == "skipped").items()))
     errors = sum(1 for r in window if r.get("kind") == "error")
@@ -2856,7 +2886,7 @@ def report(a, emit: bool = True, memo: "ReadMemo | None" = None) -> tuple[int, d
                       "decisions_without_code_sha": without_code_sha, "enqueue": enqueue, "would_merge": would_merge, "pending_retry": pending_retry,
                       "code_shas": sorted({r["code_sha"] for r in rows if is_sha(r["code_sha"])}), "ticks": ticks},
            "counts": counts, "hosted_red_merged": hosted_red_merged, "merged_without_merge_commit_sha": merged_without_sha, "context_counts": ctx_counts, "recorded_context_false_green": recorded_fg, "recorded_false_green_as_journalled": recorded_raw,
-           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "false_green_breakdown": fg_breakdown, "hosted_aborted": {"count": len(aborted), "list": aborted}, "hosted_withdrawn": {"count": len(withdrawn), "list": withdrawn},
+           "recorded_reclassified_hosted_stale": reclassified, "recorded_kept_false_green": kept_fg, "phase_e_ready": ready, "false_green_breakdown": fg_breakdown, "phase_e_ready_ex_false_green": ready_ex_fg, "false_green_keys": sorted(fg_keys), "hosted_aborted": {"count": len(aborted), "list": aborted}, "hosted_withdrawn": {"count": len(withdrawn), "list": withdrawn},
            "liveness": live_block, "phase_f": phase_f, "phase_f_halted": os.path.lexists(state / HALT_FILE), "rows": rows,
            "since": a.since, "repo": a.repo, "base": a.base, "generated_at": now()}
     if not emit:

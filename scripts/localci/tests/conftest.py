@@ -14,6 +14,15 @@ def pytest_collection_modifyitems(items):
         raise pytest.UsageError(f"{len(long_ids)} test id(s) over {NODEID_MAX} chars; give the parametrize short ids=: {long_ids}")
 
 
+@pytest.fixture(autouse=True)
+def board_off_the_checkout(tmp_path_factory, monkeypatch):
+    """The false-green alarm's default board is shared/escalations_pro.jsonl of the live checkout under $HOME/nuzantara on M5 and Pro:
+    a test that alarms without its own board would append fixture rows to the real escalation board."""
+    path = tmp_path_factory.getbasetemp() / "escalations_pro.jsonl"
+    monkeypatch.setenv("LOCALCI_ESCALATIONS_FILE", str(path))
+    return path
+
+
 @pytest.fixture
 def fake_env(monkeypatch):
     fe = fr.FakeEnv()

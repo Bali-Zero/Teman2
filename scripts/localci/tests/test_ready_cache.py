@@ -93,7 +93,7 @@ def test_a_tick_with_a_cache_older_than_the_refresh_interval_refreshes_and_decid
     assert [c["emit"] for c in calls] == [False] and live_kinds(fw) == ["ready_refreshed"] and fw.pushes == []   # a refresh is its own tick
     doc = cache(fw)
     assert doc["phase_e_ready"] is True and doc["refused"] is None and doc["compared_merges"] >= mg.READY_MIN_MERGES and doc["false_green"] == 0
-    assert set(doc) == {"computed_at", "completed_at", "phase_e_ready", "refused", "reason", "compared_merges", "false_green", "compared_days", "journal_rows"}
+    assert set(doc) == {"computed_at", "completed_at", "phase_e_ready", "phase_e_ready_ex_false_green", "false_green_keys", "refused", "reason", "compared_merges", "false_green", "compared_days", "journal_rows"}
     (row,) = fw.live()
     assert row["result"] == "true" and row["memo_misses"] > 0 and row["memo_hits"] == 0 and row["duration_s"] >= 0 and row["lease_id"]
     assert stat.S_IMODE(cache_path(fw).stat().st_mode) == 0o600 and time.time() - doc["computed_at"] < 600
