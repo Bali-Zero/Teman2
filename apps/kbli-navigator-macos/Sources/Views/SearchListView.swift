@@ -223,6 +223,9 @@ struct SearchListView: View {
     /// honesty cannot be photographed is a table nobody can check.
     private var tableBody: some View { tableList(inset: 0) { EmptyView() } }
 
+    /// Never set in the app or in a `--fold-census` / snapshot run: only the text census dump of the chrome (`Tests/encensus`).
+    private static var flatDump: Bool { ProcessInfo.processInfo.environment["KBLI_DUMP_FLAT"] != nil }
+
     /// `masthead` scrolls WITH the rows (H1d O2): a masthead standing above the scroll view starved it, and under a tall sheet the strip held
     /// no row at all (56306 at 1040x648: the filters and the masthead took the whole strip). The scroll view is then the strip above the
     /// sheet, and the selected row is scrolled whole into it.
@@ -231,6 +234,11 @@ struct SearchListView: View {
             VStack(spacing: 0) { masthead(); banner(lang.t("data.missing")) }
         } else if visibleRows.isEmpty {
             VStack(spacing: 0) { masthead(); EmptyDetail(text: lang.t("search.empty"), kind: .noResults) }
+        } else if Self.flatDump {
+            // The en-census dump only (Tests/encensus sets KBLI_DUMP_FLAT around its chrome dumps): a ScrollView's content is not in the
+            // text the dump reads, and the masthead and the narrow filter bar are in the ScrollView since H1d (they stood above it). The dump
+            // reads them again, as before; the rows stay unread here, they are censused per code (registry-row, search-row, search-peak).
+            masthead()
         } else {
             ScrollViewReader { proxy in
                 ScrollView {

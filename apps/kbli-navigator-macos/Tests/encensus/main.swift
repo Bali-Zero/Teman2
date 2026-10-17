@@ -118,10 +118,12 @@ let rc: Int32 = MainActor.assumeIsolated {
     state.selected = nil
     state.browsedSector = "I"
     let sector = [isID ? "SEKTOR" : "SECTOR", isID ? "tanpa kelas risiko" : "without a risk class"]   // + the census line
+    setenv("KBLI_DUMP_FLAT", "1", 1)   // the chrome dumps read the masthead and the filter bar flat (H1d moved them into the ScrollView)
     emit("-", "registry-chrome", SearchListView(), height: 800, anchors: sector)
     state.browsedSector = nil
     state.query = "55203"
     emit("-", "search-chrome", SearchListView(), height: 800, anchors: sector)
+    unsetenv("KBLI_DUMP_FLAT")
     state.query = ""
     emit("-", "search-field", FieldBand(), height: 120, anchors: [lang.t("search.placeholder")])   // empty: the placeholder
     let codes = all.filter { pick.contains($0.kode) }
