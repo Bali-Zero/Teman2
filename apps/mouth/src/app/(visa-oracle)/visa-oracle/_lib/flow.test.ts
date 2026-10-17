@@ -179,6 +179,7 @@ const CATEGORY_CASES: ReadonlyArray<{
       ["investment_pt_pma", "yes"],
       ["investment_capital_idr", "1000000000"],
       ["investment_paid_up_capital_idr", "500000000"],
+      ["investment_own_shareholding_idr", "500000000"],
       ["investment_role", "SHAREHOLDER_DIRECTOR"],
       ["investment_establishes_company", "yes"],
       ["investment_foreign_branch", "no"],
@@ -2108,6 +2109,7 @@ describe("business explorer — the D12 sequence", () => {
       "investment_pt_pma",
       "investment_capital_idr",
       "investment_paid_up_capital_idr",
+      "investment_own_shareholding_idr",
       "investment_role",
       "investment_establishes_company",
       "investment_foreign_branch",
@@ -2207,6 +2209,7 @@ describe("business explorer — the D12 sequence", () => {
       expect.arrayContaining([
         "investment_capital_idr",
         "investment_paid_up_capital_idr",
+        "investment_own_shareholding_idr",
         "investment_role",
       ]),
     );

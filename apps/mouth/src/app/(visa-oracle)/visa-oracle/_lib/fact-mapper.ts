@@ -1017,6 +1017,11 @@ export function mapOracleFactsToApplicantFacts(
       0,
       Number.MAX_SAFE_INTEGER,
     ),
+    "investment.own_shareholding_idr": integerFact(
+      facts.investment_own_shareholding_idr,
+      0,
+      Number.MAX_SAFE_INTEGER,
+    ),
     "investment.proposed_role": enumFact(facts.investment_role, PROPOSED_ROLES),
     // PR-D4c-2, 2026-09-13: real answer, on the `merit`/`family`/`undecided`
     // investment-vehicle branches only (`getCategoryQuestionIds`, flow.ts).

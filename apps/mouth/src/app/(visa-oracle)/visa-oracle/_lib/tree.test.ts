@@ -311,7 +311,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     ).toHaveLength(10);
   });
 
-  // INNOCENCE (FIX-B, spec F2): exactly 16 questions declare no `notSure`
+  // INNOCENCE (FIX-B, spec F2): exactly 17 questions declare no `notSure`
   // at all — six literal ids plus the ten `qualificationQuestion(...)`-
   // built ones. The qualifications and annual-income question omit it
   // DELIBERATELY (`tree.ts:182-189`: "a 'not
@@ -320,7 +320,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
   // `notSure` would add an `"unsure"` edge and move the pinned 256-walk
   // covering subset (`enumerate-interview-space.test.ts`) — that is a RED to
   // report, never a fix.
-  it("holds exactly 16 questions with no notSure at all, named (A6-1/A7-M/seq-28 B)", () => {
+  it("holds exactly 17 questions with no notSure at all, named (A6-1/A7-M/seq-28 B/E28A B)", () => {
     expect(
       Object.entries(QUESTIONS)
         .filter(([, q]) => q.notSure === undefined)
@@ -332,6 +332,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
         "investment_currency",
         "retirement_age_notice",
         "remote_annual_income_usd",
+        "investment_own_shareholding_idr",
         "retirement_undecided_basis",
         "review_gate",
         "sponsor_government_invitation",
@@ -348,7 +349,7 @@ describe("tree.ts — strict date parsing (finding #8, adversarial review 2026-0
     );
     expect(
       Object.entries(QUESTIONS).filter(([, q]) => q.notSure === undefined),
-    ).toHaveLength(16);
+    ).toHaveLength(17);
   });
 });
 

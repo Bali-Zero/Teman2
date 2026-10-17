@@ -817,6 +817,7 @@ function ptPmaCommitmentQuestionIds(facts: OracleFacts): readonly string[] {
       ? [
           "investment_capital_idr",
           "investment_paid_up_capital_idr",
+          "investment_own_shareholding_idr",
           "investment_role",
         ]
       : []),
@@ -982,6 +983,7 @@ export function getCategoryQuestionIds(facts: OracleFacts): readonly string[] {
             "investment_pt_pma",
             "investment_capital_idr",
             "investment_paid_up_capital_idr",
+            "investment_own_shareholding_idr",
             "investment_role",
           ]
         : branch === "property"

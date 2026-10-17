@@ -216,6 +216,8 @@ EXPECTED_SEQ21_GAINS: dict[str, tuple[str, ...]] = {
     "offshore/invest/pt_pma/company_only": ("E28B",),
     "offshore/invest/pt_pma/foreign_branch_only": ("E28D",),
     "offshore/invest/pt_pma/full_capital": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma/own_shareholding_9999999999": ("E28B", "E28D", "E28F"),
+    "offshore/invest/pt_pma/own_shareholding_10000000000": ("E28B", "E28D", "E28F"),
     "offshore/invest/pt_pma/ikn_subsidiary": ("E28B", "E28F"),
     "offshore/invest/pt_pma/offshore_application": ("E28B", "E28D", "E28F"),
     "offshore/invest/pt_pma/sponsor_government": ("E28B", "E28D", "E28F", "E33C"),
@@ -1208,7 +1210,7 @@ class TestCensusReplay:
             assert after[label]["state"] == after_state, label
             assert before[label]["candidates"] == after[label]["candidates"] == [], label
 
-    def test_without_the_answers_the_census_is_131_answers_25_no_paths_8_questions(
+    def test_without_the_answers_the_census_is_135_answers_25_no_paths_8_questions(
         self,
         seq21_compiled: compiler.CompiledRulePack,
         unasked_walks: dict[str, dict[str, Any]],
@@ -1275,10 +1277,14 @@ class TestCensusReplay:
         qualification fact: the two flagged walks (criminal record, paid medical) are
         engine-SUPPORTED, the Indonesian-citizen walk is a no-path, the work-tile minor
         needs the family sponsor answer, and on seq-21 the calling-visa, the three
-        overstay walks and the no-guardian minor are held for review: 133 / 26 / 9 / 6."""
+        overstay walks and the no-guardian minor are held for review: 133 / 26 / 9 / 6.
+
+        E28A own-shareholding step B (2026-10-17) adds the two own-shareholding
+        boundary witnesses, both SUPPORTED_CANDIDATES here (this pack does not
+        read the fact): 135 / 26 / 9 / 6."""
         replayed = _replay(seq21_compiled, unasked_walks)
         census = Counter(actual["state"] for actual in replayed.values())
-        assert census["SUPPORTED_CANDIDATES"] == 133
+        assert census["SUPPORTED_CANDIDATES"] == 135
         assert census["NO_SUPPORTED_PATH"] == 26
         assert census["NEEDS_INPUT"] == 9
         assert census["HUMAN_REVIEW_REQUIRED"] == 6

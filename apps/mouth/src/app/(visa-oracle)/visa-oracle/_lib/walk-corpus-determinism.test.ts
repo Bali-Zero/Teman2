@@ -157,8 +157,12 @@ import { DEFAULT_OUT_DIR } from "../../../../../scripts/visa-oracle/generate-wal
  * 30/61, a minor with and without guardian consent, a disclosed criminal
  * record, the trade-office walk past the overstay cap, and the paid `other`
  * walk answering `medical`); no existing fixture moves.
+ *
+ * E28A own-shareholding step B (2026-10-17): +2, 180 -> 182 — the own
+ * shareholding boundary witnesses 9,999,999,999 and 10,000,000,000. Every
+ * signed pack up to seq-30 ignores the fact, so both stay as `full_capital`.
  */
-const EXPECTED_WALK_COUNT = 180;
+const EXPECTED_WALK_COUNT = 182;
 
 function jsonFilesIn(dir: string): string[] {
   return readdirSync(dir)

@@ -384,6 +384,13 @@ const en = {
   "q.investment_paid_up_capital_idr.label": "Documented paid-up capital",
   "why.investment_paid_up_capital_idr":
     "We use the exact paid-up amount you give, kept separate from your planned investment capital.",
+  "q.investment_own_shareholding_idr":
+    "What is the value of the shares you personally hold in the Indonesian company that will sponsor you, in rupiah?",
+  "q.investment_own_shareholding_idr.hint":
+    "Enter a whole-rupiah amount for your own shares only, not the whole company's capital.",
+  "q.investment_own_shareholding_idr.label": "Value of your own shares",
+  "why.investment_own_shareholding_idr":
+    "The Investor visa looks at the shares you hold yourself in the sponsoring company, not only at the company's capital.",
   "q.investment_role": "What role would you hold in the company?",
   "q.investment_role.hint": "Choose the exact proposed-role description.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Shareholder and director",
@@ -1440,6 +1447,13 @@ const id: Record<Keys, string> = {
   "q.investment_paid_up_capital_idr.label": "Modal disetor terdokumentasi",
   "why.investment_paid_up_capital_idr":
     "Kami memakai jumlah persis yang Anda berikan, dipisahkan dari modal investasi yang Anda rencanakan.",
+  "q.investment_own_shareholding_idr":
+    "Berapa nilai saham yang Anda miliki secara pribadi di perusahaan Indonesia yang akan menjadi penjamin Anda, dalam rupiah?",
+  "q.investment_own_shareholding_idr.hint":
+    "Masukkan jumlah rupiah bulat untuk saham milik Anda sendiri saja, bukan modal seluruh perusahaan.",
+  "q.investment_own_shareholding_idr.label": "Nilai saham milik Anda",
+  "why.investment_own_shareholding_idr":
+    "Visa Investor melihat saham yang Anda miliki sendiri di perusahaan penjamin, tidak hanya modal perusahaan.",
   "q.investment_role": "Peran apa yang akan Anda pegang di perusahaan?",
   "q.investment_role.hint": "Pilih deskripsi peran yang tepat.",
   "q.investment_role.opt.SHAREHOLDER_DIRECTOR": "Pemegang saham dan direktur",

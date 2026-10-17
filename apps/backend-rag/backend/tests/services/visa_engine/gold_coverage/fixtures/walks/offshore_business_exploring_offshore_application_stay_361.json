@@ -15,6 +15,7 @@
     "investment_pt_pma",
     "investment_capital_idr",
     "investment_paid_up_capital_idr",
+    "investment_own_shareholding_idr",
     "investment_role",
     "investment_establishes_company",
     "investment_foreign_branch",
@@ -81,6 +82,10 @@
       "value": 1000000000
     },
     "investment.paid_up_capital_idr": {
+      "status": "KNOWN",
+      "value": 1000000000
+    },
+    "investment.own_shareholding_idr": {
       "status": "KNOWN",
       "value": 1000000000
     },

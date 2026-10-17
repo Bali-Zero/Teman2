@@ -2,7 +2,7 @@
 
 ``test_gold_coverage_floor.py`` proves the pack can support a product when
 every fact arrives. This file proves the opposite half, and it is the half
-the user lives in: replay the **180 real interview walks** — every distinct
+the user lives in: replay the **182 real interview walks** — every distinct
 path through ``flow.ts``'s two-arm spine and ``getCategoryQuestionIds``'
 eleven categories, each answered through the real ``fact-mapper.ts`` —
 against the highest signed PRODUCTION pack, and pin the outcome census.
@@ -874,6 +874,10 @@ _EXPECTED_OUTCOME_ON_SEQ20: dict[str, tuple[str, tuple[str, ...]]] = {
         "SUPPORTED_CANDIDATES",
         ("C2", "D12", "E28A"),
     ),
+    # E28A own-shareholding step B: the two boundary witnesses answer like
+    # `full_capital` on every pack up to seq-30, which ignores the fact.
+    "offshore/invest/pt_pma/own_shareholding_9999999999": ("SUPPORTED_CANDIDATES", ("C2", "D12", "E28A")),
+    "offshore/invest/pt_pma/own_shareholding_10000000000": ("SUPPORTED_CANDIDATES", ("C2", "D12", "E28A")),
     # W-VO-E: `hf.d12-onshore-conversion-excluded` is why D12 had no walk —
     # `wants_onshore_conversion`'s first option is `yes`, which excludes the
     # multiple-entry investment visa by regulation. Answering `no` is the
@@ -1170,6 +1174,8 @@ _SEQ21_OUTCOME_CHANGES: dict[str, tuple[str, tuple[str, ...]]] = {
         "SUPPORTED_CANDIDATES",
         ("C2", "D12", "E28A", "E28B", "E28D", "E28F"),
     ),
+    "offshore/invest/pt_pma/own_shareholding_9999999999": ("SUPPORTED_CANDIDATES", ("C2", "D12", "E28A", "E28B", "E28D", "E28F")),
+    "offshore/invest/pt_pma/own_shareholding_10000000000": ("SUPPORTED_CANDIDATES", ("C2", "D12", "E28A", "E28B", "E28D", "E28F")),
     "offshore/invest/pt_pma/ikn_subsidiary": ("SUPPORTED_CANDIDATES", ("C2", "E28B", "E28F")),
     "offshore/invest/pt_pma/offshore_application": (
         "SUPPORTED_CANDIDATES",
@@ -1813,6 +1819,13 @@ EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
         + Counter(_row[0] for _row in _pr13_rows(_seq).values()).get(_state, 0)
         for _state in {*_census, *(_row[0] for _row in _pr13_rows(_seq).values())}
     }
+    for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
+}
+
+# E28A own-shareholding step B adds 2 SUPPORTED_CANDIDATES walks (the boundary
+# witnesses, rows derived from `full_capital`) to EVERY sequence.
+EXPECTED_STATE_CENSUS_BY_SEQUENCE = {
+    _seq: {**_census, "SUPPORTED_CANDIDATES": _census["SUPPORTED_CANDIDATES"] + 2}
     for _seq, _census in EXPECTED_STATE_CENSUS_BY_SEQUENCE.items()
 }
 
@@ -2947,9 +2960,14 @@ def test_corpus_has_the_expected_real_interview_walks(walks: dict[str, dict[str,
     patterns, business activities and other purposes (see `_T06_VISIT_OUTCOMES`).
 
     PR-13 (2026-10-15): adds 9, corpus 171 -> 180: the global filters on the
-    employment tile (see `_PR13_GLOBAL_FILTER_ROWS`)."""
+    employment tile (see `_PR13_GLOBAL_FILTER_ROWS`).
 
-    assert len(walks) == 180, f"expected 180 interview walks, found {len(walks)}"
+    E28A own-shareholding step B (2026-10-17): adds 2, corpus 180 -> 182:
+    `offshore/invest/pt_pma/own_shareholding_9999999999` and `..._10000000000`.
+    Both answer like `full_capital` on every pack up to seq-30, which does not
+    read the fact."""
+
+    assert len(walks) == 182, f"expected 182 interview walks, found {len(walks)}"
     assert sorted(walks) == sorted(EXPECTED_OUTCOME), "corpus and EXPECTED_OUTCOME disagree"
     for label, spec in walks.items():
         assert spec["asked"], f"{label}: walk carries no asked-question history"

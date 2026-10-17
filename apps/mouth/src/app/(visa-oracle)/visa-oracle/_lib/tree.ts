@@ -966,6 +966,30 @@ export const QUESTIONS: Record<string, OracleQuestion> = {
     whyWeAsk: { i18nKey: "why.investment_paid_up_capital_idr" },
     notSure: { mode: "human-review", because: "money-payer-clients" },
   },
+  investment_own_shareholding_idr: {
+    id: "investment_own_shareholding_idr",
+    i18nKey: "q.investment_own_shareholding_idr",
+    kind: "number",
+    group: "details",
+    decisionMapping: {
+      kind: "FACT",
+      factPaths: ["investment.own_shareholding_idr"],
+    },
+    options: [],
+    numberInput: {
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+      step: 1,
+      labelI18nKey: "q.investment_own_shareholding_idr.label",
+      unitI18nKey: "q.unit.idr",
+    },
+    whyWeAsk: { i18nKey: "why.investment_own_shareholding_idr" },
+    // E28A (owner ruling 2026-10-15): the applicant's OWN shareholding in the
+    // sponsoring company is a rule input; notSure deliberately omitted -- same
+    // idiom as `remote_annual_income_usd`: an unknown answer would only make
+    // the engine ask this same question again. No threshold in the copy
+    // (anti-anchoring).
+  },
   investment_role: {
     id: "investment_role",
     i18nKey: "q.investment_role",
