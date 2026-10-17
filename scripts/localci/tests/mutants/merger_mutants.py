@@ -1246,7 +1246,8 @@ def copy_tree(dest: Path) -> None:
         shutil.copy2(ROOT / rel, dest / rel)
     (dest / "apps/bali-intel-scraper/scripts").mkdir(parents=True, exist_ok=True)   # B31 L5: the poller's helper timeout is pinned against the helper's deadline
     shutil.copy2(ROOT / "apps/bali-intel-scraper/scripts/post_publish_poller.py", dest / "apps/bali-intel-scraper/scripts/post_publish_poller.py")
-    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml", ".github/workflows/harness-floor.yml"):   # the CodeQL and harness-floor tests read them
+    for rel in (".github/workflows/security.yml", ".github/codeql-config.yml", ".github/workflows/harness-floor.yml",
+                ".github/workflows/guard-conformance.yml"):   # the CodeQL, harness-floor and matrix-mapping tests read them
         (dest / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, dest / rel)
     for rel in ("apps/organism/organism/organs_registry.yaml",):   # test_merger.py reads it

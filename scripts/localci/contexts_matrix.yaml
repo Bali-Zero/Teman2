@@ -735,6 +735,15 @@ contexts:
         - workflow_step: Council-journal staging guilt+innocence (stage_council_journal.py)
         - workflow_step: PII receipt generator guilt+innocence (pii_receipt.py)
         - workflow_step: harness/fable-gate publisher pin (harness_fable_gate.py)
+        - workflow_step: harness/fable-gate zsh preflight regression
+          # the body minus its `sudo apt-get` line: zsh is in the image (offline, no sudo), the rest is verbatim — REQUIRE_ZSH=1 keeps a missing zsh a failure, not a skip
+          argv:
+            - bash
+            - -c
+            - |
+              set -euo pipefail
+              command -v zsh
+              REQUIRE_ZSH=1 python3 -m pytest tests/scripts/test_harness_fable_gate_preflight_zsh_1017.py -q
         - workflow_step: codex-spalla-trigger.sh secret-redaction guilt+innocence
         - workflow_step: redaction fail-closed guilt+innocence (bash_call_log, _redact_pii pass4, siblings)
         - workflow_step: injected_surface_sessionstart.sh never-silent guilt+innocence
@@ -742,7 +751,7 @@ contexts:
     mapping: executed
     coverage: full
     caveat: >-
-      real tmux and zsh in the image; the apt lines of the army-watcher step are its transcription's only change
+      real tmux and zsh in the image; the apt lines of the army-watcher and zsh-preflight steps are their transcriptions' only change
     blocker: ""
 
   - name: "Visa Oracle fullstack smoke"
