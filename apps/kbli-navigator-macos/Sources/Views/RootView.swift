@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Keyboard-focus targets shared by the search field and the code list (D2, 2026-08-11) — a single
@@ -57,6 +58,7 @@ struct RootView: View {
     // `.onChange` syncs applied to the outer `body`, is the standard fix (no behavior change).
     var body: some View {
         splitView
+            .environment(\.themeEpoch, theme.epoch)
             // D3a: system appearance drives the theme, UNLESS the user has overridden it (D3a.2).
             // `initial: true` (macOS 14+) fires this once immediately on first render too, so a
             // fresh launch (no override yet) never shows a wrong-mode frame before the system
@@ -65,6 +67,10 @@ struct RootView: View {
             .onChange(of: systemColorScheme, initial: true) { _, newValue in
                 theme.mode = themeOverride == "system" ? (newValue == .dark ? .dark : .light)
                     : (themeOverride == "dark" ? .dark : .light)
+            }
+            // The window chrome follows an explicit override (the toggle, a saved one); `system` hands it back to the OS.
+            .onChange(of: chromeKey, initial: true) { _, _ in
+                NSApp.appearance = ThemeManager.chromeAppearance(override: themeOverride, mode: theme.mode)
             }
             // D3b: Increase Contrast, same initial:true pattern — see Theme.pickAA /
             // ThemeManager.contrastIncreased.
@@ -79,6 +85,8 @@ struct RootView: View {
                 focusedField = .search
             }
     }
+
+    private var chromeKey: String { "\(themeOverride)/\(theme.mode)" }
 
     private var splitView: some View {
         // K2 2026-09-13, direction "a — registry": TWO panes, not three. The register is a wide

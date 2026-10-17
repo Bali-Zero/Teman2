@@ -24,6 +24,8 @@ struct SearchListView: View {
     /// parameter RootView passes.
     var focusedField: FocusState<RootFocus?>.Binding = FocusState<RootFocus?>().projectedValue
     @AppStorage("rowDensity") private var rowDensity: RowDensity = .comfortable
+    /// Rebuilds the table and the sheet when the theme changes (`ThemeEpoch`); the filters and the open sheet below are kept.
+    @Environment(\.themeEpoch) private var themeEpoch
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// QA hooks (same convention as `KBLI_OPEN_ALL` / `KBLI_SHEET_EXPANDED`): the third state and
@@ -162,6 +164,7 @@ struct SearchListView: View {
             }
             sheetLayer(pane, windowBottom: windowBottom)
         }
+        .id(themeEpoch)
         .background(Theme.antracite)
         .censusFrame("pane")
         .onPreferenceChange(SheetFitKey.self) { sheetFit = $0; if !sheetExpanded, $0.band > 0 { collapsedFit = $0 } }

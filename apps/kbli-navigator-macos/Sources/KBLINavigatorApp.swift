@@ -69,6 +69,9 @@ struct KBLINavigatorApp: App {
             MainActor.assumeIsolated { _ = Snapshot.runIfRequested() }
             exit(0)
         }
+        // The window chrome is built in the override's appearance from the first frame (RootView keeps it in step afterwards).
+        NSApplication.shared.appearance = ThemeManager.chromeAppearance(
+            override: UserDefaults.standard.string(forKey: "themeOverride"), mode: ThemeManager.launchMode())
     }
 
     /// Registers every `.ttf` under `Contents/Resources/Fonts` for this process only (no install).
