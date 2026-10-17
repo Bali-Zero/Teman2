@@ -862,6 +862,78 @@
    ]
   },
   {
+   "query": "liquor license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "beer licence",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "wine license",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "liquor store permit",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "licenza alcolici",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "izin jual bir",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "how much for a liquor license in Bali",
+   "must_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "Bali spirit festival visa",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "birth certificate for my baby",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "birthday party permit",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "winery tour visa",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
+   "query": "beerhouse",
+   "must_not_find": [
+    "@alcohol"
+   ]
+  },
+  {
    "query": "",
    "expect_no_hits": true
   },

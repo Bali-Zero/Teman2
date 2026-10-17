@@ -47,6 +47,10 @@ Normalise the query and the row text the same way: lower-case, Unicode word toke
      the inside-the-word clause.
      Curated keywords must therefore carry the distinctive single words a client actually types
      (for the alcohol rows: "alkohol", "beralkohol"), never a generic one ("izin", "minuman").
+     The three Alcohol License rows also carry the English, Italian and Indonesian distinctive words
+     `liquor`, `beer`, `wine`, `alcol`, `alcolici`, `alcolico`, `bir` (after #8655's gate, council of the
+     licence-noise PR: "liquor license" lost its only bridge once `license` became noise); `spirit` is
+     deliberately absent ("spirit festival" would over-match).
      Revised 2026-10-17 after the council (codex-gpt-5.6-sol, agy-gemini-4-argon) measured recall
      losses of the first draft: "berapa biaya izin alkohol", "harga izin beralkohol", "alkohol",
      "polisi", "sehat", "certificato igiene", "voa ext", "kit", "pensi", "kitasnya".
