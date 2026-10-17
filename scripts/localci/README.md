@@ -295,7 +295,7 @@ context's chain included). One problem string per context.
 The check is cheap and always computed; "nothing relevant changed" needs no special case because identical files give identical problems. Scope:
 step accounting only, not the rest of a context's plan (trusted files, tool pins, expressions), which stay `plan`'s own BLOCKED reasons. The cure
 for a drift that already landed is a PR that carries the row: it has no new problem, so it passes. Pinned by `tests/test_matrix_parity.py`
-(the real workflows and matrix mutated into #8646's shape; a list-typed `job_id` with a dropped row and a YAML alias bomb both FAIL). The matrix itself uses anchors (`&codeql_version`), so aliases are capped by expanded size, not refused; the parity read parses and walks candidate YAML on the Pro host, hence the two caps and `tests/mutants/rows/mparity.py`.
+(the real workflows and matrix mutated into #8646's shape; a list-typed `job_id` with a dropped row and a YAML alias bomb both FAIL). The matrix itself uses anchors (`&codeql_version`), so aliases are capped by expanded node count, not refused; the parity read parses and walks candidate YAML on the Pro host, hence the two caps and `tests/mutants/rows/mparity.py`.
 
 ## What a verdict covers, and what is no verdict (B3)
 

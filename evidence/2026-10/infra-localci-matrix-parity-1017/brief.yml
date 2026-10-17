@@ -1,0 +1,42 @@
+task_id: infra-localci-matrix-parity-1017
+gear: 2
+l_level: L2
+gate_class: opus
+objective: >-
+  LocalCI matrix drift, before the phase F flip. #8646 added a step to the
+  required guard-conformance.yml with no row in contexts_matrix.yaml, and the
+  only test that catches it runs in localci-tests.yml, which is not required
+  and does not fire on workflow changes. Every later plan then read
+  ctx.guard-guilt-innocence BLOCKED "not mapped by the matrix"; after the flip
+  the plan freezes the BASE matrix, so the PR carrying the cure is judged by
+  the matrix that lacks it. plan now records policy.matrix_parity, reading
+  the candidate's and BASE's matrix and workflows as data through the
+  runner's own resolve_steps. FAIL names each problem the candidate has and
+  BASE does not; a problem BASE already has is NOT_APPLICABLE; an unparseable,
+  oversized or alias-bomb candidate file, or data that makes the reading
+  raise, is FAIL naming why; our own crash is BLOCKED.
+acceptance:
+  - text: >-
+      The replay of #8646 (the real workflows and matrix mutated into its
+      shape) is FAIL naming the zsh preflight step; the cure, an unrelated PR
+      on a drifted base, a list-typed job_id with a dropped row and an alias
+      bomb each give the status the README table states.
+    probe: python3 -m pytest -q scripts/localci/tests/test_matrix_parity.py
+assumptions:
+  - text: >-
+      Every mparity mutant row is killed (21 rows) and the full
+      scripts/localci/tests suite is green on the branch merged with main.
+    status: verified
+    probe: python3 scripts/localci/tests/mutants/merger_mutants.py --only $(--list | awk '/^mparity-/{print $1}')
+residual:
+  - text: >-
+      L2', open from the gate: the expansion cap counts nodes, not bytes, so a
+      large anchored scalar aliased many times passes both caps (about 1.45 GB
+      RSS at 4000 aliases). The same shape is pre-existing in merger.py:1179
+      and shepherd.py:131. Follow-up: one shared capped YAML loader that
+      counts leaf bytes.
+  - text: >-
+      Scope: step accounting only. A codeql-action bump or a service step
+      reorder passes here though plan_service_context would BLOCK later (L3).
+      Adding .github/workflows/** to localci-tests.yml paths is a follow-up
+      (a workflow edit is gear 3).

@@ -1595,7 +1595,7 @@ def full_dir_map(td: Path) -> dict:
 MATRIX_REL = "scripts/localci/contexts_matrix.yaml"
 
 
-PARITY_MAX_BYTES = 2 << 20   # a candidate file read for parity: the largest real one is 64 KiB; past this it is a finding, not a parse
+PARITY_MAX_BYTES = 2 << 20   # a candidate file read for parity: the largest real one is tests.yml, 160 KB; past this it is a finding, not a parse
 PARITY_MAX_NODES = 500_000   # YAML aliases share objects at load, so a bomb is cheap to parse and ruinous to str()/walk: expanded size is capped
 
 
