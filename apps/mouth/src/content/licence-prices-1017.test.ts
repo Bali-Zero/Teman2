@@ -57,20 +57,41 @@ export function alcoholViolation(line: string): boolean {
     if ([...line.matchAll(SHORT)].length > 0) return true;
     if (fullAmounts(line).some((n) => !ALCOHOL_OK.has(n))) return true;
   }
+  // A licence label without the literal "NPBBKC" ("Licenza alcolici (Golongan
+  // A) | 5.000.000") is held to the same three prices.
+  if (
+    ALCOHOL_LICENCE.test(line) &&
+    fullAmounts(line).some((n) => !ALCOHOL_OK.has(n))
+  )
+    return true;
   return ALCOHOL_LABEL.test(line) && RETIRED_ALCOHOL.test(line);
 }
+const ALCOHOL_LICENCE =
+  /golongan|(?:licen[cs]e|licence|licenza|izin|permit|лицензи\w*)[^|\n]{0,30}(?:alcohol|alkohol|alcool|alcol\w*|алкогол\w*)|(?:alcohol|alkohol|alcool|alcol\w*|алкогол\w*)[^|\n]{0,20}(?:licen[cs]e|licence|licenza|izin|permit|лицензи\w*)/i;
+
+/**
+ * A line that labels its amount as the state's fee, or as a third-party market
+ * range, states a fact, not a Bali Zero price ("Government PIRT filing fee:
+ * IDR 100,000"). It is the owner ruling's own carve-out.
+ */
+const FACT_AMOUNT =
+  /\b(?:government(?:al)?|PNBP|pemerintah|governativ[aoie]|gouvernement(?:al\w*)?|third[- ]party|market (?:range|rate)s?|pihak ketiga|terze parti|tiers)\b|государствен\w*|сторонн\w*/i;
+export const isFactAmount = (line: string) => FACT_AMOUNT.test(line);
 
 /** PIRT carries no Bali Zero price at all. */
 export function onRequestViolation(line: string): boolean {
-  return /\bPIRT\b/.test(line) && hasAmount(line);
+  return /\bPIRT\b/.test(line) && hasAmount(line) && !isFactAmount(line);
 }
 
 /** An SLHS label may have its quoted price on the following non-empty line. */
 export function slhsViolation(line: string, nextNonEmpty = ""): boolean {
   return (
     /\bSLHS\b/.test(line) &&
+    !isFactAmount(line) &&
     (hasAmount(line) ||
-      (!nextNonEmpty.trimStart().startsWith("|") && hasAmount(nextNonEmpty)))
+      (!nextNonEmpty.trimStart().startsWith("|") &&
+        hasAmount(nextNonEmpty) &&
+        !isFactAmount(nextNonEmpty)))
   );
 }
 
@@ -97,7 +118,38 @@ const MERP_BUNDLE = /\+\s*MERP/i;
  *     "MERP 1 Anno: IDR 4.000.000", "1x MERP (1 tahun): Rp 4.000.000".
  */
 export function merpViolation(line: string): boolean {
-  return merpLineRule(line) || merpLabelRule(line);
+  return merpLineRule(line) || merpLabelRule(line) || merpClauseRule(line);
+}
+
+/**
+ * A MERP price written inside a sentence, with no colon or table:
+ *  - an amount in parentheses right after MERP: "MERP (IDR 4-5M)",
+ *    "MERP (Rp 4 juta)";
+ *  - MERP followed in the same clause (no sentence break, at most 4 words, a
+ *    dash counts as one) by a currency amount: "MERP \u2014 IDR 1,000,000",
+ *    "MERP costs IDR 4,000,000", "MERP 4.000.000 IDR".
+ * Innocent: KITAP + MERP bundles, and a comparison sentence whose amount is
+ * what individual ERPs would cost ("Compare the MERP quote with the IDR
+ * 4,800,000+ that individual ERPs would cost").
+ */
+const COMPARISON = /\b(?:compare|comparez|confronta|bandingkan)\b|Сравните/i;
+const CUR_AMOUNT =
+  "(?:(?:IDR|Rp|USD)\\s?\\d|\\d[\\d.,\\u00a0\\u202f ]*\\s?(?:IDR|Rp|USD)\\b)";
+const MERP_PAREN = /\bMERP\s*\(\s*([^)]*)\)/g;
+const MERP_CLAUSE = new RegExp(
+  `\\bMERP\\b(?:[\\s,]+[^\\s.!?;:|()]+){0,4}?[\\s,]*${CUR_AMOUNT}`,
+);
+// "No Sponsor, No MERP, USD 2.5M Minimum": the amount is the investment
+// threshold and MERP is the thing the visa spares you, not a priced item.
+const NEGATED_MERP =
+  /\b(?:no|without|tanpa|senza|sans|zonder)\s+(?:the\s+|le\s+|il\s+)?MERP\b|без\s+MERP/gi;
+function merpClauseRule(rawLine: string): boolean {
+  const line = rawLine.replace(NEGATED_MERP, "");
+  if (MERP_BUNDLE.test(line) || /KITAP/.test(line) || COMPARISON.test(line))
+    return false;
+  if (line.trimStart().startsWith("|")) return false; // table rows: label rule
+  for (const m of line.matchAll(MERP_PAREN)) if (hasAmount(m[1])) return true;
+  return MERP_CLAUSE.test(line);
 }
 
 function merpLineRule(line: string): boolean {
@@ -266,6 +318,10 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
       true,
     );
     expect(alcoholViolation("NPBBKC Golongan A + B + C: IDR 15M")).toBe(true);
+    // no literal "NPBBKC" on the line: still held to 4M / 10M / 12M
+    expect(
+      alcoholViolation("| Licenza alcolici (Golongan A) | 5.000.000 |"),
+    ).toBe(true);
     expect(slhsViolation("SLHS", "IDR 9–25 million")).toBe(true);
     expect(slhsViolation("assistance for **IDR 9,000,000**, SLHS")).toBe(true);
     expect(
@@ -322,6 +378,17 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
     expect(
       merpViolation("- MERP (Multiple Re-entry): IDR 4,000,000-5,000,000"),
     ).toBe(true);
+    // the llms-full.txt line the first review found: a price in parentheses
+    expect(
+      merpViolation(
+        "KITAS holders need exit permits to leave Indonesia. EPO (IDR 700K) cancels your KITAS. ERP (IDR 800K) allows one return trip. MERP (IDR 4-5M) allows unlimited travel for 1-2 years.",
+      ),
+    ).toBe(true);
+    expect(merpViolation("MERP (IDR 4-5M) allows unlimited travel")).toBe(true);
+    expect(merpViolation("MERP (Rp 4 juta) untuk 1-2 tahun")).toBe(true);
+    expect(merpViolation("MERP costs IDR 4,000,000 for one year")).toBe(true);
+    expect(merpViolation("- MERP \u2014 IDR 1,000,000")).toBe(true);
+    expect(merpViolation("Le MERP coûte 4 000 000 IDR")).toBe(true);
     expect(exitPermitViolation('        Cost: "IDR 1-1.5M",')).toBe(true);
     expect(halalViolation("IDR 5-8M")).toBe(true);
     expect(halalViolation("5–8 juta")).toBe(true);
@@ -333,6 +400,9 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
     ).toBe(false);
     expect(
       alcoholViolation("NPBBKC Golongan A + B + C **IDR 12,000,000**"),
+    ).toBe(false);
+    expect(
+      alcoholViolation("| Licenza alcolici (Golongan A) | 4.000.000 |"),
     ).toBe(false);
     expect(
       alcoholViolation(
@@ -350,6 +420,21 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
         "| NPBBKC Golongan B + C | IDR 10,000,000 | 4-8 weeks |",
       ),
     ).toBe(false);
+    // a government fee, or a third-party market range, is a fact, not a Bali Zero price
+    expect(onRequestViolation("Government PIRT filing fee: IDR 100,000.")).toBe(
+      false,
+    );
+    expect(
+      onRequestViolation("Biaya PNBP pemerintah untuk PIRT: Rp 100.000"),
+    ).toBe(false);
+    expect(
+      onRequestViolation(
+        "Third-party agents charge IDR 500,000-1,000,000 for PIRT registration (market range)",
+      ),
+    ).toBe(false);
+    expect(slhsViolation("Government SLHS fee (PNBP)", "IDR 100,000")).toBe(
+      false,
+    );
     expect(halalViolation("Processing takes 5-8 months.")).toBe(false);
     expect(halalViolation("SIHALAL registration | Free")).toBe(false);
     expect(
@@ -373,6 +458,33 @@ describe("guards are not vacuous (guilt: the retired lines fail)", () => {
       ),
     ).toBe(false);
     expect(merpViolation("SERP: IDR 300,000")).toBe(false);
+    // "No MERP, USD 2.5M Minimum": the amount is the investment threshold
+    expect(
+      merpViolation(
+        "Indonesia Golden Visa 2025: No Sponsor, No MERP, USD 2.5M Minimum",
+      ),
+    ).toBe(false);
+    expect(
+      merpViolation("Golden Visa: Senza Sponsor, Senza MERP, USD 2,5M"),
+    ).toBe(false);
+    // the article's comparison sentences price the individual ERPs, not the MERP
+    for (const line of [
+      "- Compare the MERP quote with the IDR 4,800,000+ that individual ERPs would cost",
+      "- Compare the MERP quote with IDR 32,000,000 for individual ERPs",
+      "- Comparez le devis MERP avec les plus de IDR 4 800 000 des ERP individuels",
+      "- Comparez le devis MERP avec les IDR 32 000 000 des ERP individuels",
+      "- Bandingkan penawaran MERP dengan IDR 4.800.000+ yang ERPs individu akan biarkan",
+      "- Confronta la quotazione del MERP con IDR 32.000.000 per gli ERP individuali",
+      "- Сравните предложение по MERP с 4 800 000+ IDR за отдельные ERP",
+    ])
+      expect(merpViolation(line)).toBe(false);
+    expect(
+      merpViolation("MERP (price on request) allows unlimited travel"),
+    ).toBe(false);
+    expect(
+      merpViolation("Get 1-year MERP (price on request) after the KITAS"),
+    ).toBe(false);
+    expect(merpViolation("KITAP + MERP (IDR 33,000,000 all-in)")).toBe(false);
     // the government-fee row is the only exempt MERP row, and only as-is
     expect(
       merpViolation("| MERP | IDR 800K-1M | On request | On request |"),
